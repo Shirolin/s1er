@@ -16,52 +16,18 @@ void main() {
       expect(auth.isLoggedIn, false);
       expect(auth.currentUser, null);
     });
-
-    test('restoreSession sets logged in with cookies', () {
-      final auth = AuthService();
-      auth.restoreSession({'sessionid': 'abc123'});
-      expect(auth.isLoggedIn, true);
-    });
-
-    test('restoreSession does nothing with empty cookies', () {
-      final auth = AuthService();
-      auth.restoreSession({});
-      expect(auth.isLoggedIn, false);
-    });
   });
 
   group('FormhashService', () {
-    test('caches formhash per thread', () {
+    test('singleton updates and clears formhash', () {
       final service = FormhashService();
-      service.cacheFormhash('123', 'abc123');
-      expect(service.getFormhash('123'), 'abc123');
-    });
+      expect(service.formhash, '');
 
-    test('returns null for expired cache', () {
-      final service = FormhashService();
-      service.cacheFormhash('123', 'abc123', ttl: const Duration(seconds: -1));
-      expect(service.getFormhash('123'), null);
-    });
+      service.updateFormhash('abc123');
+      expect(service.formhash, 'abc123');
 
-    test('returns null for uncached thread', () {
-      final service = FormhashService();
-      expect(service.getFormhash('999'), null);
-    });
-
-    test('invalidate removes cached entry', () {
-      final service = FormhashService();
-      service.cacheFormhash('123', 'abc123');
-      expect(service.getFormhash('123'), 'abc123');
-      service.invalidate('123');
-      expect(service.getFormhash('123'), null);
-    });
-
-    test('different threads have separate caches', () {
-      final service = FormhashService();
-      service.cacheFormhash('111', 'aaa');
-      service.cacheFormhash('222', 'bbb');
-      expect(service.getFormhash('111'), 'aaa');
-      expect(service.getFormhash('222'), 'bbb');
+      service.clear();
+      expect(service.formhash, '');
     });
   });
 }

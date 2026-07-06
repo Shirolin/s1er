@@ -9,7 +9,7 @@ final postProvider = StateNotifierProvider.family<
   (ref, tid) => PostNotifier(
     tid: tid,
     apiService: ApiService(ref.watch(httpClientProvider)),
-    formhashService: FormhashService(httpClient: ref.watch(httpClientProvider)),
+    formhashService: FormhashService(),
   ),
 );
 
@@ -51,9 +51,5 @@ class PostNotifier extends StateNotifier<AsyncValue<List<Post>>> {
     } catch (e, st) {
       state = AsyncValue.error(e, st);
     }
-  }
-
-  Future<String> getFormhash() async {
-    return await _formhashService.fetchFormhash(tid);
   }
 }

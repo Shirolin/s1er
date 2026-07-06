@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
 import '../providers/thread_list_provider.dart';
+import '../services/api_service.dart';
 import '../widgets/thread_card.dart';
 
 class ForumListScreen extends ConsumerWidget {
@@ -20,12 +22,24 @@ class ForumListScreen extends ConsumerWidget {
           child: Column(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
-              Text('Error: $e'),
-              const SizedBox(height: 16),
-              ElevatedButton(
-                onPressed: () => ref.invalidate(threadListProvider(fid)),
-                child: const Text('Retry'),
-              ),
+              if (e is LoginRequiredException) ...[
+                const Icon(Icons.lock_outline, size: 64, color: Colors.grey),
+                const SizedBox(height: 16),
+                const Text('请先登录', style: TextStyle(fontSize: 18)),
+                const SizedBox(height: 16),
+                ElevatedButton.icon(
+                  onPressed: () => context.push('/login'),
+                  icon: const Icon(Icons.login),
+                  label: const Text('去登录'),
+                ),
+              ] else ...[
+                Text('Error: $e'),
+                const SizedBox(height: 16),
+                ElevatedButton(
+                  onPressed: () => ref.invalidate(threadListProvider(fid)),
+                  child: const Text('Retry'),
+                ),
+              ],
             ],
           ),
         ),

@@ -31,17 +31,11 @@ class _ComposeScreenState extends ConsumerState<ComposeScreen> {
     setState(() => _isSubmitting = true);
 
     try {
-      final formhashService = FormhashService(httpClient: S1HttpClient.instance);
-      final formhash = widget.tid != null
-          ? await formhashService.fetchFormhash(widget.tid!)
-          : '';
-
       final apiService = ApiService(S1HttpClient.instance);
       final success = await apiService.sendPost(
         fid: widget.fid ?? '',
         tid: widget.tid ?? '',
         message: _messageController.text,
-        formhash: formhash,
       );
 
       if (mounted) {

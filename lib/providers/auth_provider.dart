@@ -38,7 +38,7 @@ class AuthNotifier extends StateNotifier<AuthState> {
     );
   }
 
-  Future<bool> login(String username, String password) async {
+  Future<String?> login(String username, String password) async {
     return await _authService.login(username, password);
   }
 

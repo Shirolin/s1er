@@ -1,8 +1,6 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:s1_app/utils/bbcode_parser.dart';
 import 'package:s1_app/services/html_parser_service.dart';
-import 'package:s1_app/models/thread.dart';
-import 'package:s1_app/models/post.dart';
 
 void main() {
   group('BbcodeParser', () {

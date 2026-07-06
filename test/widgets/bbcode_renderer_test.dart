@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:s1_app/models/emoticon.dart';
 import 'package:s1_app/utils/bbcode_parser.dart';
 import 'package:s1_app/widgets/emoticon_widget.dart';
 import 'package:s1_app/widgets/quote_block.dart';

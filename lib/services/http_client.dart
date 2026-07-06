@@ -1,5 +1,6 @@
 import 'dart:async';
 import 'package:dio/dio.dart';
+import 'package:flutter/foundation.dart';
 import '../config/constants.dart';
 import '../utils/cookie_store.dart';
 
@@ -8,6 +9,10 @@ class S1HttpClient {
   late Dio _dio;
   late CookieStore _cookieStore;
   final List<DateTime> _requestTimestamps = [];
+
+  // Web 模式下使用本地 CORS 代理
+  static const String _proxyUrl = 'http://localhost:8080';
+  static bool get _isWeb => kIsWeb;
 
   S1HttpClient._() {
     _cookieStore = CookieStore();
@@ -28,6 +33,14 @@ class S1HttpClient {
         final cookieHeader = _cookieStore.toHeaderString();
         if (cookieHeader.isNotEmpty) {
           options.headers['Cookie'] = cookieHeader;
+        }
+
+        // Web 模式下将请求重写到本地代理
+        if (_isWeb && options.uri.origin == 'https://stage1st.com') {
+          final originalPath = options.uri.path;
+          final originalQuery = options.uri.query;
+          options.path = '$_proxyUrl$originalPath${originalQuery.isNotEmpty ? '?$originalQuery' : ''}';
+          options.headers['Origin'] = 'https://stage1st.com';
         }
 
         handler.next(options);

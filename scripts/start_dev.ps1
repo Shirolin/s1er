@@ -7,7 +7,7 @@ Write-Host "========================================" -ForegroundColor Cyan
 Write-Host ""
 
 # 启动 CORS 代理
-Write-Host "[1/2] Starting CORS Proxy on http://localhost:8080..." -ForegroundColor Yellow
+Write-Host "[1/2] Starting CORS Proxy on http://localhost:19080..." -ForegroundColor Yellow
 $proxyJob = Start-Process -FilePath "dart" -ArgumentList "run", "scripts/proxy_server.dart" -PassThru -WindowStyle Minimized
 Start-Sleep -Seconds 2
 

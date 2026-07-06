@@ -11,7 +11,7 @@ class S1HttpClient {
   final List<DateTime> _requestTimestamps = [];
 
   // Web 模式下使用本地 CORS 代理
-  static const String _proxyUrl = 'http://localhost:8080';
+  static const String _proxyUrl = 'http://localhost:19080';
   static bool get _isWeb => kIsWeb;
 
   S1HttpClient._() {

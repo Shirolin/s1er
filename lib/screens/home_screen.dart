@@ -4,6 +4,7 @@ import 'package:go_router/go_router.dart';
 import '../providers/auth_provider.dart';
 import '../providers/forum_list_provider.dart';
 import '../models/forum_category.dart';
+import '../services/api_service.dart';
 import 'profile_screen.dart';
 
 class HomeScreen extends ConsumerStatefulWidget {
@@ -34,7 +35,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
       body: !isLoggedIn && _currentTab < 3
           ? _LoginPrompt()
           : _currentTab == 0
-              ? _ForumTab()
+              ? const _ForumTab()
               : _currentTab == 1
                   ? const Center(child: Text('Search'))
                   : _currentTab == 2
@@ -57,45 +58,78 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
 }
 
 class _ForumTab extends ConsumerWidget {
+  const _ForumTab();
+
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final forumsAsync = ref.watch(forumListProvider);
 
     return forumsAsync.when(
       loading: () => const Center(child: CircularProgressIndicator()),
-      error: (e, st) => Center(
-        child: SingleChildScrollView(
-          child: Column(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              if (e.toString().contains('请先登录')) ...[
-                const Icon(Icons.lock_outline, size: 64, color: Colors.grey),
-                const SizedBox(height: 16),
-                const Text('请先登录', style: TextStyle(fontSize: 18)),
-                const SizedBox(height: 16),
-                ElevatedButton.icon(
-                  onPressed: () => context.push('/login'),
-                  icon: const Icon(Icons.login),
-                  label: const Text('去登录'),
-                ),
-              ] else ...[
-                Text('加载失败: $e'),
-                const SizedBox(height: 16),
-                ElevatedButton(
-                  onPressed: () => ref.invalidate(forumListProvider),
-                  child: const Text('重试'),
-                ),
-              ],
-            ],
-          ),
-        ),
-      ),
+      error: (e, st) => _ForumErrorView(error: e),
       data: (categories) => RefreshIndicator(
         onRefresh: () => ref.read(forumListProvider.notifier).refresh(),
         child: ListView.builder(
+          padding: const EdgeInsets.only(bottom: 16),
           itemCount: categories.length,
           itemBuilder: (context, index) =>
               _ForumCategoryTile(category: categories[index]),
+        ),
+      ),
+    );
+  }
+}
+
+class _ForumErrorView extends StatelessWidget {
+  final Object error;
+
+  const _ForumErrorView({required this.error});
+
+  @override
+  Widget build(BuildContext context) {
+    final isLogin = error is LoginRequiredException;
+    return Center(
+      child: Padding(
+        padding: const EdgeInsets.all(32),
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Icon(
+              isLogin ? Icons.lock_outline : Icons.error_outline,
+              size: 56,
+              color: isLogin ? Colors.grey[400] : Theme.of(context).colorScheme.error,
+            ),
+            const SizedBox(height: 16),
+            Text(
+              isLogin ? '请先登录' : '加载失败',
+              style: Theme.of(context).textTheme.titleMedium,
+            ),
+            if (!isLogin) ...[
+              const SizedBox(height: 8),
+              Text(
+                error.toString(),
+                style: TextStyle(color: Colors.grey[600], fontSize: 13),
+                textAlign: TextAlign.center,
+                maxLines: 3,
+                overflow: TextOverflow.ellipsis,
+              ),
+            ],
+            const SizedBox(height: 20),
+            FilledButton.icon(
+              onPressed: () {
+                if (isLogin) {
+                  context.push('/login');
+                } else {
+                  // ignore: unused_result
+                  ProviderScope.containerOf(context)
+                      .read(forumListProvider.notifier)
+                      .refresh();
+                }
+              },
+              icon: Icon(isLogin ? Icons.login : Icons.refresh),
+              label: Text(isLogin ? '去登录' : '重试'),
+            ),
+          ],
         ),
       ),
     );
@@ -109,27 +143,71 @@ class _ForumCategoryTile extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final scheme = Theme.of(context).colorScheme;
+    final hasSubs = category.subforums.isNotEmpty;
+
     return Card(
       margin: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+      clipBehavior: Clip.antiAlias,
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Padding(
-            padding: const EdgeInsets.fromLTRB(16, 12, 16, 4),
-            child: Text(
-              category.name,
-              style: Theme.of(context)
-                  .textTheme
-                  .titleSmall
-                  ?.copyWith(color: Theme.of(context).colorScheme.primary),
+          // 分类头部
+          Container(
+            width: double.infinity,
+            padding: const EdgeInsets.fromLTRB(16, 12, 16, 10),
+            color: scheme.primaryContainer.withValues(alpha: 0.3),
+            child: Row(
+              children: [
+                Icon(Icons.folder_outlined, size: 18, color: scheme.primary),
+                const SizedBox(width: 8),
+                Expanded(
+                  child: Text(
+                    category.name,
+                    style: Theme.of(context).textTheme.titleSmall?.copyWith(
+                          color: scheme.primary,
+                          fontWeight: FontWeight.w600,
+                        ),
+                  ),
+                ),
+                _StatChip(
+                  icon: Icons.article_outlined,
+                  label: '${category.threads}',
+                ),
+                const SizedBox(width: 8),
+                _StatChip(
+                  icon: Icons.chat_bubble_outline,
+                  label: '${category.posts}',
+                ),
+              ],
             ),
           ),
-          if (category.subforums.isNotEmpty)
+          // 子版块列表
+          if (hasSubs)
             ...category.subforums.map((sub) => _ForumTile(forum: sub))
           else
             _ForumTile(forum: category),
         ],
       ),
+    );
+  }
+}
+
+class _StatChip extends StatelessWidget {
+  final IconData icon;
+  final String label;
+
+  const _StatChip({required this.icon, required this.label});
+
+  @override
+  Widget build(BuildContext context) {
+    return Row(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        Icon(icon, size: 13, color: Colors.grey[500]),
+        const SizedBox(width: 2),
+        Text(label, style: TextStyle(fontSize: 11, color: Colors.grey[600])),
+      ],
     );
   }
 }
@@ -141,22 +219,64 @@ class _ForumTile extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return ListTile(
-      dense: true,
-      leading: Icon(
-        Icons.forum_outlined,
-        color: Theme.of(context).colorScheme.secondary,
-      ),
-      title: Text(forum.name),
-      subtitle: forum.description.isNotEmpty
-          ? Text(forum.description,
-              maxLines: 1, overflow: TextOverflow.ellipsis)
-          : null,
-      trailing: Text(
-        '${forum.threads}帖',
-        style: TextStyle(fontSize: 12, color: Colors.grey[600]),
-      ),
+    final scheme = Theme.of(context).colorScheme;
+    final hasDesc = forum.description.isNotEmpty;
+
+    return InkWell(
       onTap: () => context.push('/forum/${forum.fid}'),
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+        child: Row(
+          children: [
+            // 版块图标
+            Container(
+              width: 36,
+              height: 36,
+              decoration: BoxDecoration(
+                color: scheme.secondaryContainer.withValues(alpha: 0.5),
+                borderRadius: BorderRadius.circular(8),
+              ),
+              child: Icon(
+                Icons.forum_outlined,
+                size: 20,
+                color: scheme.secondary,
+              ),
+            ),
+            const SizedBox(width: 12),
+            // 版块信息
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    forum.name,
+                    style: const TextStyle(
+                      fontSize: 14,
+                      fontWeight: FontWeight.w500,
+                    ),
+                  ),
+                  if (hasDesc) ...[
+                    const SizedBox(height: 2),
+                    Text(
+                      forum.description,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: TextStyle(fontSize: 12, color: Colors.grey[500]),
+                    ),
+                  ],
+                ],
+              ),
+            ),
+            // 帖子数
+            Text(
+              '${forum.threads}',
+              style: TextStyle(fontSize: 12, color: Colors.grey[500]),
+            ),
+            const SizedBox(width: 4),
+            Icon(Icons.chevron_right, size: 18, color: Colors.grey[400]),
+          ],
+        ),
+      ),
     );
   }
 }

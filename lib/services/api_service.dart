@@ -4,6 +4,7 @@ import '../config/api_config.dart';
 import '../models/thread.dart';
 import '../models/post.dart';
 import '../models/forum_category.dart';
+import '../models/user.dart';
 import 'http_client.dart';
 
 class LoginRequiredException implements Exception {
@@ -15,6 +16,13 @@ class ApiService {
   final S1HttpClient _httpClient;
 
   ApiService(this._httpClient);
+
+  /// Dio 未自动解析 JSON 时，response.data 可能是 String
+  static Map<String, dynamic> _ensureJson(dynamic data) {
+    if (data is Map<String, dynamic>) return data;
+    if (data is String) return jsonDecode(data) as Map<String, dynamic>;
+    throw FormatException('Unexpected response type: ${data.runtimeType}');
+  }
 
   static String buildApiUrl({
     required String module,
@@ -73,28 +81,69 @@ class ApiService {
 
   static List<ForumCategory> parseForumList(Map<String, dynamic> json) {
     final variables = json['Variables'] as Map<String, dynamic>?;
-    final forumList = variables?['forumlist'] as List?;
-    if (forumList == null) return [];
-    return forumList
-        .map((f) => ForumCategory.fromJson(f as Map<String, dynamic>))
-        .toList();
+    if (variables == null) return [];
+
+    // 1. 从 forumlist 构建 fid -> ForumCategory 查找表（含 sublist 子版块）
+    final forumList = variables['forumlist'] as List? ?? [];
+    final Map<String, ForumCategory> forumMap = {};
+    for (final f in forumList) {
+      final forum = ForumCategory.fromJson(f as Map<String, dynamic>);
+      forumMap[forum.fid] = forum;
+    }
+
+    // 2. 从 catlist 构建分类树：每个分类的 forums 是 fid 字符串列表
+    final catList = variables['catlist'] as List? ?? [];
+    final List<ForumCategory> categories = [];
+    for (final cat in catList) {
+      final catMap = cat as Map<String, dynamic>;
+      final catName = catMap['name']?.toString() ?? '';
+      final catFid = catMap['fid']?.toString() ?? '';
+      final forumIds = (catMap['forums'] as List?)
+              ?.map((e) => e.toString())
+              .toList() ??
+          [];
+
+      // 将 fid 列表转为 ForumCategory 子版块列表
+      final subforums = forumIds
+          .where((fid) => forumMap.containsKey(fid))
+          .map((fid) => forumMap[fid]!)
+          .toList();
+
+      categories.add(ForumCategory(
+        fid: catFid,
+        name: catName,
+        description: '',
+        threads: 0,
+        posts: 0,
+        subforums: subforums,
+      ));
+    }
+
+    return categories;
   }
 
   Future<List<ForumCategory>> getForumList() async {
     final url = buildApiUrl(module: ApiConfig.moduleForumIndex);
     final response = await _httpClient.get(url);
-    checkAuthError(response.data);
-    return parseForumList(response.data);
+    final json = _ensureJson(response.data);
+    checkAuthError(json);
+    return parseForumList(json);
   }
 
   Future<List<Thread>> getThreadList(String fid, {int page = 1}) async {
+    final result = await getThreadListRaw(fid, page: page);
+    return parseThreadList(result);
+  }
+
+  Future<Map<String, dynamic>> getThreadListRaw(String fid, {int page = 1}) async {
     final url = buildApiUrl(
       module: ApiConfig.moduleForumDisplay,
       params: {'fid': fid, 'page': page.toString()},
     );
     final response = await _httpClient.get(url);
-    checkAuthError(response.data);
-    return parseThreadList(response.data);
+    final json = _ensureJson(response.data);
+    checkAuthError(json);
+    return json;
   }
 
   Future<Map<String, dynamic>> getThreadDetail(String tid, {int page = 1}) async {
@@ -103,8 +152,9 @@ class ApiService {
       params: {'tid': tid, 'page': page.toString()},
     );
     final response = await _httpClient.get(url);
-    checkAuthError(response.data);
-    return response.data;
+    final json = _ensureJson(response.data);
+    checkAuthError(json);
+    return json;
   }
 
   /// 纯 API 登录：返回 null 表示成功，否则返回错误信息
@@ -206,5 +256,31 @@ class ApiService {
       'posttime': DateTime.now().millisecondsSinceEpoch ~/ 1000,
     });
     return response.statusCode == 200;
+  }
+
+  Future<User?> getUserProfile() async {
+    try {
+      final url = buildApiUrl(module: ApiConfig.moduleForumIndex);
+      final response = await _httpClient.get(url);
+      final json = _ensureJson(response.data);
+      checkAuthError(json);
+      final variables = json['Variables'] as Map<String, dynamic>?;
+      if (variables == null) return null;
+
+      final uid = variables['member_uid']?.toString() ?? '';
+      if (uid.isEmpty || uid == '0') return null;
+
+      final group = variables['group'] as Map<String, dynamic>?;
+      return User(
+        uid: uid,
+        username: variables['member_username']?.toString() ?? '',
+        avatar: variables['member_avatar']?.toString(),
+        groupTitle: group?['grouptitle']?.toString(),
+        credits: int.tryParse(variables['member_credits']?.toString() ?? '') ?? 0,
+        groupid: int.tryParse(variables['groupid']?.toString() ?? ''),
+      );
+    } catch (_) {
+      return null;
+    }
   }
 }

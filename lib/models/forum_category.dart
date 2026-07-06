@@ -5,6 +5,7 @@ class ForumCategory {
   final int threads;
   final int posts;
   final String? icon;
+  final List<ForumCategory> subforums;
 
   ForumCategory({
     required this.fid,
@@ -13,9 +14,11 @@ class ForumCategory {
     required this.threads,
     required this.posts,
     this.icon,
+    this.subforums = const [],
   });
 
   factory ForumCategory.fromJson(Map<String, dynamic> json) {
+    final subforumList = json['sublist'] as List? ?? [];
     return ForumCategory(
       fid: json['fid']?.toString() ?? '',
       name: json['name']?.toString() ?? '',
@@ -23,6 +26,9 @@ class ForumCategory {
       threads: int.tryParse(json['threads']?.toString() ?? '') ?? 0,
       posts: int.tryParse(json['posts']?.toString() ?? '') ?? 0,
       icon: json['icon']?.toString(),
+      subforums: subforumList
+          .map((f) => ForumCategory.fromJson(f as Map<String, dynamic>))
+          .toList(),
     );
   }
 }

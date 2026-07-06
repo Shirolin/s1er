@@ -14,24 +14,25 @@ class AuthService extends ChangeNotifier {
   User? get currentUser => _currentUser;
   bool get isLoggedIn => _isLoggedIn;
 
-  /// 新增：由 WebView 成功截获并设置 Cookie 后，直接更新登录状态并拉取当前用户信息
   void setLoggedIn(String username) {
     _isLoggedIn = true;
     _currentUser = User(uid: '', username: username);
     notifyListeners();
+    _fetchProfile();
   }
 
-  /// 返回 null 表示成功，否则返回错误信息
   Future<String?> login(String username, String password) async {
-    if (_httpClient == null) return 'HTTP 客户端未初始化';
+    final httpClient = _httpClient;
+    if (httpClient == null) return 'HTTP 客户端未初始化';
     try {
-      final apiService = ApiService(_httpClient!);
+      final apiService = ApiService(httpClient);
       final error = await apiService.login(username, password);
 
       if (error == null) {
         _isLoggedIn = true;
         _currentUser = User(uid: '', username: username);
         notifyListeners();
+        _fetchProfile();
         return null;
       }
       return error;
@@ -41,6 +42,25 @@ class AuthService extends ChangeNotifier {
     }
   }
 
+  Future<void> _fetchProfile() async {
+    final httpClient = _httpClient;
+    if (httpClient == null) return;
+    try {
+      final apiService = ApiService(httpClient);
+      final profile = await apiService.getUserProfile();
+      if (profile != null) {
+        _currentUser = profile;
+        notifyListeners();
+      }
+    } catch (e) {
+      debugPrint('Fetch profile failed: $e');
+    }
+  }
+
+  Future<void> refreshProfile() async {
+    await _fetchProfile();
+  }
+
   void logout() {
     _currentUser = null;
     _isLoggedIn = false;
@@ -48,22 +68,41 @@ class AuthService extends ChangeNotifier {
     notifyListeners();
   }
 
-  /// 适配：利用新 CookieJar 检测是否有登录态 Cookie
   Future<void> checkSession() async {
-    if (_httpClient == null) return;
-    
-    // 从 S1 论坛域名读取 Cookie 以校验是否含有登录态
-    final cookies = await _httpClient!.cookieJar.loadForRequest(Uri.parse('https://stage1st.com'));
-    final hasAuth = cookies.any((c) => c.name.endsWith('auth') && c.value.isNotEmpty);
-    if (hasAuth) {
-      // 提取 Cookie 中的用户名信息，或临时赋予通用占位
-      final memberName = cookies
-          .firstWhere((c) => c.name.endsWith('username'),
-              orElse: () => Cookie('username', 'S1User'))
-          .value;
-      _currentUser = User(uid: '', username: Uri.decodeComponent(memberName));
-      _isLoggedIn = true;
-      notifyListeners();
-    }
+    final httpClient = _httpClient;
+    if (httpClient == null) return;
+
+    // Web 模式下 cookieJar 是内存存储，重启后为空，但浏览器会自动带 Cookie
+    // 所以直接尝试拉取用户资料来判断是否已登录
+    final apiService = ApiService(httpClient);
+    try {
+      final profile = await apiService.getUserProfile();
+      if (profile != null && profile.uid.isNotEmpty && profile.uid != '0') {
+        _currentUser = profile;
+        _isLoggedIn = true;
+        notifyListeners();
+        return;
+      }
+    } catch (_) {}
+
+    // 降级：从 cookieJar 检查（非 Web 平台）
+    if (kIsWeb) return;
+    try {
+      final cookies = await httpClient.cookieJar
+          .loadForRequest(Uri.parse('https://stage1st.com'));
+      final hasAuth =
+          cookies.any((c) => c.name.endsWith('auth') && c.value.isNotEmpty);
+      if (hasAuth) {
+        final memberName = cookies
+            .firstWhere((c) => c.name.endsWith('username'),
+                orElse: () => Cookie('username', 'S1User'))
+            .value;
+        _currentUser =
+            User(uid: '', username: Uri.decodeComponent(memberName));
+        _isLoggedIn = true;
+        notifyListeners();
+        _fetchProfile();
+      }
+    } catch (_) {}
   }
 }

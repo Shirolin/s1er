@@ -16,14 +16,20 @@ class S1HttpClient {
 
   S1HttpClient._() {
     _cookieStore = CookieStore();
+
+    // 浏览器禁止设置 User-Agent 等安全头，Web 模式下不设置
+    final headers = <String, String>{
+      'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
+      'Accept-Language': 'zh-CN,zh;q=0.9,en;q=0.8',
+    };
+    if (!_isWeb) {
+      headers['User-Agent'] = S1Constants.mobileUserAgent;
+    }
+
     _dio = Dio(BaseOptions(
       connectTimeout: const Duration(seconds: 10),
       receiveTimeout: const Duration(seconds: 15),
-      headers: {
-        'User-Agent': S1Constants.mobileUserAgent,
-        'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
-        'Accept-Language': 'zh-CN,zh;q=0.9,en;q=0.8',
-      },
+      headers: headers,
     ));
 
     _dio.interceptors.add(InterceptorsWrapper(
@@ -35,14 +41,12 @@ class S1HttpClient {
           options.headers['Cookie'] = cookieHeader;
         }
 
-        // Web 模式下将请求重写到本地代理
+        // Web 模式下将请求重写到本地代理（代理负责设置安全头）
         if (_isWeb && options.path.contains('stage1st.com')) {
           final uri = Uri.parse(options.path);
           final path = uri.path;
           final query = uri.query;
           options.path = '$_proxyUrl$path${query.isNotEmpty ? '?$query' : ''}';
-          options.headers['Origin'] = 'https://stage1st.com';
-          options.headers['Referer'] = 'https://stage1st.com/2b/';
         }
 
         handler.next(options);

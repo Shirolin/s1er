@@ -77,7 +77,8 @@ void main() async {
         }
       });
 
-      // 设置 Origin 头
+      // 设置代理负责的安全头（浏览器不能设置这些）
+      proxyRequest.headers.set('User-Agent', 'Mozilla/5.0 (iPhone; CPU iPhone OS 17_0 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.0 Mobile/15E148 Safari/604.1');
       proxyRequest.headers.set('Origin', 'https://stage1st.com');
       proxyRequest.headers.set('Referer', 'https://stage1st.com/2b/');
 

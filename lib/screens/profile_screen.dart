@@ -14,6 +14,8 @@ class ProfileScreen extends ConsumerWidget {
     final authState = ref.watch(authStateProvider);
     final settings = ref.watch(settingsProvider);
     final user = authState.user;
+    final colorScheme = Theme.of(context).colorScheme;
+
     final avatarUrl = User.resolveAvatarUrl(user?.avatar, size: 'middle');
     final letter = (authState.username?.isNotEmpty == true)
         ? authState.username![0].toUpperCase()
@@ -21,132 +23,520 @@ class ProfileScreen extends ConsumerWidget {
 
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Profile'),
+        title: const Text('个人资料'),
         actions: [
           if (authState.isLoggedIn)
             IconButton(
               icon: const Icon(Icons.refresh),
+              tooltip: '刷新资料',
               onPressed: () =>
                   ref.read(authStateProvider.notifier).refreshProfile(),
             ),
         ],
       ),
       body: ListView(
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
         children: [
-          const SizedBox(height: 24),
-          Center(child: WebAvatar(url: avatarUrl, radius: 40, fallbackLetter: letter)),
-          const SizedBox(height: 12),
-          Center(
-            child: Text(
-              authState.isLoggedIn
-                  ? (user?.username ?? authState.username ?? '')
-                  : '未登录',
-              style: Theme.of(context).textTheme.titleLarge,
-            ),
+          _HeaderCard(
+            avatarUrl: avatarUrl,
+            letter: letter,
+            username: authState.isLoggedIn
+                ? (user?.username ?? authState.username ?? '')
+                : null,
+            groupTitle: user?.groupTitle,
+            isLoggedIn: authState.isLoggedIn,
+            onLogin: () => context.push('/login'),
           ),
-          if (user != null && user.groupTitle != null) ...[
-            const SizedBox(height: 4),
-            Center(
-              child: Container(
-                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 2),
-                decoration: BoxDecoration(
-                  color: Theme.of(context).colorScheme.primaryContainer,
-                  borderRadius: BorderRadius.circular(12),
-                ),
-                child: Text(
-                  user.groupTitle!,
-                  style: TextStyle(
-                    fontSize: 12,
-                    color: Theme.of(context).colorScheme.onPrimaryContainer,
-                  ),
-                ),
-              ),
-            ),
+          if (authState.isLoggedIn && user != null && user.uid.isNotEmpty) ...[
+            const SizedBox(height: 16),
+            _StatsCard(user: user),
+            const SizedBox(height: 16),
+            _S1StatsCard(user: user),
+            const SizedBox(height: 16),
+            _InfoCard(user: user),
           ],
-          const SizedBox(height: 24),
-          if (user != null && user.uid.isNotEmpty) ...[
-            _buildStatsRow(context, user),
-            const Divider(height: 32),
-          ],
-          _buildInfoTile(context, 'UID', user?.uid ?? '-'),
-          _buildInfoTile(context, '积分', user?.credits.toString() ?? '-'),
-          _buildInfoTile(context, '帖子数', user?.posts.toString() ?? '-'),
-          _buildInfoTile(context, '主题数', user?.threads.toString() ?? '-'),
-          const Divider(),
-          SwitchListTile(
-            title: const Text('深色模式'),
-            value: settings.darkMode,
-            onChanged: (v) =>
-                ref.read(settingsProvider.notifier).setDarkMode(v),
-          ),
-          SwitchListTile(
-            title: const Text('显示图片'),
-            value: settings.showImages,
-            onChanged: (v) =>
+          const SizedBox(height: 16),
+          _SettingsCard(
+            themeMode: settings.themeMode,
+            showImages: settings.showImages,
+            onThemeModeChanged: (v) =>
+                ref.read(settingsProvider.notifier).setThemeMode(v),
+            onShowImagesChanged: (v) =>
                 ref.read(settingsProvider.notifier).setShowImages(v),
           ),
-          const Divider(),
+          const SizedBox(height: 16),
           if (authState.isLoggedIn)
-            ListTile(
-              leading: const Icon(Icons.logout),
-              title: const Text('退出登录'),
+            _ActionTile(
+              icon: Icons.logout,
+              label: '退出登录',
+              color: colorScheme.error,
               onTap: () {
                 ref.read(authStateProvider.notifier).logout();
                 context.go('/');
               },
-            )
-          else
-            ListTile(
-              leading: const Icon(Icons.login),
-              title: const Text('登录'),
-              onTap: () => context.push('/login'),
             ),
+          const SizedBox(height: 24),
         ],
       ),
     );
   }
+}
 
-  Widget _buildStatsRow(BuildContext context, dynamic user) {
-    return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 24),
-      child: Row(
-        mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-        children: [
-          _StatItem(label: '积分', value: '${user.credits}'),
-          _StatItem(label: '帖子', value: '${user.posts}'),
-          _StatItem(label: '主题', value: '${user.threads}'),
-          _StatItem(label: '好友', value: '${user.friends}'),
-        ],
+class _HeaderCard extends StatelessWidget {
+  final String? avatarUrl;
+  final String letter;
+  final String? username;
+  final String? groupTitle;
+  final bool isLoggedIn;
+  final VoidCallback onLogin;
+
+  const _HeaderCard({
+    required this.avatarUrl,
+    required this.letter,
+    required this.username,
+    required this.groupTitle,
+    required this.isLoggedIn,
+    required this.onLogin,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final colorScheme = Theme.of(context).colorScheme;
+    final textTheme = Theme.of(context).textTheme;
+
+    return Card(
+      elevation: 0,
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+      color: colorScheme.surfaceContainerHighest.withValues(alpha: 0.4),
+      child: Padding(
+        padding: const EdgeInsets.symmetric(vertical: 24, horizontal: 16),
+        child: Column(
+          children: [
+            WebAvatar(url: avatarUrl, radius: 44, fallbackLetter: letter),
+            const SizedBox(height: 12),
+            if (isLoggedIn) ...[
+              Text(
+                username ?? '',
+                style: textTheme.titleLarge?.copyWith(
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
+              if (groupTitle != null && groupTitle!.isNotEmpty) ...[
+                const SizedBox(height: 6),
+                Container(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 12,
+                    vertical: 3,
+                  ),
+                  decoration: BoxDecoration(
+                    color: colorScheme.primaryContainer,
+                    borderRadius: BorderRadius.circular(20),
+                  ),
+                  child: Text(
+                    groupTitle!,
+                    style: textTheme.labelSmall?.copyWith(
+                      color: colorScheme.onPrimaryContainer,
+                    ),
+                  ),
+                ),
+              ],
+            ] else ...[
+              Text(
+                '未登录',
+                style: textTheme.titleLarge?.copyWith(
+                  color: colorScheme.onSurfaceVariant,
+                ),
+              ),
+              const SizedBox(height: 4),
+              Text(
+                '登录后查看更多信息',
+                style: textTheme.bodySmall?.copyWith(
+                  color: colorScheme.onSurfaceVariant,
+                ),
+              ),
+              const SizedBox(height: 12),
+              FilledButton.icon(
+                onPressed: onLogin,
+                icon: const Icon(Icons.login, size: 18),
+                label: const Text('登录'),
+              ),
+            ],
+          ],
+        ),
       ),
     );
   }
+}
 
-  Widget _buildInfoTile(BuildContext context, String label, String value) {
-    return ListTile(
-      dense: true,
-      title: Text(label),
-      trailing: Text(value, style: TextStyle(color: Colors.grey[600])),
+class _StatsCard extends StatelessWidget {
+  final User user;
+
+  const _StatsCard({required this.user});
+
+  @override
+  Widget build(BuildContext context) {
+    final colorScheme = Theme.of(context).colorScheme;
+
+    return Card(
+      elevation: 0,
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+      color: colorScheme.surfaceContainerHighest.withValues(alpha: 0.4),
+      child: Padding(
+        padding: const EdgeInsets.symmetric(vertical: 16),
+        child: Row(
+          mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+          children: [
+            _StatItem(label: '积分', value: user.credits),
+            _VerticalDivider(),
+            _StatItem(label: '帖子', value: user.posts),
+            _VerticalDivider(),
+            _StatItem(label: '主题', value: user.threads),
+            _VerticalDivider(),
+            _StatItem(label: '好友', value: user.friends),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _S1StatsCard extends StatelessWidget {
+  final User user;
+
+  const _S1StatsCard({required this.user});
+
+  @override
+  Widget build(BuildContext context) {
+    final colorScheme = Theme.of(context).colorScheme;
+    final textTheme = Theme.of(context).textTheme;
+
+    return Card(
+      elevation: 0,
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+      color: colorScheme.surfaceContainerHighest.withValues(alpha: 0.4),
+      child: Padding(
+        padding: const EdgeInsets.symmetric(vertical: 20, horizontal: 16),
+        child: Row(
+          children: [
+            Expanded(
+              child: Column(
+                children: [
+                  Text('🐟', style: textTheme.headlineSmall),
+                  const SizedBox(height: 6),
+                  Text(
+                    '${user.deadfish} 条',
+                    style: textTheme.titleMedium?.copyWith(
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                  const SizedBox(height: 2),
+                  Text(
+                    '死鱼',
+                    style: textTheme.labelMedium?.copyWith(
+                      color: colorScheme.onSurfaceVariant,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            Container(
+              width: 1,
+              height: 40,
+              color: colorScheme.outlineVariant,
+            ),
+            Expanded(
+              child: Column(
+                children: [
+                  Text('🪿', style: textTheme.headlineSmall),
+                  const SizedBox(height: 6),
+                  Text(
+                    '${user.combat} 鹅',
+                    style: textTheme.titleMedium?.copyWith(
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                  const SizedBox(height: 2),
+                  Text(
+                    '战斗力',
+                    style: textTheme.labelMedium?.copyWith(
+                      color: colorScheme.onSurfaceVariant,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _VerticalDivider extends StatelessWidget {
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      width: 1,
+      height: 28,
+      color: Theme.of(context).colorScheme.outlineVariant,
     );
   }
 }
 
 class _StatItem extends StatelessWidget {
   final String label;
-  final String value;
+  final int value;
 
   const _StatItem({required this.label, required this.value});
 
   @override
   Widget build(BuildContext context) {
+    final colorScheme = Theme.of(context).colorScheme;
+    final textTheme = Theme.of(context).textTheme;
+
     return Column(
+      mainAxisSize: MainAxisSize.min,
       children: [
-        Text(value,
-            style: const TextStyle(
-                fontSize: 18, fontWeight: FontWeight.bold)),
+        Text(
+          _formatNumber(value),
+          style: textTheme.titleMedium?.copyWith(
+            fontWeight: FontWeight.bold,
+            color: colorScheme.onSurface,
+          ),
+        ),
         const SizedBox(height: 2),
-        Text(label,
-            style: TextStyle(fontSize: 12, color: Colors.grey[600])),
+        Text(
+          label,
+          style: textTheme.labelSmall?.copyWith(
+            color: colorScheme.onSurfaceVariant,
+          ),
+        ),
       ],
+    );
+  }
+
+  String _formatNumber(int n) {
+    if (n >= 10000) return '${(n / 10000).toStringAsFixed(1)}万';
+    if (n >= 1000) return '${(n / 1000).toStringAsFixed(1)}k';
+    return '$n';
+  }
+}
+
+class _InfoCard extends StatelessWidget {
+  final User user;
+
+  const _InfoCard({required this.user});
+
+  @override
+  Widget build(BuildContext context) {
+    final colorScheme = Theme.of(context).colorScheme;
+
+    return Card(
+      elevation: 0,
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+      color: colorScheme.surfaceContainerHighest.withValues(alpha: 0.4),
+      child: Column(
+        children: [
+          _InfoTile(label: 'UID', value: user.uid),
+          if (user.regdate.isNotEmpty) ...[
+            const Divider(height: 1, indent: 16, endIndent: 16),
+            _InfoTile(label: '注册时间', value: user.regdate),
+          ],
+          const Divider(height: 1, indent: 16, endIndent: 16),
+          _InfoTile(label: '关注', value: '${user.following}'),
+          const Divider(height: 1, indent: 16, endIndent: 16),
+          _InfoTile(label: '粉丝', value: '${user.follower}'),
+          const Divider(height: 1, indent: 16, endIndent: 16),
+          _InfoTile(label: '在线时长', value: '${user.oltime} 小时'),
+        ],
+      ),
+    );
+  }
+}
+
+class _InfoTile extends StatelessWidget {
+  final String label;
+  final String value;
+
+  const _InfoTile({required this.label, required this.value});
+
+  @override
+  Widget build(BuildContext context) {
+    final textTheme = Theme.of(context).textTheme;
+    final colorScheme = Theme.of(context).colorScheme;
+
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+        children: [
+          Text(
+            label,
+            style: textTheme.bodyMedium?.copyWith(
+              color: colorScheme.onSurfaceVariant,
+            ),
+          ),
+          Text(
+            value,
+            style: textTheme.bodyMedium?.copyWith(
+              fontWeight: FontWeight.w500,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _SettingsCard extends StatelessWidget {
+  final String themeMode;
+  final bool showImages;
+  final ValueChanged<String> onThemeModeChanged;
+  final ValueChanged<bool> onShowImagesChanged;
+
+  const _SettingsCard({
+    required this.themeMode,
+    required this.showImages,
+    required this.onThemeModeChanged,
+    required this.onShowImagesChanged,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final colorScheme = Theme.of(context).colorScheme;
+    final textTheme = Theme.of(context).textTheme;
+
+    return Card(
+      elevation: 0,
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+      color: colorScheme.surfaceContainerHighest.withValues(alpha: 0.4),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Padding(
+            padding: const EdgeInsets.fromLTRB(16, 14, 16, 4),
+            child: Text(
+              '设置',
+              style: textTheme.labelLarge?.copyWith(
+                color: colorScheme.primary,
+                fontWeight: FontWeight.w600,
+              ),
+            ),
+          ),
+          Padding(
+            padding: const EdgeInsets.fromLTRB(16, 4, 16, 12),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  '主题外观',
+                  style: textTheme.bodyMedium?.copyWith(
+                    color: colorScheme.onSurfaceVariant,
+                  ),
+                ),
+                const SizedBox(height: 10),
+                SegmentedButton<String>(
+                  segments: const [
+                    ButtonSegment(
+                      value: 'system',
+                      label: Text('跟随系统'),
+                      icon: Icon(Icons.brightness_auto, size: 18),
+                    ),
+                    ButtonSegment(
+                      value: 'light',
+                      label: Text('浅色'),
+                      icon: Icon(Icons.light_mode, size: 18),
+                    ),
+                    ButtonSegment(
+                      value: 'dark',
+                      label: Text('深色'),
+                      icon: Icon(Icons.dark_mode, size: 18),
+                    ),
+                  ],
+                  selected: {themeMode},
+                  onSelectionChanged: (v) => onThemeModeChanged(v.first),
+                  showSelectedIcon: false,
+                  style: ButtonStyle(
+                    visualDensity: VisualDensity.standard,
+                    tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                    side: WidgetStateProperty.resolveWith((states) {
+                      if (states.contains(WidgetState.selected)) {
+                        return BorderSide.none;
+                      }
+                      return BorderSide(
+                        color: colorScheme.outlineVariant,
+                      );
+                    }),
+                    backgroundColor: WidgetStateProperty.resolveWith((states) {
+                      if (states.contains(WidgetState.selected)) {
+                        return colorScheme.secondaryContainer;
+                      }
+                      return Colors.transparent;
+                    }),
+                    foregroundColor: WidgetStateProperty.resolveWith((states) {
+                      if (states.contains(WidgetState.selected)) {
+                        return colorScheme.onSecondaryContainer;
+                      }
+                      return colorScheme.onSurfaceVariant;
+                    }),
+                    shape: WidgetStateProperty.all(
+                      RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(10),
+                      ),
+                    ),
+                    padding: WidgetStateProperty.all(
+                      const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+          SwitchListTile(
+            title: const Text('显示图片'),
+            secondary: const Icon(Icons.image_outlined),
+            value: showImages,
+            onChanged: onShowImagesChanged,
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(12),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _ActionTile extends StatelessWidget {
+  final IconData icon;
+  final String label;
+  final Color color;
+  final VoidCallback onTap;
+
+  const _ActionTile({
+    required this.icon,
+    required this.label,
+    required this.color,
+    required this.onTap,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Card(
+      elevation: 0,
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+      color: color.withValues(alpha: 0.08),
+      child: ListTile(
+        leading: Icon(icon, color: color),
+        title: Text(
+          label,
+          style: TextStyle(color: color, fontWeight: FontWeight.w500),
+        ),
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(16),
+        ),
+        onTap: onTap,
+      ),
     );
   }
 }

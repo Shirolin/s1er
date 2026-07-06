@@ -11,4 +11,5 @@ class ApiConfig {
   static const String moduleLogin = 'login';
   static const String moduleSendPost = 'sendpost';
   static const String moduleSendMessage = 'sendpm';
+  static const String moduleProfile = 'profile';
 }

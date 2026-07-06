@@ -7,6 +7,12 @@ class User {
   final int posts;
   final int threads;
   final int friends;
+  final int follower;
+  final int following;
+  final int oltime;
+  final int deadfish;
+  final int combat;
+  final String regdate;
   final int? groupid;
   final String? signaturUrl;
 
@@ -19,6 +25,12 @@ class User {
     this.posts = 0,
     this.threads = 0,
     this.friends = 0,
+    this.follower = 0,
+    this.following = 0,
+    this.oltime = 0,
+    this.deadfish = 0,
+    this.combat = 0,
+    this.regdate = '',
     this.groupid,
     this.signaturUrl,
   });
@@ -54,6 +66,12 @@ class User {
       posts: int.tryParse(json['posts']?.toString() ?? '') ?? 0,
       threads: int.tryParse(json['threads']?.toString() ?? '') ?? 0,
       friends: int.tryParse(json['friends']?.toString() ?? '') ?? 0,
+      follower: int.tryParse(json['follower']?.toString() ?? '') ?? 0,
+      following: int.tryParse(json['following']?.toString() ?? '') ?? 0,
+      oltime: int.tryParse(json['oltime']?.toString() ?? '') ?? 0,
+      deadfish: int.tryParse(json['deadfish']?.toString() ?? '') ?? 0,
+      combat: int.tryParse(json['combat']?.toString() ?? '') ?? 0,
+      regdate: json['regdate']?.toString() ?? '',
       groupid: int.tryParse(json['groupid']?.toString() ?? ''),
     );
   }
@@ -67,6 +85,12 @@ class User {
     int? posts,
     int? threads,
     int? friends,
+    int? follower,
+    int? following,
+    int? oltime,
+    int? deadfish,
+    int? combat,
+    String? regdate,
     int? groupid,
   }) {
     return User(
@@ -78,6 +102,12 @@ class User {
       posts: posts ?? this.posts,
       threads: threads ?? this.threads,
       friends: friends ?? this.friends,
+      follower: follower ?? this.follower,
+      following: following ?? this.following,
+      oltime: oltime ?? this.oltime,
+      deadfish: deadfish ?? this.deadfish,
+      combat: combat ?? this.combat,
+      regdate: regdate ?? this.regdate,
       groupid: groupid ?? this.groupid,
     );
   }

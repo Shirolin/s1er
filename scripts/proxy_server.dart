@@ -1,7 +1,3 @@
-// 本地 CORS 代理服务器
-// 用法: dart run scripts/proxy_server.dart
-// 会在 http://localhost:19080 启动代理
-
 import 'dart:io';
 
 const int port = 19080;
@@ -13,83 +9,103 @@ const String mobileUserAgent =
 
 void main() async {
   final server = await HttpServer.bind('localhost', port);
-  print('CORS Proxy running on http://localhost:$port');
-  print('转发到 $targetHost/2b');
+  print('Proxy on http://localhost:$port');
 
-  await for (final request in server) {
-    // CORS 响应头
-    request.response.headers
-      ..add('Access-Control-Allow-Origin', '*')
-      ..add('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS')
-      ..add('Access-Control-Allow-Headers', 'Content-Type, Cookie')
-      ..add('Access-Control-Allow-Credentials', 'true');
-
-    if (request.method == 'OPTIONS') {
-      request.response.statusCode = 204;
-      await request.response.close();
-      continue;
-    }
-
-    // 构建目标路径
-    var targetPath = request.uri.path;
-    if (!targetPath.startsWith('/2b/')) {
-      targetPath = '/2b$targetPath';
-    }
-
-    final uri = Uri.parse('$targetHost$targetPath')
-        .replace(queryParameters: request.uri.queryParameters);
-
+  await for (final req in server) {
     try {
+      final res = req.response;
+
+      if (req.method == 'OPTIONS') {
+        _cors(req, res);
+        res.statusCode = 204;
+        await res.close();
+        continue;
+      }
+
+      var path = req.uri.path;
+      if (!path.startsWith('/2b/')) path = '/2b$path';
+      final qs = req.uri.query;
+      final target = Uri.parse('$targetHost$path${qs.isNotEmpty ? '?$qs' : ''}');
+
       final client = HttpClient()
         ..badCertificateCallback = (_, __, ___) => true;
+      final upReq = await client.openUrl(req.method, target);
 
-      final proxyRequest = await client.openUrl(request.method, uri);
-
-      // 读取请求体
-      final body = await request.fold<List<int>>([], (p, c) => p..addAll(c));
-      if (body.isNotEmpty) {
-        proxyRequest.add(body);
-      }
-
-      // 转发 Content-Type
-      final ct = request.headers.contentType;
-      if (ct != null) {
-        proxyRequest.headers.set('Content-Type', ct.toString());
-      }
-
-      // 转发 Cookie
-      final cookieHeader = request.headers.value('Cookie');
-      if (cookieHeader != null && cookieHeader.isNotEmpty) {
-        proxyRequest.headers.set('Cookie', cookieHeader);
-      }
-
-      // 代理设置安全头
-      proxyRequest.headers
-        ..set('User-Agent', mobileUserAgent)
-        ..set('Origin', targetHost)
-        ..set('Referer', '$targetHost/2b/');
-
-      final proxyResponse = await proxyRequest.close();
-
-      // 写回响应
-      request.response.statusCode = proxyResponse.statusCode;
-      proxyResponse.headers.forEach((name, values) {
-        if (!['transfer-encoding', 'content-encoding'].contains(name.toLowerCase())) {
-          request.response.headers.set(name, values);
+      final ct = req.headers.contentType;
+      if (ct != null) upReq.headers.set('Content-Type', ct.toString());
+      final ck = req.headers.value('Cookie');
+      if (ck != null && ck.isNotEmpty) {
+        final filteredCookies = <String>[];
+        final parts = ck.split(';');
+        for (var part in parts) {
+          final trimmed = part.trim();
+          if (trimmed.isEmpty) continue;
+          final eqIdx = trimmed.indexOf('=');
+          if (eqIdx == -1) continue;
+          final name = trimmed.substring(0, eqIdx);
+          
+          // 只允许以 S1 官方 Cookie 前缀 'B7Y9_2f85_' 开头的 Cookie 被转发
+          // 这会彻底清洗掉 localhost 下由其他开发项目写入的全部无关/非规范 Cookie，一劳永逸解决 XSS 拦截问题
+          if (name.startsWith('B7Y9_2f85_')) {
+            filteredCookies.add(trimmed);
+          }
         }
-      });
-
-      // 手动复制响应体
-      await for (final chunk in proxyResponse) {
-        request.response.add(chunk);
+        if (filteredCookies.isNotEmpty) {
+          upReq.headers.set('Cookie', filteredCookies.join('; '));
+        }
       }
-      await request.response.close();
-      client.close();
-    } catch (e) {
-      print('Proxy error: $e');
-      request.response.statusCode = 502;
-      request.response.write('Proxy error: $e');
-      await request.response.close();
+      upReq.headers.set('User-Agent', mobileUserAgent);
+
+      final body = await req.fold<List<int>>([], (a, b) => a..addAll(b));
+      if (body.isNotEmpty) {
+        upReq.bufferOutput = true;
+        upReq.headers.set('Content-Length', body.length.toString());
+        upReq.add(body);
+      }
+      print('>>> ${req.method} $target');
+      print('>>> Content-Type: ${ct ?? "null"}');
+      print('>>> Body: ${String.fromCharCodes(body)}');
+      final upRes = await upReq.close();
+      print('<<< ${upRes.statusCode}');
+
+      final bytes = await upRes.fold<List<int>>([], (a, b) => a..addAll(b));
+      client.close(force: true);
+
+      res.statusCode = upRes.statusCode;
+      _cors(req, res);
+
+      final sc = upRes.headers['set-cookie'];
+      if (sc != null) {
+        for (final v in sc) {
+          // 清理 set-cookie 响应头，剥离 domain 限制和 secure 传输要求，
+          // 让本地 localhost HTTP 调试环境的浏览器可以正常写入并携带这些 Cookie
+          final parts = v.split(';');
+          final cleanedParts = parts.where((part) {
+            final trimmed = part.trim().toLowerCase();
+            return !trimmed.startsWith('domain=') && trimmed != 'secure';
+          }).toList();
+          res.headers.add('set-cookie', cleanedParts.join('; '));
+        }
+      }
+
+      res.add(bytes);
+      await res.close();
+    } catch (e, st) {
+      print('ERROR: $e');
+      print('STACK: $st');
+      try {
+        req.response.statusCode = 502;
+        req.response.write('Proxy error: $e');
+        await req.response.close();
+      } catch (_) {}
     }
   }
+}
+
+void _cors(HttpRequest req, HttpResponse res) {
+  final origin = req.headers.value('Origin') ?? 'http://localhost:$port';
+  res.headers.set('Access-Control-Allow-Origin', origin);
+  res.headers.set('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS');
+  res.headers.set('Access-Control-Allow-Headers', 'Content-Type, Cookie');
+  res.headers.set('Access-Control-Allow-Credentials', 'true');
 }

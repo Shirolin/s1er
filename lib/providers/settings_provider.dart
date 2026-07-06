@@ -2,21 +2,29 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:hive/hive.dart';
 
 class AppSettings {
-  final bool darkMode;
+  final String themeMode;
   final bool showImages;
   final int fontSize;
+  final Set<String> collapsedForums;
 
   AppSettings({
-    this.darkMode = false,
+    this.themeMode = 'system',
     this.showImages = true,
     this.fontSize = 14,
+    this.collapsedForums = const {},
   });
 
-  AppSettings copyWith({bool? darkMode, bool? showImages, int? fontSize}) {
+  AppSettings copyWith({
+    String? themeMode,
+    bool? showImages,
+    int? fontSize,
+    Set<String>? collapsedForums,
+  }) {
     return AppSettings(
-      darkMode: darkMode ?? this.darkMode,
+      themeMode: themeMode ?? this.themeMode,
       showImages: showImages ?? this.showImages,
       fontSize: fontSize ?? this.fontSize,
+      collapsedForums: collapsedForums ?? this.collapsedForums,
     );
   }
 }
@@ -28,16 +36,27 @@ class SettingsNotifier extends StateNotifier<AppSettings> {
 
   void _loadSettings() {
     final box = Hive.box('settings');
+
+    String themeMode = box.get('themeMode', defaultValue: '') as String;
+    if (themeMode.isEmpty) {
+      final oldDarkMode = box.get('darkMode', defaultValue: false) as bool;
+      themeMode = oldDarkMode ? 'dark' : 'system';
+      box.put('themeMode', themeMode);
+    }
+
     state = AppSettings(
-      darkMode: box.get('darkMode', defaultValue: false),
+      themeMode: themeMode,
       showImages: box.get('showImages', defaultValue: true),
       fontSize: box.get('fontSize', defaultValue: 14),
+      collapsedForums: Set<String>.from(
+        (box.get('collapsedForums') as List?)?.cast<String>() ?? [],
+      ),
     );
   }
 
-  void setDarkMode(bool value) {
-    state = state.copyWith(darkMode: value);
-    Hive.box('settings').put('darkMode', value);
+  void setThemeMode(String value) {
+    state = state.copyWith(themeMode: value);
+    Hive.box('settings').put('themeMode', value);
   }
 
   void setShowImages(bool value) {
@@ -48,6 +67,17 @@ class SettingsNotifier extends StateNotifier<AppSettings> {
   void setFontSize(int value) {
     state = state.copyWith(fontSize: value);
     Hive.box('settings').put('fontSize', value);
+  }
+
+  void toggleForumCollapse(String fid) {
+    final collapsed = Set<String>.from(state.collapsedForums);
+    if (collapsed.contains(fid)) {
+      collapsed.remove(fid);
+    } else {
+      collapsed.add(fid);
+    }
+    state = state.copyWith(collapsedForums: collapsed);
+    Hive.box('settings').put('collapsedForums', collapsed.toList());
   }
 }
 

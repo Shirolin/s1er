@@ -109,12 +109,19 @@ class ApiService {
           .map((fid) => forumMap[fid]!)
           .toList();
 
+      int totalThreads = 0;
+      int totalPosts = 0;
+      for (final sub in subforums) {
+        totalThreads += sub.threads;
+        totalPosts += sub.posts;
+      }
+
       categories.add(ForumCategory(
         fid: catFid,
         name: catName,
         description: '',
-        threads: 0,
-        posts: 0,
+        threads: totalThreads,
+        posts: totalPosts,
         subforums: subforums,
       ));
     }
@@ -271,7 +278,7 @@ class ApiService {
       if (uid.isEmpty || uid == '0') return null;
 
       final group = variables['group'] as Map<String, dynamic>?;
-      return User(
+      var user = User(
         uid: uid,
         username: variables['member_username']?.toString() ?? '',
         avatar: variables['member_avatar']?.toString(),
@@ -279,6 +286,34 @@ class ApiService {
         credits: int.tryParse(variables['member_credits']?.toString() ?? '') ?? 0,
         groupid: int.tryParse(variables['groupid']?.toString() ?? ''),
       );
+
+      try {
+        final profileUrl = buildApiUrl(
+          module: ApiConfig.moduleProfile,
+          params: {'uid': uid},
+        );
+        final profileResponse = await _httpClient.get(profileUrl);
+        final profileJson = _ensureJson(profileResponse.data);
+        final profileVars = profileJson['Variables'] as Map<String, dynamic>?;
+        if (profileVars != null) {
+          final space = profileVars['space'] as Map<String, dynamic>?;
+          if (space != null) {
+            user = user.copyWith(
+              posts: int.tryParse(space['posts']?.toString() ?? '') ?? user.posts,
+              threads: int.tryParse(space['threads']?.toString() ?? '') ?? user.threads,
+              friends: int.tryParse(space['friends']?.toString() ?? '') ?? user.friends,
+              follower: int.tryParse(space['follower']?.toString() ?? '') ?? 0,
+              following: int.tryParse(space['following']?.toString() ?? '') ?? 0,
+              oltime: int.tryParse(space['oltime']?.toString() ?? '') ?? 0,
+              deadfish: int.tryParse(space['extcredits1']?.toString() ?? '') ?? 0,
+              combat: int.tryParse(space['extcredits5']?.toString() ?? '') ?? 0,
+              regdate: space['regdate']?.toString() ?? '',
+            );
+          }
+        }
+      } catch (_) {}
+
+      return user;
     } catch (_) {
       return null;
     }

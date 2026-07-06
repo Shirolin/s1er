@@ -36,11 +36,13 @@ class S1HttpClient {
         }
 
         // Web 模式下将请求重写到本地代理
-        if (_isWeb && options.uri.origin == 'https://stage1st.com') {
-          final originalPath = options.uri.path;
-          final originalQuery = options.uri.query;
-          options.path = '$_proxyUrl$originalPath${originalQuery.isNotEmpty ? '?$originalQuery' : ''}';
+        if (_isWeb && options.path.contains('stage1st.com')) {
+          final uri = Uri.parse(options.path);
+          final path = uri.path;
+          final query = uri.query;
+          options.path = '$_proxyUrl$path${query.isNotEmpty ? '?$query' : ''}';
           options.headers['Origin'] = 'https://stage1st.com';
+          options.headers['Referer'] = 'https://stage1st.com/2b/';
         }
 
         handler.next(options);

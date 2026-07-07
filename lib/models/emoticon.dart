@@ -1,8 +1,8 @@
-class Emoticon {
-  final String code; // e.g. "[f:001]"
-  final String assetPath; // e.g. "assets/emoticons/001.png"
+class Emoticon { // e.g. "assets/emoticons/001.png"
 
   Emoticon({required this.code, required this.assetPath});
+  final String code; // e.g. "[f:001]"
+  final String assetPath;
 }
 
 class EmoticonMap {

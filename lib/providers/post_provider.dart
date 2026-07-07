@@ -1,13 +1,9 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../models/post.dart';
 import '../services/api_service.dart';
-import 'auth_provider.dart';
+import '../services/http_client.dart';
 
 class PostListState {
-  final List<Post> posts;
-  final int currentPage;
-  final int totalPages;
-  final String? threadSubject;
 
   PostListState({
     this.posts = const [],
@@ -15,6 +11,10 @@ class PostListState {
     this.totalPages = 1,
     this.threadSubject,
   });
+  final List<Post> posts;
+  final int currentPage;
+  final int totalPages;
+  final String? threadSubject;
 
   PostListState copyWith({
     List<Post>? posts,
@@ -40,8 +40,6 @@ final postProvider = StateNotifierProvider.family<
 );
 
 class PostNotifier extends StateNotifier<AsyncValue<PostListState>> {
-  final String tid;
-  final ApiService _apiService;
 
   PostNotifier({
     required this.tid,
@@ -50,6 +48,8 @@ class PostNotifier extends StateNotifier<AsyncValue<PostListState>> {
         super(const AsyncValue.loading()) {
     _loadPage(1);
   }
+  final String tid;
+  final ApiService _apiService;
 
   Future<void> _loadPage(int page) async {
     state = const AsyncValue.loading();
@@ -63,7 +63,7 @@ class PostNotifier extends StateNotifier<AsyncValue<PostListState>> {
         currentPage: page,
         totalPages: totalPages,
         threadSubject: subject,
-      ));
+      ),);
     } catch (e, st) {
       state = AsyncValue.error(e, st);
     }

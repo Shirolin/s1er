@@ -55,7 +55,7 @@ void main() {
     });
 
     test('extracts image URLs from HTML', () {
-      final html =
+      const html =
           '<p><img src="https://example.com/1.jpg" /> <img src="https://example.com/2.jpg" /></p>';
       final images = BbcodeParser.extractImages(html);
       expect(images.length, 2);
@@ -199,7 +199,7 @@ void main() {
         const MaterialApp(
           home: Scaffold(
             body: BbcodeRenderer(
-                bbcode: 'before [quote]quoted[/quote] after'),
+                bbcode: 'before [quote]quoted[/quote] after',),
           ),
         ),
       );
@@ -214,7 +214,7 @@ void main() {
         const MaterialApp(
           home: Scaffold(
             body: BbcodeRenderer(
-                bbcode: '[quote]first[/quote]middle[quote]second[/quote]'),
+                bbcode: '[quote]first[/quote]middle[quote]second[/quote]',),
           ),
         ),
       );

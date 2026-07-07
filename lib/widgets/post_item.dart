@@ -3,9 +3,9 @@ import '../models/post.dart';
 import 'bbcode_renderer.dart';
 
 class PostItem extends StatelessWidget {
-  final Post post;
 
   const PostItem({super.key, required this.post});
+  final Post post;
 
   String _formatTime(int dateline) {
     if (dateline <= 0) return '';
@@ -16,6 +16,7 @@ class PostItem extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final scheme = Theme.of(context).colorScheme;
     final timeStr = _formatTime(post.dateline);
 
     return Card(
@@ -37,15 +38,15 @@ class PostItem extends StatelessWidget {
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       Text(post.author,
-                          style: const TextStyle(fontWeight: FontWeight.bold)),
+                          style: Theme.of(context).textTheme.bodyMedium?.copyWith(fontWeight: FontWeight.bold),),
                       if (timeStr.isNotEmpty)
                         Text(timeStr,
-                            style: TextStyle(fontSize: 12, color: Colors.grey[600])),
+                            style: TextStyle(fontSize: 12, color: scheme.onSurfaceVariant),),
                     ],
                   ),
                 ),
                 Text('#${post.floor}',
-                    style: TextStyle(color: Colors.grey[600])),
+                    style: TextStyle(color: scheme.onSurfaceVariant),),
               ],
             ),
             const Divider(),

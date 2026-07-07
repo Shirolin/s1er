@@ -2,9 +2,9 @@ import 'package:flutter/material.dart';
 import '../models/emoticon.dart';
 
 class EmoticonWidget extends StatelessWidget {
-  final String code;
 
   const EmoticonWidget({super.key, required this.code});
+  final String code;
 
   @override
   Widget build(BuildContext context) {

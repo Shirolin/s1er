@@ -31,7 +31,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
       _controller = WebViewController()
         ..setJavaScriptMode(JavaScriptMode.unrestricted)
         ..setUserAgent(
-            "Mozilla/5.0 (iPhone; CPU iPhone OS 17_0 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.0 Mobile/15E148 Safari/604.1")
+            "Mozilla/5.0 (iPhone; CPU iPhone OS 17_0 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.0 Mobile/15E148 Safari/604.1",)
         ..setNavigationDelegate(
           NavigationDelegate(
             onPageStarted: (String url) {
@@ -86,13 +86,13 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                   return newC;
                 }).toList();
                 
-                await S1HttpClient.instance.cookieJar.saveFromResponse(
+                await ref.read(httpClientProvider).cookieJar.saveFromResponse(
                   Uri.parse(url),
                   newCookies,
                 );
 
                 // 标志登录成功并返回主页
-                ref.read(authServiceProvider).setLoggedIn(username);
+                ref.read(authStateProvider.notifier).setLoggedIn(username);
                 if (mounted) {
                   context.go('/');
                 }
@@ -102,7 +102,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
         )
         // 开启支持用户名 autoComplete
         ..loadRequest(Uri.parse(
-            'https://stage1st.com/2b/member.php?mod=logging&action=login&mobile=2'));
+            'https://stage1st.com/2b/member.php?mod=logging&action=login&mobile=2',),);
     } else {
       _isLoading = false;
     }
@@ -158,11 +158,11 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
             child: Container(
               constraints: const BoxConstraints(maxWidth: 400),
               decoration: BoxDecoration(
-                color: Theme.of(context).cardColor,
+                color: Theme.of(context).colorScheme.surfaceContainerHighest,
                 borderRadius: BorderRadius.circular(16.0),
                 boxShadow: [
                   BoxShadow(
-                    color: Colors.black.withValues(alpha: 0.05),
+                    color: Theme.of(context).colorScheme.shadow.withValues(alpha: 0.05),
                     blurRadius: 10,
                     offset: const Offset(0, 4),
                   ),
@@ -185,7 +185,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                     Text(
                       '登录您的 Stage1st 账号',
                       style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                            color: Theme.of(context).hintColor,
+                            color: Theme.of(context).colorScheme.onSurfaceVariant,
                           ),
                       textAlign: TextAlign.center,
                     ),
@@ -193,7 +193,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                     if (_errorMessage != null) ...[
                       Container(
                         padding: const EdgeInsets.symmetric(
-                            vertical: 10, horizontal: 14),
+                            vertical: 10, horizontal: 14,),
                         decoration: BoxDecoration(
                           color: Theme.of(context).colorScheme.errorContainer,
                           borderRadius: BorderRadius.circular(8),
@@ -212,7 +212,6 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                       decoration: const InputDecoration(
                         labelText: '用户名',
                         prefixIcon: Icon(Icons.person),
-                        border: OutlineInputBorder(),
                       ),
                       keyboardType: TextInputType.text,
                     ),
@@ -222,14 +221,13 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                       decoration: const InputDecoration(
                         labelText: '密码',
                         prefixIcon: Icon(Icons.lock),
-                        border: OutlineInputBorder(),
                       ),
                       obscureText: true,
                     ),
                     const SizedBox(height: 24),
-                    ElevatedButton(
+                    FilledButton(
                       onPressed: _isLoading ? null : _handleWebLogin,
-                      style: ElevatedButton.styleFrom(
+                      style: FilledButton.styleFrom(
                         padding: const EdgeInsets.symmetric(vertical: 16),
                         shape: RoundedRectangleBorder(
                           borderRadius: BorderRadius.circular(8),

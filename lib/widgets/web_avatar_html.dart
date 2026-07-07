@@ -1,3 +1,4 @@
+// ignore_for_file: deprecated_member_use, avoid_web_libraries_in_flutter, undefined_prefixed_name
 import 'dart:html' as html;
 import 'dart:ui_web' as ui_web;
 import 'package:flutter/material.dart';
@@ -5,7 +6,6 @@ import 'package:flutter/material.dart';
 Widget buildHtmlAvatar(String url, double radius, String fallback) {
   final viewType = 'avatar-$url';
   // 注册只做一次
-  // ignore: undefined_prefixed_name
   ui_web.platformViewRegistry.registerViewFactory(viewType, (int viewId) {
     final img = html.ImageElement()
       ..src = url

@@ -3,9 +3,9 @@ import 'package:go_router/go_router.dart';
 import '../models/thread.dart';
 
 class ThreadCard extends StatelessWidget {
-  final Thread thread;
 
   const ThreadCard({super.key, required this.thread});
+  final Thread thread;
 
   String _formatTime(int dateline) {
     if (dateline <= 0) return '';
@@ -20,6 +20,7 @@ class ThreadCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final timeStr = _formatTime(thread.dateline);
+    final scheme = Theme.of(context).colorScheme;
 
     return Card(
       margin: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
@@ -40,31 +41,31 @@ class ThreadCard extends StatelessWidget {
               const SizedBox(height: 8),
               Row(
                 children: [
-                  Icon(Icons.person_outline, size: 14, color: Colors.grey[600]),
+                  Icon(Icons.person_outline, size: 14, color: scheme.onSurfaceVariant),
                   const SizedBox(width: 4),
                   Text(thread.author,
-                      style: TextStyle(color: Colors.grey[600], fontSize: 12)),
+                      style: TextStyle(color: scheme.onSurfaceVariant, fontSize: 12),),
                   const Spacer(),
                   if (timeStr.isNotEmpty) ...[
-                    Icon(Icons.access_time, size: 14, color: Colors.grey[600]),
+                    Icon(Icons.access_time, size: 14, color: scheme.onSurfaceVariant),
                     const SizedBox(width: 4),
                     Text(timeStr,
-                        style: TextStyle(color: Colors.grey[600], fontSize: 12)),
+                        style: TextStyle(color: scheme.onSurfaceVariant, fontSize: 12),),
                   ],
                 ],
               ),
               const SizedBox(height: 4),
               Row(
                 children: [
-                  Icon(Icons.visibility_outlined, size: 14, color: Colors.grey[600]),
+                  Icon(Icons.visibility_outlined, size: 14, color: scheme.onSurfaceVariant),
                   const SizedBox(width: 4),
                   Text('${thread.views}',
-                      style: TextStyle(color: Colors.grey[600], fontSize: 12)),
+                      style: TextStyle(color: scheme.onSurfaceVariant, fontSize: 12),),
                   const SizedBox(width: 16),
-                  Icon(Icons.comment_outlined, size: 14, color: Colors.grey[600]),
+                  Icon(Icons.comment_outlined, size: 14, color: scheme.onSurfaceVariant),
                   const SizedBox(width: 4),
                   Text('${thread.replies}',
-                      style: TextStyle(color: Colors.grey[600], fontSize: 12)),
+                      style: TextStyle(color: scheme.onSurfaceVariant, fontSize: 12),),
                 ],
               ),
             ],

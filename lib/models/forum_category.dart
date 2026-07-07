@@ -1,11 +1,4 @@
 class ForumCategory {
-  final String fid;
-  final String name;
-  final String description;
-  final int threads;
-  final int posts;
-  final String? icon;
-  final List<ForumCategory> subforums;
 
   ForumCategory({
     required this.fid,
@@ -31,4 +24,11 @@ class ForumCategory {
           .toList(),
     );
   }
+  final String fid;
+  final String name;
+  final String description;
+  final int threads;
+  final int posts;
+  final String? icon;
+  final List<ForumCategory> subforums;
 }

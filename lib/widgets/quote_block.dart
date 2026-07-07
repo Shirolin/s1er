@@ -2,9 +2,9 @@ import 'package:flutter/material.dart';
 import 'bbcode_renderer.dart';
 
 class QuoteBlock extends StatelessWidget {
-  final String content;
 
   const QuoteBlock({super.key, required this.content});
+  final String content;
 
   @override
   Widget build(BuildContext context) {
@@ -15,7 +15,7 @@ class QuoteBlock extends StatelessWidget {
         color: Theme.of(context)
             .colorScheme
             .surfaceContainerHighest
-            .withOpacity(0.5),
+            .withValues(alpha: 0.5),
         border: Border(
           left: BorderSide(
             color: Theme.of(context).colorScheme.primary,

@@ -72,28 +72,35 @@ class _ForumTab extends ConsumerWidget {
     final forumsAsync = ref.watch(forumListProvider);
 
     return forumsAsync.when(
-      loading: () => const Center(child: CircularProgressIndicator()),
+      loading: () => const Column(
+        children: [
+          LinearProgressIndicator(),
+          Expanded(child: SizedBox()),
+        ],
+      ),
       error: (e, st) => _ForumErrorView(error: e),
-      data: (categories) => RefreshIndicator(
-        onRefresh: () => ref.read(forumListProvider.notifier).refresh(),
-        child: ListView.builder(
-          padding: const EdgeInsets.only(bottom: 16),
-          itemCount: categories.length,
-          itemBuilder: (context, index) =>
-              _ForumCategoryTile(category: categories[index]),
+      data: (categories) => Scrollbar(
+        child: RefreshIndicator(
+          onRefresh: () => ref.read(forumListProvider.notifier).refresh(),
+          child: ListView.builder(
+            padding: const EdgeInsets.only(bottom: 16),
+            itemCount: categories.length,
+            itemBuilder: (context, index) =>
+                _ForumCategoryTile(category: categories[index]),
+          ),
         ),
       ),
     );
   }
 }
 
-class _ForumErrorView extends StatelessWidget {
-  final Object error;
+class _ForumErrorView extends ConsumerWidget {
 
   const _ForumErrorView({required this.error});
+  final Object error;
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
     final isLogin = error is LoginRequiredException;
     return Center(
       child: Padding(
@@ -104,7 +111,7 @@ class _ForumErrorView extends StatelessWidget {
             Icon(
               isLogin ? Icons.lock_outline : Icons.error_outline,
               size: 56,
-              color: isLogin ? Colors.grey[400] : Theme.of(context).colorScheme.error,
+              color: isLogin ? Theme.of(context).colorScheme.onSurfaceVariant : Theme.of(context).colorScheme.error,
             ),
             const SizedBox(height: 16),
             Text(
@@ -115,7 +122,7 @@ class _ForumErrorView extends StatelessWidget {
               const SizedBox(height: 8),
               Text(
                 error.toString(),
-                style: TextStyle(color: Colors.grey[600], fontSize: 13),
+                style: TextStyle(color: Theme.of(context).colorScheme.onSurfaceVariant, fontSize: 13),
                 textAlign: TextAlign.center,
                 maxLines: 3,
                 overflow: TextOverflow.ellipsis,
@@ -127,10 +134,7 @@ class _ForumErrorView extends StatelessWidget {
                 if (isLogin) {
                   context.push('/login');
                 } else {
-                  // ignore: unused_result
-                  ProviderScope.containerOf(context)
-                      .read(forumListProvider.notifier)
-                      .refresh();
+                  ref.read(forumListProvider.notifier).refresh();
                 }
               },
               icon: Icon(isLogin ? Icons.login : Icons.refresh),
@@ -144,9 +148,9 @@ class _ForumErrorView extends StatelessWidget {
 }
 
 class _ForumCategoryTile extends ConsumerWidget {
-  final ForumCategory category;
 
   const _ForumCategoryTile({required this.category});
+  final ForumCategory category;
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -232,28 +236,28 @@ class _ForumCategoryTile extends ConsumerWidget {
 }
 
 class _StatChip extends StatelessWidget {
-  final IconData icon;
-  final String label;
 
   const _StatChip({required this.icon, required this.label});
+  final IconData icon;
+  final String label;
 
   @override
   Widget build(BuildContext context) {
     return Row(
       mainAxisSize: MainAxisSize.min,
       children: [
-        Icon(icon, size: 13, color: Colors.grey[500]),
+        Icon(icon, size: 13, color: Theme.of(context).colorScheme.onSurfaceVariant),
         const SizedBox(width: 2),
-        Text(label, style: TextStyle(fontSize: 11, color: Colors.grey[600])),
+        Text(label, style: TextStyle(fontSize: 11, color: Theme.of(context).colorScheme.onSurfaceVariant)),
       ],
     );
   }
 }
 
 class _ForumTile extends StatelessWidget {
-  final ForumCategory forum;
 
   const _ForumTile({required this.forum});
+  final ForumCategory forum;
 
   @override
   Widget build(BuildContext context) {
@@ -299,7 +303,7 @@ class _ForumTile extends StatelessWidget {
                       forum.description,
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
-                      style: TextStyle(fontSize: 12, color: Colors.grey[500]),
+                      style: TextStyle(fontSize: 12, color: scheme.onSurfaceVariant),
                     ),
                   ],
                 ],
@@ -308,10 +312,10 @@ class _ForumTile extends StatelessWidget {
             // 帖子数
             Text(
               _formatCount(forum.threads),
-              style: TextStyle(fontSize: 12, color: Colors.grey[500]),
+              style: TextStyle(fontSize: 12, color: scheme.onSurfaceVariant),
             ),
             const SizedBox(width: 4),
-            Icon(Icons.chevron_right, size: 18, color: Colors.grey[400]),
+            Icon(Icons.chevron_right, size: 18, color: scheme.onSurfaceVariant),
           ],
         ),
       ),
@@ -329,7 +333,7 @@ class _LoginPrompt extends StatelessWidget {
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
             Icon(Icons.lock_outline,
-                size: 64, color: Colors.grey[400]),
+                size: 64, color: Theme.of(context).colorScheme.onSurfaceVariant,),
             const SizedBox(height: 20),
             Text(
               '登录后即可浏览',
@@ -338,7 +342,7 @@ class _LoginPrompt extends StatelessWidget {
             const SizedBox(height: 8),
             Text(
               'S1 论坛需要登录才能查看内容',
-              style: TextStyle(color: Colors.grey[600]),
+              style: TextStyle(color: Theme.of(context).colorScheme.onSurfaceVariant),
             ),
             const SizedBox(height: 24),
             FilledButton.icon(

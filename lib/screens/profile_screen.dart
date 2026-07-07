@@ -83,12 +83,6 @@ class ProfileScreen extends ConsumerWidget {
 }
 
 class _HeaderCard extends StatelessWidget {
-  final String? avatarUrl;
-  final String letter;
-  final String? username;
-  final String? groupTitle;
-  final bool isLoggedIn;
-  final VoidCallback onLogin;
 
   const _HeaderCard({
     required this.avatarUrl,
@@ -98,6 +92,12 @@ class _HeaderCard extends StatelessWidget {
     required this.isLoggedIn,
     required this.onLogin,
   });
+  final String? avatarUrl;
+  final String letter;
+  final String? username;
+  final String? groupTitle;
+  final bool isLoggedIn;
+  final VoidCallback onLogin;
 
   @override
   Widget build(BuildContext context) {
@@ -169,9 +169,9 @@ class _HeaderCard extends StatelessWidget {
 }
 
 class _StatsCard extends StatelessWidget {
-  final User user;
 
   const _StatsCard({required this.user});
+  final User user;
 
   @override
   Widget build(BuildContext context) {
@@ -201,9 +201,9 @@ class _StatsCard extends StatelessWidget {
 }
 
 class _S1StatsCard extends StatelessWidget {
-  final User user;
 
   const _S1StatsCard({required this.user});
+  final User user;
 
   @override
   Widget build(BuildContext context) {
@@ -284,10 +284,10 @@ class _VerticalDivider extends StatelessWidget {
 }
 
 class _StatItem extends StatelessWidget {
-  final String label;
-  final int value;
 
   const _StatItem({required this.label, required this.value});
+  final String label;
+  final int value;
 
   @override
   Widget build(BuildContext context) {
@@ -323,9 +323,9 @@ class _StatItem extends StatelessWidget {
 }
 
 class _InfoCard extends StatelessWidget {
-  final User user;
 
   const _InfoCard({required this.user});
+  final User user;
 
   @override
   Widget build(BuildContext context) {
@@ -355,10 +355,10 @@ class _InfoCard extends StatelessWidget {
 }
 
 class _InfoTile extends StatelessWidget {
-  final String label;
-  final String value;
 
   const _InfoTile({required this.label, required this.value});
+  final String label;
+  final String value;
 
   @override
   Widget build(BuildContext context) {
@@ -389,10 +389,6 @@ class _InfoTile extends StatelessWidget {
 }
 
 class _SettingsCard extends StatelessWidget {
-  final String themeMode;
-  final bool showImages;
-  final ValueChanged<String> onThemeModeChanged;
-  final ValueChanged<bool> onShowImagesChanged;
 
   const _SettingsCard({
     required this.themeMode,
@@ -400,6 +396,10 @@ class _SettingsCard extends StatelessWidget {
     required this.onThemeModeChanged,
     required this.onShowImagesChanged,
   });
+  final String themeMode;
+  final bool showImages;
+  final ValueChanged<String> onThemeModeChanged;
+  final ValueChanged<bool> onShowImagesChanged;
 
   @override
   Widget build(BuildContext context) {
@@ -508,10 +508,6 @@ class _SettingsCard extends StatelessWidget {
 }
 
 class _ActionTile extends StatelessWidget {
-  final IconData icon;
-  final String label;
-  final Color color;
-  final VoidCallback onTap;
 
   const _ActionTile({
     required this.icon,
@@ -519,6 +515,10 @@ class _ActionTile extends StatelessWidget {
     required this.color,
     required this.onTap,
   });
+  final IconData icon;
+  final String label;
+  final Color color;
+  final VoidCallback onTap;
 
   @override
   Widget build(BuildContext context) {

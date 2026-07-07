@@ -2,10 +2,6 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:hive/hive.dart';
 
 class AppSettings {
-  final String themeMode;
-  final bool showImages;
-  final int fontSize;
-  final Set<String> collapsedForums;
 
   AppSettings({
     this.themeMode = 'system',
@@ -13,6 +9,10 @@ class AppSettings {
     this.fontSize = 14,
     this.collapsedForums = const {},
   });
+  final String themeMode;
+  final bool showImages;
+  final int fontSize;
+  final Set<String> collapsedForums;
 
   AppSettings copyWith({
     String? themeMode,

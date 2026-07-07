@@ -6,9 +6,9 @@ import 'quote_block.dart';
 import 'image_viewer.dart';
 
 class BbcodeRenderer extends StatelessWidget {
-  final String bbcode;
 
   const BbcodeRenderer({super.key, required this.bbcode});
+  final String bbcode;
 
   @override
   Widget build(BuildContext context) {

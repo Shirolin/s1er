@@ -1,20 +1,4 @@
 class User {
-  final String uid;
-  final String username;
-  final String? avatar;
-  final String? groupTitle;
-  final int credits;
-  final int posts;
-  final int threads;
-  final int friends;
-  final int follower;
-  final int following;
-  final int oltime;
-  final int deadfish;
-  final int combat;
-  final String regdate;
-  final int? groupid;
-  final String? signaturUrl;
 
   User({
     required this.uid,
@@ -35,6 +19,42 @@ class User {
     this.signaturUrl,
   });
 
+  factory User.fromJson(Map<String, dynamic> json) {
+    return User(
+      uid: json['uid']?.toString() ?? '',
+      username: json['username']?.toString() ?? '',
+      avatar: json['avatar']?.toString(),
+      groupTitle: json['grouptitle']?.toString() ?? json['groupTitle']?.toString(),
+      credits: int.tryParse(json['credits']?.toString() ?? '') ?? 0,
+      posts: int.tryParse(json['posts']?.toString() ?? '') ?? 0,
+      threads: int.tryParse(json['threads']?.toString() ?? '') ?? 0,
+      friends: int.tryParse(json['friends']?.toString() ?? '') ?? 0,
+      follower: int.tryParse(json['follower']?.toString() ?? '') ?? 0,
+      following: int.tryParse(json['following']?.toString() ?? '') ?? 0,
+      oltime: int.tryParse(json['oltime']?.toString() ?? '') ?? 0,
+      deadfish: int.tryParse(json['deadfish']?.toString() ?? '') ?? 0,
+      combat: int.tryParse(json['combat']?.toString() ?? '') ?? 0,
+      regdate: json['regdate']?.toString() ?? '',
+      groupid: int.tryParse(json['groupid']?.toString() ?? ''),
+    );
+  }
+  final String uid;
+  final String username;
+  final String? avatar;
+  final String? groupTitle;
+  final int credits;
+  final int posts;
+  final int threads;
+  final int friends;
+  final int follower;
+  final int following;
+  final int oltime;
+  final int deadfish;
+  final int combat;
+  final String regdate;
+  final int? groupid;
+  final String? signaturUrl;
+
   /// 将 Discuz! avatar.php URL 转为实际可用的路径格式
   /// https://avatar.stage1st.com/avatar.php?uid=426519&size=small
   /// → https://avatar.stage1st.com/000/42/65/19_avatar_small.jpg
@@ -54,26 +74,6 @@ class User {
       return '$base/$seg1/$seg2/$seg3/${seg4}_avatar_$size.jpg';
     }
     return avatar;
-  }
-
-  factory User.fromJson(Map<String, dynamic> json) {
-    return User(
-      uid: json['uid']?.toString() ?? '',
-      username: json['username']?.toString() ?? '',
-      avatar: json['avatar']?.toString(),
-      groupTitle: json['grouptitle']?.toString() ?? json['groupTitle']?.toString(),
-      credits: int.tryParse(json['credits']?.toString() ?? '') ?? 0,
-      posts: int.tryParse(json['posts']?.toString() ?? '') ?? 0,
-      threads: int.tryParse(json['threads']?.toString() ?? '') ?? 0,
-      friends: int.tryParse(json['friends']?.toString() ?? '') ?? 0,
-      follower: int.tryParse(json['follower']?.toString() ?? '') ?? 0,
-      following: int.tryParse(json['following']?.toString() ?? '') ?? 0,
-      oltime: int.tryParse(json['oltime']?.toString() ?? '') ?? 0,
-      deadfish: int.tryParse(json['deadfish']?.toString() ?? '') ?? 0,
-      combat: int.tryParse(json['combat']?.toString() ?? '') ?? 0,
-      regdate: json['regdate']?.toString() ?? '',
-      groupid: int.tryParse(json['groupid']?.toString() ?? ''),
-    );
   }
 
   User copyWith({

@@ -1,14 +1,4 @@
 class Thread {
-  final String tid;
-  final String subject;
-  final String author;
-  final String authorId;
-  final int dateline;
-  final int views;
-  final int replies;
-  final String fid;
-  final String? lastPost;
-  final String? lastPoster;
 
   Thread({
     required this.tid,
@@ -37,6 +27,16 @@ class Thread {
       lastPoster: json['lastposter']?.toString(),
     );
   }
+  final String tid;
+  final String subject;
+  final String author;
+  final String authorId;
+  final int dateline;
+  final int views;
+  final int replies;
+  final String fid;
+  final String? lastPost;
+  final String? lastPoster;
 
   Map<String, dynamic> toJson() => {
     'tid': tid,

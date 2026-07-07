@@ -13,9 +13,9 @@ class LoginRequiredException implements Exception {
 }
 
 class ApiService {
-  final S1HttpClient _httpClient;
 
   ApiService(this._httpClient);
+  final S1HttpClient _httpClient;
 
   /// Dio 未自动解析 JSON 时，response.data 可能是 String
   static Map<String, dynamic> _ensureJson(dynamic data) {
@@ -50,12 +50,12 @@ class ApiService {
       } catch (_) {}
     }
     if (json != null) {
-      final Message = json['Message'];
-      if (Message is Map<String, dynamic> && Message['messageval'] == 'to_login') {
+      final message = json['Message'];
+      if (message is Map<String, dynamic> && message['messageval'] == 'to_login') {
         throw LoginRequiredException();
       }
-      final Variables = json['Variables'];
-      if (Variables is Map<String, dynamic> && Variables['auth'] == null && json['error'] == 'to_login') {
+      final variables = json['Variables'];
+      if (variables is Map<String, dynamic> && variables['auth'] == null && json['error'] == 'to_login') {
         throw LoginRequiredException();
       }
     }
@@ -123,7 +123,7 @@ class ApiService {
         threads: totalThreads,
         posts: totalPosts,
         subforums: subforums,
-      ));
+      ),);
     }
 
     return categories;
@@ -232,10 +232,10 @@ class ApiService {
       }
 
       if (dataMap != null) {
-        final Message = dataMap['Message'];
-        if (Message is Map<String, dynamic>) {
-          final messageval = Message['messageval'];
-          final messagestr = Message['messagestr'] as String?;
+        final message = dataMap['Message'];
+        if (message is Map<String, dynamic>) {
+          final messageval = message['messageval'];
+          final messagestr = message['messagestr'] as String?;
           
           if (messageval == 'login_succeed' || messageval?.contains('succeed') == true) {
             return null; // 登录成功
@@ -261,7 +261,7 @@ class ApiService {
       'tid': tid,
       'message': message,
       'posttime': DateTime.now().millisecondsSinceEpoch ~/ 1000,
-    });
+    },);
     return response.statusCode == 200;
   }
 

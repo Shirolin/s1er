@@ -1,33 +1,34 @@
 import 'package:flutter_test/flutter_test.dart';
-import 'package:s1_app/services/auth_service.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:s1_app/services/formhash_service.dart';
 
 void main() {
-  group('AuthService', () {
-    test('initial state is logged out', () {
-      final auth = AuthService();
-      expect(auth.isLoggedIn, false);
-      expect(auth.currentUser, null);
+  group('FormhashNotifier', () {
+    test('initial state is empty string', () {
+      final container = ProviderContainer();
+      expect(container.read(formhashProvider), '');
     });
 
-    test('logout clears state', () {
-      final auth = AuthService();
-      auth.logout();
-      expect(auth.isLoggedIn, false);
-      expect(auth.currentUser, null);
+    test('update sets formhash', () {
+      final container = ProviderContainer();
+      container.read(formhashProvider.notifier).update('abc123');
+      expect(container.read(formhashProvider), 'abc123');
     });
-  });
 
-  group('FormhashService', () {
-    test('singleton updates and clears formhash', () {
-      final service = FormhashService();
-      expect(service.formhash, '');
+    test('update ignores null and empty', () {
+      final container = ProviderContainer();
+      container.read(formhashProvider.notifier).update('abc123');
+      container.read(formhashProvider.notifier).update(null);
+      expect(container.read(formhashProvider), 'abc123');
+      container.read(formhashProvider.notifier).update('');
+      expect(container.read(formhashProvider), 'abc123');
+    });
 
-      service.updateFormhash('abc123');
-      expect(service.formhash, 'abc123');
-
-      service.clear();
-      expect(service.formhash, '');
+    test('clear resets formhash', () {
+      final container = ProviderContainer();
+      container.read(formhashProvider.notifier).update('abc123');
+      container.read(formhashProvider.notifier).clear();
+      expect(container.read(formhashProvider), '');
     });
   });
 }

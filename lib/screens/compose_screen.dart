@@ -2,14 +2,13 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import '../services/api_service.dart';
-import '../services/formhash_service.dart';
 import '../services/http_client.dart';
 
 class ComposeScreen extends ConsumerStatefulWidget {
-  final String? tid;
-  final String? fid;
 
   const ComposeScreen({super.key, this.tid, this.fid});
+  final String? tid;
+  final String? fid;
 
   @override
   ConsumerState<ComposeScreen> createState() => _ComposeScreenState();
@@ -31,7 +30,7 @@ class _ComposeScreenState extends ConsumerState<ComposeScreen> {
     setState(() => _isSubmitting = true);
 
     try {
-      final apiService = ApiService(S1HttpClient.instance);
+      final apiService = ApiService(ref.read(httpClientProvider));
       final success = await apiService.sendPost(
         fid: widget.fid ?? '',
         tid: widget.tid ?? '',
@@ -41,19 +40,28 @@ class _ComposeScreenState extends ConsumerState<ComposeScreen> {
       if (mounted) {
         if (success) {
           ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(content: Text('Post submitted')),
+            const SnackBar(
+              behavior: SnackBarBehavior.floating,
+              content: Text('Post submitted'),
+            ),
           );
           context.pop();
         } else {
           ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(content: Text('Failed to submit')),
+            const SnackBar(
+              behavior: SnackBarBehavior.floating,
+              content: Text('Failed to submit'),
+            ),
           );
         }
       }
     } catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Error: $e')),
+          SnackBar(
+            behavior: SnackBarBehavior.floating,
+            content: Text('Error: $e'),
+          ),
         );
       }
     } finally {
@@ -91,7 +99,6 @@ class _ComposeScreenState extends ConsumerState<ComposeScreen> {
                 textAlignVertical: TextAlignVertical.top,
                 decoration: const InputDecoration(
                   hintText: 'Write your post...',
-                  border: OutlineInputBorder(),
                 ),
               ),
             ),

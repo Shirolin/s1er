@@ -58,8 +58,8 @@ void main() {
                 'replies': '5',
                 'fid': '4',
               }
-            ]
-          }
+            ],
+          },
         };
         final threads = ApiService.parseThreadList(json);
         expect(threads.length, 1);
@@ -95,8 +95,8 @@ void main() {
                 'replies': '3',
                 'fid': '5',
               },
-            ]
-          }
+            ],
+          },
         };
         final threads = ApiService.parseThreadList(json);
         expect(threads.length, 2);
@@ -130,8 +130,8 @@ void main() {
                 'replies': 5,
                 'fid': 4,
               }
-            ]
-          }
+            ],
+          },
         };
         final threads = ApiService.parseThreadList(json);
         expect(threads.length, 1);
@@ -153,8 +153,8 @@ void main() {
                 'dateline': '1700001000',
                 'floor': '1',
               }
-            ]
-          }
+            ],
+          },
         };
         final posts = ApiService.parsePostList(json);
         expect(posts.length, 1);
@@ -184,8 +184,8 @@ void main() {
                 'dateline': '1700001000',
                 'floor': '2',
               },
-            ]
-          }
+            ],
+          },
         };
         final posts = ApiService.parsePostList(json);
         expect(posts.length, 2);
@@ -218,8 +218,8 @@ void main() {
                 'threads': '1000',
                 'posts': '5000',
               }
-            ]
-          }
+            ],
+          },
         };
         final forums = ApiService.parseForumList(json);
         expect(forums.length, 1);
@@ -248,8 +248,8 @@ void main() {
                 'threads': '200',
                 'posts': '1000',
               },
-            ]
-          }
+            ],
+          },
         };
         final forums = ApiService.parseForumList(json);
         expect(forums.length, 2);

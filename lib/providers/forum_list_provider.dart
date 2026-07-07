@@ -1,7 +1,7 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../models/forum_category.dart';
 import '../services/api_service.dart';
-import 'auth_provider.dart';
+import '../services/http_client.dart';
 
 final forumListProvider =
     AsyncNotifierProvider<ForumListNotifier, List<ForumCategory>>(

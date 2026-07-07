@@ -7,9 +7,6 @@ import 'web_avatar_stub.dart'
 /// Web: 用 HTML <img> 标签（不受 CORS 限制）
 /// Native: 用 Image.network
 class WebAvatar extends StatelessWidget {
-  final String? url;
-  final double radius;
-  final String fallbackLetter;
 
   const WebAvatar({
     super.key,
@@ -17,6 +14,9 @@ class WebAvatar extends StatelessWidget {
     this.radius = 40,
     required this.fallbackLetter,
   });
+  final String? url;
+  final double radius;
+  final String fallbackLetter;
 
   @override
   Widget build(BuildContext context) {

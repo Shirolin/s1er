@@ -1,23 +1,18 @@
-import 'package:flutter/foundation.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 
-class FormhashService extends ChangeNotifier {
-  static final FormhashService _instance = FormhashService._internal();
-  FormhashService._internal();
-  factory FormhashService() => _instance;
+class FormhashNotifier extends Notifier<String> {
+  @override
+  String build() => '';
 
-  String _formhash = '';
-
-  String get formhash => _formhash;
-
-  void updateFormhash(String? value) {
-    if (value != null && value.isNotEmpty && value != _formhash) {
-      _formhash = value;
-      notifyListeners();
+  void update(String? value) {
+    if (value != null && value.isNotEmpty && value != state) {
+      state = value;
     }
   }
 
-  void clear() {
-    _formhash = '';
-    notifyListeners();
-  }
+  void clear() => state = '';
 }
+
+final formhashProvider = NotifierProvider<FormhashNotifier, String>(
+  FormhashNotifier.new,
+);

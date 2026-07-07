@@ -3,35 +3,26 @@ import 'package:dio/dio.dart';
 import 'package:dio_cookie_manager/dio_cookie_manager.dart';
 import 'package:cookie_jar/cookie_jar.dart';
 import 'package:flutter/foundation.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:path_provider/path_provider.dart';
 import '../config/constants.dart';
 import 'formhash_service.dart';
 
 class S1HttpClient {
-  static S1HttpClient? _instance;
+
+  S1HttpClient(this._ref);
   late Dio _dio;
   late PersistCookieJar _cookieJar;
   final List<DateTime> _requestTimestamps = [];
+  final Ref _ref;
 
   static const String _proxyUrl = 'http://localhost:19080';
   static bool get _isWeb => kIsWeb;
-
-  S1HttpClient._();
-
-  static S1HttpClient get instance {
-    _instance ??= S1HttpClient._();
-    return _instance!;
-  }
-
-  static void resetInstance() {
-    _instance = null;
-  }
 
   PersistCookieJar get cookieJar => _cookieJar;
 
   Future<void> init() async {
     if (_isWeb) {
-      // Web 模式下由浏览器本身管理 Cookie，不需要我们手动做文件持久化
       _cookieJar = PersistCookieJar();
     } else {
       final appDocDir = await getApplicationDocumentsDirectory();
@@ -53,27 +44,23 @@ class S1HttpClient {
       connectTimeout: const Duration(seconds: 10),
       receiveTimeout: const Duration(seconds: 15),
       headers: headers,
-    ));
+    ),);
 
     if (_isWeb) {
       _dio.options.extra['withCredentials'] = true;
     }
 
-    // Web 模式下由浏览器自身透明管理 Cookie，不要添加 CookieManager，避免断言失败
     if (!_isWeb) {
       _dio.interceptors.add(CookieManager(_cookieJar));
     }
 
-    // 添加 Discuz 协议支持拦截器
     _dio.interceptors.add(InterceptorsWrapper(
       onRequest: (options, handler) async {
         await _enforceRateLimit();
 
-        // 自动注入 formhash (若是 POST/PUT/PATCH，且参数中没有 formhash)
-        final currentFormhash = FormhashService().formhash;
+        final currentFormhash = _ref.read(formhashProvider);
         if (currentFormhash.isNotEmpty &&
             (options.method == 'POST' || options.method == 'PUT')) {
-          // 注入到 URL query 参数中，防止 Discuz! _xss_check 因为 GET 中无 formhash 而去扫描并拦截含有特殊字符的 POST Body
           if (!options.path.contains('formhash=')) {
             final separator = options.path.contains('?') ? '&' : '?';
             options.path = '${options.path}${separator}formhash=$currentFormhash';
@@ -91,12 +78,11 @@ class S1HttpClient {
                   ? 'formhash=$currentFormhash'
                   : '$dataStr&formhash=$currentFormhash';
             }
-          } else if (options.data == null) {
-            options.data = {'formhash': currentFormhash};
+          } else {
+            options.data ??= {'formhash': currentFormhash};
           }
         }
 
-        // Web 模式下的 CORS 代理重写
         if (_isWeb && options.path.contains('stage1st.com')) {
           final uri = Uri.parse(options.path);
           final path = uri.path;
@@ -108,14 +94,13 @@ class S1HttpClient {
         handler.next(options);
       },
       onResponse: (response, handler) {
-        // 从 JSON 响应中提取 formhash
         final data = response.data;
         if (data is Map<String, dynamic>) {
           final variables = data['Variables'];
           if (variables is Map<String, dynamic>) {
             final formhash = variables['formhash'];
             if (formhash is String) {
-              FormhashService().updateFormhash(formhash);
+              _ref.read(formhashProvider.notifier).update(formhash);
             }
           }
         }
@@ -124,7 +109,7 @@ class S1HttpClient {
       onError: (error, handler) {
         handler.next(error);
       },
-    ));
+    ),);
   }
 
   Future<void> _enforceRateLimit() async {
@@ -150,3 +135,7 @@ class S1HttpClient {
     return _dio.post(url, data: data, options: options);
   }
 }
+
+final httpClientProvider = Provider<S1HttpClient>((ref) {
+  return S1HttpClient(ref);
+});

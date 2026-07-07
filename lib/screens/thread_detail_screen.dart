@@ -7,9 +7,9 @@ import '../services/api_service.dart';
 import '../widgets/post_item.dart';
 
 class ThreadDetailScreen extends ConsumerWidget {
-  final String tid;
 
   const ThreadDetailScreen({super.key, required this.tid});
+  final String tid;
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -32,45 +32,55 @@ class ThreadDetailScreen extends ConsumerWidget {
         ],
       ),
       body: postsAsync.when(
-        loading: () => const Center(child: CircularProgressIndicator()),
-        error: (e, st) => Center(
-          child: SingleChildScrollView(
-            child: Column(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                if (e is LoginRequiredException) ...[
-                  const Icon(Icons.lock_outline, size: 64, color: Colors.grey),
-                  const SizedBox(height: 16),
-                  const Text('请先登录', style: TextStyle(fontSize: 18)),
-                  const SizedBox(height: 16),
-                  ElevatedButton.icon(
-                    onPressed: () => context.push('/login'),
-                    icon: const Icon(Icons.login),
-                    label: const Text('去登录'),
-                  ),
-                ] else ...[
-                  Text('Error: $e'),
-                  const SizedBox(height: 16),
-                  ElevatedButton(
-                    onPressed: () =>
-                        ref.read(postProvider(tid).notifier).refresh(),
-                    child: const Text('Retry'),
-                  ),
-                ],
-              ],
-            ),
-          ),
+        loading: () => const Column(
+          children: [
+            LinearProgressIndicator(),
+            Expanded(child: SizedBox()),
+          ],
         ),
+        error: (e, st) {
+          final scheme = Theme.of(context).colorScheme;
+          return Center(
+            child: SingleChildScrollView(
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  if (e is LoginRequiredException) ...[
+                    Icon(Icons.lock_outline, size: 64, color: scheme.onSurfaceVariant),
+                    const SizedBox(height: 16),
+                    const Text('请先登录', style: TextStyle(fontSize: 18)),
+                    const SizedBox(height: 16),
+                    FilledButton.icon(
+                      onPressed: () => context.push('/login'),
+                      icon: const Icon(Icons.login),
+                      label: const Text('去登录'),
+                    ),
+                  ] else ...[
+                    Text('Error: $e'),
+                    const SizedBox(height: 16),
+                    OutlinedButton(
+                      onPressed: () =>
+                          ref.read(postProvider(tid).notifier).refresh(),
+                      child: const Text('Retry'),
+                    ),
+                  ],
+                ],
+              ),
+            ),
+          );
+        },
         data: (state) => Column(
           children: [
             Expanded(
-              child: state.posts.isEmpty
-                  ? const Center(child: Text('No posts'))
-                  : ListView.builder(
-                      itemCount: state.posts.length,
-                      itemBuilder: (context, index) =>
-                          PostItem(post: state.posts[index]),
-                    ),
+              child: Scrollbar(
+                child: state.posts.isEmpty
+                    ? const Center(child: Text('No posts'))
+                    : ListView.builder(
+                        itemCount: state.posts.length,
+                        itemBuilder: (context, index) =>
+                            PostItem(post: state.posts[index]),
+                      ),
+              ),
             ),
             _PostPaginationBar(tid: tid, state: state),
           ],
@@ -87,10 +97,10 @@ class ThreadDetailScreen extends ConsumerWidget {
 }
 
 class _PostPaginationBar extends ConsumerWidget {
-  final String tid;
-  final PostListState state;
 
   const _PostPaginationBar({required this.tid, required this.state});
+  final String tid;
+  final PostListState state;
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -103,7 +113,7 @@ class _PostPaginationBar extends ConsumerWidget {
       decoration: BoxDecoration(
         color: Theme.of(context).colorScheme.surface,
         border: Border(
-          top: BorderSide(color: Theme.of(context).dividerColor),
+          top: BorderSide(color: Theme.of(context).colorScheme.outlineVariant),
         ),
       ),
       child: Row(

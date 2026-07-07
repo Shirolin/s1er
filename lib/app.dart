@@ -62,8 +62,8 @@ class S1App extends ConsumerWidget {
 
     return MaterialApp.router(
       title: 'S1 Client',
-      theme: AppTheme.lightTheme,
-      darkTheme: AppTheme.darkTheme,
+      theme: AppTheme.lightTheme(),
+      darkTheme: AppTheme.darkTheme(),
       themeMode: themeMode,
       routerConfig: _router,
     );

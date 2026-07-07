@@ -1,12 +1,4 @@
 class Post {
-  final String pid;
-  final String message;
-  final String author;
-  final String authorId;
-  final int dateline;
-  final int floor;
-  final String? avatar;
-  final List<String> images;
 
   Post({
     required this.pid,
@@ -30,4 +22,12 @@ class Post {
       avatar: json['avatar']?.toString(),
     );
   }
+  final String pid;
+  final String message;
+  final String author;
+  final String authorId;
+  final int dateline;
+  final int floor;
+  final String? avatar;
+  final List<String> images;
 }

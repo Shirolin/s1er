@@ -1,72 +1,119 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+import '../providers/forum_list_provider.dart';
 import '../providers/thread_list_provider.dart';
 import '../services/api_service.dart';
 import '../widgets/thread_card.dart';
 
-class ForumListScreen extends ConsumerWidget {
-  final String fid;
+class ForumListScreen extends ConsumerStatefulWidget {
 
   const ForumListScreen({super.key, required this.fid});
+  final String fid;
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
-    final threadsAsync = ref.watch(threadListProvider(fid));
+  ConsumerState<ForumListScreen> createState() => _ForumListScreenState();
+}
+
+class _ForumListScreenState extends ConsumerState<ForumListScreen> {
+  final _scrollController = ScrollController();
+
+  @override
+  void dispose() {
+    _scrollController.dispose();
+    super.dispose();
+  }
+
+  String _forumName() {
+    final categories = ref.watch(forumListProvider).valueOrNull;
+    if (categories == null) return '';
+    for (final cat in categories) {
+      if (cat.fid == widget.fid) return cat.name;
+      for (final sub in cat.subforums) {
+        if (sub.fid == widget.fid) return sub.name;
+      }
+    }
+    return '';
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final threadsAsync = ref.watch(threadListProvider(widget.fid));
+    final forum = _forumName();
 
     return Scaffold(
       appBar: AppBar(
-        title: threadsAsync.whenOrNull(
-              data: (s) => Text('版块 #$fid · 第${s.currentPage}页'),
-            ) ??
-            const Text('Forum'),
+        title: Text(forum.isNotEmpty ? forum : '版块 #${widget.fid}'),
       ),
       body: threadsAsync.when(
-        loading: () => const Center(child: CircularProgressIndicator()),
-        error: (e, st) => Center(
-          child: SingleChildScrollView(
-            child: Column(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                if (e is LoginRequiredException) ...[
-                  const Icon(Icons.lock_outline, size: 64, color: Colors.grey),
-                  const SizedBox(height: 16),
-                  const Text('请先登录', style: TextStyle(fontSize: 18)),
-                  const SizedBox(height: 16),
-                  ElevatedButton.icon(
-                    onPressed: () => context.push('/login'),
-                    icon: const Icon(Icons.login),
-                    label: const Text('去登录'),
-                  ),
-                ] else ...[
-                  Text('Error: $e'),
-                  const SizedBox(height: 16),
-                  ElevatedButton(
-                    onPressed: () =>
-                        ref.read(threadListProvider(fid).notifier).refresh(),
-                    child: const Text('Retry'),
-                  ),
-                ],
-              ],
-            ),
-          ),
+        loading: () => const Column(
+          children: [
+            LinearProgressIndicator(),
+            Expanded(child: SizedBox()),
+          ],
         ),
+        error: (e, st) {
+          final scheme = Theme.of(context).colorScheme;
+          return Center(
+            child: SingleChildScrollView(
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  if (e is LoginRequiredException) ...[
+                    Icon(Icons.lock_outline, size: 64, color: scheme.onSurfaceVariant),
+                    const SizedBox(height: 16),
+                    const Text('请先登录', style: TextStyle(fontSize: 18)),
+                    const SizedBox(height: 16),
+                    FilledButton.icon(
+                      onPressed: () => context.push('/login'),
+                      icon: const Icon(Icons.login),
+                      label: const Text('去登录'),
+                    ),
+                  ] else ...[
+                    const Icon(Icons.error_outline, size: 56),
+                    const SizedBox(height: 16),
+                    Text(e.toString(),
+                      textAlign: TextAlign.center,
+                      style: TextStyle(color: scheme.error),
+                    ),
+                    const SizedBox(height: 16),
+                    OutlinedButton(
+                      onPressed: () =>
+                          ref.read(threadListProvider(widget.fid).notifier).refresh(),
+                      child: const Text('重试'),
+                    ),
+                  ],
+                ],
+              ),
+            ),
+          );
+        },
         data: (state) => Column(
           children: [
             Expanded(
-              child: RefreshIndicator(
-                onRefresh: () =>
-                    ref.read(threadListProvider(fid).notifier).refresh(),
-                child: state.threads.isEmpty
-                    ? const Center(child: Text('暂无帖子'))
-                    : ListView.builder(
-                        itemCount: state.threads.length,
-                        itemBuilder: (context, index) =>
-                            ThreadCard(thread: state.threads[index]),
-                      ),
+              child: Scrollbar(
+                controller: _scrollController,
+                child: RefreshIndicator(
+                  onRefresh: () =>
+                      ref.read(threadListProvider(widget.fid).notifier).refresh(),
+                  child: state.threads.isEmpty
+                      ? ListView(
+                          controller: _scrollController,
+                          children: const [
+                            SizedBox(height: 120),
+                            Center(child: Text('暂无帖子')),
+                          ],
+                        )
+                      : ListView.builder(
+                          controller: _scrollController,
+                          itemCount: state.threads.length,
+                          itemBuilder: (context, index) =>
+                              ThreadCard(thread: state.threads[index]),
+                        ),
+                ),
               ),
             ),
-            _PaginationBar(fid: fid, state: state),
+            _PaginationBar(fid: widget.fid, state: state),
           ],
         ),
       ),
@@ -75,10 +122,10 @@ class ForumListScreen extends ConsumerWidget {
 }
 
 class _PaginationBar extends ConsumerWidget {
-  final String fid;
-  final ThreadListState state;
 
   const _PaginationBar({required this.fid, required this.state});
+  final String fid;
+  final ThreadListState state;
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -91,7 +138,7 @@ class _PaginationBar extends ConsumerWidget {
       decoration: BoxDecoration(
         color: Theme.of(context).colorScheme.surface,
         border: Border(
-          top: BorderSide(color: Theme.of(context).dividerColor),
+          top: BorderSide(color: Theme.of(context).colorScheme.outlineVariant),
         ),
       ),
       child: Row(

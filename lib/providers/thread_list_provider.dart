@@ -65,13 +65,26 @@ class ThreadListNotifier extends StateNotifier<AsyncValue<ThreadListState>> {
   int _extractTotalPages(Map<String, dynamic> json) {
     final variables = json['Variables'] as Map<String, dynamic>?;
     if (variables == null) return 1;
-    final threads = int.tryParse(variables['threads']?.toString() ?? '') ?? 0;
+
+    // 帖子总数：优先从 Variables.forum.threads 取（Discuz! 标准结构）
+    final forum = variables['forum'] as Map<String, dynamic>?;
+    int? totalThreads;
+    if (forum != null) {
+      totalThreads = int.tryParse(forum['threads']?.toString() ?? '');
+    }
+    // 兜底：Variables.threadcount 或 Variables.threads
+    totalThreads ??= int.tryParse(
+      (variables['threadcount'] ?? variables['threads'])?.toString() ?? '',
+    );
+    if (totalThreads == null || totalThreads <= 0) return 1;
+
     final perPage = int.tryParse(variables['perpage']?.toString() ?? '') ?? 30;
-    if (threads <= 0 || perPage <= 0) return 1;
-    return (threads / perPage).ceil();
+    if (perPage <= 0) return 1;
+    return (totalThreads / perPage).ceil();
   }
 
   Future<void> goToPage(int page) async {
+    final current = state.valueOrNull;
     try {
       final result = await _apiService.getThreadListRaw(fid, page: page);
       final threads = ApiService.parseThreadList(result);
@@ -82,7 +95,10 @@ class ThreadListNotifier extends StateNotifier<AsyncValue<ThreadListState>> {
         totalPages: totalPages,
       ),);
     } catch (_) {
-      // 翻页失败时保留当前数据，不做全屏错误展示
+      // 翻页失败时保留当前数据
+      if (current != null) {
+        state = AsyncValue.data(current);
+      }
     }
   }
 

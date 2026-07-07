@@ -1,9 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+import '../config/api_config.dart';
 import '../providers/forum_list_provider.dart';
 import '../providers/thread_list_provider.dart';
 import '../services/api_service.dart';
+import '../widgets/app_bar_more_menu.dart';
 import '../widgets/thread_card.dart';
 
 class ForumListScreen extends ConsumerStatefulWidget {
@@ -44,6 +46,13 @@ class _ForumListScreenState extends ConsumerState<ForumListScreen> {
     return Scaffold(
       appBar: AppBar(
         title: Text(forum.isNotEmpty ? forum : '版块 #${widget.fid}'),
+        actions: [
+          AppBarMoreMenu(
+            onRefresh: () =>
+                ref.read(threadListProvider(widget.fid).notifier).refresh(),
+            browserUrl: '${ApiConfig.baseUrl}/forum-${widget.fid}-1.html',
+          ),
+        ],
       ),
       body: threadsAsync.when(
         loading: () => const Column(

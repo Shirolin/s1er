@@ -1,9 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+import '../config/api_config.dart';
 import '../providers/auth_provider.dart';
 import '../providers/settings_provider.dart';
 import '../models/user.dart';
+import '../widgets/app_bar_more_menu.dart';
 import '../widgets/web_avatar.dart';
 
 class ProfileScreen extends ConsumerWidget {
@@ -26,11 +28,10 @@ class ProfileScreen extends ConsumerWidget {
         title: const Text('个人资料'),
         actions: [
           if (authState.isLoggedIn)
-            IconButton(
-              icon: const Icon(Icons.refresh),
-              tooltip: '刷新资料',
-              onPressed: () =>
+            AppBarMoreMenu(
+              onRefresh: () =>
                   ref.read(authStateProvider.notifier).refreshProfile(),
+              browserUrl: '${ApiConfig.baseUrl}/home.php?mod=space',
             ),
         ],
       ),

@@ -5,6 +5,8 @@ import 'package:cookie_jar/cookie_jar.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:path_provider/path_provider.dart';
+import 'package:webview_flutter/webview_flutter.dart';
+import '../config/api_config.dart';
 import '../config/constants.dart';
 import 'formhash_service.dart';
 
@@ -133,6 +135,23 @@ class S1HttpClient {
 
   Future<Response> post(String url, {dynamic data, Options? options}) {
     return _dio.post(url, data: data, options: options);
+  }
+
+  /// 将 PersistCookieJar 中 stage1st.com 的 cookie 注入到 WebView
+  Future<void> syncCookiesToWebView() async {
+    if (_isWeb) return;
+    final uri = Uri.parse(ApiConfig.baseUrl);
+    final cookies = await _cookieJar.loadForRequest(uri);
+    if (cookies.isEmpty) return;
+    final wm = WebViewCookieManager();
+    for (final c in cookies) {
+      await wm.setCookie(WebViewCookie(
+        name: c.name,
+        value: c.value,
+        domain: uri.host,
+        path: c.path ?? '/',
+      ),);
+    }
   }
 }
 

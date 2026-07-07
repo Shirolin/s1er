@@ -1,11 +1,13 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+import '../config/api_config.dart';
 import '../providers/auth_provider.dart';
 import '../providers/forum_list_provider.dart';
 import '../providers/settings_provider.dart';
 import '../models/forum_category.dart';
 import '../services/api_service.dart';
+import '../widgets/app_bar_more_menu.dart';
 import 'profile_screen.dart';
 
 String _formatCount(int n) {
@@ -32,7 +34,13 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
       appBar: AppBar(
         title: const Text('Stage1st'),
         actions: [
-          if (!isLoggedIn)
+          if (isLoggedIn)
+            AppBarMoreMenu(
+              onRefresh: () =>
+                  ref.read(forumListProvider.notifier).refresh(),
+              browserUrl: ApiConfig.baseUrl,
+            )
+          else
             TextButton(
               onPressed: () => context.push('/login'),
               child: const Text('Login'),

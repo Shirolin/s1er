@@ -1,9 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+import '../config/api_config.dart';
 import '../providers/post_provider.dart';
 import '../providers/auth_provider.dart';
 import '../services/api_service.dart';
+import '../widgets/app_bar_more_menu.dart';
 import '../widgets/post_item.dart';
 
 class ThreadDetailScreen extends ConsumerWidget {
@@ -25,9 +27,10 @@ class ThreadDetailScreen extends ConsumerWidget {
             ) ??
             const Text('Thread'),
         actions: [
-          IconButton(
-            icon: const Icon(Icons.refresh),
-            onPressed: () => ref.read(postProvider(tid).notifier).refresh(),
+          AppBarMoreMenu(
+            onRefresh: () =>
+                ref.read(postProvider(tid).notifier).refresh(),
+            browserUrl: '${ApiConfig.baseUrl}/thread-$tid-1-1.html',
           ),
         ],
       ),

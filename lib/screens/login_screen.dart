@@ -99,10 +99,13 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
               }
             },
           ),
-        )
-        // 开启支持用户名 autoComplete
-        ..loadRequest(Uri.parse(
+        );
+
+      // 将已有的登录 cookie 注入 WebView，使已登录用户无需重新登录
+      ref.read(httpClientProvider).syncCookiesToWebView().then((_) {
+        _controller.loadRequest(Uri.parse(
             'https://stage1st.com/2b/member.php?mod=logging&action=login&mobile=2',),);
+      });
     } else {
       _isLoading = false;
     }

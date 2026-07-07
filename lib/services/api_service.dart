@@ -318,4 +318,39 @@ class ApiService {
       return null;
     }
   }
+
+  Future<User?> getUserProfileByUid(String uid) async {
+    try {
+      final profileUrl = buildApiUrl(
+        module: ApiConfig.moduleProfile,
+        params: {'uid': uid},
+      );
+      final response = await _httpClient.get(profileUrl);
+      final json = _ensureJson(response.data);
+      final variables = json['Variables'] as Map<String, dynamic>?;
+      if (variables == null) return null;
+
+      final space = variables['space'] as Map<String, dynamic>?;
+      if (space == null) return null;
+
+      return User(
+        uid: space['uid']?.toString() ?? uid,
+        username: space['username']?.toString() ?? '',
+        avatar: space['avatar']?.toString(),
+        groupTitle: space['group']?['grouptitle']?.toString(),
+        credits: int.tryParse(space['credits']?.toString() ?? '') ?? 0,
+        posts: int.tryParse(space['posts']?.toString() ?? '') ?? 0,
+        threads: int.tryParse(space['threads']?.toString() ?? '') ?? 0,
+        friends: int.tryParse(space['friends']?.toString() ?? '') ?? 0,
+        follower: int.tryParse(space['follower']?.toString() ?? '') ?? 0,
+        following: int.tryParse(space['following']?.toString() ?? '') ?? 0,
+        oltime: int.tryParse(space['oltime']?.toString() ?? '') ?? 0,
+        deadfish: int.tryParse(space['extcredits1']?.toString() ?? '') ?? 0,
+        combat: int.tryParse(space['extcredits5']?.toString() ?? '') ?? 0,
+        regdate: space['regdate']?.toString() ?? '',
+      );
+    } catch (_) {
+      return null;
+    }
+  }
 }

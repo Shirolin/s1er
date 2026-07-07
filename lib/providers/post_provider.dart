@@ -31,11 +31,15 @@ class PostListState {
   }
 }
 
+final apiServiceProvider = Provider<ApiService>((ref) {
+  return ApiService(ref.watch(httpClientProvider));
+});
+
 final postProvider = StateNotifierProvider.family<
     PostNotifier, AsyncValue<PostListState>, String>(
   (ref, tid) => PostNotifier(
     tid: tid,
-    apiService: ApiService(ref.watch(httpClientProvider)),
+    apiService: ref.watch(apiServiceProvider),
   ),
 );
 

@@ -1,26 +1,142 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../models/post.dart';
+import '../models/user.dart';
+import '../providers/post_provider.dart';
 import 'bbcode_renderer.dart';
+import 'web_avatar.dart';
 
-class PostItem extends StatelessWidget {
-
-  const PostItem({super.key, required this.post});
+class PostItem extends ConsumerWidget {
+  const PostItem({super.key, required this.post, this.displayFloor, this.tid});
   final Post post;
+  final int? displayFloor;
+  final String? tid;
 
   String _formatTime(int dateline) {
     if (dateline <= 0) return '';
     final dt = DateTime.fromMillisecondsSinceEpoch(dateline * 1000);
-    return '${dt.year}-${dt.month.toString().padLeft(2, '0')}-${dt.day.toString().padLeft(2, '0')} '
-        '${dt.hour.toString().padLeft(2, '0')}:${dt.minute.toString().padLeft(2, '0')}';
+    final now = DateTime.now();
+    final diff = now.difference(dt);
+
+    if (diff.inMinutes < 1) return '刚刚';
+    if (diff.inHours < 1) return '${diff.inMinutes}分钟前';
+    if (diff.inDays < 1) return '${diff.inHours}小时前';
+    if (diff.inDays < 7) return '${diff.inDays}天前';
+
+    final month = dt.month.toString().padLeft(2, '0');
+    final day = dt.day.toString().padLeft(2, '0');
+    final hour = dt.hour.toString().padLeft(2, '0');
+    final minute = dt.minute.toString().padLeft(2, '0');
+    if (dt.year == now.year) return '$month-$day $hour:$minute';
+    return '${dt.year}-$month-$day $hour:$minute';
+  }
+
+  void _showUserInfo(BuildContext context, WidgetRef ref) {
+    final scheme = Theme.of(context).colorScheme;
+    final future = ref.read(apiServiceProvider).getUserProfileByUid(post.authorId);
+
+    showDialog(
+      context: context,
+      builder: (context) {
+        return FutureBuilder<User?>(
+          future: future,
+          builder: (context, snapshot) {
+            if (snapshot.connectionState == ConnectionState.waiting) {
+              return const AlertDialog(
+                content: SizedBox(
+                  height: 200,
+                  child: Center(child: CircularProgressIndicator()),
+                ),
+              );
+            }
+
+            final user = snapshot.data;
+            if (user == null) {
+              return AlertDialog(
+                content: const Padding(
+                  padding: EdgeInsets.all(20),
+                  child: Text('加载失败'),
+                ),
+                actions: [
+                  TextButton(
+                    onPressed: () => Navigator.pop(context),
+                    child: const Text('关闭'),
+                  ),
+                ],
+              );
+            }
+
+            return AlertDialog(
+              contentPadding: EdgeInsets.zero,
+              clipBehavior: Clip.antiAlias,
+              content: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Container(
+                    padding: const EdgeInsets.all(24),
+                    color: scheme.primaryContainer.withValues(alpha: 0.3),
+                    child: Row(
+                      children: [
+                        WebAvatar(
+                          url: user.avatar,
+                          radius: 30,
+                          fallbackLetter: user.username.isNotEmpty ? user.username[0] : '?',
+                        ),
+                        const SizedBox(width: 16),
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(user.username, style: Theme.of(context).textTheme.titleLarge),
+                              Text(user.groupTitle ?? '用户', style: TextStyle(color: scheme.onSurfaceVariant)),
+                            ],
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                  Padding(
+                    padding: const EdgeInsets.all(16),
+                    child: Wrap(
+                      spacing: 16,
+                      runSpacing: 12,
+                      children: [
+                        _InfoItem(label: '积分', value: user.credits.toString()),
+                        _InfoItem(label: '战斗力', value: user.combat.toString()),
+                        _InfoItem(label: '鹅球', value: user.deadfish.toString()),
+                        _InfoItem(label: '帖子', value: user.posts.toString()),
+                        _InfoItem(label: '注册时间', value: user.regdate),
+                      ],
+                    ),
+                  ),
+                  const Divider(height: 1),
+                  TextButton(
+                    onPressed: () => Navigator.pop(context),
+                    child: const Text('关闭'),
+                  ),
+                  const SizedBox(height: 8),
+                ],
+              ),
+            );
+          },
+        );
+      },
+    );
   }
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
     final scheme = Theme.of(context).colorScheme;
     final timeStr = _formatTime(post.dateline);
+    final floor = displayFloor ?? post.floor;
 
     return Card(
       margin: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+      elevation: 0,
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(10),
+        side: BorderSide(color: scheme.outlineVariant.withValues(alpha: 0.5), width: 0.5),
+      ),
       child: Padding(
         padding: const EdgeInsets.all(12),
         child: Column(
@@ -28,9 +144,13 @@ class PostItem extends StatelessWidget {
           children: [
             Row(
               children: [
-                CircleAvatar(
-                  radius: 16,
-                  child: Text(post.author.isNotEmpty ? post.author[0] : '?'),
+                GestureDetector(
+                  onTap: () => _showUserInfo(context, ref),
+                  child: WebAvatar(
+                    url: post.avatar,
+                    radius: 16,
+                    fallbackLetter: post.author.isNotEmpty ? post.author[0] : '?',
+                  ),
                 ),
                 const SizedBox(width: 8),
                 Expanded(
@@ -41,19 +161,63 @@ class PostItem extends StatelessWidget {
                           style: Theme.of(context).textTheme.bodyMedium?.copyWith(fontWeight: FontWeight.bold),),
                       if (timeStr.isNotEmpty)
                         Text(timeStr,
-                            style: TextStyle(fontSize: 12, color: scheme.onSurfaceVariant),),
+                            style: TextStyle(fontSize: 11, color: scheme.onSurfaceVariant),),
                     ],
                   ),
                 ),
-                Text('#${post.floor}',
-                    style: TextStyle(color: scheme.onSurfaceVariant),),
+                PopupMenuButton<String>(
+                  onSelected: (value) {
+                    // TODO: Implement actions
+                  },
+                  itemBuilder: (context) => [
+                    const PopupMenuItem(value: 'author', child: Text('只看该作者')),
+                    const PopupMenuItem(value: 'reply', child: Text('回复')),
+                    const PopupMenuItem(value: 'rate', child: Text('评分')),
+                    const PopupMenuItem(value: 'report', child: Text('举报')),
+                  ],
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                    decoration: BoxDecoration(
+                      color: scheme.surfaceContainerHighest,
+                      borderRadius: BorderRadius.circular(10),
+                    ),
+                    child: Text(
+                      '#$floor',
+                      style: TextStyle(
+                        color: scheme.onSurfaceVariant,
+                        fontSize: 11,
+                        fontWeight: FontWeight.w500,
+                      ),
+                    ),
+                  ),
+                ),
               ],
             ),
-            const Divider(),
-            BbcodeRenderer(bbcode: post.message),
+            const Divider(height: 16),
+            BbcodeRenderer(bbcode: post.message, currentTid: tid),
           ],
         ),
       ),
     );
   }
 }
+
+class _InfoItem extends StatelessWidget {
+  const _InfoItem({required this.label, required this.value});
+  final String label;
+  final String value;
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        Text(label, style: const TextStyle(fontSize: 12, color: Colors.grey)),
+        Text(value, style: const TextStyle(fontSize: 14, fontWeight: FontWeight.bold)),
+      ],
+    );
+  }
+}
+
+

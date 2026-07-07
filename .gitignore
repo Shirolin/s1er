@@ -43,3 +43,38 @@ app.*.map.json
 /android/app/debug
 /android/app/profile
 /android/app/release
+
+# Android specific
+/android/local.properties
+/android/key.properties
+/android/s1_app_android.iml
+/android/gradle/wrapper/gradle-wrapper.jar
+/android/gradlew
+/android/gradlew.bat
+*.jks
+*.keystore
+
+# iOS/macOS specific
+/ios/Flutter/Generated.xcconfig
+/ios/Flutter/flutter_export_environment.sh
+/ios/Flutter/ephemeral/
+/ios/Runner/GeneratedPluginRegistrant.h
+/ios/Runner/GeneratedPluginRegistrant.m
+/macos/Flutter/ephemeral/
+**/doc/api/
+*.xcworkspace
+*.xcodeproj
+
+# Windows specific
+/windows/flutter/ephemeral/
+
+# Linux specific
+/linux/flutter/ephemeral/
+
+# Web specific
+/web/
+
+# Database / Local cache
+.kilo/
+*.db
+

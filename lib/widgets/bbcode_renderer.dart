@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_html/flutter_html.dart';
+import 'package:url_launcher/url_launcher.dart';
+import '../config/constants.dart';
 import '../utils/bbcode_parser.dart';
 import 'emoticon_widget.dart';
 import 'quote_block.dart';
@@ -7,8 +9,15 @@ import 'image_viewer.dart';
 
 class BbcodeRenderer extends StatelessWidget {
 
-  const BbcodeRenderer({super.key, required this.bbcode});
+  const BbcodeRenderer({
+    super.key,
+    required this.bbcode,
+    this.quoteDepth = 0,
+    this.currentTid,
+  });
   final String bbcode;
+  final int quoteDepth;
+  final String? currentTid;
 
   @override
   Widget build(BuildContext context) {
@@ -22,40 +31,98 @@ class BbcodeRenderer extends StatelessWidget {
 
   List<Widget> _buildParts(BuildContext context, String text) {
     final widgets = <Widget>[];
-    final quoteRegex = RegExp(r'\[quote\](.*?)\[/quote\]', dotAll: true);
-    final matches = quoteRegex.allMatches(text).toList();
+    final segments = _splitQuotes(text);
 
-    if (matches.isEmpty) {
-      final html = BbcodeParser.parse(text);
-      widgets.add(_buildHtmlContent(html));
-      return widgets;
-    }
-
-    int lastEnd = 0;
-    for (final match in matches) {
-      final before = text.substring(lastEnd, match.start);
-      if (before.isNotEmpty) {
-        widgets.add(_buildHtmlContent(BbcodeParser.parse(before)));
+    for (final segment in segments) {
+      if (segment.isQuote) {
+        widgets.add(QuoteBlock(
+          content: segment.text,
+          depth: quoteDepth,
+          currentTid: currentTid,
+        ),);
+      } else if (segment.text.trim().isNotEmpty) {
+        final html = BbcodeParser.parse(segment.text);
+        widgets.add(_buildHtmlContent(context, html));
       }
-      widgets.add(QuoteBlock(content: match.group(1)!));
-      lastEnd = match.end;
-    }
-
-    final after = text.substring(lastEnd);
-    if (after.isNotEmpty) {
-      widgets.add(_buildHtmlContent(BbcodeParser.parse(after)));
     }
 
     return widgets;
   }
 
-  Widget _buildHtmlContent(String html) {
+  List<_Segment> _splitQuotes(String text) {
+    final segments = <_Segment>[];
+    // 同时匹配 [quote]...[/quote] 和 <div class="reply_wrap">...</div>
+    final regex = RegExp(
+      r'\[quote\](.*?)\[/quote\]|<div\s+class="reply_wrap">(.*?)</div>',
+      dotAll: true,
+      caseSensitive: false,
+    );
+    int lastEnd = 0;
+
+    for (final match in regex.allMatches(text)) {
+      if (match.start > lastEnd) {
+        segments.add(_Segment(text.substring(lastEnd, match.start), false));
+      }
+      // group(1) = [quote] 内容, group(2) = <div class="reply_wrap"> 内容
+      final content = match.group(1) ?? match.group(2) ?? '';
+      segments.add(_Segment(content, true));
+      lastEnd = match.end;
+    }
+
+    if (lastEnd < text.length) {
+      segments.add(_Segment(text.substring(lastEnd), false));
+    }
+
+    return segments;
+  }
+
+  Widget _buildHtmlContent(BuildContext context, String html) {
+    final scheme = Theme.of(context).colorScheme;
+
     return Html(
       data: html,
       style: {
-        'body': Style(fontSize: FontSize(14)),
+        'body': Style(
+          fontSize: FontSize(15),
+          lineHeight: LineHeight.number(1.6),
+          margin: Margins.zero,
+          padding: HtmlPaddings.zero,
+          color: scheme.onSurface,
+        ),
+        'a': Style(
+          color: scheme.primary,
+          textDecoration: TextDecoration.none,
+          fontWeight: FontWeight.w500,
+        ),
+        'b': Style(fontWeight: FontWeight.bold),
+        'i': Style(fontStyle: FontStyle.italic),
+        'u': Style(textDecoration: TextDecoration.underline),
+        's': Style(textDecoration: TextDecoration.lineThrough),
+        'pre': Style(
+          backgroundColor: scheme.surfaceContainerHighest.withValues(alpha: 0.5),
+          padding: HtmlPaddings.all(12),
+          margin: Margins.symmetric(vertical: 8),
+          fontFamily: 'monospace',
+          fontSize: FontSize(13),
+          display: Display.block,
+        ),
+        '.hide-content': Style(
+          color: Colors.transparent,
+          backgroundColor: scheme.outlineVariant.withValues(alpha: 0.5),
+        ),
         'blockquote': Style(display: Display.none),
-        'img': Style(width: Width(200)),
+        'hr': Style(
+          border: Border(bottom: BorderSide(color: scheme.outlineVariant, width: 0.8)),
+          margin: Margins.symmetric(vertical: 12),
+        ),
+        'ul': Style(padding: HtmlPaddings.only(left: 16)),
+        'ol': Style(padding: HtmlPaddings.only(left: 16)),
+        'li': Style(margin: Margins.only(bottom: 6)),
+      },
+      onLinkTap: (url, _, __) {
+        if (url != null) {
+          launchUrl(Uri.parse(url), mode: LaunchMode.externalApplication);
+        }
       },
       extensions: [
         TagExtension(
@@ -63,6 +130,15 @@ class BbcodeRenderer extends StatelessWidget {
           builder: (context) {
             final element = context.element;
             if (element != null && element.classes.contains('emoticon')) {
+              // data-src: 来自 _normalizeHtml 转换的网络表情包 URL
+              final src = element.attributes['data-src'] ?? '';
+              if (src.isNotEmpty) {
+                return Container(
+                  margin: const EdgeInsets.symmetric(horizontal: 2),
+                  child: ImageViewer(imageUrl: src, isEmoticon: true),
+                );
+              }
+              // data-code: 来自 BBCode [f:xxx] 的本地表情包
               final code = element.attributes['data-code'] ?? '';
               return EmoticonWidget(code: code);
             }
@@ -73,10 +149,40 @@ class BbcodeRenderer extends StatelessWidget {
           tagsToExtend: {'img'},
           builder: (context) {
             final src = context.element?.attributes['src'] ?? '';
-            return ImageViewer(imageUrl: src);
+            if (src.isEmpty) return const SizedBox.shrink();
+
+            // 如果识别为表情包
+            if (S1Constants.isEmoticon(src)) {
+              return Container(
+                margin: const EdgeInsets.symmetric(horizontal: 2),
+                child: ImageViewer(imageUrl: src, isEmoticon: true),
+              );
+            }
+
+            // 如果是大图
+            return Padding(
+              padding: const EdgeInsets.symmetric(vertical: 8),
+              child: ClipRRect(
+                borderRadius: BorderRadius.circular(8),
+                child: Container(
+                  decoration: BoxDecoration(
+                    border: Border.all(color: scheme.outlineVariant.withValues(alpha: 0.3)),
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                  child: ImageViewer(imageUrl: src),
+                ),
+              ),
+            );
           },
         ),
       ],
     );
   }
 }
+
+class _Segment {
+  const _Segment(this.text, this.isQuote);
+  final String text;
+  final bool isQuote;
+}
+

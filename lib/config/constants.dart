@@ -7,4 +7,11 @@ class S1Constants {
   static const int maxRequestsPerSecond = 2;
   static const int cookieRefreshIntervalMinutes = 30;
   static const Duration cacheExpiry = Duration(minutes: 5);
+
+  /// 识别表情包路径的特征
+  static bool isEmoticon(String url) {
+    final lowerUrl = url.toLowerCase();
+    return lowerUrl.contains('static.stage1st.com/image/smiley') ||
+           lowerUrl.contains('face2017');
+  }
 }

@@ -26,9 +26,14 @@ final _router = GoRouter(
     ),
     GoRoute(
       path: '/thread/:tid',
-      builder: (context, state) => ThreadDetailScreen(
-        tid: state.pathParameters['tid']!,
-      ),
+      builder: (context, state) {
+        final pageStr = state.uri.queryParameters['page'];
+        final page = pageStr != null ? int.tryParse(pageStr) : null;
+        return ThreadDetailScreen(
+          tid: state.pathParameters['tid']!,
+          initialPage: page,
+        );
+      },
     ),
     GoRoute(
       path: '/login',

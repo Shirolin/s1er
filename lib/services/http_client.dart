@@ -8,6 +8,7 @@ import 'package:path_provider/path_provider.dart';
 import 'package:webview_flutter/webview_flutter.dart';
 import '../config/api_config.dart';
 import '../config/constants.dart';
+import '../config/resource_domains.dart';
 import 'formhash_service.dart';
 
 class S1HttpClient {
@@ -18,7 +19,7 @@ class S1HttpClient {
   final List<DateTime> _requestTimestamps = [];
   final Ref _ref;
 
-  static const String _proxyUrl = 'http://localhost:19080';
+  static const String _proxyUrl = 'http://localhost:${ResourceDomains.proxyPort}';
   static bool get _isWeb => kIsWeb;
 
   PersistCookieJar get cookieJar => _cookieJar;
@@ -85,12 +86,23 @@ class S1HttpClient {
           }
         }
 
-        if (_isWeb && options.path.contains('stage1st.com')) {
+        if (_isWeb) {
           final uri = Uri.parse(options.path);
-          final path = uri.path;
-          final queryParts = options.path.split('?');
-          final rawQuery = queryParts.length > 1 ? queryParts.sublist(1).join('?') : '';
-          options.path = '$_proxyUrl$path${rawQuery.isNotEmpty ? '?$rawQuery' : ''}';
+          final rule = ResourceDomains.match(uri.host);
+
+          if (rule != null && ResourceDomains.requiresProxy(uri.host)) {
+            if (rule.type == ResourceType.authImage) {
+              // 需认证的图片走 /img-proxy
+              options.path = '$_proxyUrl/img-proxy?url=${Uri.encodeComponent(options.path)}';
+            } else if (rule.type == ResourceType.api) {
+              // API 走默认路由
+              final path = uri.path;
+              final queryParts = options.path.split('?');
+              final rawQuery = queryParts.length > 1 ? queryParts.sublist(1).join('?') : '';
+              options.path = '$_proxyUrl$path${rawQuery.isNotEmpty ? '?$rawQuery' : ''}';
+            }
+          }
+          // publicAsset 不重写，浏览器直加载
         }
 
         handler.next(options);
@@ -129,8 +141,8 @@ class S1HttpClient {
     _requestTimestamps.add(DateTime.now());
   }
 
-  Future<Response> get(String url, {Map<String, dynamic>? queryParameters}) {
-    return _dio.get(url, queryParameters: queryParameters);
+  Future<Response> get(String url, {Map<String, dynamic>? queryParameters, Options? options}) {
+    return _dio.get(url, queryParameters: queryParameters, options: options);
   }
 
   Future<Response> post(String url, {dynamic data, Options? options}) {

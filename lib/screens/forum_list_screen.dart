@@ -19,11 +19,34 @@ class ForumListScreen extends ConsumerStatefulWidget {
 
 class _ForumListScreenState extends ConsumerState<ForumListScreen> {
   final _scrollController = ScrollController();
+  bool _showScrollToTop = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _scrollController.addListener(_onScroll);
+  }
 
   @override
   void dispose() {
+    _scrollController.removeListener(_onScroll);
     _scrollController.dispose();
     super.dispose();
+  }
+
+  void _onScroll() {
+    final show = _scrollController.offset > 400;
+    if (show != _showScrollToTop) {
+      setState(() => _showScrollToTop = show);
+    }
+  }
+
+  void _scrollToTop() {
+    _scrollController.animateTo(
+      0,
+      duration: const Duration(milliseconds: 300),
+      curve: Curves.easeOutCubic,
+    );
   }
 
   String _forumName() {
@@ -100,26 +123,40 @@ class _ForumListScreenState extends ConsumerState<ForumListScreen> {
         data: (state) => Column(
           children: [
             Expanded(
-              child: Scrollbar(
-                controller: _scrollController,
-                child: RefreshIndicator(
-                  onRefresh: () =>
-                      ref.read(threadListProvider(widget.fid).notifier).refresh(),
-                  child: state.threads.isEmpty
-                      ? ListView(
-                          controller: _scrollController,
-                          children: const [
-                            SizedBox(height: 120),
-                            Center(child: Text('暂无帖子')),
-                          ],
-                        )
-                      : ListView.builder(
-                          controller: _scrollController,
-                          itemCount: state.threads.length,
-                          itemBuilder: (context, index) =>
-                              ThreadCard(thread: state.threads[index]),
-                        ),
-                ),
+              child: Stack(
+                children: [
+                  Scrollbar(
+                    controller: _scrollController,
+                    child: RefreshIndicator(
+                      onRefresh: () =>
+                          ref.read(threadListProvider(widget.fid).notifier).refresh(),
+                      child: state.threads.isEmpty
+                          ? ListView(
+                              controller: _scrollController,
+                              children: const [
+                                SizedBox(height: 120),
+                                Center(child: Text('暂无帖子')),
+                              ],
+                            )
+                          : ListView.builder(
+                              controller: _scrollController,
+                              itemCount: state.threads.length,
+                              itemBuilder: (context, index) =>
+                                  ThreadCard(thread: state.threads[index]),
+                            ),
+                    ),
+                  ),
+                  if (_showScrollToTop)
+                    Positioned(
+                      right: 16,
+                      bottom: 16,
+                      child: FloatingActionButton.small(
+                        onPressed: _scrollToTop,
+                        heroTag: 'scrollToTop',
+                        child: const Icon(Icons.keyboard_arrow_up),
+                      ),
+                    ),
+                ],
               ),
             ),
             _PaginationBar(fid: widget.fid, state: state),
@@ -141,58 +178,70 @@ class _PaginationBar extends ConsumerWidget {
     final notifier = ref.read(threadListProvider(fid).notifier);
     final page = state.currentPage;
     final total = state.totalPages;
+    final scheme = Theme.of(context).colorScheme;
 
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
       decoration: BoxDecoration(
-        color: Theme.of(context).colorScheme.surface,
+        color: scheme.surfaceContainerHighest,
         border: Border(
-          top: BorderSide(color: Theme.of(context).colorScheme.outlineVariant),
+          top: BorderSide(color: scheme.outlineVariant, width: 0.5),
         ),
       ),
-      child: Row(
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          IconButton(
-            icon: const Icon(Icons.first_page),
-            onPressed: page > 1 ? () => notifier.goToPage(1) : null,
-            tooltip: '首页',
-          ),
-          IconButton(
-            icon: const Icon(Icons.chevron_left),
-            onPressed: page > 1 ? () => notifier.goToPage(page - 1) : null,
-            tooltip: '上一页',
-          ),
-          GestureDetector(
-            onTap: () => _showPageJumpDialog(context, ref),
-            child: Container(
-              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-              decoration: BoxDecoration(
-                color: Theme.of(context).colorScheme.primaryContainer,
-                borderRadius: BorderRadius.circular(16),
-              ),
-              child: Text(
-                '$page / $total',
-                style: TextStyle(
-                  fontWeight: FontWeight.bold,
-                  color: Theme.of(context).colorScheme.onPrimaryContainer,
+      child: SafeArea(
+        top: false,
+        child: Row(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            _NavButton(
+              icon: Icons.first_page,
+              onTap: page > 1 ? () => notifier.goToPage(1) : null,
+              tooltip: '首页',
+            ),
+            _NavButton(
+              icon: Icons.chevron_left,
+              onTap: page > 1 ? () => notifier.goToPage(page - 1) : null,
+              tooltip: '上一页',
+            ),
+            const SizedBox(width: 8),
+            GestureDetector(
+              onTap: () => _showPageJumpDialog(context, ref),
+              child: Container(
+                padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 6),
+                decoration: BoxDecoration(
+                  color: scheme.primaryContainer,
+                  borderRadius: BorderRadius.circular(20),
+                ),
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Text(
+                      '$page / $total',
+                      style: TextStyle(
+                        fontWeight: FontWeight.w600,
+                        fontSize: 13,
+                        color: scheme.onPrimaryContainer,
+                      ),
+                    ),
+                    const SizedBox(width: 4),
+                    Icon(Icons.unfold_more, size: 14, color: scheme.onPrimaryContainer),
+                  ],
                 ),
               ),
             ),
-          ),
-          IconButton(
-            icon: const Icon(Icons.chevron_right),
-            onPressed:
-                page < total ? () => notifier.goToPage(page + 1) : null,
-            tooltip: '下一页',
-          ),
-          IconButton(
-            icon: const Icon(Icons.last_page),
-            onPressed:
-                page < total ? () => notifier.goToPage(total) : null,
-            tooltip: '末页',
-          ),
-        ],
+            const SizedBox(width: 8),
+            _NavButton(
+              icon: Icons.chevron_right,
+              onTap: page < total ? () => notifier.goToPage(page + 1) : null,
+              tooltip: '下一页',
+            ),
+            _NavButton(
+              icon: Icons.last_page,
+              onTap: page < total ? () => notifier.goToPage(total) : null,
+              tooltip: '末页',
+            ),
+          ],
+        ),
       ),
     );
   }
@@ -210,27 +259,55 @@ class _PaginationBar extends ConsumerWidget {
             hintText: '1 - ${state.totalPages}',
           ),
           autofocus: true,
+          onSubmitted: (_) {
+            _performJump(ctx, controller, ref);
+          },
         ),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(ctx),
             child: const Text('取消'),
           ),
-          TextButton(
-            onPressed: () {
-              final page = int.tryParse(controller.text);
-              if (page != null &&
-                  page >= 1 &&
-                  page <= state.totalPages) {
-                ref
-                    .read(threadListProvider(fid).notifier)
-                    .goToPage(page);
-                Navigator.pop(ctx);
-              }
-            },
+          FilledButton(
+            onPressed: () => _performJump(ctx, controller, ref),
             child: const Text('确定'),
           ),
         ],
+      ),
+    );
+  }
+
+  void _performJump(BuildContext ctx, TextEditingController controller, WidgetRef ref) {
+    final page = int.tryParse(controller.text);
+    if (page != null && page >= 1 && page <= state.totalPages) {
+      ref.read(threadListProvider(fid).notifier).goToPage(page);
+      Navigator.pop(ctx);
+    }
+  }
+}
+
+class _NavButton extends StatelessWidget {
+  const _NavButton({required this.icon, this.onTap, this.tooltip});
+  final IconData icon;
+  final VoidCallback? onTap;
+  final String? tooltip;
+
+  @override
+  Widget build(BuildContext context) {
+    final scheme = Theme.of(context).colorScheme;
+    return Tooltip(
+      message: tooltip ?? '',
+      child: InkWell(
+        onTap: onTap,
+        borderRadius: BorderRadius.circular(8),
+        child: Padding(
+          padding: const EdgeInsets.all(8),
+          child: Icon(
+            icon,
+            size: 22,
+            color: onTap != null ? scheme.onSurface : scheme.onSurface.withValues(alpha: 0.3),
+          ),
+        ),
       ),
     );
   }

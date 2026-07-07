@@ -91,6 +91,7 @@ class _ForumTab extends ConsumerWidget {
         child: RefreshIndicator(
           onRefresh: () => ref.read(forumListProvider.notifier).refresh(),
           child: ListView.builder(
+            primary: true,
             padding: const EdgeInsets.only(bottom: 16),
             itemCount: categories.length,
             itemBuilder: (context, index) =>

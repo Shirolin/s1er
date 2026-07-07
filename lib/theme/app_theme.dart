@@ -10,6 +10,14 @@ class AppTheme {
     return ThemeData(
       useMaterial3: true,
       colorScheme: colorScheme,
+      fontFamily: 'NotoSansSC',
+      fontFamilyFallback: const [
+        'PingFang SC',
+        'Heiti SC',
+        'Microsoft YaHei',
+        'Noto Sans CJK SC',
+        'sans-serif',
+      ],
       appBarTheme: const AppBarTheme(centerTitle: true),
       dividerTheme: DividerThemeData(
         color: colorScheme.outlineVariant,
@@ -33,6 +41,14 @@ class AppTheme {
     return ThemeData(
       useMaterial3: true,
       colorScheme: colorScheme,
+      fontFamily: 'NotoSansSC',
+      fontFamilyFallback: const [
+        'PingFang SC',
+        'Heiti SC',
+        'Microsoft YaHei',
+        'Noto Sans CJK SC',
+        'sans-serif',
+      ],
       appBarTheme: const AppBarTheme(centerTitle: true),
       dividerTheme: DividerThemeData(
         color: colorScheme.outlineVariant,

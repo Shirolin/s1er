@@ -80,8 +80,8 @@ class PostNotifier extends StateNotifier<AsyncValue<PostListState>> {
     final thread = variables['thread'] as Map<String, dynamic>?;
     if (thread == null) return 1;
     final replies = int.tryParse(thread['replies']?.toString() ?? '') ?? 0;
-    // 每页帖数，Discuz 默认 30
-    final perPage = int.tryParse(variables['perpage']?.toString() ?? '') ?? 30;
+    // 每页帖数，API 字段名为 ppp (posts per page)
+    final perPage = int.tryParse(variables['ppp']?.toString() ?? '') ?? 30;
     final totalPosts = replies + 1; // 主楼 + 回复
     return (totalPosts / perPage).ceil().clamp(1, 9999);
   }

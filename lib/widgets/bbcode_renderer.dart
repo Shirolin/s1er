@@ -41,8 +41,13 @@ class BbcodeRenderer extends StatelessWidget {
           currentTid: currentTid,
         ),);
       } else if (segment.text.trim().isNotEmpty) {
-        final html = BbcodeParser.parse(segment.text);
-        widgets.add(_buildHtmlContent(context, html));
+        // 清理段落开头和结尾的换行符与 <br/>，避免由引用块分割产生的多余前导/后导空白
+        var cleanedText = segment.text.replaceFirst(RegExp(r'^(?:\s*|<br\s*/?>)+', caseSensitive: false), '');
+        cleanedText = cleanedText.replaceFirst(RegExp(r'(?:\s*|<br\s*/?>)+$', caseSensitive: false), '');
+        if (cleanedText.trim().isNotEmpty) {
+          final html = BbcodeParser.parse(cleanedText);
+          widgets.add(_buildHtmlContent(context, html));
+        }
       }
     }
 

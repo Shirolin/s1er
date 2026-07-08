@@ -1,11 +1,10 @@
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
-import 'web_avatar_stub.dart'
-    if (dart.library.html) 'web_avatar_html.dart';
+import '../config/resource_domains.dart';
 
 /// 跨平台头像组件
-/// Web: 用 HTML <img> 标签（不受 CORS 限制）
-/// Native: 用 Image.network
+/// Web: 通过代理加载（avatar 服务器未返回 CORS 头）
+/// Native: 用 Image.network 直加载
 class WebAvatar extends StatelessWidget {
 
   const WebAvatar({
@@ -18,17 +17,21 @@ class WebAvatar extends StatelessWidget {
   final double radius;
   final String fallbackLetter;
 
+  /// Web 端将跨域图片 URL 改写为走本地代理
+  static String _proxyUrl(String original) {
+    return 'http://localhost:${ResourceDomains.proxyPort}'
+        '/img-proxy?url=${Uri.encodeComponent(original)}';
+  }
+
   @override
   Widget build(BuildContext context) {
     if (url == null || url!.isEmpty) {
       return _fallback();
     }
-    if (kIsWeb) {
-      return buildHtmlAvatar(url!, radius, fallbackLetter);
-    }
+    final imageUrl = kIsWeb ? _proxyUrl(url!) : url!;
     return ClipOval(
       child: Image.network(
-        url!,
+        imageUrl,
         width: radius * 2,
         height: radius * 2,
         fit: BoxFit.cover,

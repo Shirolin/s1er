@@ -10,6 +10,9 @@ const String mobileUserAgent =
 /// 登录时自动存储 S1 Cookie，图片请求时自动附加
 final Map<String, String> _cookieJar = {};
 
+/// img-proxy 404 缓存（避免对无头像用户重复请求）
+final Set<String> _imgProxy404Cache = {};
+
 void main() async {
   final server = await HttpServer.bind('localhost', ResourceDomains.proxyPort);
   print('Proxy on http://localhost:${ResourceDomains.proxyPort}');
@@ -33,6 +36,13 @@ void main() async {
         final targetUrl = req.uri.queryParameters['url'];
         if (targetUrl == null) {
           res.statusCode = 400;
+          await res.close();
+          continue;
+        }
+        // 404 缓存命中：直接返回，不请求上游
+        if (_imgProxy404Cache.contains(targetUrl)) {
+          _cors(req, res);
+          res.statusCode = 404;
           await res.close();
           continue;
         }
@@ -79,6 +89,12 @@ void main() async {
 
       final bytes = await upRes.fold<List<int>>([], (a, b) => a..addAll(b));
       client.close(force: true);
+
+      // img-proxy 404 写入缓存
+      if (isImgProxy && upRes.statusCode == 404) {
+        _imgProxy404Cache.add(req.uri.queryParameters['url']!);
+        print('  404 cached: ${req.uri.queryParameters['url']}');
+      }
 
       res.statusCode = upRes.statusCode;
       _cors(req, res);

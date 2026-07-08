@@ -1,3 +1,5 @@
+import 'user.dart';
+
 class Post {
 
   Post({
@@ -19,7 +21,9 @@ class Post {
       authorId: json['authorid']?.toString() ?? '',
       dateline: int.tryParse(json['dateline']?.toString() ?? '') ?? 0,
       floor: int.tryParse(json['floor']?.toString() ?? '') ?? 0,
-      avatar: json['avatar']?.toString(),
+      avatar: User.resolveAvatarUrl(
+        'https://avatar.stage1st.com/avatar.php?uid=${json['authorid']}&size=small',
+      ),
     );
   }
   final String pid;

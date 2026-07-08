@@ -97,13 +97,12 @@ void main() {
         'pid': '1',
         'message': 'Hi',
         'author': 'user',
-        'authorid': '1',
+        'authorid': '42',
         'dateline': '0',
         'floor': 1,
-        'avatar': 'https://example.com/avatar.jpg',
       };
       final post = Post.fromJson(json);
-      expect(post.avatar, 'https://example.com/avatar.jpg');
+      expect(post.avatar, 'https://avatar.stage1st.com/000/00/00/42_avatar_small.jpg');
     });
   });
 

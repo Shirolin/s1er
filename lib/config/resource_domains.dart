@@ -68,8 +68,9 @@ class ResourceDomains {
     // 需认证的图片
     DomainRule(host: 'img.stage1st.com', type: ResourceType.authImage),
 
-    // 公开资源（表情包等）
+    // 公开资源（表情包、头像等）
     DomainRule(host: 'static.stage1st.com', type: ResourceType.publicAsset),
+    DomainRule(host: 'avatar.stage1st.com', type: ResourceType.publicAsset),
   ];
 
   // ──────────────────────── 查询方法 ────────────────────────

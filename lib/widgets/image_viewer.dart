@@ -69,7 +69,8 @@ class _ImageViewerState extends ConsumerState<ImageViewer> {
       return;
     }
 
-    if (_resourceType == ResourceType.publicAsset && !kIsWeb) {
+    // 公开资源：Web 端用原生 <img>，Native 端用 NetworkImage，都不需要 Dio
+    if (_resourceType == ResourceType.publicAsset) {
       _loading = false;
       return;
     }

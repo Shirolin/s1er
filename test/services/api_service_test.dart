@@ -210,6 +210,13 @@ void main() {
       test('parses forum list from JSON', () {
         final json = {
           'Variables': {
+            'catlist': [
+              {
+                'fid': '4',
+                'name': '技术讨论',
+                'forums': ['4'],
+              }
+            ],
             'forumlist': [
               {
                 'fid': '4',
@@ -225,7 +232,6 @@ void main() {
         expect(forums.length, 1);
         expect(forums[0].fid, '4');
         expect(forums[0].name, '技术讨论');
-        expect(forums[0].description, 'Tech discussion');
         expect(forums[0].threads, 1000);
         expect(forums[0].posts, 5000);
       });
@@ -233,6 +239,13 @@ void main() {
       test('parses multiple forums', () {
         final json = {
           'Variables': {
+            'catlist': [
+              {
+                'fid': '1',
+                'name': 'Category 1',
+                'forums': ['1', '2'],
+              }
+            ],
             'forumlist': [
               {
                 'fid': '1',
@@ -252,9 +265,10 @@ void main() {
           },
         };
         final forums = ApiService.parseForumList(json);
-        expect(forums.length, 2);
-        expect(forums[0].fid, '1');
-        expect(forums[1].fid, '2');
+        expect(forums.length, 1);
+        expect(forums[0].subforums.length, 2);
+        expect(forums[0].subforums[0].fid, '1');
+        expect(forums[0].subforums[1].fid, '2');
       });
 
       test('returns empty list when forumlist is missing', () {

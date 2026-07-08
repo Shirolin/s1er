@@ -33,6 +33,7 @@ class PostItem extends ConsumerWidget {
 
   void _showUserInfo(BuildContext context, WidgetRef ref) {
     final scheme = Theme.of(context).colorScheme;
+    final textTheme = Theme.of(context).textTheme;
     final future = ref.read(apiServiceProvider).getUserProfileByUid(post.authorId);
 
     showDialog(
@@ -42,8 +43,9 @@ class PostItem extends ConsumerWidget {
           future: future,
           builder: (context, snapshot) {
             if (snapshot.connectionState == ConnectionState.waiting) {
-              return const AlertDialog(
-                content: SizedBox(
+              return Dialog(
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+                child: const SizedBox(
                   height: 200,
                   child: Center(child: CircularProgressIndicator()),
                 ),
@@ -52,34 +54,41 @@ class PostItem extends ConsumerWidget {
 
             final user = snapshot.data;
             if (user == null) {
-              return AlertDialog(
-                content: const Padding(
-                  padding: EdgeInsets.all(20),
-                  child: Text('加载失败'),
-                ),
-                actions: [
-                  TextButton(
-                    onPressed: () => Navigator.pop(context),
-                    child: const Text('关闭'),
+              return Dialog(
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+                child: Padding(
+                  padding: const EdgeInsets.all(24),
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      const Text('加载失败'),
+                      const SizedBox(height: 16),
+                      TextButton(
+                        onPressed: () => Navigator.pop(context),
+                        child: const Text('关闭'),
+                      ),
+                    ],
                   ),
-                ],
+                ),
               );
             }
 
-            return AlertDialog(
-              contentPadding: EdgeInsets.zero,
+            return Dialog(
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+              insetPadding: const EdgeInsets.symmetric(horizontal: 24, vertical: 40),
               clipBehavior: Clip.antiAlias,
-              content: Column(
+              child: Column(
                 mainAxisSize: MainAxisSize.min,
                 children: [
+                  // 头部：头像 + 用户名 + 关闭按钮
                   Container(
-                    padding: const EdgeInsets.all(24),
-                    color: scheme.primaryContainer.withValues(alpha: 0.3),
+                    padding: const EdgeInsets.fromLTRB(24, 20, 8, 20),
+                    color: scheme.surfaceContainerLow,
                     child: Row(
                       children: [
                         WebAvatar(
                           url: user.avatar,
-                          radius: 30,
+                          radius: 36,
                           fallbackLetter: user.username.isNotEmpty ? user.username[0] : '?',
                         ),
                         const SizedBox(width: 16),
@@ -87,19 +96,29 @@ class PostItem extends ConsumerWidget {
                           child: Column(
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
-                              Text(user.username, style: Theme.of(context).textTheme.titleLarge),
-                              Text(user.groupTitle ?? '用户', style: TextStyle(color: scheme.onSurfaceVariant)),
+                              Text(user.username, style: textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w600)),
+                              const SizedBox(height: 2),
+                              Text(user.groupTitle ?? '用户', style: textTheme.bodySmall?.copyWith(color: scheme.onSurfaceVariant)),
                             ],
                           ),
+                        ),
+                        IconButton(
+                          icon: const Icon(Icons.close, size: 20),
+                          onPressed: () => Navigator.pop(context),
                         ),
                       ],
                     ),
                   ),
+                  // 数据区
                   Padding(
                     padding: const EdgeInsets.all(16),
-                    child: Wrap(
-                      spacing: 16,
-                      runSpacing: 12,
+                    child: GridView.count(
+                      crossAxisCount: 3,
+                      shrinkWrap: true,
+                      physics: const NeverScrollableScrollPhysics(),
+                      mainAxisSpacing: 8,
+                      crossAxisSpacing: 8,
+                      childAspectRatio: 1.6,
                       children: [
                         _InfoItem(label: '积分', value: user.credits.toString()),
                         _InfoItem(label: '战斗力', value: user.combat.toString()),
@@ -108,11 +127,6 @@ class PostItem extends ConsumerWidget {
                         _InfoItem(label: '注册时间', value: user.regdate),
                       ],
                     ),
-                  ),
-                  const Divider(height: 1),
-                  TextButton(
-                    onPressed: () => Navigator.pop(context),
-                    child: const Text('关闭'),
                   ),
                   const SizedBox(height: 8),
                 ],
@@ -209,13 +223,22 @@ class _InfoItem extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      mainAxisSize: MainAxisSize.min,
-      children: [
-        Text(label, style: const TextStyle(fontSize: 12, color: Colors.grey)),
-        Text(value, style: const TextStyle(fontSize: 14, fontWeight: FontWeight.bold)),
-      ],
+    final scheme = Theme.of(context).colorScheme;
+    return Container(
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        color: scheme.surfaceContainerHighest,
+        borderRadius: BorderRadius.circular(8),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          Text(label, style: const TextStyle(fontSize: 11, color: Colors.grey)),
+          const SizedBox(height: 4),
+          Text(value, style: const TextStyle(fontSize: 15, fontWeight: FontWeight.bold)),
+        ],
+      ),
     );
   }
 }

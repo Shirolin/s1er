@@ -27,6 +27,16 @@ class BbcodeParser {
                    .replaceAll('&amp;', '&')
                    .replaceAll('&nbsp;', ' ');
     
+    // 解码 Unicode 数字实体：&#x5546; (十六进制) / &#21834; (十进制) -> 对应字符
+    output = output.replaceAllMapped(
+      RegExp(r'&#x([0-9a-fA-F]+);'),
+      (m) => String.fromCharCode(int.parse(m.group(1)!, radix: 16)),
+    );
+    output = output.replaceAllMapped(
+      RegExp(r'&#(\d+);'),
+      (m) => String.fromCharCode(int.parse(m.group(1)!)),
+    );
+    
     // 规范化自闭合标签并处理连续换行
     output = output.replaceAll(RegExp(r'<br\s*/?>', caseSensitive: false), '<br/>');
     

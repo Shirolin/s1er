@@ -78,7 +78,7 @@ class ThreadListNotifier extends StateNotifier<AsyncValue<ThreadListState>> {
     );
     if (totalThreads == null || totalThreads <= 0) return 1;
 
-    final perPage = int.tryParse(variables['perpage']?.toString() ?? '') ?? 30;
+    final perPage = int.tryParse(variables['tpp']?.toString() ?? '') ?? 30;
     if (perPage <= 0) return 1;
     return (totalThreads / perPage).ceil();
   }

@@ -146,34 +146,49 @@ class QuoteBlock extends StatelessWidget {
   }
 
   String _removeHeader(String text) {
+    var result = text;
+
     final divMatch = RegExp(
       r'<div\s+class="reply_wrap">\s*',
       caseSensitive: false,
-    ).firstMatch(text);
-    var result = text;
+    ).firstMatch(result);
     if (divMatch != null) {
       result = result.substring(divMatch.end);
     }
 
-    final aTagEnd = RegExp(r'</a>\s*(?:<br\s*/?>)?', caseSensitive: false)
-        .firstMatch(result);
+    final aTagEnd = RegExp(
+      r'<a\s+[^>]*>.*?发表于.*?</a>\s*(?:<br\s*/?>)?',
+      caseSensitive: false,
+    ).firstMatch(result);
+
     if (aTagEnd != null) {
       result = result.substring(aTagEnd.end);
+    } else {
+      final fontTagEnd = RegExp(
+        r'<font\s+[^>]*>[^<]*?发表于[^<]*?</font>\s*(?:<br\s*/?>)?',
+        caseSensitive: false,
+      ).firstMatch(result);
+      if (fontTagEnd != null) {
+        result = result.substring(fontTagEnd.end);
+      }
     }
 
     result = result
         .replaceAll(RegExp(r'</div>$', caseSensitive: false), '')
         .trim();
 
-    if (result == text) {
-      final authorLine = RegExp(
-        r'^.*?发表于\s*\d{4}-\d{1,2}-\d{1,2}\s*\d{2}:\d{2}(?::\d{2})?\s*\n?',
-        multiLine: true,
-      ).firstMatch(result);
-      if (authorLine != null) {
-        result = result.substring(authorLine.end).trimLeft();
-      }
+    final authorLine = RegExp(
+      r'^.*?发表于\s*\d{4}-\d{1,2}-\d{1,2}\s*\d{2}:\d{2}(?::\d{2})?\s*(?:<br\s*/?>|\n)?',
+      multiLine: true,
+      caseSensitive: false,
+    ).firstMatch(result);
+    if (authorLine != null) {
+      result = result.substring(authorLine.end);
     }
+
+    // 清理头部和尾部残余的 <br/> 标签以及空白换行
+    result = result.replaceFirst(RegExp(r'^(?:\s*|<br\s*/?>)+', caseSensitive: false), '');
+    result = result.replaceFirst(RegExp(r'(?:\s*|<br\s*/?>)+$', caseSensitive: false), '');
 
     return result;
   }

@@ -44,7 +44,16 @@ void main() async {
   final httpClient = container.read(httpClientProvider);
   await httpClient.init();
   httpClient.dio.interceptors.add(
-    TalkerDioLogger(talker: talker),
+    TalkerDioLogger(
+      talker: talker,
+      settings: const TalkerDioLoggerSettings(
+        printRequestData: false,
+        printRequestHeaders: false,
+        printResponseData: false,
+        printResponseHeaders: false,
+        printResponseMessage: true,
+      ),
+    ),
   );
 
   EmoticonMap.initialize();

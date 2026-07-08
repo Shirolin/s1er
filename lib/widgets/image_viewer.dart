@@ -158,10 +158,20 @@ class _ImageViewerState extends ConsumerState<ImageViewer> {
         fit: BoxFit.contain,
         frameBuilder: (context, child, frame, wasSynchronouslyLoaded) {
           if (wasSynchronouslyLoaded) return child;
-          return AnimatedOpacity(
-            opacity: frame != null ? 1.0 : 0.0,
-            duration: const Duration(milliseconds: 150),
-            child: child,
+          return Stack(
+            alignment: Alignment.center,
+            children: [
+              if (frame == null)
+                const SizedBox(
+                  height: 100,
+                  child: Center(child: CircularProgressIndicator(strokeWidth: 2)),
+                ),
+              AnimatedOpacity(
+                opacity: frame != null ? 1.0 : 0.0,
+                duration: const Duration(milliseconds: 150),
+                child: child,
+              ),
+            ],
           );
         },
         errorBuilder: (_, __, ___) => _buildError(),

@@ -403,6 +403,187 @@ class _InfoTile extends StatelessWidget {
   }
 }
 
+String _getColorLabel(String key) {
+  const labels = {
+    'blue': '蓝',
+    'purple': '紫',
+    'sage': '绿',
+    'indigo': '黛',
+    'orange': '橙',
+  };
+  return labels[key] ?? key;
+}
+
+class _ThemeSettingsCard extends StatelessWidget {
+  const _ThemeSettingsCard({
+    required this.themeMode,
+    required this.themeColor,
+    required this.onThemeModeChanged,
+    required this.onThemeColorChanged,
+  });
+
+  final String themeMode;
+  final String themeColor;
+  final ValueChanged<String> onThemeModeChanged;
+  final ValueChanged<String> onThemeColorChanged;
+
+  @override
+  Widget build(BuildContext context) {
+    final colorScheme = Theme.of(context).colorScheme;
+    final textTheme = Theme.of(context).textTheme;
+
+    return Card(
+      elevation: 0,
+      shape: S1Shape.cardShape,
+      color: colorScheme.surfaceContainerHighest.withValues(alpha: S1Alpha.cardOverlay),
+      child: Padding(
+        padding: const EdgeInsets.all(20),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              '主题设置',
+              style: textTheme.labelLarge?.copyWith(
+                color: colorScheme.primary,
+                fontWeight: FontWeight.w600,
+              ),
+            ),
+            const SizedBox(height: 16),
+            Text(
+              '主题外观',
+              style: textTheme.bodyMedium?.copyWith(
+                color: colorScheme.onSurfaceVariant,
+              ),
+            ),
+            const SizedBox(height: 12),
+            SegmentedButton<String>(
+              segments: const [
+                ButtonSegment(
+                  value: 'system',
+                  label: Text('跟随系统'),
+                  icon: Icon(Icons.brightness_auto, size: 18),
+                ),
+                ButtonSegment(
+                  value: 'light',
+                  label: Text('浅色'),
+                  icon: Icon(Icons.light_mode, size: 18),
+                ),
+                ButtonSegment(
+                  value: 'dark',
+                  label: Text('深色'),
+                  icon: Icon(Icons.dark_mode, size: 18),
+                ),
+              ],
+              selected: {themeMode},
+              onSelectionChanged: (v) => onThemeModeChanged(v.first),
+              showSelectedIcon: false,
+              style: ButtonStyle(
+                visualDensity: VisualDensity.standard,
+                tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                side: WidgetStateProperty.resolveWith((states) {
+                  if (states.contains(WidgetState.selected)) {
+                    return BorderSide.none;
+                  }
+                  return BorderSide(
+                    color: colorScheme.outlineVariant,
+                  );
+                }),
+                backgroundColor: WidgetStateProperty.resolveWith((states) {
+                  if (states.contains(WidgetState.selected)) {
+                    return colorScheme.secondaryContainer;
+                  }
+                  return Colors.transparent;
+                }),
+                foregroundColor: WidgetStateProperty.resolveWith((states) {
+                  if (states.contains(WidgetState.selected)) {
+                    return colorScheme.onSecondaryContainer;
+                  }
+                  return colorScheme.onSurfaceVariant;
+                }),
+                shape: WidgetStateProperty.all(
+                  const RoundedRectangleBorder(
+                    borderRadius: S1Shape.medium,
+                  ),
+                ),
+                padding: WidgetStateProperty.all(
+                  const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+                ),
+              ),
+            ),
+            const SizedBox(height: 20),
+            const Divider(height: 1, indent: 0, endIndent: 0),
+            const SizedBox(height: 20),
+            Text(
+              '主题配色',
+              style: textTheme.bodyMedium?.copyWith(
+                color: colorScheme.onSurfaceVariant,
+              ),
+            ),
+            const SizedBox(height: 16),
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: AppTheme.themeSeeds.entries.map((entry) {
+                final key = entry.key;
+                final color = entry.value;
+                final isSelected = themeColor == key;
+                return GestureDetector(
+                  onTap: () => onThemeColorChanged(key),
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      AnimatedContainer(
+                        duration: const Duration(milliseconds: 200),
+                        width: 48,
+                        height: 48,
+                        decoration: BoxDecoration(
+                          color: color,
+                          shape: BoxShape.circle,
+                          border: isSelected
+                              ? Border.all(
+                                  color: colorScheme.primary,
+                                  width: 3,
+                                  strokeAlign: BorderSide.strokeAlignOutside,
+                                )
+                              : null,
+                          boxShadow: isSelected
+                              ? [
+                                  BoxShadow(
+                                    color: color.withValues(alpha: 0.4),
+                                    blurRadius: 8,
+                                    offset: const Offset(0, 4),
+                                  ),
+                                ]
+                              : null,
+                        ),
+                        child: isSelected
+                            ? Icon(
+                                Icons.check,
+                                color: color.computeLuminance() > 0.5
+                                    ? Colors.black87
+                                    : Colors.white,
+                                size: 22,
+                              )
+                            : null,
+                      ),
+                      const SizedBox(height: 4),
+                      Text(
+                        _getColorLabel(key),
+                        style: textTheme.labelSmall?.copyWith(
+                          color: colorScheme.onSurfaceVariant,
+                        ),
+                      ),
+                    ],
+                  ),
+                );
+              }).toList(),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
 class _SettingsCard extends StatelessWidget {
 
   const _SettingsCard({

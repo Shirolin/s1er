@@ -11,8 +11,8 @@ S1 论坛使用的 Discuz! Mobile API (version=4)。所有请求走 `ApiConfig.m
 | `forumindex` | 首页版块分类列表 | `getForumList()` | ✅ 已完成 | ✅ 已通过 |
 | `forumdisplay` | 帖子列表 | `getThreadList()` | ✅ 已完成 | ✅ 已通过 |
 | `viewthread` | 帖子详情 / 回复列表 | `getThreadDetail()` | ✅ 已完成 | ✅ 已通过 |
-| `login` | 登录（GET 取 formhash + POST 提交） | `login()` | ✅ 已完成 | ✅ 推测可用 |
-| `sendpost` (Mobile API) | **发回复（app 使用）** | `sendPost()` | ✅ 已完成 | ✅ 推测可用 |
+| `login` | 登录（GET 取 formhash + POST 提交） | `login()` | ✅ 已完成 | ✅ 已通过 |
+| `sendpost` (Mobile API) | **发回复（app 使用）** | `sendPost()` | ✅ 已完成 | ⏳ 待实测 |
 | `sendpm` | 发私信 | 未使用 | ❌ 未实现 | — |
 | `profile` | 用户资料 | `getUserProfile()` / `getUserProfileByUid()` | ✅ 已完成 | ✅ 已通过 |
 | — | 附件上传（`misc.php?mod=swfupload`） | 未实现 | 📄 仅文档 | — |
@@ -372,8 +372,14 @@ S1 论坛使用的 Discuz! Mobile API (version=4)。所有请求走 `ApiConfig.m
 ## module=login（登录）
 
 请求参数：
-- GET: 获取 `formhash`
+- GET: 获取 `formhash`（未登录时返回正常，已登录时返回 `login_succeed`）
 - POST: 提交登录表单
+
+额外响应字段：
+
+| 字段 | 类型 | 说明 |
+|------|------|------|
+| `loginUrl` | string? | WSQ 扫码登录链接（仅在已登录时返回） |
 
 POST 字段：
 

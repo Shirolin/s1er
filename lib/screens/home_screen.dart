@@ -71,10 +71,10 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
           setState(() => _currentTab = index);
         },
         destinations: const [
-          NavigationDestination(icon: Icon(Icons.forum), label: 'Forum'),
-          NavigationDestination(icon: Icon(Icons.search), label: 'Search'),
-          NavigationDestination(icon: Icon(Icons.message), label: 'Messages'),
-          NavigationDestination(icon: Icon(Icons.person), label: 'Me'),
+          NavigationDestination(icon: Icon(Icons.forum), label: '论坛'),
+          NavigationDestination(icon: Icon(Icons.search), label: '搜索'),
+          NavigationDestination(icon: Icon(Icons.message), label: '消息'),
+          NavigationDestination(icon: Icon(Icons.person), label: '我的'),
         ],
       ),
     );
@@ -327,11 +327,28 @@ class _ForumTile extends StatelessWidget {
                 ],
               ),
             ),
-            // 帖子数
-            Text(
-              _formatCount(forum.threads),
-              style: TextStyle(fontSize: 12, color: scheme.onSurfaceVariant),
-            ),
+            // 今日新帖数 / 帖子数
+            if (forum.todayPosts > 0)
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                decoration: BoxDecoration(
+                  color: scheme.primaryContainer,
+                  borderRadius: BorderRadius.circular(10),
+                ),
+                child: Text(
+                  '${forum.todayPosts}',
+                  style: TextStyle(
+                    fontSize: 11,
+                    fontWeight: FontWeight.w500,
+                    color: scheme.onPrimaryContainer,
+                  ),
+                ),
+              )
+            else
+              Text(
+                _formatCount(forum.threads),
+                style: TextStyle(fontSize: 12, color: scheme.onSurfaceVariant),
+              ),
             const SizedBox(width: 4),
             Icon(Icons.chevron_right, size: 18, color: scheme.onSurfaceVariant),
           ],

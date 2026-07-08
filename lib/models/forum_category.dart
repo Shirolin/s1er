@@ -6,6 +6,7 @@ class ForumCategory {
     required this.description,
     required this.threads,
     required this.posts,
+    this.todayPosts = 0,
     this.icon,
     this.subforums = const [],
   });
@@ -18,6 +19,7 @@ class ForumCategory {
       description: json['description']?.toString() ?? '',
       threads: int.tryParse(json['threads']?.toString() ?? '') ?? 0,
       posts: int.tryParse(json['posts']?.toString() ?? '') ?? 0,
+      todayPosts: int.tryParse(json['todayposts']?.toString() ?? '') ?? 0,
       icon: json['icon']?.toString(),
       subforums: subforumList
           .map((f) => ForumCategory.fromJson(f as Map<String, dynamic>))
@@ -29,6 +31,7 @@ class ForumCategory {
   final String description;
   final int threads;
   final int posts;
+  final int todayPosts;
   final String? icon;
   final List<ForumCategory> subforums;
 }

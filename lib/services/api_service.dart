@@ -111,9 +111,11 @@ class ApiService {
 
       int totalThreads = 0;
       int totalPosts = 0;
+      int totalTodayPosts = 0;
       for (final sub in subforums) {
         totalThreads += sub.threads;
         totalPosts += sub.posts;
+        totalTodayPosts += sub.todayPosts;
       }
 
       categories.add(ForumCategory(
@@ -122,6 +124,7 @@ class ApiService {
         description: '',
         threads: totalThreads,
         posts: totalPosts,
+        todayPosts: totalTodayPosts,
         subforums: subforums,
       ),);
     }

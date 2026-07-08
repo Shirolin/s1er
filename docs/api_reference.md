@@ -383,15 +383,28 @@ S1 论坛使用的 Discuz! Mobile API (version=4)。所有请求走 `ApiConfig.m
 
 POST 字段：
 
-| 字段 | 说明 |
-|------|------|
-| `formhash` | CSRF token |
-| `fastloginfield` | 固定 `"username"` |
-| `username` | 用户名 |
-| `password` | 密码 |
-| `questionid` | `"0"` |
-| `answer` | `""` |
-| `cookietime` | `"2592000"`（30天） |
+| 字段 | 必填 | 说明 |
+|------|------|------|
+| `formhash` | ✅ | CSRF token |
+| `fastloginfield` | ✅ | 固定 `"username"` |
+| `username` | ✅ | 用户名 |
+| `password` | ✅ | 密码 |
+| `questionid` | ✅ | 安全提问 ID（见下表），`"0"` = 无安全提问 |
+| `answer` | ✅ | 安全提问答案，`questionid="0"` 时传空字符串 `""` |
+| `cookietime` | ❌ | 登录有效期，`"2592000"`（30天），默认 1 小时 |
+
+安全提问 ID 映射：
+
+| `questionid` | 说明 |
+|:---|:---|
+| `"0"` | 无安全提问 |
+| `"1"` | 母亲的名字 |
+| `"2"` | 父亲的名字 |
+| `"3"` | 祖父的名字 |
+| `"4"` | 宠物的名字 |
+| `"5"` | 身份证后4位 |
+| `"6"` | 电子邮件 |
+| `"7"` | 自定义提问 |
 
 响应 `Message.messageval`：
 - `"login_succeed"` → 登录成功

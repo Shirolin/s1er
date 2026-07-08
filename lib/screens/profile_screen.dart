@@ -6,6 +6,7 @@ import '../config/api_config.dart';
 import '../providers/auth_provider.dart';
 import '../providers/settings_provider.dart';
 import '../providers/talker_provider.dart';
+import '../services/talker.dart' as t;
 import '../models/user.dart';
 import '../widgets/app_bar_more_menu.dart';
 import '../widgets/web_avatar.dart';
@@ -537,11 +538,10 @@ class _VersionTileState extends ConsumerState<_VersionTile> {
     _tapCount++;
     if (_tapCount >= 5) {
       _tapCount = 0;
-      final talker = ref.read(talkerProvider);
       if (context.mounted) {
         Navigator.of(context).push(
           MaterialPageRoute(
-            builder: (context) => TalkerScreen(talker: talker),
+            builder: (context) => TalkerScreen(talker: t.talker),
           ),
         );
       }

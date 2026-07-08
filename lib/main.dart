@@ -2,11 +2,10 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:hive_flutter/hive_flutter.dart';
 import 'package:talker_dio_logger/talker_dio_logger.dart';
-import 'package:talker_flutter/talker_flutter.dart';
 import 'app.dart';
 import 'models/emoticon.dart';
-import 'providers/talker_provider.dart';
 import 'services/http_client.dart';
+import 'services/talker.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -16,18 +15,7 @@ void main() async {
   await Hive.openBox('settings');
   await Hive.openBox('cache');
 
-  final talker = TalkerFlutter.init(
-    settings: TalkerSettings(
-      enabled: true,
-      useHistory: true,
-      maxHistoryItems: 500,
-    ),
-  );
-
   final container = ProviderContainer();
-  // Override the talkerProvider with the instance created above
-  container.read(talkerProvider.notifier).state = talker;
-
   final httpClient = container.read(httpClientProvider);
   await httpClient.init();
   httpClient.dio.interceptors.add(
@@ -39,7 +27,7 @@ void main() async {
   runApp(
     UncontrolledProviderScope(
       container: container,
-      child: S1App(talker: talker),
+      child: const S1App(),
     ),
   );
 }

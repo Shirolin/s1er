@@ -332,8 +332,8 @@ class _ForumTile extends StatelessWidget {
             if (forum.todayPosts > 0)
               Badge(
                 label: Text('${forum.todayPosts}'),
-                backgroundColor: scheme.error,
-                textColor: scheme.onError,
+                backgroundColor: scheme.primary,
+                textColor: scheme.onPrimary,
               )
             else
               Text(

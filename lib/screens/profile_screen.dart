@@ -76,9 +76,12 @@ class ProfileBody extends ConsumerWidget {
         const SizedBox(height: 16),
         _SettingsCard(
           themeMode: settings.themeMode,
+          themeColor: settings.themeColor,
           showImages: settings.showImages,
           onThemeModeChanged: (v) =>
               ref.read(settingsProvider.notifier).setThemeMode(v),
+          onThemeColorChanged: (v) =>
+              ref.read(settingsProvider.notifier).setThemeColor(v),
           onShowImagesChanged: (v) =>
               ref.read(settingsProvider.notifier).setShowImages(v),
         ),
@@ -404,13 +407,17 @@ class _SettingsCard extends StatelessWidget {
 
   const _SettingsCard({
     required this.themeMode,
+    required this.themeColor,
     required this.showImages,
     required this.onThemeModeChanged,
+    required this.onThemeColorChanged,
     required this.onShowImagesChanged,
   });
   final String themeMode;
+  final String themeColor;
   final bool showImages;
   final ValueChanged<String> onThemeModeChanged;
+  final ValueChanged<String> onThemeColorChanged;
   final ValueChanged<bool> onShowImagesChanged;
 
   @override
@@ -504,6 +511,67 @@ class _SettingsCard extends StatelessWidget {
               ],
             ),
           ),
+          const Divider(height: 1, indent: 16, endIndent: 16),
+          Padding(
+            padding: const EdgeInsets.fromLTRB(16, 12, 16, 16),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  '主题配色',
+                  style: textTheme.bodyMedium?.copyWith(
+                    color: colorScheme.onSurfaceVariant,
+                  ),
+                ),
+                const SizedBox(height: 12),
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: AppTheme.themeSeeds.entries.map((entry) {
+                    final key = entry.key;
+                    final color = entry.value;
+                    final isSelected = themeColor == key;
+                    return GestureDetector(
+                      onTap: () => onThemeColorChanged(key),
+                      child: Container(
+                        width: 44,
+                        height: 44,
+                        decoration: BoxDecoration(
+                          color: color,
+                          shape: BoxShape.circle,
+                          border: isSelected
+                              ? Border.all(
+                                  color: colorScheme.primary,
+                                  width: 3,
+                                  strokeAlign: BorderSide.strokeAlignOutside,
+                                )
+                              : null,
+                          boxShadow: isSelected
+                              ? [
+                                  BoxShadow(
+                                    color: color.withValues(alpha: 0.4),
+                                    blurRadius: 8,
+                                    offset: const Offset(0, 4),
+                                  ),
+                                ]
+                              : null,
+                        ),
+                        child: isSelected
+                            ? Icon(
+                                Icons.check,
+                                color: color.computeLuminance() > 0.5
+                                    ? Colors.black87
+                                    : Colors.white,
+                                size: 22,
+                              )
+                            : null,
+                      ),
+                    );
+                  }).toList(),
+                ),
+              ],
+            ),
+          ),
+          const Divider(height: 1, indent: 16, endIndent: 16),
           SwitchListTile(
             title: const Text('显示图片'),
             secondary: const Icon(Icons.image_outlined),

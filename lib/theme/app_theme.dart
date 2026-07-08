@@ -29,9 +29,18 @@ abstract class S1Alpha {
 }
 
 class AppTheme {
-  static ThemeData lightTheme() {
+  static const Map<String, Color> themeSeeds = {
+    'blue': Color(0xFF1A73E8),      // 经典蓝
+    'purple': Color(0xFF6750A4),    // 官方紫色
+    'sage': Color(0xFF386B52),      // 柔和绿
+    'indigo': Color(0xFF435993),    // 黛蓝
+    'orange': Color(0xFFF57C00),    // 暖阳橙
+  };
+
+  static ThemeData lightTheme(String themeColorKey) {
+    final seedColor = themeSeeds[themeColorKey] ?? themeSeeds['purple']!;
     final colorScheme = ColorScheme.fromSeed(
-      seedColor: const Color(0xFF1A73E8),
+      seedColor: seedColor,
       brightness: Brightness.light,
     );
     return ThemeData(
@@ -66,9 +75,10 @@ class AppTheme {
     );
   }
 
-  static ThemeData darkTheme() {
+  static ThemeData darkTheme(String themeColorKey) {
+    final seedColor = themeSeeds[themeColorKey] ?? themeSeeds['purple']!;
     final colorScheme = ColorScheme.fromSeed(
-      seedColor: const Color(0xFF1A73E8),
+      seedColor: seedColor,
       brightness: Brightness.dark,
     );
     return ThemeData(

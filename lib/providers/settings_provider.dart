@@ -5,23 +5,27 @@ class AppSettings {
 
   AppSettings({
     this.themeMode = 'system',
+    this.themeColor = 'purple',
     this.showImages = true,
     this.fontSize = 14,
     this.collapsedForums = const {},
   });
   final String themeMode;
+  final String themeColor;
   final bool showImages;
   final int fontSize;
   final Set<String> collapsedForums;
 
   AppSettings copyWith({
     String? themeMode,
+    String? themeColor,
     bool? showImages,
     int? fontSize,
     Set<String>? collapsedForums,
   }) {
     return AppSettings(
       themeMode: themeMode ?? this.themeMode,
+      themeColor: themeColor ?? this.themeColor,
       showImages: showImages ?? this.showImages,
       fontSize: fontSize ?? this.fontSize,
       collapsedForums: collapsedForums ?? this.collapsedForums,
@@ -46,10 +50,11 @@ class SettingsNotifier extends StateNotifier<AppSettings> {
 
     state = AppSettings(
       themeMode: themeMode,
+      themeColor: box.get('themeColor', defaultValue: 'purple') as String,
       showImages: box.get('showImages', defaultValue: true),
       fontSize: box.get('fontSize', defaultValue: 14),
       collapsedForums: Set<String>.from(
-        (box.get('collapsedForums') as List?)?.cast<String>() ?? [],
+          (box.get('collapsedForums') as List?)?.cast<String>() ?? [],
       ),
     );
   }
@@ -57,6 +62,11 @@ class SettingsNotifier extends StateNotifier<AppSettings> {
   void setThemeMode(String value) {
     state = state.copyWith(themeMode: value);
     Hive.box('settings').put('themeMode', value);
+  }
+
+  void setThemeColor(String value) {
+    state = state.copyWith(themeColor: value);
+    Hive.box('settings').put('themeColor', value);
   }
 
   void setShowImages(bool value) {

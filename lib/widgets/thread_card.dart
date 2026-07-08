@@ -48,14 +48,11 @@ class ThreadCard extends StatelessWidget {
     return Card(
       margin: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
       elevation: 0,
+      color: isSticky
+          ? scheme.primaryContainer.withValues(alpha: 0.1)
+          : scheme.surfaceContainerLow,
       shape: RoundedRectangleBorder(
         borderRadius: BorderRadius.circular(10),
-        side: BorderSide(
-          color: isSticky
-              ? scheme.primary.withValues(alpha: 0.3)
-              : scheme.outlineVariant.withValues(alpha: 0.5),
-          width: isSticky ? 0.8 : 0.5,
-        ),
       ),
       child: InkWell(
         onTap: () => context.push('/thread/${thread.tid}'),
@@ -73,7 +70,7 @@ class ThreadCard extends StatelessWidget {
                 scheme: scheme,
                 textTheme: textTheme,
               ),
-              const SizedBox(height: 6),
+              const SizedBox(height: 8),
               _MetaLine(
                 author: thread.author,
                 time: formatTimeAgo(thread.dateline),
@@ -129,8 +126,8 @@ class _TitleLine extends StatelessWidget {
         if (hasTag) ...[
           _CategoryTag(
             label: tagName!,
-            color: scheme.primary,
-            bgColor: scheme.primaryContainer.withValues(alpha: 0.5),
+            color: scheme.onSecondaryContainer,
+            bgColor: scheme.secondaryContainer,
           ),
           const SizedBox(width: 6),
         ],
@@ -138,7 +135,7 @@ class _TitleLine extends StatelessWidget {
           child: Text(
             subject,
             style: textTheme.titleSmall?.copyWith(
-              height: 1.4,
+              height: 1.45,
               fontWeight: isSticky ? FontWeight.bold : null,
             ),
             maxLines: 2,
@@ -151,10 +148,10 @@ class _TitleLine extends StatelessWidget {
 }
 
 // ═══════════════════════════════════════════════════════════
-//  信息行：作者 · 时间 …… 浏览 回复 [页数]
+//  信息行：作者 · 时间                               浏览 回复 [页数]
 //
-//  左侧 Flexible（可压缩）   右侧 min（固定宽度）
-//  超长作者名自动 ellipsis    数字已缩写，不会溢出
+//  左侧 Flexible（可压缩，靠左）
+//  右侧 统计信息与页码（靠右）
 // ═══════════════════════════════════════════════════════════
 
 class _MetaLine extends StatelessWidget {
@@ -180,6 +177,7 @@ class _MetaLine extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Row(
+      mainAxisAlignment: MainAxisAlignment.spaceBetween,
       children: [
         // ── 左侧：作者 + 时间（可压缩） ──
         Flexible(
@@ -187,13 +185,19 @@ class _MetaLine extends StatelessWidget {
             TextSpan(
               style: metaStyle,
               children: [
-                TextSpan(text: author),
+                TextSpan(
+                  text: author,
+                  style: metaStyle?.copyWith(
+                    fontWeight: FontWeight.w500,
+                    color: scheme.onSurface.withValues(alpha: 0.9),
+                  ),
+                ),
                 if (time.isNotEmpty) ...[
                   const TextSpan(text: ' · '),
                   TextSpan(
                     text: time,
                     style: metaStyle?.copyWith(
-                      color: scheme.onSurfaceVariant.withValues(alpha: 0.7),
+                      color: scheme.onSurfaceVariant.withValues(alpha: 0.6),
                     ),
                   ),
                 ],
@@ -204,48 +208,55 @@ class _MetaLine extends StatelessWidget {
           ),
         ),
         const SizedBox(width: 8),
-        // ── 右侧：统计（固定，不压缩） ──
-        Text.rich(
-          TextSpan(
-            style: metaStyle,
-            children: [
-              WidgetSpan(
-                alignment: PlaceholderAlignment.middle,
-                child: Icon(Icons.visibility_outlined, size: 12, color: scheme.onSurfaceVariant),
-              ),
-              const TextSpan(text: ' '),
-              TextSpan(text: views),
-              const TextSpan(text: '  '),
-              WidgetSpan(
-                alignment: PlaceholderAlignment.middle,
-                child: Icon(Icons.chat_bubble_outline, size: 11, color: scheme.onSurfaceVariant),
-              ),
-              const TextSpan(text: ' '),
-              TextSpan(text: replies),
-            ],
-          ),
-        ),
-        if (totalPages > 1) ...[
-          const SizedBox(width: 6),
-          GestureDetector(
-            onTap: onPageTap,
-            child: Container(
-              padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 1),
-              decoration: BoxDecoration(
-                color: scheme.tertiaryContainer.withValues(alpha: 0.6),
-                borderRadius: BorderRadius.circular(4),
-              ),
-              child: Text(
-                '$totalPages页',
+        // ── 右侧：统计（固定） + 页码（如果存在） ──
+        Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Text.rich(
+              TextSpan(
                 style: metaStyle?.copyWith(
-                  fontWeight: FontWeight.w500,
-                  color: scheme.onTertiaryContainer,
-                  fontSize: 10,
+                  color: scheme.onSurfaceVariant.withValues(alpha: 0.8),
                 ),
+                children: [
+                  WidgetSpan(
+                    alignment: PlaceholderAlignment.middle,
+                    child: Icon(Icons.visibility_outlined, size: 12, color: scheme.onSurfaceVariant.withValues(alpha: 0.7)),
+                  ),
+                  const TextSpan(text: ' '),
+                  TextSpan(text: views),
+                  const TextSpan(text: '  '),
+                  WidgetSpan(
+                    alignment: PlaceholderAlignment.middle,
+                    child: Icon(Icons.chat_bubble_outline, size: 11, color: scheme.onSurfaceVariant.withValues(alpha: 0.7)),
+                  ),
+                  const TextSpan(text: ' '),
+                  TextSpan(text: replies),
+                ],
               ),
             ),
-          ),
-        ],
+            if (totalPages > 1) ...[
+              const SizedBox(width: 8),
+              GestureDetector(
+                onTap: onPageTap,
+                child: Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 1.5),
+                  decoration: BoxDecoration(
+                    color: scheme.secondaryContainer.withValues(alpha: 0.5),
+                    borderRadius: BorderRadius.circular(4),
+                  ),
+                  child: Text(
+                    '$totalPages页',
+                    style: metaStyle?.copyWith(
+                      fontWeight: FontWeight.w500,
+                      color: scheme.onSecondaryContainer,
+                      fontSize: 10,
+                    ),
+                  ),
+                ),
+              ),
+            ],
+          ],
+        ),
       ],
     );
   }

@@ -12,13 +12,15 @@ S1 论坛使用的 Discuz! Mobile API (version=4)。所有请求走 `ApiConfig.m
 | `forumdisplay` | 帖子列表 | `getThreadList()` | ✅ 已完成 | ✅ 已通过 |
 | `viewthread` | 帖子详情 / 回复列表 | `getThreadDetail()` | ✅ 已完成 | ✅ 已通过 |
 | `login` | 登录（GET 取 formhash + POST 提交） | `login()` | ✅ 已完成 | ✅ 已通过 |
-| `sendpost` (Mobile API) | **S1 不支持，需改用 `forum.php`** | `sendPost()` | ❌ 需重写 | ❌ 不存在 |
-| `reply` (forum.php) | 发回复（第三方客户端实际使用） | 待实现 | 📄 已文档 | ✅ 已验证 |
-| `sendpm` | 发私信 | 未使用 | ❌ 未实现 | — |
 | `profile` | 用户资料 | `getUserProfile()` / `getUserProfileByUid()` | ✅ 已完成 | ✅ 已通过 |
-| — | 附件上传（`misc.php?mod=swfupload`） | 未实现 | 📄 仅文档 | — |
-| — | 编辑帖子（`forum.php?mod=post&action=edit`） | 未实现 | 📄 仅文档 | — |
-| — | 浏览器式发回复（`forum.php?mod=post&action=reply`） | 未实现 | 📄 仅文档 | — |
+| `newthread` | 发表新主题 | 待实现 | 📄 仅文档 | ✅ 已通过 |
+| `sendpm` | 发私信 | 未使用 | ❌ 未实现 | — |
+| `sendpost` | ⚠️ **S1 已禁用此模块** | `sendPost()` ❌ 需重写 | ❌ 不存在 |
+| `editpost` | ⚠️ **S1 已禁用** | — | ❌ 不存在 |
+| `uploadattach` / `postattach` | ⚠️ **S1 已禁用** | — | ❌ 不存在 |
+| `forum.php?mod=post&action=reply` | **发回复（实际使用方式）** | 待实现 | 📄 已文档 | ✅ 已验证 |
+| `forum.php?mod=post&action=edit` | 编辑帖子 | 未实现 | 📄 仅文档 | — |
+| `misc.php?mod=swfupload` | 上传附件 | 未实现 | 📄 仅文档 | — |
 
 ---
 
@@ -425,7 +427,7 @@ POST 字段：
 
 **实测结果**：`api/mobile/index.php?module=sendpost` → `{"error":"module_not_exists"}`。
 
-**参考**：Stage1st-Reader（GitHub 1100+ stars，最流行的 S1 客户端）同样使用 `forum.php` 端点，未使用 Mobile API。
+**参考**：Stage1st-Reader（iOS 开源客户端）同样使用 `forum.php` 端点，未使用 Mobile API。
 
 S1 的 Discuz! 实例**没有启用** Mobile API 的发帖模块。所有写操作必须走 `forum.php` 端点（见下）。
 
@@ -660,6 +662,30 @@ S1 实际配置：
 ## module=sendpm（发私信）
 
 > 未实现。`ApiConfig.moduleSendMessage` 已定义但无调用代码。
+
+---
+
+## Mobile API 模块可用性总表
+
+以下为对 `api/mobile/index.php?module={name}&version=4` 的实测结果（GET，未登录）：
+
+| 模块 | 响应 | 状态 |
+|------|------|------|
+| `forumindex` | 正常返回 JSON | ✅ 可用 |
+| `forumdisplay` | 正常返回 JSON | ✅ 可用 |
+| `viewthread` | 正常返回 JSON | ✅ 可用 |
+| `login` | 正常返回 JSON | ✅ 可用 |
+| `profile` | 正常返回 JSON | ✅ 可用 |
+| `newthread` | 返回 JSON，缺参数时提示 `forum_nonexistence` | ✅ 可用（发新帖） |
+| `sendpm` | 返回 JSON，未登录时提示 `to_login` | ✅ 可用（发私信） |
+| `sendpost` | `{"error":"module_not_exists"}` | ❌ S1 已禁用 |
+| `editpost` | `{"error":"module_not_exists"}` | ❌ S1 已禁用 |
+| `uploadattach` | `{"error":"module_not_exists"}` | ❌ S1 已禁用 |
+| `postattach` | `{"error":"module_not_exists"}` | ❌ S1 已禁用 |
+| `checkpostrule` | `{"error":"module_not_exists"}` | ❌ S1 已禁用 |
+| 其余 20+ 模块 | `{"error":"module_not_exists"}` | ❌ 均不可用 |
+
+结论：S1 的 Mobile API **仅开放了读/登录/私信/发新帖**，所有回复、编辑、附件功能必须走浏览器端点。
 
 ---
 

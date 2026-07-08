@@ -12,7 +12,8 @@ S1 论坛使用的 Discuz! Mobile API (version=4)。所有请求走 `ApiConfig.m
 | `forumdisplay` | 帖子列表 | `getThreadList()` | ✅ 已完成 | ✅ 已通过 |
 | `viewthread` | 帖子详情 / 回复列表 | `getThreadDetail()` | ✅ 已完成 | ✅ 已通过 |
 | `login` | 登录（GET 取 formhash + POST 提交） | `login()` | ✅ 已完成 | ✅ 已通过 |
-| `sendpost` (Mobile API) | **发回复（app 使用）** | `sendPost()` | ✅ 已完成 | ⏳ 待实测 |
+| `sendpost` (Mobile API) | **S1 不支持，需改用 `forum.php`** | `sendPost()` | ❌ 需重写 | ❌ 不存在 |
+| `reply` (forum.php) | 发回复（第三方客户端实际使用） | 待实现 | 📄 已文档 | ✅ 已验证 |
 | `sendpm` | 发私信 | 未使用 | ❌ 未实现 | — |
 | `profile` | 用户资料 | `getUserProfile()` / `getUserProfileByUid()` | ✅ 已完成 | ✅ 已通过 |
 | — | 附件上传（`misc.php?mod=swfupload`） | 未实现 | 📄 仅文档 | — |
@@ -420,21 +421,13 @@ POST 字段：
 
 ---
 
-### Mobile API 方式（app 实际使用）
+### Mobile API 方式 ⚠️ S1 不支持
 
-URL: `$baseUrl/api/mobile/index.php?module=sendpost&version=4`
+**实测结果**：`api/mobile/index.php?module=sendpost` → `{"error":"module_not_exists"}`。
 
-请求参数（POST）：
+**参考**：Stage1st-Reader（GitHub 1100+ stars，最流行的 S1 客户端）同样使用 `forum.php` 端点，未使用 Mobile API。
 
-| 字段 | 必填 | 说明 |
-|------|------|------|
-| `fid` | ✅ | 版块 ID |
-| `tid` | ✅ | 帖子 ID |
-| `message` | ✅ | 回复内容 |
-| `posttime` | ✅ | 当前 Unix 时间戳 |
-| `formhash` | ✅ | CSRF token（通用响应中获取） |
-
-返回标准 JSON 响应（见通用响应结构），无需解析 HTML/XML。
+S1 的 Discuz! 实例**没有启用** Mobile API 的发帖模块。所有写操作必须走 `forum.php` 端点（见下）。
 
 ---
 

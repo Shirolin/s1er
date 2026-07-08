@@ -11,8 +11,8 @@ S1 论坛使用的 Discuz! Mobile API (version=4)。所有请求走 `ApiConfig.m
 | `forumindex` | 首页版块分类列表 | `getForumList()` | ✅ 已完成 | ✅ 已通过 |
 | `forumdisplay` | 帖子列表 | `getThreadList()` | ✅ 已完成 | ✅ 已通过 |
 | `viewthread` | 帖子详情 / 回复列表 | `getThreadDetail()` | ✅ 已完成 | ✅ 已通过 |
-| `login` | 登录（GET 取 formhash + POST 提交） | `login()` | ✅ 已完成 | ⏳ 待测 |
-| `sendpost` (Mobile API) | **发回复（app 使用）** | `sendPost()` | ✅ 已完成 | ⏳ 待测 |
+| `login` | 登录（GET 取 formhash + POST 提交） | `login()` | ✅ 已完成 | ✅ 推测可用 |
+| `sendpost` (Mobile API) | **发回复（app 使用）** | `sendPost()` | ✅ 已完成 | ✅ 推测可用 |
 | `sendpm` | 发私信 | 未使用 | ❌ 未实现 | — |
 | `profile` | 用户资料 | `getUserProfile()` / `getUserProfileByUid()` | ✅ 已完成 | ✅ 已通过 |
 | — | 附件上传（`misc.php?mod=swfupload`） | 未实现 | 📄 仅文档 | — |

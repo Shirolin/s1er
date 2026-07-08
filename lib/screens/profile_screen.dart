@@ -124,13 +124,13 @@ class _HeaderCard extends StatelessWidget {
     return Card(
       elevation: 0,
       shape: S1Shape.cardShape,
-      color: colorScheme.surfaceContainerHighest.withValues(alpha: S1Alpha.cardOverlay),
+      color: colorScheme.surfaceContainerHighest,
       child: Padding(
         padding: const EdgeInsets.symmetric(vertical: 24, horizontal: 16),
         child: Column(
           children: [
             WebAvatar(url: avatarUrl, radius: 44, fallbackLetter: letter),
-            const SizedBox(height: 12),
+            const SizedBox(height: 16),
             if (isLoggedIn) ...[
               Text(
                 username ?? '',
@@ -139,20 +139,21 @@ class _HeaderCard extends StatelessWidget {
                 ),
               ),
               if (groupTitle != null && groupTitle!.isNotEmpty) ...[
-                const SizedBox(height: 6),
+                const SizedBox(height: 8),
                 Container(
                   padding: const EdgeInsets.symmetric(
                     horizontal: 12,
-                    vertical: 3,
+                    vertical: 4,
                   ),
                   decoration: BoxDecoration(
                     color: colorScheme.primaryContainer,
-                    borderRadius: S1Shape.large,
+                    borderRadius: const BorderRadius.all(Radius.circular(9999)),
                   ),
                   child: Text(
                     groupTitle!,
                     style: textTheme.labelSmall?.copyWith(
                       color: colorScheme.onPrimaryContainer,
+                      fontWeight: FontWeight.w500,
                     ),
                   ),
                 ),
@@ -171,7 +172,7 @@ class _HeaderCard extends StatelessWidget {
                   color: colorScheme.onSurfaceVariant,
                 ),
               ),
-              const SizedBox(height: 12),
+              const SizedBox(height: 16),
               FilledButton.icon(
                 onPressed: onLogin,
                 icon: const Icon(Icons.login, size: 18),

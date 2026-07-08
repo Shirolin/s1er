@@ -47,17 +47,17 @@ class ThreadCard extends StatelessWidget {
     );
 
     return Card(
-      margin: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+      margin: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
       elevation: 0,
       color: isSticky
-          ? scheme.primaryContainer.withValues(alpha: S1Alpha.light)
+          ? scheme.primaryContainer
           : scheme.surfaceContainerLow,
       shape: S1Shape.cardShape,
       child: InkWell(
         onTap: () => context.push('/thread/${thread.tid}'),
         borderRadius: const BorderRadius.all(Radius.circular(12)),
         child: Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+                      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
@@ -193,7 +193,7 @@ class _MetaLine extends StatelessWidget {
                   text: author,
                   style: metaStyle?.copyWith(
                     fontWeight: FontWeight.w500,
-                    color: scheme.onSurface.withValues(alpha: S1Alpha.prominent),
+                    color: scheme.onSurface,
                   ),
                 ),
                 if (time.isNotEmpty) ...[
@@ -201,7 +201,7 @@ class _MetaLine extends StatelessWidget {
                   TextSpan(
                     text: time,
                     style: metaStyle?.copyWith(
-                      color: scheme.onSurfaceVariant.withValues(alpha: S1Alpha.strong),
+                      color: scheme.onSurfaceVariant,
                     ),
                   ),
                 ],
@@ -219,19 +219,19 @@ class _MetaLine extends StatelessWidget {
             Text.rich(
               TextSpan(
                 style: metaStyle?.copyWith(
-                  color: scheme.onSurfaceVariant.withValues(alpha: S1Alpha.strong),
+                  color: scheme.onSurfaceVariant,
                 ),
                 children: [
                   WidgetSpan(
                     alignment: PlaceholderAlignment.middle,
-                    child: Icon(Icons.visibility_outlined, size: 12, color: scheme.onSurfaceVariant.withValues(alpha: S1Alpha.strong)),
+                    child: Icon(Icons.visibility_outlined, size: 12, color: scheme.onSurfaceVariant),
                   ),
                   const TextSpan(text: ' '),
                   TextSpan(text: views),
                   const TextSpan(text: '  '),
                   WidgetSpan(
                     alignment: PlaceholderAlignment.middle,
-                    child: Icon(Icons.chat_bubble_outline, size: 11, color: scheme.onSurfaceVariant.withValues(alpha: S1Alpha.strong)),
+                    child: Icon(Icons.chat_bubble_outline, size: 11, color: scheme.onSurfaceVariant),
                   ),
                   const TextSpan(text: ' '),
                   TextSpan(text: replies),
@@ -240,22 +240,18 @@ class _MetaLine extends StatelessWidget {
             ),
             if (totalPages > 1) ...[
               const SizedBox(width: 8),
-              GestureDetector(
-                onTap: onPageTap,
-                child: Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 1.5),
-                  decoration: BoxDecoration(
-                    color: scheme.secondaryContainer.withValues(alpha: S1Alpha.half),
-                    borderRadius: S1Shape.extraSmall,
-                  ),
-                  child: Text(
-                    '$totalPages页',
-                    style: metaStyle?.copyWith(
-                      fontWeight: FontWeight.w500,
-                      color: scheme.onSecondaryContainer,
-                    ),
-                  ),
+              ActionChip(
+                label: Text('$totalPages页'),
+                labelStyle: metaStyle?.copyWith(
+                  fontWeight: FontWeight.w500,
+                  color: scheme.onSecondaryContainer,
                 ),
+                backgroundColor: scheme.secondaryContainer,
+                side: BorderSide.none,
+                visualDensity: VisualDensity.compact,
+                materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                padding: EdgeInsets.zero,
+                onPressed: onPageTap,
               ),
             ],
           ],
@@ -281,19 +277,17 @@ class _CategoryTag extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 1.5),
-      decoration: BoxDecoration(
-        color: bgColor,
-        borderRadius: S1Shape.extraSmall,
+    return Chip(
+      label: Text(label),
+      labelStyle: Theme.of(context).textTheme.labelSmall?.copyWith(
+        fontWeight: FontWeight.w600,
+        color: color,
       ),
-      child: Text(
-        label,
-        style: Theme.of(context).textTheme.labelSmall?.copyWith(
-          fontWeight: FontWeight.w600,
-          color: color,
-        ),
-      ),
+      backgroundColor: bgColor,
+      side: BorderSide.none,
+      visualDensity: VisualDensity.compact,
+      materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
+      padding: EdgeInsets.zero,
     );
   }
 }
@@ -330,7 +324,7 @@ class _ThreadPageSheet extends StatelessWidget {
           mainAxisSize: MainAxisSize.min,
           children: [
             Padding(
-              padding: const EdgeInsets.fromLTRB(20, 4, 20, 8),
+              padding: const EdgeInsets.fromLTRB(24, 4, 24, 8),
               child: Row(
                 children: [
                   Expanded(
@@ -381,7 +375,7 @@ class _ThreadPageSheet extends StatelessWidget {
                     },
                     borderRadius: S1Shape.small,
                     child: Padding(
-                      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
                       child: Row(
                         children: [
                           Container(
@@ -389,7 +383,7 @@ class _ThreadPageSheet extends StatelessWidget {
                             height: 32,
                             alignment: Alignment.center,
                             decoration: BoxDecoration(
-                              color: scheme.primaryContainer.withValues(alpha: S1Alpha.half),
+                              color: scheme.primaryContainer,
                               borderRadius: S1Shape.small,
                             ),
                             child: Text(
@@ -411,7 +405,7 @@ class _ThreadPageSheet extends StatelessWidget {
                           Icon(
                             Icons.chevron_right,
                             size: 18,
-                            color: scheme.onSurfaceVariant.withValues(alpha: S1Alpha.half),
+                            color: scheme.onSurfaceVariant,
                           ),
                         ],
                       ),

@@ -57,10 +57,18 @@ class _ComposeScreenState extends ConsumerState<ComposeScreen> {
       }
     } catch (e) {
       if (mounted) {
+        final scheme = Theme.of(context).colorScheme;
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             behavior: SnackBarBehavior.floating,
-            content: Text('Error: $e'),
+            content: Row(
+              children: [
+                Icon(Icons.error_outline, color: scheme.onError, size: 20),
+                const SizedBox(width: 8),
+                Expanded(child: Text('$e')),
+              ],
+            ),
+            backgroundColor: scheme.error,
           ),
         );
       }
@@ -73,7 +81,9 @@ class _ComposeScreenState extends ConsumerState<ComposeScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: Text(widget.tid != null ? 'Reply' : 'New Post'),
+        elevation: 0,
+        scrolledUnderElevation: 0,
+        title: Text(widget.tid != null ? '回复' : '发帖'),
         actions: [
           FilledButton(
             onPressed: _isSubmitting ? null : _submit,
@@ -83,7 +93,7 @@ class _ComposeScreenState extends ConsumerState<ComposeScreen> {
                     height: 20,
                     child: CircularProgressIndicator(strokeWidth: 2),
                   )
-                : const Text('Submit'),
+                : const Text('发送'),
           ),
         ],
       ),
@@ -98,7 +108,7 @@ class _ComposeScreenState extends ConsumerState<ComposeScreen> {
                 expands: true,
                 textAlignVertical: TextAlignVertical.top,
                 decoration: const InputDecoration(
-                  hintText: 'Write your post...',
+                  hintText: '输入回复内容...',
                 ),
               ),
             ),

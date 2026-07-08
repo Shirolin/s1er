@@ -105,7 +105,7 @@ class BbcodeRenderer extends StatelessWidget {
         'u': Style(textDecoration: TextDecoration.underline),
         's': Style(textDecoration: TextDecoration.lineThrough),
         'pre': Style(
-          backgroundColor: scheme.surfaceContainerHighest.withValues(alpha: S1Alpha.half),
+          backgroundColor: scheme.surfaceContainerHighest,
           padding: HtmlPaddings.all(12),
           margin: Margins.symmetric(vertical: 8),
           fontFamily: 'monospace',
@@ -114,7 +114,7 @@ class BbcodeRenderer extends StatelessWidget {
         ),
         '.hide-content': Style(
           color: Colors.transparent,
-          backgroundColor: scheme.outlineVariant.withValues(alpha: S1Alpha.half),
+          backgroundColor: scheme.outlineVariant,
         ),
         'blockquote': Style(display: Display.none),
         'hr': Style(
@@ -123,7 +123,7 @@ class BbcodeRenderer extends StatelessWidget {
         ),
         'ul': Style(padding: HtmlPaddings.only(left: 16)),
         'ol': Style(padding: HtmlPaddings.only(left: 16)),
-        'li': Style(margin: Margins.only(bottom: 6)),
+        'li': Style(margin: Margins.only(bottom: 8)),
       },
       onLinkTap: (url, _, __) {
         if (url != null) {
@@ -172,7 +172,7 @@ class BbcodeRenderer extends StatelessWidget {
                 borderRadius: S1Shape.small,
                 child: Container(
                   decoration: BoxDecoration(
-                    border: Border.all(color: scheme.outlineVariant.withValues(alpha: S1Alpha.medium)),
+                    border: Border.all(color: scheme.outlineVariant),
                     borderRadius: S1Shape.small,
                   ),
                   child: ImageViewer(imageUrl: src),

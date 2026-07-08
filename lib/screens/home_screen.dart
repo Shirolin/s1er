@@ -28,6 +28,8 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
 
     return Scaffold(
       appBar: AppBar(
+        elevation: 0,
+        scrolledUnderElevation: 0,
         title: Text(_currentTab == 3 ? '个人资料' : 'Stage1st'),
         actions: _currentTab == 3
             ? [
@@ -142,7 +144,7 @@ class _ForumErrorView extends ConsumerWidget {
                 overflow: TextOverflow.ellipsis,
               ),
             ],
-            const SizedBox(height: 20),
+            const SizedBox(height: 24),
             FilledButton.icon(
               onPressed: () {
                 if (isLogin) {
@@ -175,7 +177,8 @@ class _ForumCategoryTile extends ConsumerWidget {
     );
 
     return Card(
-      margin: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+      elevation: 0,
+      margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
       clipBehavior: Clip.antiAlias,
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -189,8 +192,8 @@ class _ForumCategoryTile extends ConsumerWidget {
                 : null,
             child: Container(
               width: double.infinity,
-              padding: const EdgeInsets.fromLTRB(16, 12, 16, 10),
-              color: scheme.primaryContainer.withValues(alpha: S1Alpha.medium),
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+              color: scheme.surfaceContainer,
               child: Row(
                 children: [
                   Icon(Icons.folder_outlined, size: 18, color: scheme.primary),
@@ -284,7 +287,7 @@ class _ForumTile extends StatelessWidget {
     return InkWell(
       onTap: () => context.push('/forum/${forum.fid}'),
       child: Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
         child: Row(
           children: [
             // 版块图标
@@ -292,7 +295,7 @@ class _ForumTile extends StatelessWidget {
               width: 36,
               height: 36,
               decoration: BoxDecoration(
-                color: scheme.secondaryContainer.withValues(alpha: S1Alpha.half),
+                color: scheme.secondaryContainer,
                 borderRadius: S1Shape.small,
               ),
               child: Icon(
@@ -327,19 +330,10 @@ class _ForumTile extends StatelessWidget {
             ),
             // 今日新帖数 / 帖子数
             if (forum.todayPosts > 0)
-              Container(
-                padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-                decoration: BoxDecoration(
-                  color: scheme.primaryContainer,
-                  borderRadius: S1Shape.medium,
-                ),
-                child: Text(
-                  '${forum.todayPosts}',
-                  style: textTheme.labelSmall?.copyWith(
-                    fontWeight: FontWeight.w500,
-                    color: scheme.onPrimaryContainer,
-                  ),
-                ),
+              Badge(
+                label: Text('${forum.todayPosts}'),
+                backgroundColor: scheme.error,
+                textColor: scheme.onError,
               )
             else
               Text(

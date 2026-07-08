@@ -28,7 +28,7 @@ class ImageViewerScreen extends StatelessWidget {
       appBar: AppBar(
         backgroundColor: Colors.transparent,
         elevation: 0,
-        iconTheme: IconThemeData(color: colorScheme.onInverseSurface),
+        foregroundColor: colorScheme.onInverseSurface,
       ),
       extendBodyBehindAppBar: true,
       body: Center(

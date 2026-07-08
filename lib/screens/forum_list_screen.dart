@@ -5,7 +5,6 @@ import '../config/api_config.dart';
 import '../providers/forum_list_provider.dart';
 import '../providers/thread_list_provider.dart';
 import '../services/api_service.dart';
-import '../theme/app_theme.dart';
 import '../widgets/app_bar_more_menu.dart';
 import '../widgets/thread_card.dart';
 
@@ -69,6 +68,8 @@ class _ForumListScreenState extends ConsumerState<ForumListScreen> {
 
     return Scaffold(
       appBar: AppBar(
+        elevation: 0,
+        scrolledUnderElevation: 0,
         title: Text(forum.isNotEmpty ? forum : '版块 #${widget.fid}'),
         actions: [
           AppBarMoreMenu(
@@ -184,7 +185,7 @@ class _PaginationBar extends ConsumerWidget {
     final textTheme = Theme.of(context).textTheme;
 
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
       decoration: BoxDecoration(
         color: scheme.surfaceContainer,
       ),
@@ -204,29 +205,21 @@ class _PaginationBar extends ConsumerWidget {
               tooltip: '上一页',
             ),
             const SizedBox(width: 8),
-            GestureDetector(
-              onTap: () => _showPageJumpDialog(context, ref),
-              child: Container(
-                padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 6),
-                decoration: BoxDecoration(
-                  color: scheme.primaryContainer,
-                  borderRadius: S1Shape.large,
-                ),
-                child: Row(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    Text(
-                      '$page / $total',
-                      style: textTheme.bodySmall?.copyWith(
-                        fontWeight: FontWeight.w600,
-                        color: scheme.onPrimaryContainer,
-                      ),
+            ActionChip(
+              label: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Text(
+                    '$page / $total',
+                    style: textTheme.bodySmall?.copyWith(
+                      fontWeight: FontWeight.w600,
                     ),
-                    const SizedBox(width: 4),
-                    Icon(Icons.unfold_more, size: 14, color: scheme.onPrimaryContainer),
-                  ],
-                ),
+                  ),
+                  const SizedBox(width: 4),
+                  const Icon(Icons.unfold_more, size: 14),
+                ],
               ),
+              onPressed: () => _showPageJumpDialog(context, ref),
             ),
             const SizedBox(width: 8),
             _NavButton(
@@ -293,21 +286,11 @@ class _NavButton extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final scheme = Theme.of(context).colorScheme;
-    return Tooltip(
-      message: tooltip ?? '',
-      child: InkWell(
-        onTap: onTap,
-        borderRadius: S1Shape.small,
-        child: Padding(
-          padding: const EdgeInsets.all(8),
-          child: Icon(
-            icon,
-            size: 22,
-            color: onTap != null ? scheme.onSurface : scheme.onSurface.withValues(alpha: S1Alpha.medium),
-          ),
-        ),
-      ),
+    return IconButton(
+      onPressed: onTap,
+      icon: Icon(icon, size: 22),
+      tooltip: tooltip,
+      splashRadius: 20,
     );
   }
 }

@@ -68,7 +68,7 @@ class PostItem extends ConsumerWidget {
                   mainAxisSize: MainAxisSize.min,
                   children: [
                     Padding(
-                      padding: const EdgeInsets.fromLTRB(24, 20, 8, 20),
+                      padding: const EdgeInsets.fromLTRB(24, 16, 8, 16),
                       child: Row(
                         children: [
                           WebAvatar(
@@ -154,7 +154,7 @@ class PostItem extends ConsumerWidget {
                   onTap: () => _showUserInfo(context, ref),
                   child: WebAvatar(
                     url: post.avatar,
-                    radius: 16,
+                    radius: 20,
                     fallbackLetter: post.author.isNotEmpty ? post.author[0] : '?',
                   ),
                 ),
@@ -181,19 +181,17 @@ class PostItem extends ConsumerWidget {
                     const PopupMenuItem(value: 'rate', child: Text('评分')),
                     const PopupMenuItem(value: 'report', child: Text('举报')),
                   ],
-                  child: Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
-                    decoration: BoxDecoration(
-                      color: scheme.secondaryContainer.withValues(alpha: S1Alpha.half),
-                      borderRadius: S1Shape.medium,
+                  child: Chip(
+                    label: Text('#$floor'),
+                    labelStyle: textTheme.labelSmall?.copyWith(
+                      color: scheme.onSecondaryContainer,
+                      fontWeight: FontWeight.w500,
                     ),
-                    child: Text(
-                      '#$floor',
-                      style: textTheme.labelSmall?.copyWith(
-                        color: scheme.onSecondaryContainer,
-                        fontWeight: FontWeight.w500,
-                      ),
-                    ),
+                    backgroundColor: scheme.secondaryContainer,
+                    side: BorderSide.none,
+                    visualDensity: VisualDensity.compact,
+                    materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                    padding: EdgeInsets.zero,
                   ),
                 ),
               ],

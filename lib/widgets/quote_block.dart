@@ -23,17 +23,17 @@ class QuoteBlock extends StatelessWidget {
     final textTheme = Theme.of(context).textTheme;
     final effectiveDepth = depth.clamp(0, _maxDepth);
 
-    final bgColor = Color.lerp(
-      scheme.surfaceContainerHigh.withValues(alpha: S1Alpha.half),
-      scheme.surfaceContainerHigh.withValues(alpha: S1Alpha.prominent),
-      effectiveDepth / _maxDepth,
-    )!;
+    final bgColor = effectiveDepth >= 2
+        ? scheme.surfaceContainerHighest
+        : effectiveDepth >= 1
+            ? scheme.surfaceContainerHigh
+            : scheme.surfaceContainer;
 
-    final borderColor = Color.lerp(
-      scheme.primary.withValues(alpha: S1Alpha.half),
-      scheme.tertiary.withValues(alpha: S1Alpha.strong),
-      effectiveDepth / _maxDepth,
-    )!;
+    final borderColor = effectiveDepth >= 2
+        ? scheme.tertiary
+        : effectiveDepth >= 1
+            ? scheme.primary
+            : scheme.outlineVariant;
 
     final author = _extractAuthor(content);
     final link = _extractLink(content);
@@ -42,7 +42,7 @@ class QuoteBlock extends StatelessWidget {
     final parsedLink = link != null ? _parsePostLink(link) : null;
 
     return Container(
-      margin: const EdgeInsets.symmetric(vertical: 6),
+      margin: const EdgeInsets.symmetric(vertical: 8),
       decoration: BoxDecoration(
         color: bgColor,
         borderRadius: S1Shape.small,
@@ -55,16 +55,14 @@ class QuoteBlock extends StatelessWidget {
             Material(
               color: Colors.transparent,
               child: InkWell(
-                borderRadius: const BorderRadius.only(
-                  topRight: Radius.circular(8),
-                ),
+                borderRadius: S1Shape.small,
                 onTap: parsedLink != null
                     ? () => _navigateToPost(context, parsedLink)
                     : null,
                 child: Padding(
                   padding: const EdgeInsets.symmetric(
-                    horizontal: 10,
-                    vertical: 6,
+                    horizontal: 12,
+                    vertical: 8,
                   ),
                   child: Row(
                     children: [
@@ -97,7 +95,7 @@ class QuoteBlock extends StatelessWidget {
               ),
             ),
           Padding(
-            padding: const EdgeInsets.fromLTRB(10, 4, 10, 8),
+            padding: const EdgeInsets.fromLTRB(12, 4, 12, 8),
             child: BbcodeRenderer(
               bbcode: bodyContent,
               quoteDepth: depth + 1,

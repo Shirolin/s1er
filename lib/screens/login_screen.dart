@@ -63,6 +63,8 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
+        elevation: 0,
+        scrolledUnderElevation: 0,
         title: const Text('登录 Stage1st'),
       ),
       body: Center(
@@ -144,9 +146,6 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                     onPressed: _isLoading ? null : _handleLogin,
                     style: FilledButton.styleFrom(
                       padding: const EdgeInsets.symmetric(vertical: 16),
-                      shape: const RoundedRectangleBorder(
-                        borderRadius: S1Shape.small,
-                      ),
                     ),
                     child: _isLoading
                         ? const SizedBox(

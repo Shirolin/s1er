@@ -5,7 +5,6 @@ import '../config/api_config.dart';
 import '../providers/post_provider.dart';
 import '../providers/auth_provider.dart';
 import '../services/api_service.dart';
-import '../theme/app_theme.dart';
 import '../widgets/app_bar_more_menu.dart';
 import '../widgets/post_item.dart';
 
@@ -61,7 +60,7 @@ class _ThreadDetailScreenState extends ConsumerState<ThreadDetailScreen> {
       context: context,
       builder: (context) => SafeArea(
         child: Padding(
-          padding: const EdgeInsets.fromLTRB(24, 20, 24, 24),
+          padding: const EdgeInsets.fromLTRB(24, 16, 24, 24),
           child: Column(
             mainAxisSize: MainAxisSize.min,
             crossAxisAlignment: CrossAxisAlignment.start,
@@ -92,6 +91,8 @@ class _ThreadDetailScreenState extends ConsumerState<ThreadDetailScreen> {
 
     return Scaffold(
       appBar: AppBar(
+        elevation: 0,
+        scrolledUnderElevation: 0,
         title: postsAsync.whenOrNull(
               data: (s) => s.threadSubject != null
                   ? GestureDetector(
@@ -138,8 +139,12 @@ class _ThreadDetailScreenState extends ConsumerState<ThreadDetailScreen> {
                       label: const Text('去登录'),
                     ),
                   ] else ...[
-                    Text('Error: $e'),
+                    Icon(Icons.error_outline, size: 56, color: scheme.error),
                     const SizedBox(height: 16),
+                    Text(e.toString(),
+                      textAlign: TextAlign.center,
+                      style: Theme.of(context).textTheme.bodyMedium?.copyWith(color: scheme.error),
+                    ),
                     FilledButton.icon(
                       onPressed: () =>
                           ref.read(postProvider(widget.tid).notifier).refresh(),
@@ -158,7 +163,7 @@ class _ThreadDetailScreenState extends ConsumerState<ThreadDetailScreen> {
               child: Scrollbar(
                 controller: _scrollController,
                 child: state.posts.isEmpty
-                    ? const Center(child: Text('No posts'))
+                    ? const Center(child: Text('暂无回复'))
                     : ListView.builder(
                         controller: _scrollController,
                         padding: const EdgeInsets.only(bottom: 120),
@@ -213,7 +218,7 @@ class _ThreadFabGroup extends StatelessWidget {
       children: [
         if (showScrollToTop)
           Padding(
-            padding: const EdgeInsets.only(bottom: 12),
+            padding: const EdgeInsets.only(bottom: 16),
             child: FloatingActionButton.small(
               onPressed: onScrollToTop,
               heroTag: 'scrollToTopDetail',
@@ -265,29 +270,21 @@ class _PostPaginationBar extends ConsumerWidget {
               tooltip: '上一页',
             ),
             const SizedBox(width: 8),
-            GestureDetector(
-              onTap: () => _showPageJumpDialog(context, ref),
-              child: Container(
-                padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 6),
-                decoration: BoxDecoration(
-                  color: scheme.primaryContainer,
-                  borderRadius: S1Shape.large,
-                ),
-                child: Row(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    Text(
-                      '$page / $total',
-                      style: textTheme.bodySmall?.copyWith(
-                        fontWeight: FontWeight.w600,
-                        color: scheme.onPrimaryContainer,
-                      ),
+            ActionChip(
+              label: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Text(
+                    '$page / $total',
+                    style: textTheme.bodySmall?.copyWith(
+                      fontWeight: FontWeight.w600,
                     ),
-                    const SizedBox(width: 4),
-                    Icon(Icons.unfold_more, size: 14, color: scheme.onPrimaryContainer),
-                  ],
-                ),
+                  ),
+                  const SizedBox(width: 4),
+                  const Icon(Icons.unfold_more, size: 14),
+                ],
               ),
+              onPressed: () => _showPageJumpDialog(context, ref),
             ),
             const SizedBox(width: 8),
             _NavButton(
@@ -352,21 +349,11 @@ class _NavButton extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final scheme = Theme.of(context).colorScheme;
-    return Tooltip(
-      message: tooltip ?? '',
-      child: InkWell(
-        onTap: onTap,
-        borderRadius: S1Shape.small,
-        child: Padding(
-          padding: const EdgeInsets.all(8),
-          child: Icon(
-            icon,
-            size: 22,
-            color: onTap != null ? scheme.onSurface : scheme.onSurface.withValues(alpha: S1Alpha.medium),
-          ),
-        ),
-      ),
+    return IconButton(
+      onPressed: onTap,
+      icon: Icon(icon, size: 22),
+      tooltip: tooltip,
+      splashRadius: 20,
     );
   }
 }

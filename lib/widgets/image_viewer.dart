@@ -143,7 +143,7 @@ class _ImageViewerState extends ConsumerState<ImageViewer> {
     // 加载中
     if (_loading) {
       return const SizedBox(
-        height: 100,
+        height: 96,
         child: Center(child: CircularProgressIndicator(strokeWidth: 2)),
       );
     }
@@ -165,7 +165,7 @@ class _ImageViewerState extends ConsumerState<ImageViewer> {
             children: [
               if (frame == null)
                 const SizedBox(
-                  height: 100,
+                  height: 96,
                   child: Center(child: CircularProgressIndicator(strokeWidth: 2)),
                 ),
               AnimatedOpacity(
@@ -187,7 +187,7 @@ class _ImageViewerState extends ConsumerState<ImageViewer> {
       child: Container(
         height: 80,
         decoration: BoxDecoration(
-          color: Theme.of(context).colorScheme.surfaceContainerHighest.withValues(alpha: S1Alpha.medium),
+          color: Theme.of(context).colorScheme.surfaceContainerHighest,
           borderRadius: S1Shape.small,
         ),
         child: Center(child: Icon(Icons.broken_image_outlined, size: 24, color: Theme.of(context).colorScheme.outline)),

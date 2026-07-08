@@ -49,6 +49,38 @@ class Thread {
 
   bool get isSticky => displayOrder > 0;
 
+  Thread copyWith({
+    String? tid,
+    String? subject,
+    String? author,
+    String? authorId,
+    int? dateline,
+    int? views,
+    int? replies,
+    String? fid,
+    String? typeId,
+    String? typeName,
+    int? displayOrder,
+    String? lastPost,
+    String? lastPoster,
+  }) {
+    return Thread(
+      tid: tid ?? this.tid,
+      subject: subject ?? this.subject,
+      author: author ?? this.author,
+      authorId: authorId ?? this.authorId,
+      dateline: dateline ?? this.dateline,
+      views: views ?? this.views,
+      replies: replies ?? this.replies,
+      fid: fid ?? this.fid,
+      typeId: typeId ?? this.typeId,
+      typeName: typeName ?? this.typeName,
+      displayOrder: displayOrder ?? this.displayOrder,
+      lastPost: lastPost ?? this.lastPost,
+      lastPoster: lastPoster ?? this.lastPoster,
+    );
+  }
+
   Map<String, dynamic> toJson() => {
     'tid': tid,
     'subject': subject,

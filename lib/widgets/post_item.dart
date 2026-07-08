@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../models/post.dart';
 import '../models/user.dart';
 import '../providers/post_provider.dart';
+import '../utils/format_utils.dart';
 import 'bbcode_renderer.dart';
 import 'web_avatar.dart';
 
@@ -11,25 +12,6 @@ class PostItem extends ConsumerWidget {
   final Post post;
   final int? displayFloor;
   final String? tid;
-
-  String _formatTime(int dateline) {
-    if (dateline <= 0) return '';
-    final dt = DateTime.fromMillisecondsSinceEpoch(dateline * 1000);
-    final now = DateTime.now();
-    final diff = now.difference(dt);
-
-    if (diff.inMinutes < 1) return '刚刚';
-    if (diff.inHours < 1) return '${diff.inMinutes}分钟前';
-    if (diff.inDays < 1) return '${diff.inHours}小时前';
-    if (diff.inDays < 7) return '${diff.inDays}天前';
-
-    final month = dt.month.toString().padLeft(2, '0');
-    final day = dt.day.toString().padLeft(2, '0');
-    final hour = dt.hour.toString().padLeft(2, '0');
-    final minute = dt.minute.toString().padLeft(2, '0');
-    if (dt.year == now.year) return '$month-$day $hour:$minute';
-    return '${dt.year}-$month-$day $hour:$minute';
-  }
 
   void _showUserInfo(BuildContext context, WidgetRef ref) {
     final scheme = Theme.of(context).colorScheme;
@@ -142,7 +124,7 @@ class PostItem extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final scheme = Theme.of(context).colorScheme;
     final textTheme = Theme.of(context).textTheme;
-    final timeStr = _formatTime(post.dateline);
+    final timeStr = formatDateTime(post.dateline);
     final floor = displayFloor ?? post.floor;
 
     return Card(

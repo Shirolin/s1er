@@ -8,13 +8,8 @@ import '../providers/settings_provider.dart';
 import '../models/forum_category.dart';
 import '../services/api_service.dart';
 import '../widgets/app_bar_more_menu.dart';
+import '../utils/format_utils.dart';
 import 'profile_screen.dart';
-
-String _formatCount(int n) {
-  if (n >= 10000) return '${(n / 10000).toStringAsFixed(1)}万';
-  if (n >= 1000) return '${(n / 1000).toStringAsFixed(1)}千';
-  return '$n';
-}
 
 class HomeScreen extends ConsumerStatefulWidget {
   const HomeScreen({super.key});
@@ -210,12 +205,12 @@ class _ForumCategoryTile extends ConsumerWidget {
                   ),
                   _StatChip(
                     icon: Icons.article_outlined,
-                    label: _formatCount(category.threads),
+                    label: formatCount(category.threads),
                   ),
                   const SizedBox(width: 8),
                   _StatChip(
                     icon: Icons.chat_bubble_outline,
-                    label: _formatCount(category.posts),
+                    label: formatCount(category.posts),
                   ),
                   if (hasSubs) ...[
                     const SizedBox(width: 4),
@@ -347,7 +342,7 @@ class _ForumTile extends StatelessWidget {
               )
             else
               Text(
-                _formatCount(forum.threads),
+                formatCount(forum.threads),
                 style: textTheme.bodySmall?.copyWith(color: scheme.onSurfaceVariant),
               ),
             const SizedBox(width: 4),

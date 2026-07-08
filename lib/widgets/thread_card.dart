@@ -1,28 +1,12 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import '../models/thread.dart';
+import '../utils/format_utils.dart';
 
 class ThreadCard extends StatelessWidget {
 
   const ThreadCard({super.key, required this.thread});
   final Thread thread;
-
-  String _formatTime(int dateline) {
-    if (dateline <= 0) return '';
-    final dt = DateTime.fromMillisecondsSinceEpoch(dateline * 1000);
-    final now = DateTime.now();
-    final diff = now.difference(dt);
-
-    if (diff.inMinutes < 1) return '刚刚';
-    if (diff.inHours < 1) return '${diff.inMinutes}分钟前';
-    if (diff.inDays < 1) return '${diff.inHours}小时前';
-    if (diff.inDays < 7) return '${diff.inDays}天前';
-
-    final month = dt.month.toString().padLeft(2, '0');
-    final day = dt.day.toString().padLeft(2, '0');
-    if (dt.year == now.year) return '$month-$day';
-    return '${dt.year}-$month-$day';
-  }
 
   int _calcTotalPages(int replies, {int perPage = 40}) {
     final totalPosts = replies + 1;
@@ -51,19 +35,27 @@ class ThreadCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final timeStr = _formatTime(thread.dateline);
     final scheme = Theme.of(context).colorScheme;
     final textTheme = Theme.of(context).textTheme;
     final hasTag = thread.typeName != null && thread.typeName!.isNotEmpty;
     final isSticky = thread.isSticky;
     final totalPages = _calcTotalPages(thread.replies);
+    final metaStyle = textTheme.labelSmall?.copyWith(
+      color: scheme.onSurfaceVariant,
+      height: 1.2,
+    );
 
     return Card(
       margin: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
       elevation: 0,
       shape: RoundedRectangleBorder(
         borderRadius: BorderRadius.circular(10),
-        side: BorderSide(color: scheme.outlineVariant.withValues(alpha: 0.5), width: 0.5),
+        side: BorderSide(
+          color: isSticky
+              ? scheme.primary.withValues(alpha: 0.3)
+              : scheme.outlineVariant.withValues(alpha: 0.5),
+          width: isSticky ? 0.8 : 0.5,
+        ),
       ),
       child: InkWell(
         onTap: () => context.push('/thread/${thread.tid}'),
@@ -73,100 +65,26 @@ class ThreadCard extends StatelessWidget {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Row(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  if (isSticky) ...[
-                    Padding(
-                      padding: const EdgeInsets.only(top: 2),
-                      child: Icon(Icons.push_pin, size: 14, color: scheme.primary),
-                    ),
-                    const SizedBox(width: 4),
-                  ],
-                  if (hasTag) ...[
-                    Padding(
-                      padding: const EdgeInsets.only(top: 2),
-                      child: _ThreadTag(
-                        label: thread.typeName!.replaceAll('[', '').replaceAll(']', ''),
-                        color: scheme.secondary,
-                        bgColor: scheme.secondaryContainer.withValues(alpha: 0.6),
-                      ),
-                    ),
-                    const SizedBox(width: 6),
-                  ],
-                  Expanded(
-                    child: Text(
-                      thread.subject,
-                      style: Theme.of(context).textTheme.titleSmall?.copyWith(
-                        height: 1.4,
-                        fontWeight: isSticky ? FontWeight.bold : null,
-                      ),
-                      maxLines: 2,
-                      overflow: TextOverflow.ellipsis,
-                    ),
-                  ),
-                ],
+              _TitleLine(
+                subject: thread.subject,
+                isSticky: isSticky,
+                hasTag: hasTag,
+                tagName: thread.typeName,
+                scheme: scheme,
+                textTheme: textTheme,
               ),
-              const SizedBox(height: 8),
-              Row(
-                children: [
-                  Icon(Icons.person_outline, size: 13, color: scheme.onSurfaceVariant),
-                  const SizedBox(width: 3),
-                  Text(
-                    thread.author,
-                    style: textTheme.labelSmall?.copyWith(color: scheme.onSurfaceVariant),
-                  ),
-                  if (timeStr.isNotEmpty) ...[
-                    const SizedBox(width: 8),
-                    Icon(Icons.access_time, size: 11, color: scheme.onSurfaceVariant),
-                    const SizedBox(width: 2),
-                    Text(
-                      timeStr,
-                      style: textTheme.labelSmall?.copyWith(color: scheme.onSurfaceVariant),
-                    ),
-                  ],
-                  const Spacer(),
-                  Icon(Icons.visibility_outlined, size: 13, color: scheme.onSurfaceVariant),
-                  const SizedBox(width: 2),
-                  Text(
-                    '${thread.views}',
-                    style: textTheme.labelSmall?.copyWith(color: scheme.onSurfaceVariant),
-                  ),
-                  const SizedBox(width: 10),
-                  Icon(Icons.chat_bubble_outline, size: 12, color: scheme.onSurfaceVariant),
-                  const SizedBox(width: 2),
-                  Text(
-                    '${thread.replies}',
-                    style: textTheme.labelSmall?.copyWith(color: scheme.onSurfaceVariant),
-                  ),
-                  if (totalPages > 1) ...[
-                    const SizedBox(width: 8),
-                    GestureDetector(
-                      onTap: () => _showPageSheet(context),
-                      child: Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 1.5),
-                        decoration: BoxDecoration(
-                          color: scheme.tertiaryContainer.withValues(alpha: 0.6),
-                          borderRadius: BorderRadius.circular(4),
-                        ),
-                        child: Row(
-                          mainAxisSize: MainAxisSize.min,
-                          children: [
-                            Icon(Icons.description_outlined, size: 11, color: scheme.onTertiaryContainer),
-                            const SizedBox(width: 2),
-                            Text(
-                              '$totalPages页',
-                              style: textTheme.labelSmall?.copyWith(
-                                fontWeight: FontWeight.w500,
-                                color: scheme.onTertiaryContainer,
-                              ),
-                            ),
-                          ],
-                        ),
-                      ),
-                    ),
-                  ],
-                ],
+              const SizedBox(height: 6),
+              _MetaLine(
+                author: thread.author,
+                time: formatTimeAgo(thread.dateline),
+                views: formatCount(thread.views),
+                replies: formatCount(thread.replies),
+                totalPages: totalPages,
+                metaStyle: metaStyle,
+                scheme: scheme,
+                onPageTap: totalPages > 1
+                    ? () => _showPageSheet(context)
+                    : null,
               ),
             ],
           ),
@@ -176,33 +94,200 @@ class ThreadCard extends StatelessWidget {
   }
 }
 
-class _ThreadTag extends StatelessWidget {
-  const _ThreadTag({required this.label, required this.color, required this.bgColor});
+// ═══════════════════════════════════════════════════════════
+//  标题行：[置顶图标] [分类标签] 标题文字
+// ═══════════════════════════════════════════════════════════
+
+class _TitleLine extends StatelessWidget {
+  const _TitleLine({
+    required this.subject,
+    required this.isSticky,
+    required this.hasTag,
+    required this.tagName,
+    required this.scheme,
+    required this.textTheme,
+  });
+  final String subject;
+  final bool isSticky;
+  final bool hasTag;
+  final String? tagName;
+  final ColorScheme scheme;
+  final TextTheme textTheme;
+
+  @override
+  Widget build(BuildContext context) {
+    return Row(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        if (isSticky) ...[
+          Padding(
+            padding: const EdgeInsets.only(top: 2),
+            child: Icon(Icons.push_pin, size: 13, color: scheme.primary),
+          ),
+          const SizedBox(width: 4),
+        ],
+        if (hasTag) ...[
+          _CategoryTag(
+            label: tagName!,
+            color: scheme.primary,
+            bgColor: scheme.primaryContainer.withValues(alpha: 0.5),
+          ),
+          const SizedBox(width: 6),
+        ],
+        Expanded(
+          child: Text(
+            subject,
+            style: textTheme.titleSmall?.copyWith(
+              height: 1.4,
+              fontWeight: isSticky ? FontWeight.bold : null,
+            ),
+            maxLines: 2,
+            overflow: TextOverflow.ellipsis,
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+// ═══════════════════════════════════════════════════════════
+//  信息行：作者 · 时间 …… 浏览 回复 [页数]
+//
+//  左侧 Flexible（可压缩）   右侧 min（固定宽度）
+//  超长作者名自动 ellipsis    数字已缩写，不会溢出
+// ═══════════════════════════════════════════════════════════
+
+class _MetaLine extends StatelessWidget {
+  const _MetaLine({
+    required this.author,
+    required this.time,
+    required this.views,
+    required this.replies,
+    required this.totalPages,
+    required this.metaStyle,
+    required this.scheme,
+    this.onPageTap,
+  });
+  final String author;
+  final String time;
+  final String views;
+  final String replies;
+  final int totalPages;
+  final TextStyle? metaStyle;
+  final ColorScheme scheme;
+  final VoidCallback? onPageTap;
+
+  @override
+  Widget build(BuildContext context) {
+    return Row(
+      children: [
+        // ── 左侧：作者 + 时间（可压缩） ──
+        Flexible(
+          child: Text.rich(
+            TextSpan(
+              style: metaStyle,
+              children: [
+                TextSpan(text: author),
+                if (time.isNotEmpty) ...[
+                  const TextSpan(text: ' · '),
+                  TextSpan(
+                    text: time,
+                    style: metaStyle?.copyWith(
+                      color: scheme.onSurfaceVariant.withValues(alpha: 0.7),
+                    ),
+                  ),
+                ],
+              ],
+            ),
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+          ),
+        ),
+        const SizedBox(width: 8),
+        // ── 右侧：统计（固定，不压缩） ──
+        Text.rich(
+          TextSpan(
+            style: metaStyle,
+            children: [
+              WidgetSpan(
+                alignment: PlaceholderAlignment.middle,
+                child: Icon(Icons.visibility_outlined, size: 12, color: scheme.onSurfaceVariant),
+              ),
+              const TextSpan(text: ' '),
+              TextSpan(text: views),
+              const TextSpan(text: '  '),
+              WidgetSpan(
+                alignment: PlaceholderAlignment.middle,
+                child: Icon(Icons.chat_bubble_outline, size: 11, color: scheme.onSurfaceVariant),
+              ),
+              const TextSpan(text: ' '),
+              TextSpan(text: replies),
+            ],
+          ),
+        ),
+        if (totalPages > 1) ...[
+          const SizedBox(width: 6),
+          GestureDetector(
+            onTap: onPageTap,
+            child: Container(
+              padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 1),
+              decoration: BoxDecoration(
+                color: scheme.tertiaryContainer.withValues(alpha: 0.6),
+                borderRadius: BorderRadius.circular(4),
+              ),
+              child: Text(
+                '$totalPages页',
+                style: metaStyle?.copyWith(
+                  fontWeight: FontWeight.w500,
+                  color: scheme.onTertiaryContainer,
+                  fontSize: 10,
+                ),
+              ),
+            ),
+          ),
+        ],
+      ],
+    );
+  }
+}
+
+// ═══════════════════════════════════════════════════════════
+//  分类标签
+// ═══════════════════════════════════════════════════════════
+
+class _CategoryTag extends StatelessWidget {
+  const _CategoryTag({
+    required this.label,
+    required this.color,
+    required this.bgColor,
+  });
   final String label;
   final Color color;
   final Color bgColor;
 
   @override
   Widget build(BuildContext context) {
-    final textTheme = Theme.of(context).textTheme;
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 0.5),
+      padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 1.5),
       decoration: BoxDecoration(
         color: bgColor,
         borderRadius: BorderRadius.circular(4),
-        border: Border.all(color: color.withValues(alpha: 0.2), width: 0.5),
       ),
       child: Text(
         label,
-        style: textTheme.labelSmall?.copyWith(
-          fontWeight: FontWeight.bold,
+        style: Theme.of(context).textTheme.labelSmall?.copyWith(
+          fontWeight: FontWeight.w600,
           color: color,
-          letterSpacing: 0.2,
+          fontSize: 10,
         ),
       ),
     );
   }
 }
+
+// ═══════════════════════════════════════════════════════════
+//  页码选择 BottomSheet
+// ═══════════════════════════════════════════════════════════
 
 class _ThreadPageSheet extends StatelessWidget {
   const _ThreadPageSheet({
@@ -239,10 +324,7 @@ class _ThreadPageSheet extends StatelessWidget {
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        Text(
-                          '选择页码',
-                          style: Theme.of(context).textTheme.titleMedium,
-                        ),
+                        Text('选择页码', style: textTheme.titleMedium),
                         const SizedBox(height: 2),
                         Text(
                           subject,

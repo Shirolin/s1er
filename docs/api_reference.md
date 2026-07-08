@@ -6,15 +6,18 @@ S1 论坛使用的 Discuz! Mobile API (version=4)。所有请求走 `ApiConfig.m
 
 ## 接口清单
 
-| Module | 用途 | 代码位置 | 文档状态 |
-|--------|------|----------|----------|
-| `forumindex` | 首页版块分类列表 | `getForumList()` | ✅ 已完成 |
-| `forumdisplay` | 帖子列表 | `getThreadList()` | ✅ 已完成 |
-| `viewthread` | 帖子详情 / 回复列表 | `getThreadDetail()` | ✅ 已完成 |
-| `login` | 登录（GET 取 formhash + POST 提交） | `login()` | ✅ 已完成 |
-| `sendpost` | 发回复 | `sendPost()` | ✅ 已完成 |
-| `sendpm` | 发私信 | 未使用 | ❌ 未实现 |
-| `profile` | 用户资料 | `getUserProfile()` / `getUserProfileByUid()` | ✅ 已完成 |
+| Module / 端点 | 用途 | 代码位置 | 文档状态 | 实测验证 |
+|-------|------|----------|----------|---------|
+| `forumindex` | 首页版块分类列表 | `getForumList()` | ✅ 已完成 | ✅ 已通过 |
+| `forumdisplay` | 帖子列表 | `getThreadList()` | ✅ 已完成 | ✅ 已通过 |
+| `viewthread` | 帖子详情 / 回复列表 | `getThreadDetail()` | ✅ 已完成 | ✅ 已通过 |
+| `login` | 登录（GET 取 formhash + POST 提交） | `login()` | ✅ 已完成 | ⏳ 待测 |
+| `sendpost` (Mobile API) | **发回复（app 使用）** | `sendPost()` | ✅ 已完成 | ⏳ 待测 |
+| `sendpm` | 发私信 | 未使用 | ❌ 未实现 | — |
+| `profile` | 用户资料 | `getUserProfile()` / `getUserProfileByUid()` | ✅ 已完成 | ✅ 已通过 |
+| — | 附件上传（`misc.php?mod=swfupload`） | 未实现 | 📄 仅文档 | — |
+| — | 编辑帖子（`forum.php?mod=post&action=edit`） | 未实现 | 📄 仅文档 | — |
+| — | 浏览器式发回复（`forum.php?mod=post&action=reply`） | 未实现 | 📄 仅文档 | — |
 
 ---
 
@@ -62,19 +65,19 @@ S1 论坛使用的 Discuz! Mobile API (version=4)。所有请求走 `ApiConfig.m
 
 ### `forum` — 版块信息
 
-| 字段 | 类型 | 说明 |
-|------|------|------|
-| `fid` | string | 版块 ID |
-| `name` | string | 版块名称 |
-| `description` | string | 版块描述（纯文本） |
-| `rules` | string? | 版规（含 HTML），**部分版块有** |
-| `threads` | string | 帖子总数 |
-| `posts` | string | 回复总数 |
-| `threadcount` | string | 同 `threads`，兜底字段 |
-| `fup` | string | 父版块 ID |
-| `picstyle` | string | `"0"` = 关闭，`"1"` = 开启图片模式 |
-| `autoclose` | string | 自动关闭天数，`"0"` = 不自动关闭 |
-| `password` | string | `"0"` = 无密码，非零时需密码访问 |
+| 字段 | 类型 | 示例值 | 说明 |
+|------|------|--------|------|
+| `fid` | string | `"4"` | 版块 ID |
+| `name` | string | `"游戏论坛"` | 版块名称 |
+| `description` | string | `"游戏文化，原创，新闻"` | 版块描述（纯文本），**仅部分版块有** |
+| `rules` | string? | `"刀塔的归刀塔<br />\r\n以后本区不讨论刀狗内容，刀塔主题全部回到刀区"` | 版规（含 HTML），**仅部分版块有** |
+| `threads` | string | `"203692"` | 帖子总数 |
+| `posts` | string | `"8789834"` | 回复总数 |
+| `threadcount` | string | `"203692"` | 同 `threads`，兜底字段 |
+| `fup` | string | `"1"` | 父版块 ID |
+| `picstyle` | string | `"0"` | `"0"` = 关闭，`"1"` = 开启图片模式 |
+| `autoclose` | string | `"0"` | 自动关闭天数，`"0"` = 不自动关闭 |
+| `password` | string | `"0"` | `"0"` = 无密码，非零时需密码访问 |
 
 ### `group` — 用户组（摘要版）
 
@@ -290,27 +293,45 @@ S1 论坛使用的 Discuz! Mobile API (version=4)。所有请求走 `ApiConfig.m
 | `recommends` | string | `"0"` | 推荐总数 |
 | `recommend_add` | string | `"0"` | 推荐加分 |
 | `recommend_sub` | string | `"0"` | 推荐减分 |
-| `heats` | string | `"3"` | 热度 |
-| `favtimes` | string | `"0"` | 收藏次数 |
+| `heats` | string | `"468"` | 热度 |
+| `favtimes` | string | `"5"` | 收藏次数 |
 | `sharetimes` | string | `"0"` | 分享次数 |
 | `attachment` | string | `"0"` | 附件标记 |
 | `closed` | string | `"0"` | `"1"` = 帖子已关闭 |
 | `hidden` | string | `"0"` | 隐藏标记 |
 | `status` | string | `"32"` | 帖子状态位 |
 | `highlight` | string | `"0"` | 高亮标记 |
-| `stamp` | string | `"-1"` | 印章 ID |
-| `icon` | string | `"-1"` | 图标 ID |
-| `replycredit` | string | `"0"` | 回复奖励 |
+| `stamp` | string | `"-1"` | 印章 ID，`"-1"` = 无印章 |
+| `icon` | string | `"-1"` | 图标 ID，`"-1"` = 无图标 |
+| `replycredit` | string | `"0"` | 回复奖励金额 |
 | `ordertype` | string | `"0"` | 排序类型 |
 | `relay` | string | `"0"` | 转发数 |
 | `recommend` | string | `"0"` | 推荐标记 |
 | `comments` | string | `"0"` | 评论数 |
 | `moderated` | string | `"0"` | 是否被管理操作 |
 | `isgroup` | string | `"0"` | 是否为群组帖子 |
+| `posttableid` | string | `"0"` | 分表 ID，`"0"` = 主表 |
+| `sortid` | string | `"0"` | 分类信息 ID，`"0"` = 无 |
+| `rate` | string | `"0"` | 评分标记 |
+| `stickreply` | string | `"0"` | 置顶回复标记 |
+| `relatebytag` | string | `"0"` | 关联标签 |
+| `recommendlevel` | string | `"0"` | 推荐等级 |
+| `heatlevel` | string | `"0"` | 热度等级 |
+| `pushedaid` | string | `"0"` | 推送附件 ID |
+| `cover` | string | `"0"` | 封面标记 |
+| `addviews` | string | `"8"` | 本次新增浏览量（用于增量统计） |
+| `short_subject` | string | — | 截断后的短标题 |
+| `subjectenc` | string | — | URL 编码后的标题 |
+| `replycredit_rule` | object? | — | 回复奖励规则，如 `{"extcreditstype":"5"}`（奖励死鱼） |
+| `threadtable` | string | `"forum_thread"` | 帖子所属表名 |
+| `threadtableid` | string | `"0"` | 帖子分表 ID |
+| `posttable` | string | `"forum_post"` | 回复所属表名 |
+| `is_archived` | string | `""` | 归档状态，非空 = 已归档 |
 
 ### `postlist` — 回复列表（核心）
 
 > **坑点**：与 `forumdisplay` 一样，`dateline` 是日期字符串，`dbdateline` 才是 Unix 时间戳。
+> 实测发现 `first: "1"` 的楼主帖也包含在 `postlist` 中，可通过 `first` 字段过滤。
 
 | 字段 | 类型 | 示例值 | 说明 |
 |------|------|--------|------|
@@ -322,15 +343,15 @@ S1 论坛使用的 Discuz! Mobile API (version=4)。所有请求走 `ApiConfig.m
 | `username` | string | — | 用户名（同 `author`） |
 | `dateline` | string | `"2026-7-8 11:37"` | ⚠️ **日期字符串** |
 | `dbdateline` | string | `"1783481855"` | ✅ **Unix 时间戳** |
-| `message` | string | — | 回复内容（**含 HTML 标签**） |
+| `message` | string | — | 回复内容（**含 HTML 标签**，如 `<font>`、`<img>`、`<br>`） |
 | `number` | string | `"1"` | ✅ **楼层号**（`"1"` = 楼主，`"2"`+ = 回复） |
 | `position` | string | `"1"` | 位置号（通常同 `number`） |
-| `groupid` | string | `"30"` | 用户组 ID |
-| `groupiconid` | string | `"6"` | 用户组图标 ID |
-| `adminid` | string | `"0"` | 管理员 ID |
-| `attachment` | string | `"0"` | 附件标记 |
+| `groupid` | string | `"54"` | 用户组 ID |
+| `groupiconid` | string? | `"13"` | 用户组图标 ID，**被禁言用户为 `null`** |
+| `adminid` | string | `"0"` | 管理员 ID（`"-1"` = 被禁言） |
+| `attachment` | string | `"0"` | 附件标记，`">0"` = 有附件 |
 | `anonymous` | string | `"0"` | `"1"` = 匿名回复 |
-| `status` | string | `"0"` | 状态 |
+| `status` | string | `"0"` | 状态位（`"1024"` = 可能含删除标记） |
 | `memberstatus` | string | `"0"` | 成员状态 |
 | `replycredit` | string | `"0"` | 回复奖励 |
 
@@ -372,16 +393,164 @@ POST 字段：
 
 ---
 
-## module=sendpost（发回复）
+## module=sendpost（发回复 / 编辑帖子 / 上传附件）
+
+> Mobile API 方式（`api/mobile/index.php?module=sendpost`）用于**第三方客户端**，返回 JSON。
+> 以下浏览器端点（`forum.php`）仅供参考/调试，理解 Discuz! 内部运行机制。
+> 移动端 web 版仅在 URL 上增加 `&mobile=2` 参数，其他机制相同。
+
+---
+
+### Mobile API 方式（app 实际使用）
+
+URL: `$baseUrl/api/mobile/index.php?module=sendpost&version=4`
 
 请求参数（POST）：
 
+| 字段 | 必填 | 说明 |
+|------|------|------|
+| `fid` | ✅ | 版块 ID |
+| `tid` | ✅ | 帖子 ID |
+| `message` | ✅ | 回复内容 |
+| `posttime` | ✅ | 当前 Unix 时间戳 |
+| `formhash` | ✅ | CSRF token（通用响应中获取） |
+
+返回标准 JSON 响应（见通用响应结构），无需解析 HTML/XML。
+
+---
+
+### 浏览器端点参考（仅供调试）
+
+以下端点来自浏览器真实请求，app 不使用但可用于理解 Discuz! 发帖机制。
+
+#### 1. 上传附件
+
+请求：
+- URL: `$baseUrl/misc.php`
+- Method: POST
+- Content-Type: `multipart/form-data`
+- Query: `mod=swfupload&operation=upload&type=attach&inajax=yes&infloat=yes`
+- Cookie: 需要已登录态
+- Referer: `forum.php?mod=post&action=reply&fid={fid}&tid={tid}&reppost=0&page={page}&mobile=2`
+
+multipart 字段（HTTP body）：
+
 | 字段 | 说明 |
 |------|------|
-| `fid` | 版块 ID |
-| `tid` | 帖子 ID |
-| `message` | 回复内容 |
-| `posttime` | 当前 Unix 时间戳 |
+| `Filedata` | 文件二进制数据 |
+
+具体实现时建议通过 `multipart/form-data` POST 上传文件。
+
+---
+
+### 2. 检查发帖规则（checkpostrule）
+
+请求：
+- URL: `$baseUrl/forum.php`
+- Method: GET
+- Query: `mod=ajax&action=checkpostrule&inajax=yes&ac=reply&infloat=yes&handlekey=reply`
+- Headers: `x-requested-with: XMLHttpRequest`
+- Cookie: 需要已登录态
+
+响应（XML）：
+```xml
+<?xml version="1.0" encoding="utf-8"?>
+<root><![CDATA[]]></root>
+```
+空 CDATA 表示允许发帖。
+
+---
+
+### 3. 提交回复
+
+请求（PC 端）：
+- URL: `$baseUrl/forum.php`
+- Method: POST
+- Content-Type: `application/x-www-form-urlencoded`
+- Query: `mod=post&infloat=yes&action=reply&fid={fid}&extra=&tid={tid}&replysubmit=yes&inajax=1`
+
+请求（移动端）：
+- URL: `$baseUrl/forum.php`
+- Method: POST
+- Content-Type: `multipart/form-data`
+- Query: `mod=post&action=reply&fid={fid}&tid={tid}&extra=&replysubmit=yes&mobile=2&geoloc=&handlekey=postform&inajax=1`
+
+| 字段 | 必填 | 说明 |
+|------|------|------|
+| `formhash` | ✅ | CSRF token，从通用响应中获取 |
+| `message` | ✅ | 回复内容，图片使用 `[attach]N[/attach]` BBCode |
+| `posttime` | ✅ | 当前 Unix 时间戳（移动端必填） |
+| `handlekey` | ❌ | 固定 `"reply"`（PC）或 `"postform"`（移动端） |
+| `usesig` | ❌ | `"1"` = 使用签名 |
+| `noticeauthor` | ❌ | 引用回复时被 @ 的用户名 |
+| `noticetrimstr` | ❌ | 引用回复的 trim 串 |
+| `noticeauthormsg` | ❌ | 引用回复的消息原文 |
+| `subject` | ❌ | 主题（回复时通常为空） |
+| `replysubmit` | ❌ | 固定 `"yes"` |
+| `geoloc` | ❌ | 地理位置（移动端） |
+| `attachnew[N][description]` | ❌ | 附件描述，如 `"由手机上传"`（移动端 multipart） |
+
+响应（XML + JavaScript callback）：
+```xml
+<?xml version="1.0" encoding="utf-8"?>
+<root><![CDATA[<script type="text/javascript" reload="1">
+if(typeof succeedhandle_reply=='function') {
+  succeedhandle_reply(
+    'forum.php?mod=viewthread&tid={tid}&pid={pid}&page={page}&extra=#pid{pid}',
+    '非常感谢，回复发布成功，现在将转入主题页，请稍候……[ 点击这里转入主题列表 ]',
+    {'fid':'{fid}','tid':'{tid}','pid':'{pid}','from':'','sechash':''}
+  );
+}
+</script>]]></root>
+```
+
+成功关键数据：`pid`（回复 ID）、`tid`、`fid`。
+
+---
+
+### 4. 获取新回复 HTML
+
+请求：
+- URL: `$baseUrl/forum.php`
+- Method: GET
+- Query: `mod=viewthread&tid={tid}&viewpid={pid}&inajax=1&ajaxtarget=post_new`
+- Headers: `x-requested-with: XMLHttpRequest`
+- Cookie: 需要已登录态
+
+响应是一个完整的 `<table id="pid{pid}">` HTML 块，包含新回复的：
+- 作者信息（用户名、UID、头像、用户组、积分、战斗力、回帖数）
+- 楼层号（`<em>N</em><sup>#</sup>`）
+- 发布时间
+- 回复正文
+
+注意：此 HTML 是 Discuz! 前端直接渲染用的，**不含 JSON 结构**。
+
+---
+
+### 5. 编辑帖子
+
+请求：
+- URL: `$baseUrl/forum.php`
+- Method: POST
+- Content-Type: `multipart/form-data`
+- Query: `mod=post&action=edit&extra=&editsubmit=yes&mobile=2&geoloc=&handlekey=postform&inajax=1`
+- Headers: `x-requested-with: XMLHttpRequest`
+- Cookie: 需要已登录态
+
+| 字段 | 必填 | 说明 |
+|------|------|------|
+| `formhash` | ✅ | CSRF token |
+| `posttime` | ✅ | 当前 Unix 时间戳 |
+| `fid` | ✅ | 版块 ID |
+| `tid` | ✅ | 帖子 ID |
+| `pid` | ✅ | 要编辑的回复 ID |
+| `message` | ✅ | 编辑后的内容 |
+| `page` | ❌ | 当前页码 |
+| `subject` | ❌ | 主题（回复编辑时通常为空） |
+| `usesig` | ❌ | `"1"` = 使用签名 |
+| `editsubmit` | ❌ | 固定 `"yes"` |
+| `attachnew[N][description]` | ❌ | 附件描述 |
+| `attachnew[N][readperm]` | ❌ | 附件阅读权限 |
 
 ---
 
@@ -400,8 +569,8 @@ POST 字段：
 | `groupid` | string | `"53"` | 用户组 ID |
 | `adminid` | string | `"0"` | 管理员 ID |
 | `regdate` | string | `"2015-5-10 23:33"` | 注册时间（日期字符串） |
-| `credits` | string | `"147030"` | 总积分 |
-| `posts` | string | `"2039"` | 发帖数 |
+| `credits` | string | `"147100"` | 总积分 |
+| `posts` | string | `"2042"` | 发帖数 |
 | `threads` | string | `"4"` | 主题数 |
 | `digestposts` | string | `"0"` | 精华帖数 |
 | `friends` | string | `"0"` | 好友数 |
@@ -409,11 +578,11 @@ POST 字段：
 | `following` | string | `"0"` | 关注数 |
 | `newfollower` | string | `"3"` | 新粉丝数 |
 | `blacklist` | string | `"12"` | 黑名单人数 |
-| `oltime` | string | `"14703"` | 在线时长（小时） |
+| `oltime` | string | `"14710"` | 在线时长（小时） |
 | `views` | string | `"0"` | 空间被访问数 |
-| `lastvisit` | string | `"2026-7-8 13:32"` | 最后访问时间 |
-| `lastactivity` | string | `"2026-7-8 10:54"` | 最后活跃时间 |
-| `lastpost` | string | `"2026-7-1 08:59"` | 最后发帖时间 |
+| `lastvisit` | string | `"2026-7-8 15:36"` | 最后访问时间 |
+| `lastactivity` | string | `"2026-7-8 15:05"` | 最后活跃时间 |
+| `lastpost` | string | `"2026-7-8 15:27"` | 最后发帖时间 |
 | `gender` | string | `"0"` | `"0"` = 保密，`"1"` = 男，`"2"` = 女 |
 | `site` | string | — | 个人网站 |
 | `bio` | string | — | 个人简介 |
@@ -422,9 +591,12 @@ POST 字段：
 | `spacenote` | string | — | 空间公告 |
 | `self` | string | `"1"` | `"1"` = 查看自己的资料 |
 | `attachsize` | string | `"   0 B "` | 附件总大小 |
-| `todayattachs` | string | `"0"` | 今日上传附件数 |
+| `todayattachs` | string | `"4"` | 今日上传附件数 |
 | `extcredits1` | string | `"84"` | 扩展积分1（战斗力/鹅） |
 | `extcredits5` | string | `"3207"` | 扩展积分5（死鱼/条） |
+| `upgradecredit` | string | `"2900"` | 距离下一用户组还需的积分数 |
+| `upgradeprogress` | string | `"94"` | 升级进度百分比（`"0"`–`"100"`） |
+| `secmobile` | string | — | 绑定的手机号，**仅自己可见，他人查不到** |
 
 ### `space.group` — 用户组
 
@@ -439,10 +611,33 @@ POST 字段：
 | `color` | string | — | 用户名颜色 |
 | `icon` | string | — | 组图标 |
 | `allowmediacode` | string | `"1"` | 允许多媒体代码 |
+| `allowgetattach` | string | `"1"` | 允许下载附件 |
+| `allowgetimage` | string | `"1"` | 允许查看图片 |
+| `maxsigsize` | string | `"100"` | 最大签名长度 |
+| `allowbegincode` | string | `"0"` | 允许 [begin] 代码 |
+| `userstatusby` | string | `"1"` | 用户状态依据 |
 
 ### `extcredits` — 扩展积分配置
 
-以 `extcredits` ID 为 key，每项包含 `title`（名称）、`unit`（单位）、`ratio`（兑换比率）。
+以 `extcredits` ID 为 key，每项包含：
+
+| 字段 | 类型 | 说明 |
+|------|------|------|
+| `title` | string | 积分名称 |
+| `unit` | string | 单位 |
+| `ratio` | string | 兑换比率 |
+| `img` | string | 图标（通常为空） |
+
+S1 实际配置：
+
+```json
+{
+  "1":  {"title": "战斗力", "unit": "鹅",  "ratio": "0"},
+  "4":  {"title": "人品",   "unit": "RP",  "ratio": "50"},
+  "5":  {"title": "死鱼",   "unit": "条",  "ratio": "10"},
+  "7":  {"title": "节操",   "unit": "斤",  "ratio": "1"}
+}
+```
 
 ### `space.privacy` — 隐私设置
 

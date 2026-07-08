@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:hive_flutter/hive_flutter.dart';
@@ -9,6 +10,30 @@ import 'services/talker.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
+
+  if (kIsWeb) {
+    final originalOnError = FlutterError.onError;
+    FlutterError.onError = (details) {
+      final exception = details.exception;
+      if (exception is AssertionError &&
+          exception.message.toString().contains('ViewInsets cannot be negative')) {
+        return;
+      }
+      if (originalOnError != null) {
+        originalOnError(details);
+      } else {
+        FlutterError.presentError(details);
+      }
+    };
+
+    PlatformDispatcher.instance.onError = (error, stack) {
+      if (error is AssertionError &&
+          error.message.toString().contains('ViewInsets cannot be negative')) {
+        return true;
+      }
+      return false;
+    };
+  }
 
   await Hive.initFlutter();
   await Hive.openBox('cookies');

@@ -597,7 +597,10 @@ class _ActionTile extends StatelessWidget {
         leading: Icon(icon, color: color),
         title: Text(
           label,
-          style: TextStyle(color: color, fontWeight: FontWeight.w500),
+          style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+            color: color,
+            fontWeight: FontWeight.w500,
+          ),
         ),
         shape: RoundedRectangleBorder(
           borderRadius: BorderRadius.circular(16),

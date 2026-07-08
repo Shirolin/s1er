@@ -113,7 +113,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                       ),
                       child: Text(
                         _errorMessage!,
-                        style: TextStyle(
+                        style: Theme.of(context).textTheme.bodyMedium?.copyWith(
                           color: Theme.of(context).colorScheme.onErrorContainer,
                         ),
                       ),

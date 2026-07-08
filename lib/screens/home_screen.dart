@@ -378,7 +378,9 @@ class _LoginPrompt extends StatelessWidget {
             const SizedBox(height: 8),
             Text(
               'S1 论坛需要登录才能查看内容',
-              style: TextStyle(color: Theme.of(context).colorScheme.onSurfaceVariant),
+              style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                  color: Theme.of(context).colorScheme.onSurfaceVariant,
+                ),
             ),
             const SizedBox(height: 24),
             FilledButton.icon(

@@ -203,15 +203,16 @@ class _ImageViewerState extends ConsumerState<ImageViewer> {
     final provider = _bytes != null
         ? MemoryImage(_bytes!) as ImageProvider
         : NetworkImage(widget.imageUrl);
+    final colorScheme = Theme.of(context).colorScheme;
 
     Navigator.of(context).push(
       MaterialPageRoute(
         builder: (_) => Scaffold(
-          backgroundColor: Colors.black,
+          backgroundColor: colorScheme.inverseSurface,
           appBar: AppBar(
             backgroundColor: Colors.transparent,
             elevation: 0,
-            iconTheme: const IconThemeData(color: Colors.white),
+            iconTheme: IconThemeData(color: colorScheme.onInverseSurface),
           ),
           extendBodyBehindAppBar: true,
           body: Center(

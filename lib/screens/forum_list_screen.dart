@@ -106,7 +106,7 @@ class _ForumListScreenState extends ConsumerState<ForumListScreen> {
                     const SizedBox(height: 16),
                     Text(e.toString(),
                       textAlign: TextAlign.center,
-                      style: TextStyle(color: scheme.error),
+                      style: Theme.of(context).textTheme.bodyMedium?.copyWith(color: scheme.error),
                     ),
                     const SizedBox(height: 16),
                     OutlinedButton(

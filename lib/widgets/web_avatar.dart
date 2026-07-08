@@ -43,7 +43,7 @@ class WebAvatar extends StatelessWidget {
   Widget _fallback() {
     return CircleAvatar(
       radius: radius,
-      child: Text(fallbackLetter, style: TextStyle(fontSize: radius * 0.8)),
+      child: Text(fallbackLetter, style: TextStyle(fontSize: radius * 0.8)), // 动态计算：字体大小跟随头像半径缩放，无法使用 textTheme 固定层级
     );
   }
 }

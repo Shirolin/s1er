@@ -141,6 +141,7 @@ class PostItem extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final scheme = Theme.of(context).colorScheme;
+    final textTheme = Theme.of(context).textTheme;
     final timeStr = _formatTime(post.dateline);
     final floor = displayFloor ?? post.floor;
 
@@ -175,7 +176,7 @@ class PostItem extends ConsumerWidget {
                           style: Theme.of(context).textTheme.bodyMedium?.copyWith(fontWeight: FontWeight.bold),),
                       if (timeStr.isNotEmpty)
                         Text(timeStr,
-                            style: TextStyle(fontSize: 11, color: scheme.onSurfaceVariant),),
+                            style: textTheme.labelSmall?.copyWith(color: scheme.onSurfaceVariant),),
                     ],
                   ),
                 ),
@@ -197,9 +198,8 @@ class PostItem extends ConsumerWidget {
                     ),
                     child: Text(
                       '#$floor',
-                      style: TextStyle(
+                      style: textTheme.labelSmall?.copyWith(
                         color: scheme.onSurfaceVariant,
-                        fontSize: 11,
                         fontWeight: FontWeight.w500,
                       ),
                     ),

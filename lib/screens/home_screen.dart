@@ -7,6 +7,7 @@ import '../providers/forum_list_provider.dart';
 import '../providers/settings_provider.dart';
 import '../models/forum_category.dart';
 import '../services/api_service.dart';
+import '../theme/app_theme.dart';
 import '../widgets/app_bar_more_menu.dart';
 import '../utils/format_utils.dart';
 import 'profile_screen.dart';
@@ -45,7 +46,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                     browserUrl: ApiConfig.baseUrl,
                   )
                 else
-                  TextButton(
+                  FilledButton.tonal(
                     onPressed: () => context.push('/login'),
                     child: const Text('Login'),
                   ),
@@ -189,7 +190,7 @@ class _ForumCategoryTile extends ConsumerWidget {
             child: Container(
               width: double.infinity,
               padding: const EdgeInsets.fromLTRB(16, 12, 16, 10),
-              color: scheme.primaryContainer.withValues(alpha: 0.3),
+              color: scheme.primaryContainer.withValues(alpha: S1Alpha.medium),
               child: Row(
                 children: [
                   Icon(Icons.folder_outlined, size: 18, color: scheme.primary),
@@ -291,8 +292,8 @@ class _ForumTile extends StatelessWidget {
               width: 36,
               height: 36,
               decoration: BoxDecoration(
-                color: scheme.secondaryContainer.withValues(alpha: 0.5),
-                borderRadius: BorderRadius.circular(8),
+                color: scheme.secondaryContainer.withValues(alpha: S1Alpha.half),
+                borderRadius: S1Shape.small,
               ),
               child: Icon(
                 Icons.forum_outlined,
@@ -330,7 +331,7 @@ class _ForumTile extends StatelessWidget {
                 padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
                 decoration: BoxDecoration(
                   color: scheme.primaryContainer,
-                  borderRadius: BorderRadius.circular(10),
+                  borderRadius: S1Shape.medium,
                 ),
                 child: Text(
                   '${forum.todayPosts}',

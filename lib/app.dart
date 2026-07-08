@@ -9,6 +9,7 @@ import 'screens/forum_list_screen.dart';
 import 'screens/thread_detail_screen.dart';
 import 'screens/compose_screen.dart';
 import 'screens/profile_screen.dart';
+import 'screens/image_viewer_screen.dart';
 import 'services/talker.dart';
 import 'theme/app_theme.dart';
 
@@ -51,6 +52,17 @@ final _router = GoRouter(
     GoRoute(
       path: '/profile',
       builder: (context, state) => const ProfileScreen(),
+    ),
+    GoRoute(
+      path: '/image-viewer',
+      builder: (context, state) {
+        final args = state.extra as Map<String, dynamic>;
+        return ImageViewerScreen(
+          imageUrl: args['imageUrl'] as String,
+          imageBytes: args['imageBytes'],
+          resourceType: args['resourceType'],
+        );
+      },
     ),
   ],
 );

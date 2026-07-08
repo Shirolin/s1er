@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../models/post.dart';
 import '../models/user.dart';
 import '../providers/post_provider.dart';
+import '../theme/app_theme.dart';
 import '../utils/format_utils.dart';
 import 'bbcode_renderer.dart';
 import 'web_avatar.dart';
@@ -25,9 +26,9 @@ class PostItem extends ConsumerWidget {
           future: future,
           builder: (context, snapshot) {
             if (snapshot.connectionState == ConnectionState.waiting) {
-              return Dialog(
-                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-                child: const SizedBox(
+              return const Dialog(
+                shape: S1Shape.dialogShape,
+                child: SizedBox(
                   height: 200,
                   child: Center(child: CircularProgressIndicator()),
                 ),
@@ -37,7 +38,7 @@ class PostItem extends ConsumerWidget {
             final user = snapshot.data;
             if (user == null) {
               return Dialog(
-                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+                shape: S1Shape.dialogShape,
                 child: Padding(
                   padding: const EdgeInsets.all(24),
                   child: Column(
@@ -55,63 +56,73 @@ class PostItem extends ConsumerWidget {
               );
             }
 
+            final avatarUrl = User.resolveAvatarUrl(
+              user.avatar ?? 'https://avatar.stage1st.com/avatar.php?uid=${user.uid}&size=small',
+            );
             return Dialog(
-              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+              shape: S1Shape.dialogShape,
               insetPadding: const EdgeInsets.symmetric(horizontal: 24, vertical: 40),
               clipBehavior: Clip.antiAlias,
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  // 头部：头像 + 用户名 + 关闭按钮
-                  Container(
-                    padding: const EdgeInsets.fromLTRB(24, 20, 8, 20),
-                    color: scheme.surfaceContainerLow,
-                    child: Row(
-                      children: [
-                        WebAvatar(
-                          url: user.avatar,
-                          radius: 36,
-                          fallbackLetter: user.username.isNotEmpty ? user.username[0] : '?',
-                        ),
-                        const SizedBox(width: 16),
-                        Expanded(
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Text(user.username, style: textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w600)),
-                              const SizedBox(height: 2),
-                              Text(user.groupTitle ?? '用户', style: textTheme.bodySmall?.copyWith(color: scheme.onSurfaceVariant)),
-                            ],
+              child: SingleChildScrollView(
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Padding(
+                      padding: const EdgeInsets.fromLTRB(24, 20, 8, 20),
+                      child: Row(
+                        children: [
+                          WebAvatar(
+                            url: avatarUrl,
+                            radius: 36,
+                            fallbackLetter: user.username.isNotEmpty ? user.username[0] : '?',
                           ),
-                        ),
-                        IconButton(
-                          icon: const Icon(Icons.close, size: 20),
-                          onPressed: () => Navigator.pop(context),
-                        ),
-                      ],
+                          const SizedBox(width: 16),
+                          Expanded(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text(user.username, style: textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w600)),
+                                const SizedBox(height: 2),
+                                Text(user.groupTitle ?? '用户', style: textTheme.bodySmall?.copyWith(color: scheme.onSurfaceVariant)),
+                              ],
+                            ),
+                          ),
+                          IconButton(
+                            icon: const Icon(Icons.close, size: 20),
+                            tooltip: '关闭',
+                            onPressed: () => Navigator.pop(context),
+                          ),
+                        ],
+                      ),
                     ),
-                  ),
-                  // 数据区
-                  Padding(
-                    padding: const EdgeInsets.all(16),
-                    child: GridView.count(
-                      crossAxisCount: 3,
-                      shrinkWrap: true,
-                      physics: const NeverScrollableScrollPhysics(),
-                      mainAxisSpacing: 8,
-                      crossAxisSpacing: 8,
-                      childAspectRatio: 1.6,
-                      children: [
-                        _InfoItem(label: '积分', value: user.credits.toString()),
-                        _InfoItem(label: '战斗力', value: user.combat.toString()),
-                        _InfoItem(label: '鹅球', value: user.deadfish.toString()),
-                        _InfoItem(label: '帖子', value: user.posts.toString()),
-                        _InfoItem(label: '注册时间', value: user.regdate),
-                      ],
+                    Padding(
+                      padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
+                      child: LayoutBuilder(
+                        builder: (context, constraints) {
+                          const columns = 3;
+                          const spacing = 8.0;
+                          final itemWidth =
+                              (constraints.maxWidth - spacing * (columns - 1)) / columns;
+                          final items = [
+                            _InfoItem(label: '积分', value: user.credits.toString()),
+                            _InfoItem(label: '战斗力', value: user.combat.toString()),
+                            _InfoItem(label: '鹅球', value: user.deadfish.toString()),
+                            _InfoItem(label: '帖子', value: user.posts.toString()),
+                            _InfoItem(label: '注册时间', value: user.regdate),
+                          ];
+                          return Wrap(
+                            spacing: spacing,
+                            runSpacing: spacing,
+                            children: [
+                              for (final item in items)
+                                SizedBox(width: itemWidth, child: item),
+                            ],
+                          );
+                        },
+                      ),
                     ),
-                  ),
-                  const SizedBox(height: 8),
-                ],
+                  ],
+                ),
               ),
             );
           },
@@ -131,9 +142,7 @@ class PostItem extends ConsumerWidget {
       margin: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
       elevation: 0,
       color: scheme.surfaceContainerLow,
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(10),
-      ),
+      shape: S1Shape.cardShape,
       child: Padding(
         padding: const EdgeInsets.all(12),
         child: Column(
@@ -175,8 +184,8 @@ class PostItem extends ConsumerWidget {
                   child: Container(
                     padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
                     decoration: BoxDecoration(
-                      color: scheme.secondaryContainer.withValues(alpha: 0.5),
-                      borderRadius: BorderRadius.circular(10),
+                      color: scheme.secondaryContainer.withValues(alpha: S1Alpha.half),
+                      borderRadius: S1Shape.medium,
                     ),
                     child: Text(
                       '#$floor',
@@ -207,20 +216,26 @@ class _InfoItem extends StatelessWidget {
   Widget build(BuildContext context) {
     final scheme = Theme.of(context).colorScheme;
     final textTheme = Theme.of(context).textTheme;
-    return Container(
-      padding: const EdgeInsets.all(12),
-      decoration: BoxDecoration(
-        color: scheme.surfaceContainerHighest,
-        borderRadius: BorderRadius.circular(8),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          Text(label, style: textTheme.labelSmall?.copyWith(color: scheme.onSurfaceVariant)),
-          const SizedBox(height: 4),
-          Text(value, style: textTheme.bodyLarge?.copyWith(fontWeight: FontWeight.bold)),
-        ],
+    return Card(
+      elevation: 0,
+      color: scheme.surfaceContainerHighest,
+      margin: EdgeInsets.zero,
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(label, style: textTheme.labelSmall?.copyWith(color: scheme.onSurfaceVariant)),
+            const SizedBox(height: 2),
+            Text(
+              value,
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              style: textTheme.bodyMedium?.copyWith(fontWeight: FontWeight.bold),
+            ),
+          ],
+        ),
       ),
     );
   }

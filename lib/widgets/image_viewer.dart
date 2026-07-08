@@ -4,8 +4,10 @@ import 'package:dio/dio.dart';
 import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
 import '../config/resource_domains.dart';
 import '../services/http_client.dart';
+import '../theme/app_theme.dart';
 import 'web_image_stub.dart'
     if (dart.library.html) 'web_image_html.dart';
 
@@ -185,8 +187,8 @@ class _ImageViewerState extends ConsumerState<ImageViewer> {
       child: Container(
         height: 80,
         decoration: BoxDecoration(
-          color: Theme.of(context).colorScheme.surfaceContainerHighest.withValues(alpha: 0.3),
-          borderRadius: BorderRadius.circular(8),
+          color: Theme.of(context).colorScheme.surfaceContainerHighest.withValues(alpha: S1Alpha.medium),
+          borderRadius: S1Shape.small,
         ),
         child: Center(child: Icon(Icons.broken_image_outlined, size: 24, color: Theme.of(context).colorScheme.outline)),
       ),
@@ -210,32 +212,10 @@ class _ImageViewerState extends ConsumerState<ImageViewer> {
   }
 
   void _showFullScreen(BuildContext context) {
-    final provider = _bytes != null
-        ? MemoryImage(_bytes!) as ImageProvider
-        : NetworkImage(widget.imageUrl);
-    final colorScheme = Theme.of(context).colorScheme;
-
-    Navigator.of(context).push(
-      MaterialPageRoute(
-        builder: (_) => Scaffold(
-          backgroundColor: colorScheme.inverseSurface,
-          appBar: AppBar(
-            backgroundColor: Colors.transparent,
-            elevation: 0,
-            iconTheme: IconThemeData(color: colorScheme.onInverseSurface),
-          ),
-          extendBodyBehindAppBar: true,
-          body: Center(
-            child: InteractiveViewer(
-              minScale: 0.5,
-              maxScale: 4.0,
-              child: _resourceType == ResourceType.publicAsset && kIsWeb
-                  ? buildWebImage(widget.imageUrl, width: 800, height: 800)
-                  : Image(image: provider),
-            ),
-          ),
-        ),
-      ),
-    );
+    context.push('/image-viewer', extra: {
+      'imageUrl': widget.imageUrl,
+      'imageBytes': _bytes,
+      'resourceType': _resourceType,
+    },);
   }
 }

@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
+import '../theme/app_theme.dart';
 import 'bbcode_renderer.dart';
 
 class QuoteBlock extends StatelessWidget {
@@ -23,14 +24,14 @@ class QuoteBlock extends StatelessWidget {
     final effectiveDepth = depth.clamp(0, _maxDepth);
 
     final bgColor = Color.lerp(
-      scheme.surfaceContainerHigh.withValues(alpha: 0.5),
-      scheme.surfaceContainerHigh.withValues(alpha: 0.9),
+      scheme.surfaceContainerHigh.withValues(alpha: S1Alpha.half),
+      scheme.surfaceContainerHigh.withValues(alpha: S1Alpha.prominent),
       effectiveDepth / _maxDepth,
     )!;
 
     final borderColor = Color.lerp(
-      scheme.primary.withValues(alpha: 0.5),
-      scheme.tertiary.withValues(alpha: 0.8),
+      scheme.primary.withValues(alpha: S1Alpha.half),
+      scheme.tertiary.withValues(alpha: S1Alpha.strong),
       effectiveDepth / _maxDepth,
     )!;
 
@@ -44,7 +45,7 @@ class QuoteBlock extends StatelessWidget {
       margin: const EdgeInsets.symmetric(vertical: 6),
       decoration: BoxDecoration(
         color: bgColor,
-        borderRadius: BorderRadius.circular(8),
+        borderRadius: S1Shape.small,
         border: Border(left: BorderSide(color: borderColor, width: 3)),
       ),
       child: Column(

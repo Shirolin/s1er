@@ -14,6 +14,7 @@ class AppBarMoreMenu extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return PopupMenuButton<String>(
+      tooltip: '更多操作',
       icon: const Icon(Icons.more_vert),
       onSelected: (value) {
         switch (value) {

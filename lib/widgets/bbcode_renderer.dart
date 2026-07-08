@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_html/flutter_html.dart';
 import 'package:url_launcher/url_launcher.dart';
 import '../config/constants.dart';
+import '../theme/app_theme.dart';
 import '../utils/bbcode_parser.dart';
 import 'emoticon_widget.dart';
 import 'quote_block.dart';
@@ -104,7 +105,7 @@ class BbcodeRenderer extends StatelessWidget {
         'u': Style(textDecoration: TextDecoration.underline),
         's': Style(textDecoration: TextDecoration.lineThrough),
         'pre': Style(
-          backgroundColor: scheme.surfaceContainerHighest.withValues(alpha: 0.5),
+          backgroundColor: scheme.surfaceContainerHighest.withValues(alpha: S1Alpha.half),
           padding: HtmlPaddings.all(12),
           margin: Margins.symmetric(vertical: 8),
           fontFamily: 'monospace',
@@ -113,7 +114,7 @@ class BbcodeRenderer extends StatelessWidget {
         ),
         '.hide-content': Style(
           color: Colors.transparent,
-          backgroundColor: scheme.outlineVariant.withValues(alpha: 0.5),
+          backgroundColor: scheme.outlineVariant.withValues(alpha: S1Alpha.half),
         ),
         'blockquote': Style(display: Display.none),
         'hr': Style(
@@ -168,11 +169,11 @@ class BbcodeRenderer extends StatelessWidget {
             return Padding(
               padding: const EdgeInsets.symmetric(vertical: 8),
               child: ClipRRect(
-                borderRadius: BorderRadius.circular(8),
+                borderRadius: S1Shape.small,
                 child: Container(
                   decoration: BoxDecoration(
-                    border: Border.all(color: scheme.outlineVariant.withValues(alpha: 0.3)),
-                    borderRadius: BorderRadius.circular(8),
+                    border: Border.all(color: scheme.outlineVariant.withValues(alpha: S1Alpha.medium)),
+                    borderRadius: S1Shape.small,
                   ),
                   child: ImageViewer(imageUrl: src),
                 ),

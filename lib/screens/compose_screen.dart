@@ -75,7 +75,7 @@ class _ComposeScreenState extends ConsumerState<ComposeScreen> {
       appBar: AppBar(
         title: Text(widget.tid != null ? 'Reply' : 'New Post'),
         actions: [
-          TextButton(
+          FilledButton(
             onPressed: _isSubmitting ? null : _submit,
             child: _isSubmitting
                 ? const SizedBox(

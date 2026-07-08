@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import '../providers/auth_provider.dart';
+import '../theme/app_theme.dart';
 
 class LoginScreen extends ConsumerStatefulWidget {
   const LoginScreen({super.key});
@@ -67,24 +68,15 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
       body: Center(
         child: SingleChildScrollView(
           padding: const EdgeInsets.all(24.0),
-          child: Container(
+          child: ConstrainedBox(
             constraints: const BoxConstraints(maxWidth: 400),
-            decoration: BoxDecoration(
+            child: Card(
               color: Theme.of(context).colorScheme.surfaceContainerHighest,
-              borderRadius: BorderRadius.circular(16.0),
-              boxShadow: [
-                BoxShadow(
-                  color: Theme.of(context).colorScheme.shadow.withValues(alpha: 0.05),
-                  blurRadius: 10,
-                  offset: const Offset(0, 4),
-                ),
-              ],
-            ),
-            child: Padding(
-              padding: const EdgeInsets.all(32.0),
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                crossAxisAlignment: CrossAxisAlignment.stretch,
+              child: Padding(
+                padding: const EdgeInsets.all(32.0),
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
                   Text(
                     '欢迎回来',
@@ -109,7 +101,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                         ),
                       decoration: BoxDecoration(
                         color: Theme.of(context).colorScheme.errorContainer,
-                        borderRadius: BorderRadius.circular(8),
+                        borderRadius: S1Shape.small,
                       ),
                       child: Text(
                         _errorMessage!,
@@ -140,6 +132,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                       prefixIcon: const Icon(Icons.lock),
                       suffixIcon: IconButton(
                         icon: Icon(_obscurePassword ? Icons.visibility_off : Icons.visibility),
+                        tooltip: _obscurePassword ? '显示密码' : '隐藏密码',
                         onPressed: () => setState(() => _obscurePassword = !_obscurePassword),
                       ),
                     ),
@@ -151,8 +144,8 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                     onPressed: _isLoading ? null : _handleLogin,
                     style: FilledButton.styleFrom(
                       padding: const EdgeInsets.symmetric(vertical: 16),
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(8),
+                      shape: const RoundedRectangleBorder(
+                        borderRadius: S1Shape.small,
                       ),
                     ),
                     child: _isLoading
@@ -166,6 +159,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                         : const Text('登录'),
                   ),
                 ],
+                ),
               ),
             ),
           ),

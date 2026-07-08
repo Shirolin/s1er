@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:talker_flutter/talker_flutter.dart';
 import '../config/api_config.dart';
+import '../theme/app_theme.dart';
 import '../utils/format_utils.dart';
 import '../providers/auth_provider.dart';
 import '../providers/settings_provider.dart';
@@ -122,8 +123,8 @@ class _HeaderCard extends StatelessWidget {
 
     return Card(
       elevation: 0,
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-      color: colorScheme.surfaceContainerHighest.withValues(alpha: 0.4),
+      shape: S1Shape.cardShape,
+      color: colorScheme.surfaceContainerHighest.withValues(alpha: S1Alpha.cardOverlay),
       child: Padding(
         padding: const EdgeInsets.symmetric(vertical: 24, horizontal: 16),
         child: Column(
@@ -146,7 +147,7 @@ class _HeaderCard extends StatelessWidget {
                   ),
                   decoration: BoxDecoration(
                     color: colorScheme.primaryContainer,
-                    borderRadius: BorderRadius.circular(20),
+                    borderRadius: S1Shape.large,
                   ),
                   child: Text(
                     groupTitle!,
@@ -195,8 +196,8 @@ class _StatsCard extends StatelessWidget {
 
     return Card(
       elevation: 0,
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-      color: colorScheme.surfaceContainerHighest.withValues(alpha: 0.4),
+      shape: S1Shape.cardShape,
+      color: colorScheme.surfaceContainerHighest.withValues(alpha: S1Alpha.cardOverlay),
       child: Padding(
         padding: const EdgeInsets.symmetric(vertical: 16),
         child: Row(
@@ -228,8 +229,8 @@ class _S1StatsCard extends StatelessWidget {
 
     return Card(
       elevation: 0,
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-      color: colorScheme.surfaceContainerHighest.withValues(alpha: 0.4),
+      shape: S1Shape.cardShape,
+      color: colorScheme.surfaceContainerHighest.withValues(alpha: S1Alpha.cardOverlay),
       child: Padding(
         padding: const EdgeInsets.symmetric(vertical: 20, horizontal: 16),
         child: Row(
@@ -343,8 +344,8 @@ class _InfoCard extends StatelessWidget {
 
     return Card(
       elevation: 0,
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-      color: colorScheme.surfaceContainerHighest.withValues(alpha: 0.4),
+      shape: S1Shape.cardShape,
+      color: colorScheme.surfaceContainerHighest.withValues(alpha: S1Alpha.cardOverlay),
       child: Column(
         children: [
           _InfoTile(label: 'UID', value: user.uid),
@@ -418,8 +419,8 @@ class _SettingsCard extends StatelessWidget {
 
     return Card(
       elevation: 0,
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-      color: colorScheme.surfaceContainerHighest.withValues(alpha: 0.4),
+      shape: S1Shape.cardShape,
+      color: colorScheme.surfaceContainerHighest.withValues(alpha: S1Alpha.cardOverlay),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
@@ -490,8 +491,8 @@ class _SettingsCard extends StatelessWidget {
                       return colorScheme.onSurfaceVariant;
                     }),
                     shape: WidgetStateProperty.all(
-                      RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(10),
+                      const RoundedRectangleBorder(
+                        borderRadius: S1Shape.medium,
                       ),
                     ),
                     padding: WidgetStateProperty.all(
@@ -507,8 +508,8 @@ class _SettingsCard extends StatelessWidget {
             secondary: const Icon(Icons.image_outlined),
             value: showImages,
             onChanged: onShowImagesChanged,
-            shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(12),
+            shape: const RoundedRectangleBorder(
+              borderRadius: S1Shape.medium,
             ),
           ),
           const Divider(height: 1, indent: 16, endIndent: 16),
@@ -559,8 +560,8 @@ class _VersionTileState extends ConsumerState<_VersionTile> {
         ),
         subtitle: Text('${info.version}+${info.buildNumber}'),
         onTap: _onTap,
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(12),
+        shape: const RoundedRectangleBorder(
+          borderRadius: S1Shape.medium,
         ),
       ),
       loading: () => const SizedBox.shrink(),
@@ -586,8 +587,8 @@ class _ActionTile extends StatelessWidget {
   Widget build(BuildContext context) {
     return Card(
       elevation: 0,
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-      color: color.withValues(alpha: 0.08),
+      shape: S1Shape.cardShape,
+      color: color.withValues(alpha: S1Alpha.subtle),
       child: ListTile(
         leading: Icon(icon, color: color),
         title: Text(
@@ -597,8 +598,8 @@ class _ActionTile extends StatelessWidget {
             fontWeight: FontWeight.w500,
           ),
         ),
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(16),
+        shape: const RoundedRectangleBorder(
+          borderRadius: S1Shape.large,
         ),
         onTap: onTap,
       ),

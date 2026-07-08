@@ -5,6 +5,7 @@ import '../config/api_config.dart';
 import '../providers/post_provider.dart';
 import '../providers/auth_provider.dart';
 import '../services/api_service.dart';
+import '../theme/app_theme.dart';
 import '../widgets/app_bar_more_menu.dart';
 import '../widgets/post_item.dart';
 
@@ -139,10 +140,11 @@ class _ThreadDetailScreenState extends ConsumerState<ThreadDetailScreen> {
                   ] else ...[
                     Text('Error: $e'),
                     const SizedBox(height: 16),
-                    OutlinedButton(
+                    FilledButton.icon(
                       onPressed: () =>
                           ref.read(postProvider(widget.tid).notifier).refresh(),
-                      child: const Text('Retry'),
+                      icon: const Icon(Icons.refresh),
+                      label: const Text('重试'),
                     ),
                   ],
                 ],
@@ -269,7 +271,7 @@ class _PostPaginationBar extends ConsumerWidget {
                 padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 6),
                 decoration: BoxDecoration(
                   color: scheme.primaryContainer,
-                  borderRadius: BorderRadius.circular(20),
+                  borderRadius: S1Shape.large,
                 ),
                 child: Row(
                   mainAxisSize: MainAxisSize.min,
@@ -355,13 +357,13 @@ class _NavButton extends StatelessWidget {
       message: tooltip ?? '',
       child: InkWell(
         onTap: onTap,
-        borderRadius: BorderRadius.circular(8),
+        borderRadius: S1Shape.small,
         child: Padding(
           padding: const EdgeInsets.all(8),
           child: Icon(
             icon,
             size: 22,
-            color: onTap != null ? scheme.onSurface : scheme.onSurface.withValues(alpha: 0.3),
+            color: onTap != null ? scheme.onSurface : scheme.onSurface.withValues(alpha: S1Alpha.medium),
           ),
         ),
       ),

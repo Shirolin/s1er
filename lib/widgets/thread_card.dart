@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import '../models/thread.dart';
+import '../theme/app_theme.dart';
 import '../utils/format_utils.dart';
 
 class ThreadCard extends StatelessWidget {
@@ -49,14 +50,12 @@ class ThreadCard extends StatelessWidget {
       margin: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
       elevation: 0,
       color: isSticky
-          ? scheme.primaryContainer.withValues(alpha: 0.1)
+          ? scheme.primaryContainer.withValues(alpha: S1Alpha.light)
           : scheme.surfaceContainerLow,
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(10),
-      ),
+      shape: S1Shape.cardShape,
       child: InkWell(
         onTap: () => context.push('/thread/${thread.tid}'),
-        borderRadius: BorderRadius.circular(10),
+        borderRadius: const BorderRadius.all(Radius.circular(12)),
         child: Padding(
           padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
           child: Column(
@@ -194,7 +193,7 @@ class _MetaLine extends StatelessWidget {
                   text: author,
                   style: metaStyle?.copyWith(
                     fontWeight: FontWeight.w500,
-                    color: scheme.onSurface.withValues(alpha: 0.9),
+                    color: scheme.onSurface.withValues(alpha: S1Alpha.prominent),
                   ),
                 ),
                 if (time.isNotEmpty) ...[
@@ -202,7 +201,7 @@ class _MetaLine extends StatelessWidget {
                   TextSpan(
                     text: time,
                     style: metaStyle?.copyWith(
-                      color: scheme.onSurfaceVariant.withValues(alpha: 0.6),
+                      color: scheme.onSurfaceVariant.withValues(alpha: S1Alpha.strong),
                     ),
                   ),
                 ],
@@ -220,19 +219,19 @@ class _MetaLine extends StatelessWidget {
             Text.rich(
               TextSpan(
                 style: metaStyle?.copyWith(
-                  color: scheme.onSurfaceVariant.withValues(alpha: 0.8),
+                  color: scheme.onSurfaceVariant.withValues(alpha: S1Alpha.strong),
                 ),
                 children: [
                   WidgetSpan(
                     alignment: PlaceholderAlignment.middle,
-                    child: Icon(Icons.visibility_outlined, size: 12, color: scheme.onSurfaceVariant.withValues(alpha: 0.7)),
+                    child: Icon(Icons.visibility_outlined, size: 12, color: scheme.onSurfaceVariant.withValues(alpha: S1Alpha.strong)),
                   ),
                   const TextSpan(text: ' '),
                   TextSpan(text: views),
                   const TextSpan(text: '  '),
                   WidgetSpan(
                     alignment: PlaceholderAlignment.middle,
-                    child: Icon(Icons.chat_bubble_outline, size: 11, color: scheme.onSurfaceVariant.withValues(alpha: 0.7)),
+                    child: Icon(Icons.chat_bubble_outline, size: 11, color: scheme.onSurfaceVariant.withValues(alpha: S1Alpha.strong)),
                   ),
                   const TextSpan(text: ' '),
                   TextSpan(text: replies),
@@ -246,15 +245,14 @@ class _MetaLine extends StatelessWidget {
                 child: Container(
                   padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 1.5),
                   decoration: BoxDecoration(
-                    color: scheme.secondaryContainer.withValues(alpha: 0.5),
-                    borderRadius: BorderRadius.circular(4),
+                    color: scheme.secondaryContainer.withValues(alpha: S1Alpha.half),
+                    borderRadius: S1Shape.extraSmall,
                   ),
                   child: Text(
                     '$totalPages页',
                     style: metaStyle?.copyWith(
                       fontWeight: FontWeight.w500,
                       color: scheme.onSecondaryContainer,
-                      fontSize: 10,
                     ),
                   ),
                 ),
@@ -287,14 +285,13 @@ class _CategoryTag extends StatelessWidget {
       padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 1.5),
       decoration: BoxDecoration(
         color: bgColor,
-        borderRadius: BorderRadius.circular(4),
+        borderRadius: S1Shape.extraSmall,
       ),
       child: Text(
         label,
         style: Theme.of(context).textTheme.labelSmall?.copyWith(
           fontWeight: FontWeight.w600,
           color: color,
-          fontSize: 10,
         ),
       ),
     );
@@ -382,7 +379,7 @@ class _ThreadPageSheet extends StatelessWidget {
                             : '/thread/$tid?page=$page',
                       );
                     },
-                    borderRadius: BorderRadius.circular(8),
+                    borderRadius: S1Shape.small,
                     child: Padding(
                       padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
                       child: Row(
@@ -392,8 +389,8 @@ class _ThreadPageSheet extends StatelessWidget {
                             height: 32,
                             alignment: Alignment.center,
                             decoration: BoxDecoration(
-                              color: scheme.primaryContainer.withValues(alpha: 0.5),
-                              borderRadius: BorderRadius.circular(6),
+                              color: scheme.primaryContainer.withValues(alpha: S1Alpha.half),
+                              borderRadius: S1Shape.small,
                             ),
                             child: Text(
                               '$page',
@@ -414,7 +411,7 @@ class _ThreadPageSheet extends StatelessWidget {
                           Icon(
                             Icons.chevron_right,
                             size: 18,
-                            color: scheme.onSurfaceVariant.withValues(alpha: 0.5),
+                            color: scheme.onSurfaceVariant.withValues(alpha: S1Alpha.half),
                           ),
                         ],
                       ),

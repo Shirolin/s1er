@@ -5,6 +5,7 @@ import '../config/api_config.dart';
 import '../providers/forum_list_provider.dart';
 import '../providers/thread_list_provider.dart';
 import '../services/api_service.dart';
+import '../theme/app_theme.dart';
 import '../widgets/app_bar_more_menu.dart';
 import '../widgets/thread_card.dart';
 
@@ -109,10 +110,11 @@ class _ForumListScreenState extends ConsumerState<ForumListScreen> {
                       style: Theme.of(context).textTheme.bodyMedium?.copyWith(color: scheme.error),
                     ),
                     const SizedBox(height: 16),
-                    OutlinedButton(
+                    FilledButton.icon(
                       onPressed: () =>
                           ref.read(threadListProvider(widget.fid).notifier).refresh(),
-                      child: const Text('重试'),
+                      icon: const Icon(Icons.refresh),
+                      label: const Text('重试'),
                     ),
                   ],
                 ],
@@ -208,7 +210,7 @@ class _PaginationBar extends ConsumerWidget {
                 padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 6),
                 decoration: BoxDecoration(
                   color: scheme.primaryContainer,
-                  borderRadius: BorderRadius.circular(20),
+                  borderRadius: S1Shape.large,
                 ),
                 child: Row(
                   mainAxisSize: MainAxisSize.min,
@@ -296,13 +298,13 @@ class _NavButton extends StatelessWidget {
       message: tooltip ?? '',
       child: InkWell(
         onTap: onTap,
-        borderRadius: BorderRadius.circular(8),
+        borderRadius: S1Shape.small,
         child: Padding(
           padding: const EdgeInsets.all(8),
           child: Icon(
             icon,
             size: 22,
-            color: onTap != null ? scheme.onSurface : scheme.onSurface.withValues(alpha: 0.3),
+            color: onTap != null ? scheme.onSurface : scheme.onSurface.withValues(alpha: S1Alpha.medium),
           ),
         ),
       ),

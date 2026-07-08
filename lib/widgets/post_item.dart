@@ -130,9 +130,9 @@ class PostItem extends ConsumerWidget {
     return Card(
       margin: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
       elevation: 0,
+      color: scheme.surfaceContainerLow,
       shape: RoundedRectangleBorder(
         borderRadius: BorderRadius.circular(10),
-        side: BorderSide(color: scheme.outlineVariant.withValues(alpha: 0.5), width: 0.5),
       ),
       child: Padding(
         padding: const EdgeInsets.all(12),
@@ -175,13 +175,13 @@ class PostItem extends ConsumerWidget {
                   child: Container(
                     padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
                     decoration: BoxDecoration(
-                      color: scheme.surfaceContainerHighest,
+                      color: scheme.secondaryContainer.withValues(alpha: 0.5),
                       borderRadius: BorderRadius.circular(10),
                     ),
                     child: Text(
                       '#$floor',
                       style: textTheme.labelSmall?.copyWith(
-                        color: scheme.onSurfaceVariant,
+                        color: scheme.onSecondaryContainer,
                         fontWeight: FontWeight.w500,
                       ),
                     ),

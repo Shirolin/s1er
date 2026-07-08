@@ -184,10 +184,7 @@ class _PaginationBar extends ConsumerWidget {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
       decoration: BoxDecoration(
-        color: scheme.surfaceContainerHighest,
-        border: Border(
-          top: BorderSide(color: scheme.outlineVariant, width: 0.5),
-        ),
+        color: scheme.surfaceContainer,
       ),
       child: SafeArea(
         top: false,

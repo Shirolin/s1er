@@ -21,6 +21,7 @@ class S1HttpClient {
   static bool get _isWeb => kIsWeb;
 
   PersistCookieJar get cookieJar => _cookieJar;
+  Dio get dio => _dio;
 
   Future<void> init() async {
     if (_isWeb) {

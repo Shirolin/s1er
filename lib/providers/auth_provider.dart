@@ -1,11 +1,15 @@
 import 'dart:async';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../models/user.dart';
+import '../providers/talker_provider.dart';
 import '../services/auth_service.dart';
 import '../services/http_client.dart';
 
 final authServiceProvider = Provider<AuthService>((ref) {
-  return AuthService(httpClient: ref.watch(httpClientProvider));
+  return AuthService(
+    httpClient: ref.watch(httpClientProvider),
+    talker: ref.watch(talkerProvider),
+  );
 });
 
 class AuthState {

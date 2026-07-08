@@ -1,9 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+import 'package:talker_flutter/talker_flutter.dart';
 import '../config/api_config.dart';
 import '../providers/auth_provider.dart';
 import '../providers/settings_provider.dart';
+import '../providers/talker_provider.dart';
 import '../models/user.dart';
 import '../widgets/app_bar_more_menu.dart';
 import '../widgets/web_avatar.dart';
@@ -513,8 +515,61 @@ class _SettingsCard extends StatelessWidget {
               borderRadius: BorderRadius.circular(12),
             ),
           ),
+          const Divider(height: 1, indent: 16, endIndent: 16),
+          const _VersionTile(),
         ],
       ),
+    );
+  }
+}
+
+class _VersionTile extends ConsumerStatefulWidget {
+  const _VersionTile();
+
+  @override
+  ConsumerState<_VersionTile> createState() => _VersionTileState();
+}
+
+class _VersionTileState extends ConsumerState<_VersionTile> {
+  int _tapCount = 0;
+
+  void _onTap() {
+    _tapCount++;
+    if (_tapCount >= 5) {
+      _tapCount = 0;
+      final talker = ref.read(talkerProvider);
+      if (context.mounted) {
+        Navigator.of(context).push(
+          MaterialPageRoute(
+            builder: (context) => TalkerScreen(talker: talker),
+          ),
+        );
+      }
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final packageInfo = ref.watch(packageInfoProvider);
+    final textTheme = Theme.of(context).textTheme;
+    final colorScheme = Theme.of(context).colorScheme;
+
+    return packageInfo.when(
+      data: (info) => ListTile(
+        title: Text(
+          'Version',
+          style: textTheme.bodyMedium?.copyWith(
+            color: colorScheme.onSurfaceVariant,
+          ),
+        ),
+        subtitle: Text('${info.version}+${info.buildNumber}'),
+        onTap: _onTap,
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(12),
+        ),
+      ),
+      loading: () => const SizedBox.shrink(),
+      error: (_, __) => const SizedBox.shrink(),
     );
   }
 }

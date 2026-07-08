@@ -23,6 +23,9 @@ dependencies:
   url_launcher: ^6.2.5
   image_picker: ^1.0.7
   flutter_html: ^3.0.0-beta.2
+  package_info_plus: ^10.2.0
+  talker_flutter: ^5.1.17
+  talker_dio_logger: ^5.1.17
 
 dev_dependencies:
   flutter_test:

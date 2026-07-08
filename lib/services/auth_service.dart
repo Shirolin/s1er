@@ -1,14 +1,18 @@
 import 'dart:async';
 import 'package:flutter/foundation.dart';
 import 'package:cookie_jar/cookie_jar.dart';
+import 'package:talker_flutter/talker_flutter.dart';
 import '../models/user.dart';
 import 'http_client.dart';
 import 'api_service.dart';
 
 class AuthService {
 
-  AuthService({required S1HttpClient httpClient}) : _httpClient = httpClient;
+  AuthService({required S1HttpClient httpClient, required Talker talker})
+      : _httpClient = httpClient,
+        _talker = talker;
   final S1HttpClient _httpClient;
+  final Talker _talker;
 
   User? _currentUser;
   bool _isLoggedIn = false;
@@ -34,8 +38,8 @@ class AuthService {
         return null;
       }
       return error;
-    } catch (e) {
-      debugPrint('Login failed: $e');
+    } catch (e, st) {
+      _talker.handle(e, st, 'Login failed');
       return '网络错误: $e';
     }
   }
@@ -48,8 +52,8 @@ class AuthService {
         _currentUser = profile;
         return profile;
       }
-    } catch (e) {
-      debugPrint('Fetch profile failed: $e');
+    } catch (e, st) {
+      _talker.handle(e, st, 'Fetch profile failed');
     }
     return null;
   }

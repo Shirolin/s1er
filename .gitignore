@@ -18,11 +18,6 @@ migrate_working_dir/
 *.iws
 .idea/
 
-# The .vscode folder contains launch configuration and tasks you configure in
-# VS Code which you may wish to be included in version control, so this line
-# is commented out by default.
-#.vscode/
-
 # Flutter/Dart/Pub related
 **/doc/api/
 **/ios/Flutter/.last_build_id
@@ -30,7 +25,6 @@ migrate_working_dir/
 .flutter-plugins-dependencies
 .pub-cache/
 .pub/
-/build/
 /coverage/
 
 # Symbolication related
@@ -39,15 +33,15 @@ app.*.symbols
 # Obfuscation related
 app.*.map.json
 
-# Android Studio will place build artifacts here
-/android/app/debug
-/android/app/profile
-/android/app/release
-
 # Android specific
+/android/.gradle/
+/android/.kotlin/
+/android/app/debug/
+/android/app/profile/
+/android/app/release/
+/android/build/
 /android/local.properties
 /android/key.properties
-/android/s1_app_android.iml
 /android/gradle/wrapper/gradle-wrapper.jar
 /android/gradlew
 /android/gradlew.bat
@@ -61,7 +55,6 @@ app.*.map.json
 /ios/Runner/GeneratedPluginRegistrant.h
 /ios/Runner/GeneratedPluginRegistrant.m
 /macos/Flutter/ephemeral/
-**/doc/api/
 *.xcworkspace
 *.xcodeproj
 
@@ -71,11 +64,20 @@ app.*.map.json
 # Linux specific
 /linux/flutter/ephemeral/
 
-# Web specific
-/web/
+# Build output (CMake, Gradle, etc.)
+/build/
 
 # Database / Local cache
 .kilo/
-*.db
 .vibe/
+*.db
 
+# Proxy server logs
+proxy_server.log
+
+# Emoticon assets (downloaded via script)
+assets/emoticons/
+
+# Temp scripts
+scripts/fix-repos.js
+scripts/maven-proxy.js

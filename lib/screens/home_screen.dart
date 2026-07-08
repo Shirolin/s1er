@@ -32,20 +32,29 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
 
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Stage1st'),
-        actions: [
-          if (isLoggedIn)
-            AppBarMoreMenu(
-              onRefresh: () =>
-                  ref.read(forumListProvider.notifier).refresh(),
-              browserUrl: ApiConfig.baseUrl,
-            )
-          else
-            TextButton(
-              onPressed: () => context.push('/login'),
-              child: const Text('Login'),
-            ),
-        ],
+        title: Text(_currentTab == 3 ? '个人资料' : 'Stage1st'),
+        actions: _currentTab == 3
+            ? [
+                if (isLoggedIn)
+                  AppBarMoreMenu(
+                    onRefresh: () =>
+                        ref.read(authStateProvider.notifier).refreshProfile(),
+                    browserUrl: '${ApiConfig.baseUrl}/home.php?mod=space',
+                  ),
+              ]
+            : [
+                if (isLoggedIn)
+                  AppBarMoreMenu(
+                    onRefresh: () =>
+                        ref.read(forumListProvider.notifier).refresh(),
+                    browserUrl: ApiConfig.baseUrl,
+                  )
+                else
+                  TextButton(
+                    onPressed: () => context.push('/login'),
+                    child: const Text('Login'),
+                  ),
+              ],
       ),
       body: !isLoggedIn && _currentTab < 3
           ? _LoginPrompt()
@@ -55,7 +64,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                   ? const Center(child: Text('Search'))
                   : _currentTab == 2
                       ? const Center(child: Text('Messages'))
-                      : const ProfileScreen(),
+                      : const ProfileBody(),
       bottomNavigationBar: NavigationBar(
         selectedIndex: _currentTab,
         onDestinationSelected: (index) {

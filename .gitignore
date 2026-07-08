@@ -70,6 +70,7 @@ app.*.map.json
 # Database / Local cache
 .kilo/
 .vibe/
+.mimocode/
 *.db
 
 # Proxy server logs

@@ -14,14 +14,6 @@ class ProfileScreen extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final authState = ref.watch(authStateProvider);
-    final settings = ref.watch(settingsProvider);
-    final user = authState.user;
-    final colorScheme = Theme.of(context).colorScheme;
-
-    final avatarUrl = User.resolveAvatarUrl(user?.avatar, size: 'middle');
-    final letter = (authState.username?.isNotEmpty == true)
-        ? authState.username![0].toUpperCase()
-        : '?';
 
     return Scaffold(
       appBar: AppBar(
@@ -35,50 +27,69 @@ class ProfileScreen extends ConsumerWidget {
             ),
         ],
       ),
-      body: ListView(
-        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-        children: [
-          _HeaderCard(
-            avatarUrl: avatarUrl,
-            letter: letter,
-            username: authState.isLoggedIn
-                ? (user?.username ?? authState.username ?? '')
-                : null,
-            groupTitle: user?.groupTitle,
-            isLoggedIn: authState.isLoggedIn,
-            onLogin: () => context.push('/login'),
-          ),
-          if (authState.isLoggedIn && user != null && user.uid.isNotEmpty) ...[
-            const SizedBox(height: 16),
-            _StatsCard(user: user),
-            const SizedBox(height: 16),
-            _S1StatsCard(user: user),
-            const SizedBox(height: 16),
-            _InfoCard(user: user),
-          ],
+      body: const ProfileBody(),
+    );
+  }
+}
+
+class ProfileBody extends ConsumerWidget {
+  const ProfileBody({super.key});
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final authState = ref.watch(authStateProvider);
+    final settings = ref.watch(settingsProvider);
+    final user = authState.user;
+    final colorScheme = Theme.of(context).colorScheme;
+
+    final avatarUrl = User.resolveAvatarUrl(user?.avatar, size: 'middle');
+    final letter = (authState.username?.isNotEmpty == true)
+        ? authState.username![0].toUpperCase()
+        : '?';
+
+    return ListView(
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+      children: [
+        _HeaderCard(
+          avatarUrl: avatarUrl,
+          letter: letter,
+          username: authState.isLoggedIn
+              ? (user?.username ?? authState.username ?? '')
+              : null,
+          groupTitle: user?.groupTitle,
+          isLoggedIn: authState.isLoggedIn,
+          onLogin: () => context.push('/login'),
+        ),
+        if (authState.isLoggedIn && user != null && user.uid.isNotEmpty) ...[
           const SizedBox(height: 16),
-          _SettingsCard(
-            themeMode: settings.themeMode,
-            showImages: settings.showImages,
-            onThemeModeChanged: (v) =>
-                ref.read(settingsProvider.notifier).setThemeMode(v),
-            onShowImagesChanged: (v) =>
-                ref.read(settingsProvider.notifier).setShowImages(v),
-          ),
+          _StatsCard(user: user),
           const SizedBox(height: 16),
-          if (authState.isLoggedIn)
-            _ActionTile(
-              icon: Icons.logout,
-              label: '退出登录',
-              color: colorScheme.error,
-              onTap: () {
-                ref.read(authStateProvider.notifier).logout();
-                context.go('/');
-              },
-            ),
-          const SizedBox(height: 24),
+          _S1StatsCard(user: user),
+          const SizedBox(height: 16),
+          _InfoCard(user: user),
         ],
-      ),
+        const SizedBox(height: 16),
+        _SettingsCard(
+          themeMode: settings.themeMode,
+          showImages: settings.showImages,
+          onThemeModeChanged: (v) =>
+              ref.read(settingsProvider.notifier).setThemeMode(v),
+          onShowImagesChanged: (v) =>
+              ref.read(settingsProvider.notifier).setShowImages(v),
+        ),
+        const SizedBox(height: 16),
+        if (authState.isLoggedIn)
+          _ActionTile(
+            icon: Icons.logout,
+            label: '退出登录',
+            color: colorScheme.error,
+            onTap: () {
+              ref.read(authStateProvider.notifier).logout();
+              context.go('/');
+            },
+          ),
+        const SizedBox(height: 24),
+      ],
     );
   }
 }

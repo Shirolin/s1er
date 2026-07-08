@@ -29,6 +29,18 @@
 
 ---
 
+## Material Design 3 规范
+
+> 所有 Flutter UI 代码必须遵守以下 M3 规则，违者视为 bug。
+
+- **主题**：`useMaterial3: true` + `ColorScheme.fromSeed(seedColor: ...)`，禁用手写色板
+- **色彩**：一律从 `Theme.of(context).colorScheme` 取语义色（`.primary`、`.surface` 等）
+- **排版**：一律用 `textTheme.*` 标准层级，禁用 `fontSize` 裸写
+- **组件映射**：`NavigationBar`(替代 BottomNavigationBar) / `FilledButton`(替代 RaisedButton/ElevatedButton) / `SegmentedButton`(替代 ToggleButtons) / 原生 `Badge` 组件
+- **层级**：`elevation: 0` 为默认，区分靠 Surface Tint
+
+---
+
 ## 命名约定
 
 - 文件命名：snake_case（如 `api_service.dart`、`thread_card.dart`）
@@ -84,6 +96,9 @@ lib/
 - 在 Widget 中直接调用 `ApiService`（必须通过 Provider）
 - 在 Model 中引入 Flutter 依赖（models 层必须保持纯 Dart）
 - 使用 `print()` 进行调试输出（lint 规则 `avoid_print` 已启用）
+- 硬编码颜色值 `Color(0xFF...)` 或 `fontSize`（必须从 `colorScheme` / `textTheme` 获取）
+- 使用 M2 废弃组件（`RaisedButton`、`BottomNavigationBar`、`ToggleButtons`、手写 `Badge`）
+- `Card` / `AppBar` 使用非零 `elevation`（M3 层级靠 Surface Tint，不靠阴影）
 
 ---
 

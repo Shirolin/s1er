@@ -76,8 +76,8 @@ void main() {
         'message': 'Hello world',
         'author': 'user1',
         'authorid': '200',
-        'dateline': '1700001000',
-        'floor': 1,
+        'dbdateline': '1700001000',
+        'number': '1',
       };
       final post = Post.fromJson(json);
       expect(post.pid, '67890');

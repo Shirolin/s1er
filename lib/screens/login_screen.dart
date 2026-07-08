@@ -13,13 +13,18 @@ class LoginScreen extends ConsumerStatefulWidget {
 class _LoginScreenState extends ConsumerState<LoginScreen> {
   final _usernameController = TextEditingController();
   final _passwordController = TextEditingController();
+  final _usernameFocus = FocusNode();
+  final _passwordFocus = FocusNode();
   bool _isLoading = false;
+  bool _obscurePassword = true;
   String? _errorMessage;
 
   @override
   void dispose() {
     _usernameController.dispose();
     _passwordController.dispose();
+    _usernameFocus.dispose();
+    _passwordFocus.dispose();
     super.dispose();
   }
 
@@ -117,20 +122,28 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                   ],
                   TextField(
                     controller: _usernameController,
+                    focusNode: _usernameFocus,
                     decoration: const InputDecoration(
                       labelText: '用户名',
                       prefixIcon: Icon(Icons.person),
                     ),
                     keyboardType: TextInputType.text,
+                    textInputAction: TextInputAction.next,
+                    onSubmitted: (_) => _passwordFocus.requestFocus(),
                   ),
                   const SizedBox(height: 16),
                   TextField(
                     controller: _passwordController,
-                    decoration: const InputDecoration(
+                    focusNode: _passwordFocus,
+                    decoration: InputDecoration(
                       labelText: '密码',
-                      prefixIcon: Icon(Icons.lock),
+                      prefixIcon: const Icon(Icons.lock),
+                      suffixIcon: IconButton(
+                        icon: Icon(_obscurePassword ? Icons.visibility_off : Icons.visibility),
+                        onPressed: () => setState(() => _obscurePassword = !_obscurePassword),
+                      ),
                     ),
-                    obscureText: true,
+                    obscureText: _obscurePassword,
                     onSubmitted: (_) => _handleLogin(),
                   ),
                   const SizedBox(height: 24),

@@ -113,34 +113,39 @@ class _TitleLine extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Row(
+    return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        if (isSticky) ...[
-          Padding(
-            padding: const EdgeInsets.only(top: 2),
-            child: Icon(Icons.push_pin, size: 13, color: scheme.primary),
-          ),
-          const SizedBox(width: 4),
-        ],
         if (hasTag) ...[
           _CategoryTag(
             label: tagName!,
             color: scheme.onSecondaryContainer,
             bgColor: scheme.secondaryContainer,
           ),
-          const SizedBox(width: 6),
+          const SizedBox(height: 4),
         ],
-        Expanded(
-          child: Text(
-            subject,
-            style: textTheme.titleSmall?.copyWith(
-              height: 1.45,
-              fontWeight: isSticky ? FontWeight.bold : null,
+        Row(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            if (isSticky) ...[
+              Padding(
+                padding: const EdgeInsets.only(top: 2),
+                child: Icon(Icons.push_pin, size: 13, color: scheme.primary),
+              ),
+              const SizedBox(width: 4),
+            ],
+            Expanded(
+              child: Text(
+                subject,
+                style: textTheme.titleSmall?.copyWith(
+                  height: 1.45,
+                  fontWeight: isSticky ? FontWeight.bold : null,
+                ),
+                maxLines: 2,
+                overflow: TextOverflow.ellipsis,
+              ),
             ),
-            maxLines: 2,
-            overflow: TextOverflow.ellipsis,
-          ),
+          ],
         ),
       ],
     );

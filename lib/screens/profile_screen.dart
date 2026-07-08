@@ -73,15 +73,18 @@ class ProfileBody extends ConsumerWidget {
           const SizedBox(height: 16),
           _InfoCard(user: user),
         ],
-        const SizedBox(height: 16),
-        _SettingsCard(
+        const SizedBox(height: 20),
+        _ThemeSettingsCard(
           themeMode: settings.themeMode,
           themeColor: settings.themeColor,
-          showImages: settings.showImages,
           onThemeModeChanged: (v) =>
               ref.read(settingsProvider.notifier).setThemeMode(v),
           onThemeColorChanged: (v) =>
               ref.read(settingsProvider.notifier).setThemeColor(v),
+        ),
+        const SizedBox(height: 16),
+        _DisplaySettingsCard(
+          showImages: settings.showImages,
           onShowImagesChanged: (v) =>
               ref.read(settingsProvider.notifier).setShowImages(v),
         ),
@@ -629,192 +632,6 @@ class _DisplaySettingsCard extends StatelessWidget {
             const _VersionTile(),
           ],
         ),
-      ),
-    );
-  }
-}
-
-class _SettingsCard extends StatelessWidget {
-
-  const _SettingsCard({
-    required this.themeMode,
-    required this.themeColor,
-    required this.showImages,
-    required this.onThemeModeChanged,
-    required this.onThemeColorChanged,
-    required this.onShowImagesChanged,
-  });
-  final String themeMode;
-  final String themeColor;
-  final bool showImages;
-  final ValueChanged<String> onThemeModeChanged;
-  final ValueChanged<String> onThemeColorChanged;
-  final ValueChanged<bool> onShowImagesChanged;
-
-  @override
-  Widget build(BuildContext context) {
-    final colorScheme = Theme.of(context).colorScheme;
-    final textTheme = Theme.of(context).textTheme;
-
-    return Card(
-      elevation: 0,
-      shape: S1Shape.cardShape,
-      color: colorScheme.surfaceContainerHighest.withValues(alpha: S1Alpha.cardOverlay),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Padding(
-            padding: const EdgeInsets.fromLTRB(16, 14, 16, 4),
-            child: Text(
-              '设置',
-              style: textTheme.labelLarge?.copyWith(
-                color: colorScheme.primary,
-                fontWeight: FontWeight.w600,
-              ),
-            ),
-          ),
-          Padding(
-            padding: const EdgeInsets.fromLTRB(16, 4, 16, 12),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  '主题外观',
-                  style: textTheme.bodyMedium?.copyWith(
-                    color: colorScheme.onSurfaceVariant,
-                  ),
-                ),
-                const SizedBox(height: 10),
-                SegmentedButton<String>(
-                  segments: const [
-                    ButtonSegment(
-                      value: 'system',
-                      label: Text('跟随系统'),
-                      icon: Icon(Icons.brightness_auto, size: 18),
-                    ),
-                    ButtonSegment(
-                      value: 'light',
-                      label: Text('浅色'),
-                      icon: Icon(Icons.light_mode, size: 18),
-                    ),
-                    ButtonSegment(
-                      value: 'dark',
-                      label: Text('深色'),
-                      icon: Icon(Icons.dark_mode, size: 18),
-                    ),
-                  ],
-                  selected: {themeMode},
-                  onSelectionChanged: (v) => onThemeModeChanged(v.first),
-                  showSelectedIcon: false,
-                  style: ButtonStyle(
-                    visualDensity: VisualDensity.standard,
-                    tapTargetSize: MaterialTapTargetSize.shrinkWrap,
-                    side: WidgetStateProperty.resolveWith((states) {
-                      if (states.contains(WidgetState.selected)) {
-                        return BorderSide.none;
-                      }
-                      return BorderSide(
-                        color: colorScheme.outlineVariant,
-                      );
-                    }),
-                    backgroundColor: WidgetStateProperty.resolveWith((states) {
-                      if (states.contains(WidgetState.selected)) {
-                        return colorScheme.secondaryContainer;
-                      }
-                      return Colors.transparent;
-                    }),
-                    foregroundColor: WidgetStateProperty.resolveWith((states) {
-                      if (states.contains(WidgetState.selected)) {
-                        return colorScheme.onSecondaryContainer;
-                      }
-                      return colorScheme.onSurfaceVariant;
-                    }),
-                    shape: WidgetStateProperty.all(
-                      const RoundedRectangleBorder(
-                        borderRadius: S1Shape.medium,
-                      ),
-                    ),
-                    padding: WidgetStateProperty.all(
-                      const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
-                    ),
-                  ),
-                ),
-              ],
-            ),
-          ),
-          const Divider(height: 1, indent: 16, endIndent: 16),
-          Padding(
-            padding: const EdgeInsets.fromLTRB(16, 12, 16, 16),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  '主题配色',
-                  style: textTheme.bodyMedium?.copyWith(
-                    color: colorScheme.onSurfaceVariant,
-                  ),
-                ),
-                const SizedBox(height: 12),
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: AppTheme.themeSeeds.entries.map((entry) {
-                    final key = entry.key;
-                    final color = entry.value;
-                    final isSelected = themeColor == key;
-                    return GestureDetector(
-                      onTap: () => onThemeColorChanged(key),
-                      child: Container(
-                        width: 44,
-                        height: 44,
-                        decoration: BoxDecoration(
-                          color: color,
-                          shape: BoxShape.circle,
-                          border: isSelected
-                              ? Border.all(
-                                  color: colorScheme.primary,
-                                  width: 3,
-                                  strokeAlign: BorderSide.strokeAlignOutside,
-                                )
-                              : null,
-                          boxShadow: isSelected
-                              ? [
-                                  BoxShadow(
-                                    color: color.withValues(alpha: 0.4),
-                                    blurRadius: 8,
-                                    offset: const Offset(0, 4),
-                                  ),
-                                ]
-                              : null,
-                        ),
-                        child: isSelected
-                            ? Icon(
-                                Icons.check,
-                                color: color.computeLuminance() > 0.5
-                                    ? Colors.black87
-                                    : Colors.white,
-                                size: 22,
-                              )
-                            : null,
-                      ),
-                    );
-                  }).toList(),
-                ),
-              ],
-            ),
-          ),
-          const Divider(height: 1, indent: 16, endIndent: 16),
-          SwitchListTile(
-            title: const Text('显示图片'),
-            secondary: const Icon(Icons.image_outlined),
-            value: showImages,
-            onChanged: onShowImagesChanged,
-            shape: const RoundedRectangleBorder(
-              borderRadius: S1Shape.medium,
-            ),
-          ),
-          const Divider(height: 1, indent: 16, endIndent: 16),
-          const _VersionTile(),
-        ],
       ),
     );
   }

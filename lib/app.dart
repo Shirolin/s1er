@@ -67,12 +67,18 @@ class S1App extends ConsumerWidget {
       _ => ThemeMode.system,
     };
 
-    return MaterialApp.router(
-      title: 'S1 Client',
-      theme: AppTheme.lightTheme(),
-      darkTheme: AppTheme.darkTheme(),
-      themeMode: themeMode,
-      routerConfig: _router,
+    return TalkerWrapper(
+      talker: talker,
+      options: const TalkerWrapperOptions(
+        enableErrorAlerts: true,
+      ),
+      child: MaterialApp.router(
+        title: 'S1 Client',
+        theme: AppTheme.lightTheme(),
+        darkTheme: AppTheme.darkTheme(),
+        themeMode: themeMode,
+        routerConfig: _router,
+      ),
     );
   }
 }

@@ -61,12 +61,31 @@ class ApiService {
     }
   }
 
+  static Map<String, String> parseThreadTypes(Map<String, dynamic> json) {
+    final variables = json['Variables'] as Map<String, dynamic>?;
+    if (variables == null) return {};
+    final threadtypes = variables['threadtypes'] as Map<String, dynamic>?;
+    if (threadtypes == null) return {};
+    final types = threadtypes['types'] as Map<String, dynamic>?;
+    if (types == null) return {};
+    return types.map((k, v) => MapEntry(k, v.toString()));
+  }
+
   static List<Thread> parseThreadList(Map<String, dynamic> json) {
     final variables = json['Variables'] as Map<String, dynamic>?;
     final threadList = variables?['forum_threadlist'] as List?;
     if (threadList == null) return [];
+    final threadTypes = parseThreadTypes(json);
     return threadList
-        .map((t) => Thread.fromJson(t as Map<String, dynamic>))
+        .map((t) {
+          final thread = Thread.fromJson(t as Map<String, dynamic>);
+          if (thread.typeId != null &&
+              thread.typeName == null &&
+              threadTypes.containsKey(thread.typeId)) {
+            return thread.copyWith(typeName: threadTypes[thread.typeId]);
+          }
+          return thread;
+        })
         .toList();
   }
 
@@ -253,19 +272,52 @@ class ApiService {
     }
   }
 
-  Future<bool> sendPost({
+  static String? parseReplyResponse(String xml) {
+    final successMatch = RegExp(
+      r"succeedhandle_reply\('([^']*)',\s*'([^']*)',\s*\{([^}]*)\}\)",
+    ).firstMatch(xml);
+    if (successMatch != null) return null;
+
+    final errorMatch = RegExp(
+      r"errorhandle_reply\('([^']*)',\s*'([^']*)'\)",
+    ).firstMatch(xml);
+    if (errorMatch != null) {
+      return errorMatch.group(1)?.isNotEmpty == true
+          ? errorMatch.group(1)
+          : errorMatch.group(2);
+    }
+
+    final alertMatch = RegExp(r"alert\('([^']*)'\)").firstMatch(xml);
+    if (alertMatch != null) return alertMatch.group(1);
+
+    return '服务器返回未知响应';
+  }
+
+  /// 发回复。成功返回 null，失败返回错误信息。
+  Future<String?> sendPost({
     required String fid,
     required String tid,
     required String message,
   }) async {
-    final url = buildApiUrl(module: ApiConfig.moduleSendPost);
-    final response = await _httpClient.post(url, data: {
-      'fid': fid,
-      'tid': tid,
-      'message': message,
-      'posttime': DateTime.now().millisecondsSinceEpoch ~/ 1000,
-    },);
-    return response.statusCode == 200;
+    final url = '${ApiConfig.forumPostUrl}'
+        '?mod=post&action=reply&fid=$fid&tid=$tid'
+        '&extra=&replysubmit=yes&mobile=2&handlekey=postform&inajax=1';
+
+    final response = await _httpClient.post(
+      url,
+      data: {
+        'posttime': (DateTime.now().millisecondsSinceEpoch ~/ 1000).toString(),
+        'usesig': '1',
+        'subject': '',
+        'message': message,
+        'replysubmit': 'yes',
+      },
+      options: Options(contentType: Headers.formUrlEncodedContentType),
+    );
+
+    final data = response.data;
+    if (data is! String) return '服务器返回异常';
+    return parseReplyResponse(data);
   }
 
   Future<User?> getUserProfile() async {

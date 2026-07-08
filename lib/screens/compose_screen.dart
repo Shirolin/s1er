@@ -31,26 +31,26 @@ class _ComposeScreenState extends ConsumerState<ComposeScreen> {
 
     try {
       final apiService = ApiService(ref.read(httpClientProvider));
-      final success = await apiService.sendPost(
+      final error = await apiService.sendPost(
         fid: widget.fid ?? '',
         tid: widget.tid ?? '',
         message: _messageController.text,
       );
 
       if (mounted) {
-        if (success) {
+        if (error == null) {
           ScaffoldMessenger.of(context).showSnackBar(
             const SnackBar(
               behavior: SnackBarBehavior.floating,
-              content: Text('Post submitted'),
+              content: Text('回复成功'),
             ),
           );
-          context.pop();
+          context.pop(true);
         } else {
           ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(
+            SnackBar(
               behavior: SnackBarBehavior.floating,
-              content: Text('Failed to submit'),
+              content: Text(error),
             ),
           );
         }

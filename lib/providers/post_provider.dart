@@ -10,23 +10,27 @@ class PostListState {
     this.currentPage = 1,
     this.totalPages = 1,
     this.threadSubject,
+    this.threadFid,
   });
   final List<Post> posts;
   final int currentPage;
   final int totalPages;
   final String? threadSubject;
+  final String? threadFid;
 
   PostListState copyWith({
     List<Post>? posts,
     int? currentPage,
     int? totalPages,
     String? threadSubject,
+    String? threadFid,
   }) {
     return PostListState(
       posts: posts ?? this.posts,
       currentPage: currentPage ?? this.currentPage,
       totalPages: totalPages ?? this.totalPages,
       threadSubject: threadSubject ?? this.threadSubject,
+      threadFid: threadFid ?? this.threadFid,
     );
   }
 }
@@ -62,11 +66,13 @@ class PostNotifier extends StateNotifier<AsyncValue<PostListState>> {
       final posts = ApiService.parsePostList(result);
       final totalPages = _extractTotalPages(result);
       final subject = _extractSubject(result);
+      final fid = _extractFid(result);
       state = AsyncValue.data(PostListState(
         posts: posts,
         currentPage: page,
         totalPages: totalPages,
         threadSubject: subject,
+        threadFid: fid,
       ),);
     } catch (e, st) {
       state = AsyncValue.error(e, st);
@@ -91,6 +97,13 @@ class PostNotifier extends StateNotifier<AsyncValue<PostListState>> {
     if (variables == null) return null;
     final thread = variables['thread'] as Map<String, dynamic>?;
     return thread?['subject']?.toString();
+  }
+
+  String? _extractFid(Map<String, dynamic> json) {
+    final variables = json['Variables'] as Map<String, dynamic>?;
+    if (variables == null) return null;
+    final thread = variables['thread'] as Map<String, dynamic>?;
+    return thread?['fid']?.toString();
   }
 
   Future<void> goToPage(int page) async {

@@ -283,5 +283,36 @@ void main() {
         expect(forums, isEmpty);
       });
     });
+
+    group('parseReplyResponse', () {
+      test('returns null on success', () {
+        const xml = "<root><![CDATA[<script>succeedhandle_reply('redirect.php?mod=redirect&goto=findpost&pid=123&ptid=456', '回复发布成功', {fid:'4',tid:'456',pid:'123',from:'1',sechash:'abc'});</script>]]></root>";
+        expect(ApiService.parseReplyResponse(xml), isNull);
+      });
+
+      test('returns error message from errorhandle_reply', () {
+        const xml = "<root><![CDATA[<script>errorhandle_reply('内容过长', 'error');</script>]]></root>";
+        expect(ApiService.parseReplyResponse(xml), equals('内容过长'));
+      });
+
+      test('returns second arg when first is empty in errorhandle', () {
+        const xml = "<root><![CDATA[<script>errorhandle_reply('', '操作失败');</script>]]></root>";
+        expect(ApiService.parseReplyResponse(xml), equals('操作失败'));
+      });
+
+      test('returns message from alert', () {
+        const xml = "<root><![CDATA[<script>alert('您没有权限回复');</script>]]></root>";
+        expect(ApiService.parseReplyResponse(xml), equals('您没有权限回复'));
+      });
+
+      test('returns fallback on unknown response', () {
+        const xml = '<root><![CDATA[<p>unexpected</p>]]></root>';
+        expect(ApiService.parseReplyResponse(xml), equals('服务器返回未知响应'));
+      });
+
+      test('returns fallback on empty string', () {
+        expect(ApiService.parseReplyResponse(''), equals('服务器返回未知响应'));
+      });
+    });
   });
 }

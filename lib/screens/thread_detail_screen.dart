@@ -182,6 +182,7 @@ class _ThreadDetailScreenState extends ConsumerState<ThreadDetailScreen> {
         onScrollToTop: _scrollToTop,
         isLoggedIn: isLoggedIn,
         tid: widget.tid,
+        fid: postsAsync.valueOrNull?.threadFid ?? '',
       ),
     );
   }
@@ -193,12 +194,14 @@ class _ThreadFabGroup extends StatelessWidget {
     required this.onScrollToTop,
     required this.isLoggedIn,
     required this.tid,
+    required this.fid,
   });
 
   final bool showScrollToTop;
   final VoidCallback onScrollToTop;
   final bool isLoggedIn;
   final String tid;
+  final String fid;
 
   @override
   Widget build(BuildContext context) {
@@ -217,7 +220,7 @@ class _ThreadFabGroup extends StatelessWidget {
           ),
         if (isLoggedIn)
           FloatingActionButton(
-            onPressed: () => context.push('/compose?tid=$tid'),
+            onPressed: () => context.push('/compose?tid=$tid&fid=$fid'),
             child: const Icon(Icons.edit_outlined),
           ),
       ],

@@ -33,7 +33,7 @@ void main() {
               ),
             ),
           ],
-          child: MaterialApp(
+          child: const MaterialApp(
             home: ProfileScreen(),
           ),
         ),
@@ -61,7 +61,7 @@ void main() {
               ),
             ),
           ],
-          child: MaterialApp(
+          child: const MaterialApp(
             home: ProfileScreen(),
           ),
         ),
@@ -93,7 +93,7 @@ void main() {
               ),
             ),
           ],
-          child: MaterialApp(
+          child: const MaterialApp(
             home: ProfileScreen(),
           ),
         ),

@@ -9,6 +9,7 @@ class EmoticonWidget extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final assetPath = EmoticonMap.getAssetPath(code);
+    final textTheme = Theme.of(context).textTheme;
     if (assetPath != null) {
       return Image.asset(
         assetPath,
@@ -16,10 +17,10 @@ class EmoticonWidget extends StatelessWidget {
         height: 20,
         fit: BoxFit.contain,
         errorBuilder: (context, error, stackTrace) {
-          return Text(code, style: const TextStyle(fontSize: 12));
+          return Text(code, style: textTheme.bodySmall);
         },
       );
     }
-    return Text(code, style: const TextStyle(fontSize: 12));
+    return Text(code, style: textTheme.bodySmall);
   }
 }

@@ -53,6 +53,7 @@ class ThreadCard extends StatelessWidget {
   Widget build(BuildContext context) {
     final timeStr = _formatTime(thread.dateline);
     final scheme = Theme.of(context).colorScheme;
+    final textTheme = Theme.of(context).textTheme;
     final hasTag = thread.typeName != null && thread.typeName!.isNotEmpty;
     final isSticky = thread.isSticky;
     final totalPages = _calcTotalPages(thread.replies);
@@ -113,7 +114,7 @@ class ThreadCard extends StatelessWidget {
                   const SizedBox(width: 3),
                   Text(
                     thread.author,
-                    style: TextStyle(color: scheme.onSurfaceVariant, fontSize: 11),
+                    style: textTheme.labelSmall?.copyWith(color: scheme.onSurfaceVariant),
                   ),
                   if (timeStr.isNotEmpty) ...[
                     const SizedBox(width: 8),
@@ -121,7 +122,7 @@ class ThreadCard extends StatelessWidget {
                     const SizedBox(width: 2),
                     Text(
                       timeStr,
-                      style: TextStyle(color: scheme.onSurfaceVariant, fontSize: 11),
+                      style: textTheme.labelSmall?.copyWith(color: scheme.onSurfaceVariant),
                     ),
                   ],
                   const Spacer(),
@@ -129,14 +130,14 @@ class ThreadCard extends StatelessWidget {
                   const SizedBox(width: 2),
                   Text(
                     '${thread.views}',
-                    style: TextStyle(color: scheme.onSurfaceVariant, fontSize: 11),
+                    style: textTheme.labelSmall?.copyWith(color: scheme.onSurfaceVariant),
                   ),
                   const SizedBox(width: 10),
                   Icon(Icons.chat_bubble_outline, size: 12, color: scheme.onSurfaceVariant),
                   const SizedBox(width: 2),
                   Text(
                     '${thread.replies}',
-                    style: TextStyle(color: scheme.onSurfaceVariant, fontSize: 11),
+                    style: textTheme.labelSmall?.copyWith(color: scheme.onSurfaceVariant),
                   ),
                   if (totalPages > 1) ...[
                     const SizedBox(width: 8),
@@ -155,8 +156,7 @@ class ThreadCard extends StatelessWidget {
                             const SizedBox(width: 2),
                             Text(
                               '$totalPages页',
-                              style: TextStyle(
-                                fontSize: 10,
+                              style: textTheme.labelSmall?.copyWith(
                                 fontWeight: FontWeight.w500,
                                 color: scheme.onTertiaryContainer,
                               ),
@@ -184,6 +184,7 @@ class _ThreadTag extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final textTheme = Theme.of(context).textTheme;
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 0.5),
       decoration: BoxDecoration(
@@ -193,8 +194,7 @@ class _ThreadTag extends StatelessWidget {
       ),
       child: Text(
         label,
-        style: TextStyle(
-          fontSize: 9.5,
+        style: textTheme.labelSmall?.copyWith(
           fontWeight: FontWeight.bold,
           color: color,
           letterSpacing: 0.2,
@@ -221,6 +221,7 @@ class _ThreadPageSheet extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final scheme = Theme.of(context).colorScheme;
+    final textTheme = Theme.of(context).textTheme;
 
     return SafeArea(
       child: ConstrainedBox(
@@ -247,8 +248,7 @@ class _ThreadPageSheet extends StatelessWidget {
                           subject,
                           maxLines: 1,
                           overflow: TextOverflow.ellipsis,
-                          style: TextStyle(
-                            fontSize: 12,
+                          style: textTheme.bodySmall?.copyWith(
                             color: scheme.onSurfaceVariant,
                           ),
                         ),
@@ -257,8 +257,7 @@ class _ThreadPageSheet extends StatelessWidget {
                   ),
                   Text(
                     '共 $totalPages 页',
-                    style: TextStyle(
-                      fontSize: 12,
+                    style: textTheme.bodySmall?.copyWith(
                       color: scheme.onSurfaceVariant,
                     ),
                   ),
@@ -300,9 +299,8 @@ class _ThreadPageSheet extends StatelessWidget {
                             ),
                             child: Text(
                               '$page',
-                              style: TextStyle(
+                              style: textTheme.bodySmall?.copyWith(
                                 fontWeight: FontWeight.w600,
-                                fontSize: 13,
                                 color: scheme.onPrimaryContainer,
                               ),
                             ),
@@ -310,8 +308,7 @@ class _ThreadPageSheet extends StatelessWidget {
                           const SizedBox(width: 12),
                           Text(
                             '第 $startPost - $endPost 楼',
-                            style: TextStyle(
-                              fontSize: 13,
+                            style: textTheme.bodySmall?.copyWith(
                               color: scheme.onSurfaceVariant,
                             ),
                           ),

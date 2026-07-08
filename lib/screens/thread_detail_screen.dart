@@ -129,7 +129,7 @@ class _ThreadDetailScreenState extends ConsumerState<ThreadDetailScreen> {
                   if (e is LoginRequiredException) ...[
                     Icon(Icons.lock_outline, size: 64, color: scheme.onSurfaceVariant),
                     const SizedBox(height: 16),
-                    const Text('请先登录', style: TextStyle(fontSize: 18)),
+                    Text('请先登录', style: Theme.of(context).textTheme.titleMedium),
                     const SizedBox(height: 16),
                     FilledButton.icon(
                       onPressed: () => context.push('/login'),
@@ -237,6 +237,7 @@ class _PostPaginationBar extends ConsumerWidget {
     final page = state.currentPage;
     final total = state.totalPages;
     final scheme = Theme.of(context).colorScheme;
+    final textTheme = Theme.of(context).textTheme;
 
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
@@ -275,9 +276,8 @@ class _PostPaginationBar extends ConsumerWidget {
                   children: [
                     Text(
                       '$page / $total',
-                      style: TextStyle(
+                      style: textTheme.bodySmall?.copyWith(
                         fontWeight: FontWeight.w600,
-                        fontSize: 13,
                         color: scheme.onPrimaryContainer,
                       ),
                     ),

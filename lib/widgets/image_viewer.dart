@@ -178,7 +178,7 @@ class _ImageViewerState extends ConsumerState<ImageViewer> {
           color: Theme.of(context).colorScheme.surfaceContainerHighest.withValues(alpha: 0.3),
           borderRadius: BorderRadius.circular(8),
         ),
-        child: const Center(child: Icon(Icons.broken_image_outlined, size: 24, color: Colors.grey)),
+        child: Center(child: Icon(Icons.broken_image_outlined, size: 24, color: Theme.of(context).colorScheme.outline)),
       ),
     );
   }

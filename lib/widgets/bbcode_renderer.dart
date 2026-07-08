@@ -88,7 +88,7 @@ class BbcodeRenderer extends StatelessWidget {
       data: html,
       style: {
         'body': Style(
-          fontSize: FontSize(15),
+          fontSize: FontSize(15), // M3 TODO: flutter_html beta 限制，无法使用 textTheme
           lineHeight: LineHeight.number(1.6),
           margin: Margins.zero,
           padding: HtmlPaddings.zero,
@@ -108,7 +108,7 @@ class BbcodeRenderer extends StatelessWidget {
           padding: HtmlPaddings.all(12),
           margin: Margins.symmetric(vertical: 8),
           fontFamily: 'monospace',
-          fontSize: FontSize(13),
+          fontSize: FontSize(13), // M3 TODO: flutter_html beta 限制，无法使用 textTheme
           display: Display.block,
         ),
         '.hide-content': Style(

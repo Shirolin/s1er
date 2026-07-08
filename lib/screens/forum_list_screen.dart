@@ -94,7 +94,7 @@ class _ForumListScreenState extends ConsumerState<ForumListScreen> {
                   if (e is LoginRequiredException) ...[
                     Icon(Icons.lock_outline, size: 64, color: scheme.onSurfaceVariant),
                     const SizedBox(height: 16),
-                    const Text('请先登录', style: TextStyle(fontSize: 18)),
+                    Text('请先登录', style: Theme.of(context).textTheme.titleMedium),
                     const SizedBox(height: 16),
                     FilledButton.icon(
                       onPressed: () => context.push('/login'),
@@ -179,6 +179,7 @@ class _PaginationBar extends ConsumerWidget {
     final page = state.currentPage;
     final total = state.totalPages;
     final scheme = Theme.of(context).colorScheme;
+    final textTheme = Theme.of(context).textTheme;
 
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
@@ -217,9 +218,8 @@ class _PaginationBar extends ConsumerWidget {
                   children: [
                     Text(
                       '$page / $total',
-                      style: TextStyle(
+                      style: textTheme.bodySmall?.copyWith(
                         fontWeight: FontWeight.w600,
-                        fontSize: 13,
                         color: scheme.onPrimaryContainer,
                       ),
                     ),

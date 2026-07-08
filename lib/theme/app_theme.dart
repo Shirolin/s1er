@@ -1,10 +1,9 @@
 import 'package:flutter/material.dart';
-import 'colors.dart';
 
 class AppTheme {
   static ThemeData lightTheme() {
     final colorScheme = ColorScheme.fromSeed(
-      seedColor: S1Colors.primary,
+      seedColor: const Color(0xFF1A73E8),
       brightness: Brightness.light,
     );
     return ThemeData(
@@ -35,7 +34,7 @@ class AppTheme {
 
   static ThemeData darkTheme() {
     final colorScheme = ColorScheme.fromSeed(
-      seedColor: S1Colors.primary,
+      seedColor: const Color(0xFF1A73E8),
       brightness: Brightness.dark,
     );
     return ThemeData(

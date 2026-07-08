@@ -140,7 +140,7 @@ class _ForumErrorView extends ConsumerWidget {
               const SizedBox(height: 8),
               Text(
                 error.toString(),
-                style: TextStyle(color: Theme.of(context).colorScheme.onSurfaceVariant, fontSize: 13),
+                style: Theme.of(context).textTheme.bodySmall?.copyWith(color: Theme.of(context).colorScheme.onSurfaceVariant),
                 textAlign: TextAlign.center,
                 maxLines: 3,
                 overflow: TextOverflow.ellipsis,
@@ -261,12 +261,14 @@ class _StatChip extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final scheme = Theme.of(context).colorScheme;
+    final textTheme = Theme.of(context).textTheme;
     return Row(
       mainAxisSize: MainAxisSize.min,
       children: [
-        Icon(icon, size: 13, color: Theme.of(context).colorScheme.onSurfaceVariant),
+        Icon(icon, size: 13, color: scheme.onSurfaceVariant),
         const SizedBox(width: 2),
-        Text(label, style: TextStyle(fontSize: 11, color: Theme.of(context).colorScheme.onSurfaceVariant)),
+        Text(label, style: textTheme.labelSmall?.copyWith(color: scheme.onSurfaceVariant)),
       ],
     );
   }
@@ -280,6 +282,7 @@ class _ForumTile extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final scheme = Theme.of(context).colorScheme;
+    final textTheme = Theme.of(context).textTheme;
     final hasDesc = forum.description.isNotEmpty;
 
     return InkWell(
@@ -310,8 +313,7 @@ class _ForumTile extends StatelessWidget {
                 children: [
                   Text(
                     forum.name,
-                    style: const TextStyle(
-                      fontSize: 14,
+                    style: textTheme.bodyMedium?.copyWith(
                       fontWeight: FontWeight.w500,
                     ),
                   ),
@@ -321,7 +323,7 @@ class _ForumTile extends StatelessWidget {
                       forum.description,
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
-                      style: TextStyle(fontSize: 12, color: scheme.onSurfaceVariant),
+                      style: textTheme.bodySmall?.copyWith(color: scheme.onSurfaceVariant),
                     ),
                   ],
                 ],
@@ -337,8 +339,7 @@ class _ForumTile extends StatelessWidget {
                 ),
                 child: Text(
                   '${forum.todayPosts}',
-                  style: TextStyle(
-                    fontSize: 11,
+                  style: textTheme.labelSmall?.copyWith(
                     fontWeight: FontWeight.w500,
                     color: scheme.onPrimaryContainer,
                   ),
@@ -347,7 +348,7 @@ class _ForumTile extends StatelessWidget {
             else
               Text(
                 _formatCount(forum.threads),
-                style: TextStyle(fontSize: 12, color: scheme.onSurfaceVariant),
+                style: textTheme.bodySmall?.copyWith(color: scheme.onSurfaceVariant),
               ),
             const SizedBox(width: 4),
             Icon(Icons.chevron_right, size: 18, color: scheme.onSurfaceVariant),

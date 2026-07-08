@@ -19,6 +19,7 @@ class QuoteBlock extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final scheme = Theme.of(context).colorScheme;
+    final textTheme = Theme.of(context).textTheme;
     final effectiveDepth = depth.clamp(0, _maxDepth);
 
     final bgColor = Color.lerp(
@@ -75,8 +76,7 @@ class QuoteBlock extends StatelessWidget {
                       Expanded(
                         child: Text(
                           author ?? '引用',
-                          style: TextStyle(
-                            fontSize: 12,
+                          style: textTheme.bodySmall?.copyWith(
                             fontWeight: FontWeight.w600,
                             color: scheme.primary,
                           ),

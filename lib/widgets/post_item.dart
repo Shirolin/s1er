@@ -224,6 +224,7 @@ class _InfoItem extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final scheme = Theme.of(context).colorScheme;
+    final textTheme = Theme.of(context).textTheme;
     return Container(
       padding: const EdgeInsets.all(12),
       decoration: BoxDecoration(
@@ -234,9 +235,9 @@ class _InfoItem extends StatelessWidget {
         crossAxisAlignment: CrossAxisAlignment.start,
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
-          Text(label, style: const TextStyle(fontSize: 11, color: Colors.grey)),
+          Text(label, style: textTheme.labelSmall?.copyWith(color: scheme.onSurfaceVariant)),
           const SizedBox(height: 4),
-          Text(value, style: const TextStyle(fontSize: 15, fontWeight: FontWeight.bold)),
+          Text(value, style: textTheme.bodyLarge?.copyWith(fontWeight: FontWeight.bold)),
         ],
       ),
     );

@@ -584,6 +584,56 @@ class _ThemeSettingsCard extends StatelessWidget {
   }
 }
 
+class _DisplaySettingsCard extends StatelessWidget {
+  const _DisplaySettingsCard({
+    required this.showImages,
+    required this.onShowImagesChanged,
+  });
+
+  final bool showImages;
+  final ValueChanged<bool> onShowImagesChanged;
+
+  @override
+  Widget build(BuildContext context) {
+    final colorScheme = Theme.of(context).colorScheme;
+    final textTheme = Theme.of(context).textTheme;
+
+    return Card(
+      elevation: 0,
+      shape: S1Shape.cardShape,
+      color: colorScheme.surfaceContainerHighest.withValues(alpha: S1Alpha.cardOverlay),
+      child: Padding(
+        padding: const EdgeInsets.all(20),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              '显示设置',
+              style: textTheme.labelLarge?.copyWith(
+                color: colorScheme.primary,
+                fontWeight: FontWeight.w600,
+              ),
+            ),
+            const SizedBox(height: 16),
+            SwitchListTile(
+              title: const Text('显示图片'),
+              secondary: const Icon(Icons.image_outlined),
+              value: showImages,
+              onChanged: onShowImagesChanged,
+              shape: const RoundedRectangleBorder(
+                borderRadius: S1Shape.medium,
+              ),
+              contentPadding: EdgeInsets.zero,
+            ),
+            const Divider(height: 1, indent: 0, endIndent: 0),
+            const _VersionTile(),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
 class _SettingsCard extends StatelessWidget {
 
   const _SettingsCard({

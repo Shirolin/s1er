@@ -19,8 +19,8 @@ class Post {
       message: json['message']?.toString() ?? '',
       author: json['author']?.toString() ?? '',
       authorId: json['authorid']?.toString() ?? '',
-      dateline: int.tryParse(json['dateline']?.toString() ?? '') ?? 0,
-      floor: int.tryParse(json['floor']?.toString() ?? '') ?? 0,
+      dateline: int.tryParse(json['dbdateline']?.toString() ?? '') ?? 0,
+      floor: int.tryParse(json['number']?.toString() ?? '') ?? 0,
       avatar: User.resolveAvatarUrl(
         'https://avatar.stage1st.com/avatar.php?uid=${json['authorid']}&size=small',
       ),

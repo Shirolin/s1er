@@ -22,7 +22,7 @@ class Thread {
       subject: json['subject']?.toString() ?? '',
       author: json['author']?.toString() ?? '',
       authorId: json['authorid']?.toString() ?? '',
-      dateline: int.tryParse(json['dateline']?.toString() ?? '') ?? 0,
+      dateline: int.tryParse(json['dbdateline']?.toString() ?? '') ?? 0,
       views: int.tryParse(json['views']?.toString() ?? '') ?? 0,
       replies: int.tryParse(json['replies']?.toString() ?? '') ?? 0,
       fid: json['fid']?.toString() ?? '',

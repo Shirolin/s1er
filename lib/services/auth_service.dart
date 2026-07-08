@@ -66,6 +66,8 @@ class AuthService {
 
   Future<bool> checkSession() async {
     final apiService = ApiService(_httpClient);
+
+    // 1. 优先通过 API 验证会话（Cookie 由 CookieManager 自动附加）
     try {
       final profile = await apiService.getUserProfile();
       if (profile != null && profile.uid.isNotEmpty && profile.uid != '0') {
@@ -75,22 +77,31 @@ class AuthService {
       }
     } catch (_) {}
 
+    // 2. API 验证失败时，检查本地 PersistCookieJar 中是否有 auth Cookie
+    //    尝试多个路径以覆盖 Discuz 不同的 Cookie Path 设置
     if (kIsWeb) return false;
     try {
-      final cookies = await _httpClient.cookieJar
-          .loadForRequest(Uri.parse('https://stage1st.com'));
-      final hasAuth =
-          cookies.any((c) => c.name.endsWith('auth') && c.value.isNotEmpty);
-      if (hasAuth) {
-        final memberName = cookies
-            .firstWhere((c) => c.name.endsWith('username'),
-                orElse: () => Cookie('username', 'S1User'),)
-            .value;
-        _currentUser =
-            User(uid: '', username: Uri.decodeComponent(memberName));
-        _isLoggedIn = true;
-        unawaited(_fetchProfile());
-        return true;
+      final urls = [
+        Uri.parse('https://stage1st.com/2b/'),
+        Uri.parse('https://stage1st.com'),
+      ];
+      for (final uri in urls) {
+        final cookies = await _httpClient.cookieJar.loadForRequest(uri);
+        final hasAuth =
+            cookies.any((c) => c.name.endsWith('auth') && c.value.isNotEmpty);
+        if (hasAuth) {
+          final memberName = cookies
+              .firstWhere(
+                (c) => c.name.endsWith('username'),
+                orElse: () => Cookie('username', 'S1User'),
+              )
+              .value;
+          _currentUser =
+              User(uid: '', username: Uri.decodeComponent(memberName));
+          _isLoggedIn = true;
+          unawaited(_fetchProfile());
+          return true;
+        }
       }
     } catch (_) {}
     return false;

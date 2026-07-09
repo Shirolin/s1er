@@ -150,3 +150,7 @@ lib/
   Web 端 API 请求由 `S1HttpClient` 在 `kIsWeb` 时重写到代理端口，**代理必须先启动**，否则论坛数据加载失败。
 - **登录后才能浏览**：`home_screen.dart` 将论坛 Tab 用 `isLoggedIn` 门控，未登录仅显示"登录后即可浏览"提示；Web 端登录走 API 表单（用户名+密码 → formhash → POST）。要端到端演示浏览版块/主题需要**有效的 S1 论坛账号**。完整登录管线（formhash/CSRF + 代理 + 实时 `stage1st.com`）已验证可用：用无效凭据会正确返回 `mobile:login_invalid`。
 - **网络**：`stage1st.com` 在本环境可直连（游客 API 可读取版块数据）。
+- **⚠️ 测试账号是用户多年的真实账号，务必谨慎**：`S1_TEST_USERNAME` / `S1_TEST_PASSWORD` 对应的是用户长期使用的真实 S1 账号。**严禁频繁登录、暴力重试或高频请求**，否则可能触发风控导致账号被封，造成用户重大损失。原则：
+  - 优先用**游客 API**（`module=forumindex` / `forumdisplay` / `viewthread` 无需登录即可读取）做验证，尽量不登录。
+  - 确需登录时，一次成功即可；`scripts/proxy_server.dart` 会在内存中保存已登录的 S1 Cookie 并自动附加到后续所有上游请求，因此**登录一次后无需重复登录**，浏览器端刷新页面即可通过 `checkSession()` 复用会话。
+  - 切勿写循环/压测脚本调用登录接口；`S1HttpClient` 自带每秒 2 请求限速，不要绕过。

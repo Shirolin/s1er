@@ -1,3 +1,4 @@
+import 'package:dynamic_color/dynamic_color.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
@@ -9,6 +10,7 @@ import 'screens/forum_list_screen.dart';
 import 'screens/thread_detail_screen.dart';
 import 'screens/compose_screen.dart';
 import 'screens/profile_screen.dart';
+import 'screens/settings_screen.dart';
 import 'screens/reading_history_screen.dart';
 import 'screens/image_viewer_screen.dart';
 import 'services/talker.dart';
@@ -55,6 +57,10 @@ final _router = GoRouter(
       builder: (context, state) => const ProfileScreen(),
     ),
     GoRoute(
+      path: '/settings',
+      builder: (context, state) => const SettingsScreen(),
+    ),
+    GoRoute(
       path: '/reading-history',
       builder: (context, state) => const ReadingHistoryScreen(),
     ),
@@ -84,18 +90,40 @@ class S1App extends ConsumerWidget {
       _ => ThemeMode.system,
     };
 
-    return TalkerWrapper(
-      talker: talker,
-      options: const TalkerWrapperOptions(
-        enableErrorAlerts: true,
-      ),
-      child: MaterialApp.router(
-        title: 'S1 Client',
-        theme: AppTheme.lightTheme(settings.themeColor),
-        darkTheme: AppTheme.darkTheme(settings.themeColor),
-        themeMode: themeMode,
-        routerConfig: _router,
-      ),
+    return DynamicColorBuilder(
+      builder: (lightDynamic, darkDynamic) {
+        final useDynamic = settings.useDynamicColor;
+        final hasDynamic = lightDynamic != null && darkDynamic != null;
+
+        final lightTheme = useDynamic && hasDynamic
+            ? AppTheme.fromColorScheme(lightDynamic)
+            : AppTheme.lightTheme(settings.themeColor);
+        final darkTheme = useDynamic && hasDynamic
+            ? AppTheme.fromColorScheme(darkDynamic)
+            : AppTheme.darkTheme(settings.themeColor);
+
+        return TalkerWrapper(
+          talker: talker,
+          options: const TalkerWrapperOptions(
+            enableErrorAlerts: true,
+          ),
+          child: MaterialApp.router(
+            title: 'S1 Client',
+            theme: lightTheme,
+            darkTheme: darkTheme,
+            themeMode: themeMode,
+            routerConfig: _router,
+            builder: (context, child) {
+              return MediaQuery(
+                data: MediaQuery.of(context).copyWith(
+                  textScaler: TextScaler.linear(settings.textScaleFactor),
+                ),
+                child: child!,
+              );
+            },
+          ),
+        );
+      },
     );
   }
 }

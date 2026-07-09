@@ -1,15 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
-import 'package:talker_flutter/talker_flutter.dart';
 import '../config/api_config.dart';
 import '../theme/app_theme.dart';
 import '../utils/format_utils.dart';
 import '../providers/auth_provider.dart';
 import '../providers/reading_history_provider.dart';
-import '../providers/settings_provider.dart';
-import '../providers/talker_provider.dart';
-import '../services/talker.dart' as t;
 import '../models/user.dart';
 import '../widgets/app_bar_more_menu.dart';
 import '../widgets/web_avatar.dart';
@@ -44,7 +40,6 @@ class ProfileBody extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final authState = ref.watch(authStateProvider);
-    final settings = ref.watch(settingsProvider);
     final user = authState.user;
     final colorScheme = Theme.of(context).colorScheme;
 
@@ -75,22 +70,7 @@ class ProfileBody extends ConsumerWidget {
           _InfoCard(user: user),
         ],
         const SizedBox(height: 20),
-        const _ReadingHistoryTile(),
-        const SizedBox(height: 16),
-        _ThemeSettingsCard(
-          themeMode: settings.themeMode,
-          themeColor: settings.themeColor,
-          onThemeModeChanged: (v) =>
-              ref.read(settingsProvider.notifier).setThemeMode(v),
-          onThemeColorChanged: (v) =>
-              ref.read(settingsProvider.notifier).setThemeColor(v),
-        ),
-        const SizedBox(height: 16),
-        _DisplaySettingsCard(
-          showImages: settings.showImages,
-          onShowImagesChanged: (v) =>
-              ref.read(settingsProvider.notifier).setShowImages(v),
-        ),
+        const _SystemGroupCard(),
         const SizedBox(height: 16),
         if (authState.isLoggedIn)
           _ActionTile(
@@ -409,289 +389,8 @@ class _InfoTile extends StatelessWidget {
   }
 }
 
-String _getColorLabel(String key) {
-  const labels = {
-    'blue': '蓝',
-    'purple': '紫',
-    'sage': '绿',
-    'indigo': '黛',
-    'orange': '橙',
-  };
-  return labels[key] ?? key;
-}
-
-class _ThemeSettingsCard extends StatelessWidget {
-  const _ThemeSettingsCard({
-    required this.themeMode,
-    required this.themeColor,
-    required this.onThemeModeChanged,
-    required this.onThemeColorChanged,
-  });
-
-  final String themeMode;
-  final String themeColor;
-  final ValueChanged<String> onThemeModeChanged;
-  final ValueChanged<String> onThemeColorChanged;
-
-  @override
-  Widget build(BuildContext context) {
-    final colorScheme = Theme.of(context).colorScheme;
-    final textTheme = Theme.of(context).textTheme;
-
-    return Card(
-      elevation: 0,
-      shape: S1Shape.cardShape,
-      color: colorScheme.surfaceContainerHighest.withValues(alpha: S1Alpha.cardOverlay),
-      child: Padding(
-        padding: const EdgeInsets.all(20),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(
-              '主题设置',
-              style: textTheme.labelLarge?.copyWith(
-                color: colorScheme.primary,
-                fontWeight: FontWeight.w600,
-              ),
-            ),
-            const SizedBox(height: 16),
-            Text(
-              '主题外观',
-              style: textTheme.bodyMedium?.copyWith(
-                color: colorScheme.onSurfaceVariant,
-              ),
-            ),
-            const SizedBox(height: 12),
-            SegmentedButton<String>(
-              segments: const [
-                ButtonSegment(
-                  value: 'system',
-                  label: Text('跟随系统'),
-                  icon: Icon(Icons.brightness_auto, size: 18),
-                ),
-                ButtonSegment(
-                  value: 'light',
-                  label: Text('浅色'),
-                  icon: Icon(Icons.light_mode, size: 18),
-                ),
-                ButtonSegment(
-                  value: 'dark',
-                  label: Text('深色'),
-                  icon: Icon(Icons.dark_mode, size: 18),
-                ),
-              ],
-              selected: {themeMode},
-              onSelectionChanged: (v) => onThemeModeChanged(v.first),
-              showSelectedIcon: false,
-              style: ButtonStyle(
-                visualDensity: VisualDensity.standard,
-                tapTargetSize: MaterialTapTargetSize.shrinkWrap,
-                side: WidgetStateProperty.resolveWith((states) {
-                  if (states.contains(WidgetState.selected)) {
-                    return BorderSide.none;
-                  }
-                  return BorderSide(
-                    color: colorScheme.outlineVariant,
-                  );
-                }),
-                backgroundColor: WidgetStateProperty.resolveWith((states) {
-                  if (states.contains(WidgetState.selected)) {
-                    return colorScheme.secondaryContainer;
-                  }
-                  return Colors.transparent;
-                }),
-                foregroundColor: WidgetStateProperty.resolveWith((states) {
-                  if (states.contains(WidgetState.selected)) {
-                    return colorScheme.onSecondaryContainer;
-                  }
-                  return colorScheme.onSurfaceVariant;
-                }),
-                shape: WidgetStateProperty.all(
-                  const RoundedRectangleBorder(
-                    borderRadius: S1Shape.medium,
-                  ),
-                ),
-                padding: WidgetStateProperty.all(
-                  const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
-                ),
-              ),
-            ),
-            const SizedBox(height: 20),
-            const Divider(height: 1, indent: 0, endIndent: 0),
-            const SizedBox(height: 20),
-            Text(
-              '主题配色',
-              style: textTheme.bodyMedium?.copyWith(
-                color: colorScheme.onSurfaceVariant,
-              ),
-            ),
-            const SizedBox(height: 16),
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: AppTheme.themeSeeds.entries.map((entry) {
-                final key = entry.key;
-                final color = entry.value;
-                final isSelected = themeColor == key;
-                return GestureDetector(
-                  onTap: () => onThemeColorChanged(key),
-                  child: Column(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      AnimatedContainer(
-                        duration: const Duration(milliseconds: 200),
-                        width: 48,
-                        height: 48,
-                        decoration: BoxDecoration(
-                          color: color,
-                          shape: BoxShape.circle,
-                          border: isSelected
-                              ? Border.all(
-                                  color: colorScheme.primary,
-                                  width: 3,
-                                  strokeAlign: BorderSide.strokeAlignOutside,
-                                )
-                              : null,
-                          boxShadow: isSelected
-                              ? [
-                                  BoxShadow(
-                                    color: color.withValues(alpha: 0.4),
-                                    blurRadius: 8,
-                                    offset: const Offset(0, 4),
-                                  ),
-                                ]
-                              : null,
-                        ),
-                        child: isSelected
-                            ? Icon(
-                                Icons.check,
-                                color: color.computeLuminance() > 0.5
-                                    ? Colors.black87
-                                    : Colors.white,
-                                size: 22,
-                              )
-                            : null,
-                      ),
-                      const SizedBox(height: 4),
-                      Text(
-                        _getColorLabel(key),
-                        style: textTheme.labelSmall?.copyWith(
-                          color: colorScheme.onSurfaceVariant,
-                        ),
-                      ),
-                    ],
-                  ),
-                );
-              }).toList(),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-}
-
-class _DisplaySettingsCard extends StatelessWidget {
-  const _DisplaySettingsCard({
-    required this.showImages,
-    required this.onShowImagesChanged,
-  });
-
-  final bool showImages;
-  final ValueChanged<bool> onShowImagesChanged;
-
-  @override
-  Widget build(BuildContext context) {
-    final colorScheme = Theme.of(context).colorScheme;
-    final textTheme = Theme.of(context).textTheme;
-
-    return Card(
-      elevation: 0,
-      shape: S1Shape.cardShape,
-      color: colorScheme.surfaceContainerHighest.withValues(alpha: S1Alpha.cardOverlay),
-      child: Padding(
-        padding: const EdgeInsets.all(20),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(
-              '显示设置',
-              style: textTheme.labelLarge?.copyWith(
-                color: colorScheme.primary,
-                fontWeight: FontWeight.w600,
-              ),
-            ),
-            const SizedBox(height: 16),
-            SwitchListTile(
-              title: const Text('显示图片'),
-              secondary: const Icon(Icons.image_outlined),
-              value: showImages,
-              onChanged: onShowImagesChanged,
-              shape: const RoundedRectangleBorder(
-                borderRadius: S1Shape.medium,
-              ),
-              contentPadding: EdgeInsets.zero,
-            ),
-            const Divider(height: 1, indent: 0, endIndent: 0),
-            const _VersionTile(),
-          ],
-        ),
-      ),
-    );
-  }
-}
-
-class _VersionTile extends ConsumerStatefulWidget {
-  const _VersionTile();
-
-  @override
-  ConsumerState<_VersionTile> createState() => _VersionTileState();
-}
-
-class _VersionTileState extends ConsumerState<_VersionTile> {
-  int _tapCount = 0;
-
-  void _onTap() {
-    _tapCount++;
-    if (_tapCount >= 5) {
-      _tapCount = 0;
-      if (context.mounted) {
-        Navigator.of(context).push(
-          MaterialPageRoute(
-            builder: (context) => TalkerScreen(talker: t.talker),
-          ),
-        );
-      }
-    }
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    final packageInfo = ref.watch(packageInfoProvider);
-    final textTheme = Theme.of(context).textTheme;
-    final colorScheme = Theme.of(context).colorScheme;
-
-    return packageInfo.when(
-      data: (info) => ListTile(
-        title: Text(
-          'Version',
-          style: textTheme.bodyMedium?.copyWith(
-            color: colorScheme.onSurfaceVariant,
-          ),
-        ),
-        subtitle: Text('${info.version}+${info.buildNumber}'),
-        onTap: _onTap,
-        shape: const RoundedRectangleBorder(
-          borderRadius: S1Shape.medium,
-        ),
-      ),
-      loading: () => const SizedBox.shrink(),
-      error: (_, __) => const SizedBox.shrink(),
-    );
-  }
-}
-
-class _ReadingHistoryTile extends ConsumerWidget {
-  const _ReadingHistoryTile();
+class _SystemGroupCard extends ConsumerWidget {
+  const _SystemGroupCard();
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -702,27 +401,56 @@ class _ReadingHistoryTile extends ConsumerWidget {
     return Card(
       elevation: 0,
       shape: S1Shape.cardShape,
-      color: colorScheme.surfaceContainerHighest
-          .withValues(alpha: S1Alpha.cardOverlay),
-      child: ListTile(
-        leading: Icon(Icons.history, color: colorScheme.primary),
-        title: const Text('阅读历史'),
-        trailing: Row(
+      color: colorScheme.surfaceContainerHighest.withValues(alpha: S1Alpha.cardOverlay),
+      clipBehavior: Clip.antiAlias,
+      child: Padding(
+        padding: const EdgeInsets.symmetric(vertical: 4),
+        child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            if (count > 0)
-              Text(
-                '$count',
-                style: textTheme.bodyMedium?.copyWith(
+            ListTile(
+              leading: Icon(Icons.history, color: colorScheme.primary),
+              title: const Text('阅读历史'),
+              subtitle: Text(
+                '浏览过的帖子记录',
+                style: textTheme.bodySmall?.copyWith(
                   color: colorScheme.onSurfaceVariant,
                 ),
               ),
-            const SizedBox(width: 4),
-            Icon(Icons.chevron_right, color: colorScheme.onSurfaceVariant),
+              trailing: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  if (count > 0)
+                    Text(
+                      '$count',
+                      style: textTheme.bodyMedium?.copyWith(
+                        color: colorScheme.onSurfaceVariant,
+                      ),
+                    ),
+                  const SizedBox(width: 4),
+                  Icon(Icons.chevron_right, color: colorScheme.onSurfaceVariant),
+                ],
+              ),
+              onTap: () => context.push('/reading-history'),
+            ),
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 16),
+              child: Divider(height: 1, color: colorScheme.outlineVariant.withValues(alpha: 0.5)),
+            ),
+            ListTile(
+              leading: Icon(Icons.settings_outlined, color: colorScheme.primary),
+              title: const Text('设置'),
+              subtitle: Text(
+                '主题、文字大小与显示',
+                style: textTheme.bodySmall?.copyWith(
+                  color: colorScheme.onSurfaceVariant,
+                ),
+              ),
+              trailing: Icon(Icons.chevron_right, color: colorScheme.onSurfaceVariant),
+              onTap: () => context.push('/settings'),
+            ),
           ],
         ),
-        shape: const RoundedRectangleBorder(borderRadius: S1Shape.large),
-        onTap: () => context.push('/reading-history'),
       ),
     );
   }

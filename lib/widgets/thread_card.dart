@@ -8,6 +8,7 @@ import '../providers/reading_history_provider.dart';
 import '../theme/app_theme.dart';
 import '../utils/compact_label.dart';
 import '../utils/format_utils.dart';
+import 'page_picker_sheet.dart';
 
 /// 从当前用户的阅读历史列表中查出指定 tid 的记录（无则 null）。
 ReadingRecord? _recordFor(List<ReadingRecord> list, String tid) {
@@ -45,16 +46,23 @@ class ThreadCard extends ConsumerWidget {
       return;
     }
 
-    showModalBottomSheet(
+    const perPage = S1Constants.postsPerPageFallback;
+    showPagePickerSheet(
       context: context,
-      showDragHandle: true,
-      isScrollControlled: true,
-      builder: (ctx) => _ThreadPageSheet(
-        outerContext: context,
-        tid: thread.tid,
-        subject: thread.subject,
-        totalPages: totalPages,
-      ),
+      totalPages: totalPages,
+      subtitle: thread.subject,
+      pageItemLabelBuilder: (page) {
+        final start = (page - 1) * perPage + 1;
+        final end = page * perPage;
+        return '第 $start - $end 楼';
+      },
+      onPageSelected: (page) {
+        context.push(
+          page == 1
+              ? '/thread/${thread.tid}'
+              : '/thread/${thread.tid}?page=$page',
+        );
+      },
     );
   }
 
@@ -416,135 +424,6 @@ class _CategoryTag extends StatelessWidget {
       visualDensity: VisualDensity.compact,
       materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
       padding: EdgeInsets.zero,
-    );
-  }
-}
-
-// ═══════════════════════════════════════════════════════════
-//  页码选择 BottomSheet
-// ═══════════════════════════════════════════════════════════
-
-class _ThreadPageSheet extends StatelessWidget {
-  const _ThreadPageSheet({
-    required this.outerContext,
-    required this.tid,
-    required this.subject,
-    required this.totalPages,
-  });
-  final BuildContext outerContext;
-  final String tid;
-  final String subject;
-  final int totalPages;
-
-  static const int _perPage = S1Constants.postsPerPageFallback;
-
-  @override
-  Widget build(BuildContext context) {
-    final scheme = Theme.of(context).colorScheme;
-    final textTheme = Theme.of(context).textTheme;
-
-    return SafeArea(
-      child: ConstrainedBox(
-        constraints: BoxConstraints(
-          maxHeight: MediaQuery.of(context).size.height * 0.6,
-        ),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Padding(
-              padding: const EdgeInsets.fromLTRB(24, 4, 24, 8),
-              child: Row(
-                children: [
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text('选择页码', style: textTheme.titleMedium),
-                        const SizedBox(height: 2),
-                        Text(
-                          subject,
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
-                          style: textTheme.bodySmall?.copyWith(
-                            color: scheme.onSurfaceVariant,
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                  Text(
-                    '共 $totalPages 页',
-                    style: textTheme.bodySmall?.copyWith(
-                      color: scheme.onSurfaceVariant,
-                    ),
-                  ),
-                ],
-              ),
-            ),
-            const Divider(height: 1),
-            Flexible(
-              child: ListView.builder(
-                shrinkWrap: true,
-                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-                itemCount: totalPages,
-                itemBuilder: (ctx, index) {
-                  final page = index + 1;
-                  final startPost = (page - 1) * _perPage + 1;
-                  final endPost = page * _perPage;
-
-                  return InkWell(
-                    onTap: () {
-                      Navigator.pop(ctx);
-                      GoRouter.of(outerContext).push(
-                        page == 1
-                            ? '/thread/$tid'
-                            : '/thread/$tid?page=$page',
-                      );
-                    },
-                    borderRadius: S1Shape.small,
-                    child: Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-                      child: Row(
-                        children: [
-                          Container(
-                            width: 32,
-                            height: 32,
-                            alignment: Alignment.center,
-                            decoration: BoxDecoration(
-                              color: scheme.primaryContainer,
-                              borderRadius: S1Shape.small,
-                            ),
-                            child: Text(
-                              '$page',
-                              style: textTheme.bodySmall?.copyWith(
-                                fontWeight: FontWeight.w600,
-                                color: scheme.onPrimaryContainer,
-                              ),
-                            ),
-                          ),
-                          const SizedBox(width: 12),
-                          Text(
-                            '第 $startPost - $endPost 楼',
-                            style: textTheme.bodySmall?.copyWith(
-                              color: scheme.onSurfaceVariant,
-                            ),
-                          ),
-                          const Spacer(),
-                          Icon(
-                            Icons.chevron_right,
-                            size: 18,
-                            color: scheme.onSurfaceVariant,
-                          ),
-                        ],
-                      ),
-                    ),
-                  );
-                },
-              ),
-            ),
-          ],
-        ),
-      ),
     );
   }
 }

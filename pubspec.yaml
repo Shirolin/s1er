@@ -26,6 +26,7 @@ dependencies:
   package_info_plus: ^10.2.0
   talker_flutter: ^5.1.17
   talker_dio_logger: ^5.1.17
+  dynamic_color: ^1.8.1
 
 dev_dependencies:
   flutter_test:

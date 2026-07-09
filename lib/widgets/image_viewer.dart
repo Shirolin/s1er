@@ -6,6 +6,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import '../config/resource_domains.dart';
+import '../providers/settings_provider.dart';
 import '../services/http_client.dart';
 import '../theme/app_theme.dart';
 import 'web_image_stub.dart'
@@ -60,6 +61,10 @@ class _ImageViewerState extends ConsumerState<ImageViewer> {
   bool _initDone = false;
 
   void _load() {
+    if (!widget.isEmoticon && !ref.read(settingsProvider).showImages) {
+      return;
+    }
+
     final cached = _cache[widget.imageUrl];
     if (cached != null) {
       _cache.remove(widget.imageUrl);
@@ -115,6 +120,20 @@ class _ImageViewerState extends ConsumerState<ImageViewer> {
 
   @override
   Widget build(BuildContext context) {
+    final showImages = widget.isEmoticon ||
+        ref.watch(settingsProvider.select((s) => s.showImages));
+
+    ref.listen<bool>(
+      settingsProvider.select((s) => s.showImages),
+      (previous, next) {
+        if (!widget.isEmoticon && next && previous == false) {
+          _load();
+        }
+      },
+    );
+
+    if (!showImages) return _buildHiddenPlaceholder();
+
     if (widget.isEmoticon) return _buildEmoticon(context);
 
     // Web 公开资源：原生 <img>，无 CORS
@@ -177,6 +196,24 @@ class _ImageViewerState extends ConsumerState<ImageViewer> {
           );
         },
         errorBuilder: (_, __, ___) => _buildError(),
+      ),
+    );
+  }
+
+  Widget _buildHiddenPlaceholder() {
+    final scheme = Theme.of(context).colorScheme;
+    final textTheme = Theme.of(context).textTheme;
+
+    return Container(
+      height: 48,
+      alignment: Alignment.center,
+      decoration: BoxDecoration(
+        color: scheme.surfaceContainerHighest,
+        borderRadius: S1Shape.small,
+      ),
+      child: Text(
+        '[图片]',
+        style: textTheme.bodySmall?.copyWith(color: scheme.onSurfaceVariant),
       ),
     );
   }

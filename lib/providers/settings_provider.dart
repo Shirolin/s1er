@@ -2,25 +2,30 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:hive/hive.dart';
 
 class AppSettings {
-
   AppSettings({
     this.themeMode = 'system',
     this.themeColor = 'purple',
     this.showImages = true,
     this.fontSize = 14,
+    this.useDynamicColor = false,
     this.collapsedForums = const {},
   });
+
   final String themeMode;
   final String themeColor;
   final bool showImages;
   final int fontSize;
+  final bool useDynamicColor;
   final Set<String> collapsedForums;
+
+  double get textScaleFactor => fontSize / 14.0;
 
   AppSettings copyWith({
     String? themeMode,
     String? themeColor,
     bool? showImages,
     int? fontSize,
+    bool? useDynamicColor,
     Set<String>? collapsedForums,
   }) {
     return AppSettings(
@@ -28,14 +33,17 @@ class AppSettings {
       themeColor: themeColor ?? this.themeColor,
       showImages: showImages ?? this.showImages,
       fontSize: fontSize ?? this.fontSize,
+      useDynamicColor: useDynamicColor ?? this.useDynamicColor,
       collapsedForums: collapsedForums ?? this.collapsedForums,
     );
   }
 }
 
 class SettingsNotifier extends StateNotifier<AppSettings> {
-  SettingsNotifier() : super(AppSettings()) {
-    _loadSettings();
+  SettingsNotifier([AppSettings? initial]) : super(initial ?? AppSettings()) {
+    if (initial == null) {
+      _loadSettings();
+    }
   }
 
   void _loadSettings() {
@@ -53,8 +61,9 @@ class SettingsNotifier extends StateNotifier<AppSettings> {
       themeColor: box.get('themeColor', defaultValue: 'purple') as String,
       showImages: box.get('showImages', defaultValue: true),
       fontSize: box.get('fontSize', defaultValue: 14),
+      useDynamicColor: box.get('useDynamicColor', defaultValue: false),
       collapsedForums: Set<String>.from(
-          (box.get('collapsedForums') as List?)?.cast<String>() ?? [],
+        (box.get('collapsedForums') as List?)?.cast<String>() ?? [],
       ),
     );
   }
@@ -77,6 +86,11 @@ class SettingsNotifier extends StateNotifier<AppSettings> {
   void setFontSize(int value) {
     state = state.copyWith(fontSize: value);
     Hive.box('settings').put('fontSize', value);
+  }
+
+  void setUseDynamicColor(bool value) {
+    state = state.copyWith(useDynamicColor: value);
+    Hive.box('settings').put('useDynamicColor', value);
   }
 
   void toggleForumCollapse(String fid) {

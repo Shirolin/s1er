@@ -33,68 +33,42 @@ abstract class S1Alpha {
 
 class AppTheme {
   static const Map<String, Color> themeSeeds = {
-    'blue': Color(0xFF1A73E8),      // 经典蓝
-    'purple': Color(0xFF6750A4),    // 官方紫色
-    'sage': Color(0xFF386B52),      // 柔和绿
-    'indigo': Color(0xFF435993),    // 黛蓝
-    'orange': Color(0xFFF57C00),    // 暖阳橙
+    'blue': Color(0xFF1A73E8),
+    'purple': Color(0xFF6750A4),
+    'sage': Color(0xFF386B52),
+    'indigo': Color(0xFF435993),
+    'orange': Color(0xFFF57C00),
   };
+
+  static const _fontFamily = 'NotoSansSC';
+  static const _fontFamilyFallback = [
+    'PingFang SC',
+    'Heiti SC',
+    'Microsoft YaHei',
+    'Noto Sans CJK SC',
+    'sans-serif',
+  ];
 
   static ThemeData lightTheme(String themeColorKey) {
     final seedColor = themeSeeds[themeColorKey] ?? themeSeeds['purple']!;
-    final colorScheme = ColorScheme.fromSeed(
-      seedColor: seedColor,
-      brightness: Brightness.light,
-    );
-    return ThemeData(
-      useMaterial3: true,
-      colorScheme: colorScheme,
-      fontFamily: 'NotoSansSC',
-      fontFamilyFallback: const [
-        'PingFang SC',
-        'Heiti SC',
-        'Microsoft YaHei',
-        'Noto Sans CJK SC',
-        'sans-serif',
-      ],
-      appBarTheme: const AppBarTheme(centerTitle: true),
-      cardTheme: const CardThemeData(
-        shape: S1Shape.cardShape,
-        elevation: 0,
-        margin: EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-      ),
-      dialogTheme: const DialogThemeData(shape: S1Shape.dialogShape),
-      bottomSheetTheme: const BottomSheetThemeData(shape: S1Shape.bottomSheetShape),
-      chipTheme: const ChipThemeData(shape: S1Shape.chipShape),
-      dividerTheme: DividerThemeData(
-        color: colorScheme.outlineVariant,
-      ),
-      scrollbarTheme: ScrollbarThemeData(
-        thumbColor: WidgetStateProperty.all(colorScheme.outlineVariant),
-      ),
-      inputDecorationTheme: const InputDecorationTheme(
-        border: S1Shape.inputShape,
-      ),
+    return fromColorScheme(
+      ColorScheme.fromSeed(seedColor: seedColor, brightness: Brightness.light),
     );
   }
 
   static ThemeData darkTheme(String themeColorKey) {
     final seedColor = themeSeeds[themeColorKey] ?? themeSeeds['purple']!;
-    final colorScheme = ColorScheme.fromSeed(
-      seedColor: seedColor,
-      brightness: Brightness.dark,
+    return fromColorScheme(
+      ColorScheme.fromSeed(seedColor: seedColor, brightness: Brightness.dark),
     );
+  }
+
+  static ThemeData fromColorScheme(ColorScheme colorScheme) {
     return ThemeData(
       useMaterial3: true,
       colorScheme: colorScheme,
-      fontFamily: 'NotoSansSC',
-      fontFamilyFallback: const [
-        'PingFang SC',
-        'Heiti SC',
-        'Microsoft YaHei',
-        'Noto Sans CJK SC',
-        'sans-serif',
-      ],
+      fontFamily: _fontFamily,
+      fontFamilyFallback: _fontFamilyFallback,
       appBarTheme: const AppBarTheme(centerTitle: true),
       cardTheme: const CardThemeData(
         shape: S1Shape.cardShape,

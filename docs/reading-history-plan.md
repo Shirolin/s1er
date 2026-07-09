@@ -1,8 +1,66 @@
 # 阅读历史 + 阅读进度 — 最终实现计划
 
+> 版本：v1.1（2026-07-09 基于真实代码核对修正）｜本文件为**权威实现计划**，与 `docs/plans/reading_history_design.md` 冲突处以本文件为准。
+
 ## 目标
 
 为 S1 客户端添加本地阅读历史记录和阅读进度追踪功能。用户进入帖子时自动记录，再次打开时可续读，帖子列表中显示进度标识。
+
+---
+
+## ⚠️ v1.1 勘误与修正（基于真实代码 + `docs/api_reference.md` 核对）
+
+> 下列为核对真实代码后发现的 v1.0 计划错误，均已在本文档正文同步修正。实施时务必以修正后的结论为准。
+
+### C1【最关键】每页帖数是 `ppp = 40`，不是 30
+
+v1.0 计划（D6/P1/P3）主张把每页帖数统一为 **30** —— **方向错了**。依据 `docs/api_reference.md`（§`ppp`、§已知陷阱 #5）：
+
+- 帖子**详情页**（`viewthread`）每页帖数字段是 **`ppp`，实际值 `40`**。
+- 版块**主题列表**（`forumdisplay`）每页主题数字段是 **`tpp`，实际值 `50`**，与 `ppp` 是两码事，**不可混用**。
+
+对照真实代码：
+
+| 位置 | 现状 | 正确性 | 结论 |
+|---|---|---|---|
+| `lib/widgets/thread_card.dart:12` `_calcTotalPages(..., perPage = 40)` | 40 | ✅ 与 `ppp` 一致 | **保留 40**（v1.0 要改 30 是错的） |
+| `lib/widgets/thread_card.dart:311` `_ThreadPageSheet._perPage = 40` | 40 | ✅ 与 `ppp` 一致 | **保留 40**（v1.0 要改 30 是错的） |
+| `lib/screens/thread_detail_screen.dart:173` `(state.currentPage - 1) * 30` | 30 | ❌ **真正的 bug** | 改为 `state.perPage`（来自 API `ppp`） |
+| `lib/providers/post_provider.dart:90` `ppp` fallback `?? 30` | 30 | ❌ fallback 应与 `ppp` 一致 | fallback 改为 **40** |
+
+**统一原则**：详情页一律读 API 的 `ppp`（`PostListState.perPage`）；无法拿到 API 值的地方（`ThreadCard` 只有列表数据、没有 `ppp`）用**共享 fallback 常量 = 40**。建议新增 `S1Constants.postsPerPageFallback = 40`，消灭所有散落的 `30`/`40` 字面量。
+
+### C2 `isFinished` / `progress` 语义要统一为「页级」，且修正 0 回复 bug
+
+v1.0 存在两处自相矛盾：正文用 `progress = lastReadPage / totalPages`（页级），却用 `isFinished = totalReplies > 0 && lastReadFloor >= totalReplies + 1`（楼层级）。而设计文档 v1.0 又用 `lastReadPage >= totalPages`。数据流实际只知道「已加载到第几页」，楼层是「当前页最后一楼」的推算值，因此**两者都应基于页级**：
+
+- `progress = totalPages > 0 ? (lastReadPage / totalPages).clamp(0,1) : 0`
+- `isFinished = lastReadPage >= totalPages`（`totalPages` 已 `clamp(1, …)`）
+
+修正的 bug：原 `isFinished` 公式在**只有主楼、0 回复**（`totalReplies == 0`）的帖子上永远为 `false`；页级公式下 `totalPages==1 && lastReadPage==1 ⇒ 已读`，正确。`lastReadFloor` 仍保留，仅用于「上次读到第 N 楼」的展示，不参与判定。
+
+### C3 用户隔离 key 前缀要兼容「uid 为空串」
+
+`User.uid` 缺省是**空字符串 `''` 而非 `null`**（见 `lib/models/user.dart:24`），且 Web 端登录后 `uid` 会短暂为 `''`（`AuthService.login` 先建 `User(uid:'')` 再异步 `fetchProfile` 补全）。因此 `authState.user?.uid ?? 'guest'` 在 uid 为 `''` 时会得到前缀 `_{tid}`，污染数据。**必须**：
+
+```dart
+final rawUid = ref.watch(authStateProvider).user?.uid;
+final uid = (rawUid == null || rawUid.isEmpty) ? 'guest' : rawUid;
+```
+
+### C4 单条记录 Provider 需显式失效才会刷新
+
+`readingRecordProvider` 是 `Provider.family`，读取一次后会缓存。写入进度后，若不 `ref.invalidate(readingRecordProvider(tid))`，`ThreadCard` 的进度条不会更新。故 `_recordProgress` 写库后必须失效该 provider（列表页因已在别的路由，遵循 D4：返回列表时随页面重建刷新，可接受）。
+
+### C5 其它与真实代码对齐的确认
+
+- `PostListState`（`lib/providers/post_provider.dart:6`）当前**没有** `perPage`/`totalReplies` 字段，需按 §2.2 新增。
+- 详情页现用 `initState` + `addPostFrameCallback` 处理 `initialPage` 跳转；本计划改用 `build()` 内 `ref.listen`（D2）记录进度，二者不冲突。
+- 路由 `/thread/:tid` 已支持 `?page=` query（`lib/app.dart:31`），续读跳转直接复用。
+- 项目 Provider 风格**混用**：`auth/post/settings` 用 `StateNotifier`，`forum_list` 用 `AsyncNotifier`；本计划的可变列表 Notifier 采用 `StateNotifier`（D1），与 `settings/auth` 一致。设计文档 v1.0 用 `NotifierProvider` 属笔误。
+- 导航方案：**在「个人资料」页加入口**（前置约束），**不改 `NavigationBar`**。设计文档 v1.0 §6.4「方案 A：替换搜索 Tab」与此冲突，**以本文件为准，废弃方案 A**。
+
+---
 
 ## 前置约束
 
@@ -21,7 +79,7 @@
 | D3 | ThreadCard widget 类型 | 整体改为 `ConsumerWidget` |
 | D4 | 进度条刷新时序 | 接受列表页不立即刷新的限制 |
 | D5 | 续读交互 | 双层：ThreadCard 直跳 + SnackBar 备用提示 |
-| D6 | `_ThreadPageSheet._perPage` | 硬编码 40→30 |
+| D6 | 每页帖数来源 | 详情页读 API `ppp`；无 API 值处用共享 fallback 常量 **40**（见 C1，**修正 v1.0 的 30**） |
 | D7 | `_HistoryTile` 风格 | 丰富信息式（版块名、阅读次数、时间） |
 | D8 | `readCount` 字段 | 新增，每次进入详情页 +1，翻页不计 |
 | D9 | 版块名获取 | 通过 `forumListProvider` 查 fid，未加载则不显示 |
@@ -33,11 +91,14 @@
 
 ## 已发现的预置问题（本计划一并修复）
 
+> 依据：`docs/api_reference.md` 认定 `viewthread` 的 `ppp = 40`（见 C1）。故真正要修的是**详情页硬编码的 30**，而非 `thread_card` 的 40。
+
 | # | 问题 | 位置 | 修复 |
 |---|------|------|------|
-| P1 | `_calcTotalPages` 硬编码 `perPage=40` | [thread_card.dart:12](file:///d:/Project/s1-app/lib/widgets/thread_card.dart#L12) | 改为 30 |
-| P2 | `thread_detail_screen.dart:173` 硬编码 `* 30` | [thread_detail_screen.dart:173](file:///d:/Project/s1-app/lib/screens/thread_detail_screen.dart#L173) | 改为 `state.perPage` |
-| P3 | `_ThreadPageSheet._perPage = 40` | [thread_card.dart:311](file:///d:/Project/s1-app/lib/widgets/thread_card.dart#L311) | 改为 30 |
+| P1 | `_calcTotalPages` 的 fallback `perPage` 应与 `ppp` 一致 | `lib/widgets/thread_card.dart:12` | 用共享常量 `S1Constants.postsPerPageFallback = 40`（值不变，去字面量） |
+| P2 | 硬编码 `* 30`，与 API `ppp=40` 不符（**真 bug**） | `lib/screens/thread_detail_screen.dart:173` | 改为 `state.perPage`（来自 API `ppp`） |
+| P3 | `_ThreadPageSheet._perPage = 40` 是散落字面量 | `lib/widgets/thread_card.dart:311` | 引用共享常量 `S1Constants.postsPerPageFallback`（值仍为 40） |
+| P4 | `post_provider` 的 `ppp` fallback `?? 30` 与 `ppp=40` 不符 | `lib/providers/post_provider.dart:90` | fallback 改为 `40`（或引用共享常量） |
 
 ---
 
@@ -79,14 +140,16 @@ class ReadingRecord {
   final int firstReadAt;  // millisecondsSinceEpoch
   final int readCount;    // 进入详情页次数
 
-  /// 进度 = 当前页 / 总页数
+  /// 进度 = 当前页 / 总页数（页级，见 C2）
   double get progress => totalPages > 0
       ? (lastReadPage / totalPages).clamp(0.0, 1.0)
       : 0.0;
 
-  /// 读完 = 绝对楼层 >= 总帖子数（主楼+回复）
-  /// 当前实现假设「加载某页 = 阅读完该页所有帖子」
-  bool get isFinished => totalReplies > 0 && lastReadFloor >= totalReplies + 1;
+  /// 读完 = 已读到最后一页（页级；totalPages 已 clamp(1,…)）
+  /// 说明：数据流只知「已加载到第几页」，故按页级判定。
+  /// 修正 v1.0：原「楼层级」公式在 0 回复(totalReplies==0)帖子上恒为 false。
+  /// lastReadFloor 仅用于「上次读到第 N 楼」展示，不参与判定。
+  bool get isFinished => lastReadPage >= totalPages;
 
   Map<String, dynamic> toJson() => { /* 所有字段 */ };
   factory ReadingRecord.fromJson(Map<String, dynamic> json) => /* 解析 */;
@@ -186,6 +249,18 @@ class ReadingHistoryService {
 await Hive.openBox<Map>('reading_history');
 ```
 
+#### 1.4 新增共享常量 `lib/config/constants.dart`
+
+消灭散落的 `30`/`40` 字面量（C1/P1/P3/P4）。`S1Constants` 已存在（含 `mobileUserAgent`、`maxRequestsPerSecond`），追加：
+
+```dart
+/// 帖子详情页每页帖数的兜底值。
+/// 权威来源是 API 的 ppp 字段（viewthread，实际 40）；
+/// 仅在拿不到 API 值时（如 ThreadCard 只有列表数据）使用。
+/// 注意：勿与 forumdisplay 的 tpp(=50，主题列表每页数) 混用。
+static const int postsPerPageFallback = 40;
+```
+
 ---
 
 ### Phase 2：Provider 层
@@ -202,7 +277,10 @@ final readingBoxProvider = Provider<Box<Map>>((ref) {
 final readingHistoryServiceProvider = Provider<ReadingHistoryService>((ref) {
   final box = ref.watch(readingBoxProvider);
   final authState = ref.watch(authStateProvider);
-  final uid = authState.user?.uid ?? 'guest';
+  // C3：User.uid 缺省为空串 ''（非 null），Web 端登录后会短暂为 ''，
+  // 必须把空串也归到 guest，否则 key 前缀会变成 "_{tid}" 污染数据。
+  final rawUid = authState.user?.uid;
+  final uid = (rawUid == null || rawUid.isEmpty) ? 'guest' : rawUid;
   return ReadingHistoryService(box, uid);
 });
 
@@ -246,7 +324,8 @@ Future<void> _loadPage(int page) async {
     final posts = ApiService.parsePostList(result);
     final variables = result['Variables'] as Map<String, dynamic>? ?? {};
     final threadMap = variables['thread'] as Map<String, dynamic>? ?? {};
-    final perPage = int.tryParse(variables['ppp']?.toString() ?? '') ?? 30;
+    final perPage = int.tryParse(variables['ppp']?.toString() ?? '')
+        ?? S1Constants.postsPerPageFallback; // C1/P4：fallback = 40，不是 30
     final totalReplies = int.tryParse(threadMap['replies']?.toString() ?? '') ?? 0;
     final totalPosts = totalReplies + 1;
     final totalPages = (totalPosts / perPage).ceil().clamp(1, 9999);
@@ -296,17 +375,39 @@ Widget build(BuildContext context) {
 }
 ```
 
-并修复楼层计算：
+并修复楼层计算（P2，替换硬编码 `* 30`）：
 ```dart
 final floorOffset = (state.currentPage - 1) * state.perPage;
 ```
 
+**关键细节：**
+
+- `_recordProgress(state)` 写库后必须失效单条 provider，否则列表进度条不刷新（C4）：
+  ```dart
+  ref.read(readingHistoryServiceProvider).updateProgress(
+    tid: widget.tid,
+    page: state.currentPage,
+    floorInPage: state.posts.length, // 当前页最后一楼的页内序号
+    subject: state.threadSubject ?? '',
+    author: state.posts.isNotEmpty ? state.posts.first.author : '',
+    fid: state.threadFid ?? '',
+    totalPages: state.totalPages,
+    totalReplies: state.totalReplies,
+    perPage: state.perPage,
+    isNewVisit: !_hasRecordedInitialVisit,
+  );
+  ref.invalidate(readingRecordProvider(widget.tid));
+  _hasRecordedInitialVisit = true;
+  ```
+- `readCount +1` 只在本次进入详情页的**首帧**发生（`isNewVisit` 由 `_hasRecordedInitialVisit` 守卫）。翻页、`refresh()` 都会再次触发 `ref.listen` 的 data 回调，但此时 `isNewVisit=false`，不重复计数（对应 D8）。
+- `_checkResumeReading` 用 `_hasCheckedResume` 守卫，避免每次 data 回调都弹 SnackBar。
+
 #### 3.2 修改 `lib/widgets/thread_card.dart`
 
 - 改为 `ConsumerWidget`
-- 修改 `_calcTotalPages` 默认 `perPage = 30`
-- 修改 `_ThreadPageSheet._perPage = 30`
-- onTap 支持续读跳转
+- `_calcTotalPages` 的 fallback 用 `S1Constants.postsPerPageFallback`（**= 40**，见 C1；**不是 30**）
+- `_ThreadPageSheet._perPage` 引用 `S1Constants.postsPerPageFallback`（值仍为 40）
+- onTap 支持续读跳转：读 `readingRecordProvider(thread.tid)`，若存在且 `!isFinished && lastReadPage > 1`，`push('/thread/${tid}?page=${lastReadPage}')`，否则 `push('/thread/${tid}')`
 - 引用 `_ReadingProgressBar` widget
 
 #### 3.3 新建 `lib/screens/reading_history_screen.dart`
@@ -326,3 +427,30 @@ ConsumerWidget。使用丰富信息式 `_HistoryTile`，通过 `forumListProvide
 ### Phase 4：验证与测试
 
 通过静态分析、现有测试集与 T1-T13 的手动测试矩阵保证功能质量。
+
+---
+
+## 边界情况与验收（v1.1 补充）
+
+### 边界情况
+
+| 场景 | 处理 |
+|---|---|
+| 0 回复帖（仅主楼） | `totalPages=1`、`lastReadPage=1` ⇒ `isFinished=true`（C2 已修 v1.0 bug） |
+| API 未返回 `ppp` | 用 `S1Constants.postsPerPageFallback = 40`（C1） |
+| 未登录 / uid 为空串 | key 前缀归一到 `guest_`（C3） |
+| 登录态在启动时异步恢复 | `checkSession()` 完成前写入的记录会落到 `guest_`；`authStateProvider` 就绪后 `readingHistoryServiceProvider` 自动重建、切到真实 uid。属已知取舍，`guest_` 记录不迁移（可作 v2 优化） |
+| 切换账号 | 因 key 带 `{uid}_` 前缀，天然隔离；淘汰 `_evictIfNeeded` 也按当前 uid 计数（优于设计文档 v1.0 的全局 `_box.length`） |
+| 帖子标题/页数变化 | 每次进入用最新值覆盖缓存 |
+| 列表页进度条不实时刷新 | 遵循 D4：返回列表页触发重建时刷新；详情页内写库后 `invalidate(readingRecordProvider(tid))`（C4） |
+
+### 验收标准
+
+- [ ] 进入详情页自动创建/更新记录；`readCount` 每次进入 +1，翻页不 +1（D8）
+- [ ] 翻页后页码/进度更新；楼层号用 `state.perPage`（=API `ppp`）计算，不再出现 `*30` 偏差（P2）
+- [ ] 列表卡片 `N页` 与详情页总页数一致（同用 `ppp`/fallback 40，C1）
+- [ ] 已读帖再次点击可续读到上次页码；0 回复帖显示「已读」
+- [ ] 历史页按 `lastReadAt` 倒序；支持单条删除与清空（仅当前 uid）
+- [ ] 超过 500 条（按 uid 计）淘汰最旧
+- [ ] 全程无网络依赖
+- [ ] `flutter analyze` 无 error/warning；`flutter test` 通过

@@ -1,6 +1,19 @@
 # 阅读历史 + 阅读进度 方案设计
 
 > 版本：v1.0 | 日期：2026-07-09
+>
+> ⚠️ **本设计文档为早期草案，部分决策已被 `docs/reading-history-plan.md`（v1.1 最终实现计划）修正/推翻。实施以最终计划为准。** 下列条目在本文中不要照抄：
+
+| 本文位置 | 早期写法（勿用） | 最终结论（见 reading-history-plan.md） |
+|---|---|---|
+| §4.1 `updateProgress` | `absoluteFloor = (page-1) * 30 + floorInPage`（硬编码 30） | 每页帖数是 API `ppp = 40`；用 `record.perPage`，fallback 常量 40（C1/P2） |
+| §2.1 `isFinished` | `lastReadPage >= totalPages`（此处正确） / 最终计划正文曾用楼层级公式 | 统一「页级」`lastReadPage >= totalPages`，修正 0 回复 bug（C2） |
+| §5.3 `NotifierProvider`/`Notifier` | 新式 Notifier | 用 `StateNotifierProvider`/`StateNotifier`，与 `auth/post/settings` 一致（D1） |
+| §5.1 `Service.init()` in provider | Service 内部 `openBox` | Box 在 `main.dart` 打开，Service 接收已打开的 `Box<Map>` + 当前 uid（D10） |
+| §6.1 `totalReplies: 0 // TODO` | 传 0 占位 | 从 `variables['thread']['replies']` 提取，存入 `PostListState.totalReplies`（§2.2） |
+| §6.4 方案 A：替换「搜索」Tab 为「历史」Tab | 改 `NavigationBar` | **不改 NavigationBar**，在「个人资料」页加入口（前置约束，废弃方案 A） |
+| §4.1 `_evictIfNeeded` 用 `_box.length` | 全局计数淘汰 | 按当前 uid 前缀计数淘汰，避免多账号相互挤占（D10/C5） |
+| 用户隔离 | 无（key 直接用 tid） | key 加 `{uid}_` 前缀，uid 为空串归 `guest`（C3/D10） |
 
 ## 1. 需求概述
 
@@ -226,7 +239,8 @@ class ReadingHistoryService {
     required int totalReplies,
   }) {
     final now = DateTime.now().millisecondsSinceEpoch;
-    final absoluteFloor = (page - 1) * 30 + floorInPage; // 每页30帖
+    // ⚠️ 勿硬编码 30：每页帖数是 API ppp（=40）。改用传入的 perPage 参数。见最终计划 C1。
+    final absoluteFloor = (page - 1) * perPage + floorInPage;
     final existing = _box.get(tid);
     final firstReadAt = existing != null
         ? (existing['firstReadAt'] as int? ?? now)
@@ -376,7 +390,8 @@ void _recordProgress(int page, List<Post> posts) {
     author: posts.isNotEmpty ? posts.first.author : '',
     fid: postState.threadFid ?? '',
     totalPages: postState.totalPages,
-    totalReplies: 0, // 从 API 响应中提取
+    totalReplies: postState.totalReplies, // ⚠️ 勿传 0：从 PostListState.totalReplies 取（见最终计划 §2.2）
+    perPage: postState.perPage,           // 来自 API ppp
   );
   // 刷新相关 provider
   ref.invalidate(readingRecordProvider(widget.tid));

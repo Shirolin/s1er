@@ -36,7 +36,7 @@ class _ThreadDetailScreenState extends ConsumerState<ThreadDetailScreen> {
     }
   }
 
-  /// 记录阅读进度：写库 + 失效单条 provider（C4）。
+  /// 记录阅读进度：写库 + 刷新历史列表（使列表卡片/历史页/资料计数实时更新）。
   /// readCount 只在本次进入详情页首帧 +1（isNewVisit 由 _hasRecordedInitialVisit 守卫）。
   void _recordProgress(PostListState state) {
     ref.read(readingHistoryServiceProvider).updateProgress(
@@ -53,9 +53,12 @@ class _ThreadDetailScreenState extends ConsumerState<ThreadDetailScreen> {
         );
     _hasRecordedInitialVisit = true;
     ref.invalidate(readingRecordProvider(widget.tid));
+    // 刷新列表 StateNotifier：ThreadCard 进度条 / 历史页 / 资料计数据此实时更新。
+    ref.read(readingHistoryProvider.notifier).refresh();
   }
 
   /// 无指定初始页时，若存在未读完的历史记录，提示续读。
+  /// 必须在 [_recordProgress] 写库**之前**读取，否则读到的就是本次刚写入的当前页。
   void _checkResumeReading(PostListState state) {
     if (_hasCheckedResume) return;
     _hasCheckedResume = true;
@@ -139,10 +142,11 @@ class _ThreadDetailScreenState extends ConsumerState<ThreadDetailScreen> {
     ref.listen<AsyncValue<PostListState>>(postProvider(widget.tid),
         (previous, next) {
       next.whenData((state) {
-        _recordProgress(state);
+        // 先按「上一次」记录判断是否提示续读，再写入本次进度。
         if (widget.initialPage == null) {
           _checkResumeReading(state);
         }
+        _recordProgress(state);
       });
     });
 

@@ -135,3 +135,18 @@ lib/
 - Hive 用于本地存储（cookies / settings / cache），未做加密，生产环境可考虑迁移到 hive 加密 box 或 flutter_secure_storage
 - 表情包资源通过脚本从 GitHub 下载（`scripts/download_emoticons.dart`），未内置到仓库
 - test 目录已有基础测试，但覆盖率不足，尤其是 screens 和 widgets 层
+
+---
+
+## Cursor Cloud specific instructions
+
+> 面向后续 Cloud Agent 的持久化环境说明（依赖已由 update script `flutter pub get` 自动刷新，此处只记录非显而易见的启动/运行注意事项）。
+
+- **Flutter SDK**：预装在 `/home/ubuntu/flutter`（stable，Dart 3.12+），已通过 `~/.bashrc` 加入交互式 shell 的 PATH。非交互式脚本请用全路径 `/home/ubuntu/flutter/bin/flutter`。
+- **Lint / Test**：`flutter analyze`（当前 0 issue）与 `flutter test`（80 个测试全绿）。注意：**首次** `flutter test` 会一次性编译引擎测试产物，可能数分钟无输出（输出被 shell 缓冲），属正常；产物缓存后整套测试约 6s。用 `--reporter expanded` 可看到实时进度。
+- **运行 Web 开发环境（推荐的可测试目标）**：需要同时启动两个进程（标准命令见 `README.md`）：
+  1. CORS 代理：`dart run scripts/proxy_server.dart`，监听 `http://localhost:19080`，转发到 `https://stage1st.com/2b/...` 并处理 CORS/Cookie。
+  2. Flutter Web：`flutter run -d web-server --web-port 8080 --web-hostname 0.0.0.0`（无头 VM 用 `web-server` 设备，避免依赖 Chrome 调试扩展；桌面 Chrome 可直接访问 `http://localhost:8080`）。
+  Web 端 API 请求由 `S1HttpClient` 在 `kIsWeb` 时重写到代理端口，**代理必须先启动**，否则论坛数据加载失败。
+- **登录后才能浏览**：`home_screen.dart` 将论坛 Tab 用 `isLoggedIn` 门控，未登录仅显示"登录后即可浏览"提示；Web 端登录走 API 表单（用户名+密码 → formhash → POST）。要端到端演示浏览版块/主题需要**有效的 S1 论坛账号**。完整登录管线（formhash/CSRF + 代理 + 实时 `stage1st.com`）已验证可用：用无效凭据会正确返回 `mobile:login_invalid`。
+- **网络**：`stage1st.com` 在本环境可直连（游客 API 可读取版块数据）。

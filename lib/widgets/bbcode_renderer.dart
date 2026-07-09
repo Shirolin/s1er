@@ -2,7 +2,6 @@ import 'package:flutter/material.dart';
 import 'package:flutter_html/flutter_html.dart';
 import 'package:url_launcher/url_launcher.dart';
 import '../config/constants.dart';
-import '../theme/app_theme.dart';
 import '../utils/bbcode_parser.dart';
 import 'emoticon_widget.dart';
 import 'quote_block.dart';
@@ -148,9 +147,10 @@ class BbcodeRenderer extends StatelessWidget {
               // data-src: 来自 _normalizeHtml 转换的网络表情包 URL
               final src = _unescapeHtml(element.attributes['data-src'] ?? '');
               if (src.isNotEmpty) {
-                return Container(
+                return ImageViewer(
+                  imageUrl: src,
+                  isEmoticon: true,
                   margin: const EdgeInsets.symmetric(horizontal: 2),
-                  child: ImageViewer(imageUrl: src, isEmoticon: true),
                 );
               }
               // data-code: 来自 BBCode [f:xxx] 的本地表情包
@@ -168,25 +168,18 @@ class BbcodeRenderer extends StatelessWidget {
 
             // 如果识别为表情包
             if (S1Constants.isEmoticon(src)) {
-              return Container(
+              return ImageViewer(
+                imageUrl: src,
+                isEmoticon: true,
                 margin: const EdgeInsets.symmetric(horizontal: 2),
-                child: ImageViewer(imageUrl: src, isEmoticon: true),
               );
             }
 
             // 如果是大图
-            return Padding(
-              padding: const EdgeInsets.symmetric(vertical: 8),
-              child: ClipRRect(
-                borderRadius: S1Shape.small,
-                child: Container(
-                  decoration: BoxDecoration(
-                    border: Border.all(color: scheme.outlineVariant),
-                    borderRadius: S1Shape.small,
-                  ),
-                  child: ImageViewer(imageUrl: src),
-                ),
-              ),
+            return ImageViewer(
+              imageUrl: src,
+              showBorder: true,
+              margin: const EdgeInsets.symmetric(vertical: 8),
             );
           },
         ),

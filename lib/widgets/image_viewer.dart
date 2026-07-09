@@ -149,7 +149,8 @@ class _ImageViewerState extends ConsumerState<ImageViewer> {
 
     // Web 公开资源：原生 <img>，无 CORS
     if (_resourceType == ResourceType.publicAsset && kIsWeb) {
-      return GestureDetector(
+      final scheme = Theme.of(context).colorScheme;
+      Widget child = GestureDetector(
         onTap: () => _showFullScreen(context),
         child: LayoutBuilder(
           builder: (context, constraints) {
@@ -158,6 +159,25 @@ class _ImageViewerState extends ConsumerState<ImageViewer> {
           },
         ),
       );
+
+      if (widget.showBorder) {
+        child = ClipRRect(
+          borderRadius: S1Shape.small,
+          child: Container(
+            decoration: BoxDecoration(
+              border: Border.all(color: scheme.outlineVariant),
+              borderRadius: S1Shape.small,
+            ),
+            child: child,
+          ),
+        );
+      }
+
+      if (widget.margin != null) {
+        child = Padding(padding: widget.margin!, child: child);
+      }
+
+      return child;
     }
 
     // 有缓存字节 → 直接渲染（复用 ImageProvider，避免重复解码/释放 Picture）
@@ -183,7 +203,9 @@ class _ImageViewerState extends ConsumerState<ImageViewer> {
   }
 
   Widget _buildImage(ImageProvider provider) {
-    return GestureDetector(
+    final scheme = Theme.of(context).colorScheme;
+
+    Widget child = GestureDetector(
       onTap: () => _showFullScreen(context),
       child: Image(
         key: ValueKey(widget.imageUrl),
@@ -211,6 +233,25 @@ class _ImageViewerState extends ConsumerState<ImageViewer> {
         errorBuilder: (_, __, ___) => _buildError(),
       ),
     );
+
+    if (widget.showBorder) {
+      child = ClipRRect(
+        borderRadius: S1Shape.small,
+        child: Container(
+          decoration: BoxDecoration(
+            border: Border.all(color: scheme.outlineVariant),
+            borderRadius: S1Shape.small,
+          ),
+          child: child,
+        ),
+      );
+    }
+
+    if (widget.margin != null) {
+      child = Padding(padding: widget.margin!, child: child);
+    }
+
+    return child;
   }
 
   Widget _buildHiddenPlaceholder() {
@@ -247,18 +288,26 @@ class _ImageViewerState extends ConsumerState<ImageViewer> {
 
   Widget _buildEmoticon(BuildContext context) {
     const double size = 24.0;
+    Widget child;
     if (_resourceType == ResourceType.publicAsset && kIsWeb) {
-      return buildWebImage(widget.imageUrl, width: size, height: size);
+      child = buildWebImage(widget.imageUrl, width: size, height: size);
+    } else {
+      child = Image(
+        key: ValueKey(widget.imageUrl),
+        image: _imageProvider ?? NetworkImage(widget.imageUrl),
+        width: size,
+        height: size,
+        fit: BoxFit.contain,
+        gaplessPlayback: true,
+        errorBuilder: (_, __, ___) => const SizedBox(width: size, height: size),
+      );
     }
-    return Image(
-      key: ValueKey(widget.imageUrl),
-      image: _imageProvider ?? NetworkImage(widget.imageUrl),
-      width: size,
-      height: size,
-      fit: BoxFit.contain,
-      gaplessPlayback: true,
-      errorBuilder: (_, __, ___) => const SizedBox(width: size, height: size),
-    );
+
+    if (widget.margin != null) {
+      child = Padding(padding: widget.margin!, child: child);
+    }
+
+    return child;
   }
 
   void _showFullScreen(BuildContext context) {

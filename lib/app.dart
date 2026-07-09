@@ -1,3 +1,4 @@
+import 'dart:typed_data';
 import 'package:dynamic_color/dynamic_color.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -70,7 +71,7 @@ final _router = GoRouter(
         final args = state.extra as Map<String, dynamic>;
         return ImageViewerScreen(
           imageUrl: args['imageUrl'] as String,
-          imageBytes: args['imageBytes'],
+          imageBytes: args['imageBytes'] as Uint8List?,
           resourceType: args['resourceType'],
         );
       },

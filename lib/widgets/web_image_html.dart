@@ -32,6 +32,16 @@ Widget buildWebImage(String url, {double? width, double? height, BoxFit fit = Bo
   );
 }
 
+/// Web 端通过 anchor 元素触发浏览器下载
+void downloadImageWeb(String url, String fileName) {
+  final anchor = html.AnchorElement(href: url)
+    ..download = fileName
+    ..style.display = 'none';
+  html.document.body?.append(anchor);
+  anchor.click();
+  anchor.remove();
+}
+
 String _toCssFit(BoxFit fit) {
   switch (fit) {
     case BoxFit.cover:

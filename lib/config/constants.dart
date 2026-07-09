@@ -8,6 +8,12 @@ class S1Constants {
   static const int cookieRefreshIntervalMinutes = 30;
   static const Duration cacheExpiry = Duration(minutes: 5);
 
+  /// 帖子详情页每页帖数的兜底值。
+  /// 权威来源是 API 的 `ppp` 字段（viewthread，实际为 40）；仅在拿不到
+  /// API 值时（如帖子列表只有列表数据、无 `ppp`）使用此兜底值。
+  /// 注意：勿与 forumdisplay 的 `tpp`(=50，主题列表每页数) 混用。
+  static const int postsPerPageFallback = 40;
+
   /// 识别表情包路径的特征
   static bool isEmoticon(String url) {
     final lowerUrl = url.toLowerCase();

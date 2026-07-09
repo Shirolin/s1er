@@ -13,6 +13,7 @@ void main() {
     TestWidgetsFlutterBinding.ensureInitialized();
     Hive.init(Directory.systemTemp.path);
     await Hive.openBox('settings');
+    await Hive.openBox<Map>('reading_history');
   });
 
   tearDownAll(() async {

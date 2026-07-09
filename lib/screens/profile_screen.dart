@@ -6,6 +6,7 @@ import '../config/api_config.dart';
 import '../theme/app_theme.dart';
 import '../utils/format_utils.dart';
 import '../providers/auth_provider.dart';
+import '../providers/reading_history_provider.dart';
 import '../providers/settings_provider.dart';
 import '../providers/talker_provider.dart';
 import '../services/talker.dart' as t;
@@ -74,6 +75,8 @@ class ProfileBody extends ConsumerWidget {
           _InfoCard(user: user),
         ],
         const SizedBox(height: 20),
+        const _ReadingHistoryTile(),
+        const SizedBox(height: 16),
         _ThemeSettingsCard(
           themeMode: settings.themeMode,
           themeColor: settings.themeColor,
@@ -683,6 +686,44 @@ class _VersionTileState extends ConsumerState<_VersionTile> {
       ),
       loading: () => const SizedBox.shrink(),
       error: (_, __) => const SizedBox.shrink(),
+    );
+  }
+}
+
+class _ReadingHistoryTile extends ConsumerWidget {
+  const _ReadingHistoryTile();
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final count = ref.watch(readingHistoryProvider).length;
+    final colorScheme = Theme.of(context).colorScheme;
+    final textTheme = Theme.of(context).textTheme;
+
+    return Card(
+      elevation: 0,
+      shape: S1Shape.cardShape,
+      color: colorScheme.surfaceContainerHighest
+          .withValues(alpha: S1Alpha.cardOverlay),
+      child: ListTile(
+        leading: Icon(Icons.history, color: colorScheme.primary),
+        title: const Text('阅读历史'),
+        trailing: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            if (count > 0)
+              Text(
+                '$count',
+                style: textTheme.bodyMedium?.copyWith(
+                  color: colorScheme.onSurfaceVariant,
+                ),
+              ),
+            const SizedBox(width: 4),
+            Icon(Icons.chevron_right, color: colorScheme.onSurfaceVariant),
+          ],
+        ),
+        shape: const RoundedRectangleBorder(borderRadius: S1Shape.large),
+        onTap: () => context.push('/reading-history'),
+      ),
     );
   }
 }

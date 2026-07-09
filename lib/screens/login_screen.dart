@@ -64,7 +64,6 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
     return Scaffold(
       appBar: AppBar(
         elevation: 0,
-        scrolledUnderElevation: 0,
         title: const Text('登录 Stage1st'),
       ),
       body: Center(

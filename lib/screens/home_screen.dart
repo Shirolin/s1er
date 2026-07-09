@@ -29,7 +29,6 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
     return Scaffold(
       appBar: AppBar(
         elevation: 0,
-        scrolledUnderElevation: 0,
         title: Text(_currentTab == 3 ? '个人资料' : 'Stage1st'),
         actions: _currentTab == 3
             ? [

@@ -69,7 +69,6 @@ class _ForumListScreenState extends ConsumerState<ForumListScreen> {
     return Scaffold(
       appBar: AppBar(
         elevation: 0,
-        scrolledUnderElevation: 0,
         title: Text(forum.isNotEmpty ? forum : '版块 #${widget.fid}'),
         actions: [
           AppBarMoreMenu(

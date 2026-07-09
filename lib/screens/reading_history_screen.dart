@@ -17,7 +17,6 @@ class ReadingHistoryScreen extends ConsumerWidget {
     return Scaffold(
       appBar: AppBar(
         elevation: 0,
-        scrolledUnderElevation: 0,
         title: const Text('阅读历史'),
         actions: [
           if (records.isNotEmpty)
@@ -144,7 +143,7 @@ class _HistoryTile extends ConsumerWidget {
         shape: S1Shape.cardShape,
         child: InkWell(
           onTap: () => _open(context),
-          borderRadius: const BorderRadius.all(Radius.circular(12)),
+          borderRadius: S1Shape.medium,
           child: Padding(
             padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
             child: Column(

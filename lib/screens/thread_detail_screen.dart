@@ -156,7 +156,6 @@ class _ThreadDetailScreenState extends ConsumerState<ThreadDetailScreen> {
     return Scaffold(
       appBar: AppBar(
         elevation: 0,
-        scrolledUnderElevation: 0,
         title: postsAsync.whenOrNull(
               data: (s) => s.threadSubject != null
                   ? GestureDetector(

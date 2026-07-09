@@ -8,6 +8,9 @@ abstract class S1Shape {
   static const large = BorderRadius.all(Radius.circular(16));
   static const extraLarge = BorderRadius.all(Radius.circular(28));
 
+  /// 全圆角（胶囊 / pill），用于标签、徽标等 M3 "full" 形状。
+  static const full = BorderRadius.all(Radius.circular(999));
+
   static const cardShape = RoundedRectangleBorder(borderRadius: medium);
   static const dialogShape = RoundedRectangleBorder(borderRadius: extraLarge);
   static const bottomSheetShape = RoundedRectangleBorder(

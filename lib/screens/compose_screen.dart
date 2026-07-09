@@ -82,7 +82,6 @@ class _ComposeScreenState extends ConsumerState<ComposeScreen> {
     return Scaffold(
       appBar: AppBar(
         elevation: 0,
-        scrolledUnderElevation: 0,
         title: Text(widget.tid != null ? '回复' : '发帖'),
         actions: [
           FilledButton(

@@ -156,7 +156,7 @@ class _HeaderCard extends StatelessWidget {
                   ),
                   decoration: BoxDecoration(
                     color: colorScheme.primaryContainer,
-                    borderRadius: const BorderRadius.all(Radius.circular(9999)),
+                    borderRadius: S1Shape.full,
                   ),
                   child: Text(
                     groupTitle!,

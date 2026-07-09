@@ -78,7 +78,7 @@ class ThreadCard extends ConsumerWidget {
       shape: S1Shape.cardShape,
       child: InkWell(
         onTap: () => _handleTap(context, ref),
-        borderRadius: const BorderRadius.all(Radius.circular(12)),
+        borderRadius: S1Shape.medium,
         child: Padding(
                       padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
           child: Column(

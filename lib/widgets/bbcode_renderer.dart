@@ -8,6 +8,15 @@ import 'emoticon_widget.dart';
 import 'quote_block.dart';
 import 'image_viewer.dart';
 
+String _unescapeHtml(String s) {
+  return s
+      .replaceAll('&amp;', '&')
+      .replaceAll('&lt;', '<')
+      .replaceAll('&gt;', '>')
+      .replaceAll('&quot;', '"')
+      .replaceAll('&#39;', "'");
+}
+
 class BbcodeRenderer extends StatelessWidget {
 
   const BbcodeRenderer({
@@ -137,7 +146,7 @@ class BbcodeRenderer extends StatelessWidget {
             final element = context.element;
             if (element != null && element.classes.contains('emoticon')) {
               // data-src: 来自 _normalizeHtml 转换的网络表情包 URL
-              final src = element.attributes['data-src'] ?? '';
+              final src = _unescapeHtml(element.attributes['data-src'] ?? '');
               if (src.isNotEmpty) {
                 return Container(
                   margin: const EdgeInsets.symmetric(horizontal: 2),
@@ -154,7 +163,7 @@ class BbcodeRenderer extends StatelessWidget {
         TagExtension(
           tagsToExtend: {'img'},
           builder: (context) {
-            final src = context.element?.attributes['src'] ?? '';
+            final src = _unescapeHtml(context.element?.attributes['src'] ?? '');
             if (src.isEmpty) return const SizedBox.shrink();
 
             // 如果识别为表情包

@@ -26,6 +26,12 @@ abstract class S1Shape {
 /// 与内容区的分隔靠 [ColorScheme.surface] vs [ColorScheme.surfaceContainer]
 /// 的色阶差实现，不使用 outline 描边（与 M3 NavigationBar 一致）。
 abstract class S1BottomBarStyle {
+  static const double minTouchTarget = 48;
+  static const double barVerticalPadding = 4;
+
+  /// 分页栏内容行高（48dp 触控 + 上下 padding）。
+  static const double paginationBarHeight = minTouchTarget + barVerticalPadding * 2;
+
   static Color background(ColorScheme scheme) => scheme.surfaceContainer;
 
   static BoxDecoration decoration(ColorScheme scheme) => BoxDecoration(

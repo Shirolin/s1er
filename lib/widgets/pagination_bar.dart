@@ -58,6 +58,57 @@ class _PaginationBarState extends State<PaginationBar> {
     );
   }
 
+  List<Widget> _controls({
+    required bool showEdgeButtons,
+    required bool canPrev,
+    required bool canNext,
+    required int page,
+    required int total,
+    required TextTheme textTheme,
+    required ColorScheme scheme,
+  }) {
+    return [
+      if (showEdgeButtons) ...[
+        _PaginationIconButton(
+          icon: Icons.first_page,
+          tooltip: '首页',
+          enabled: canPrev,
+          onPressed: () => _goTo(1),
+        ),
+      ],
+      _PaginationIconButton(
+        icon: Icons.chevron_left,
+        tooltip: '上一页',
+        enabled: canPrev,
+        onPressed: () => _goTo(page - 1),
+      ),
+      const SizedBox(width: 8),
+      _PageIndicator(
+        currentPage: page,
+        totalPages: total,
+        enabled: !_isLoading,
+        onTap: _showPagePicker,
+        textTheme: textTheme,
+        scheme: scheme,
+      ),
+      const SizedBox(width: 8),
+      _PaginationIconButton(
+        icon: Icons.chevron_right,
+        tooltip: '下一页',
+        enabled: canNext,
+        onPressed: () => _goTo(page + 1),
+      ),
+      if (showEdgeButtons) ...[
+        _PaginationIconButton(
+          icon: Icons.last_page,
+          tooltip: '末页',
+          enabled: canNext,
+          onPressed: () => _goTo(total),
+        ),
+      ],
+    ];
+  }
+
   @override
   Widget build(BuildContext context) {
     if (widget.totalPages <= 1) return const SizedBox.shrink();
@@ -89,59 +140,32 @@ class _PaginationBarState extends State<PaginationBar> {
                   color: scheme.primary,
                 ),
               Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                child: Row(
-                  children: [
-                    Expanded(
-                      child: FittedBox(
-                        fit: BoxFit.scaleDown,
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 8,
+                  vertical: S1BottomBarStyle.barVerticalPadding,
+                ),
+                child: LayoutBuilder(
+                  builder: (context, constraints) {
+                    final controls = _controls(
+                      showEdgeButtons: showEdgeButtons,
+                      canPrev: canPrev,
+                      canNext: canNext,
+                      page: page,
+                      total: total,
+                      textTheme: textTheme,
+                      scheme: scheme,
+                    );
+                    return SingleChildScrollView(
+                      scrollDirection: Axis.horizontal,
+                      child: ConstrainedBox(
+                        constraints: BoxConstraints(minWidth: constraints.maxWidth),
                         child: Row(
                           mainAxisAlignment: MainAxisAlignment.center,
-                          mainAxisSize: MainAxisSize.min,
-                          children: [
-                            if (showEdgeButtons) ...[
-                              _PaginationIconButton(
-                                icon: Icons.first_page,
-                                tooltip: '首页',
-                                enabled: canPrev,
-                                onPressed: () => _goTo(1),
-                              ),
-                            ],
-                            _PaginationIconButton(
-                              icon: Icons.chevron_left,
-                              tooltip: '上一页',
-                              enabled: canPrev,
-                              onPressed: () => _goTo(page - 1),
-                            ),
-                            const SizedBox(width: 8),
-                            _PageIndicator(
-                              currentPage: page,
-                              totalPages: total,
-                              enabled: !_isLoading,
-                              onTap: _showPagePicker,
-                              textTheme: textTheme,
-                              scheme: scheme,
-                            ),
-                            const SizedBox(width: 8),
-                            _PaginationIconButton(
-                              icon: Icons.chevron_right,
-                              tooltip: '下一页',
-                              enabled: canNext,
-                              onPressed: () => _goTo(page + 1),
-                            ),
-                            if (showEdgeButtons) ...[
-                              _PaginationIconButton(
-                                icon: Icons.last_page,
-                                tooltip: '末页',
-                                enabled: canNext,
-                                onPressed: () => _goTo(total),
-                              ),
-                            ],
-                          ],
+                          children: controls,
                         ),
                       ),
-                    ),
-                  ],
+                    );
+                  },
                 ),
               ),
             ],
@@ -178,30 +202,38 @@ class _PageIndicator extends StatelessWidget {
       fontWeight: FontWeight.w600,
     );
 
-    return Material(
-      color: scheme.secondaryContainer,
-      borderRadius: S1Shape.full,
-      child: InkWell(
-        onTap: enabled ? onTap : null,
+    return Semantics(
+      button: true,
+      enabled: enabled,
+      label: '第 $currentPage / $totalPages 页，选择页码',
+      child: Material(
+        color: scheme.secondaryContainer,
         borderRadius: S1Shape.full,
-        child: Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
-          child: Row(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              CompactLabel.text(
-                '第 $currentPage / $totalPages 页',
-                style: labelStyle,
+        child: InkWell(
+          onTap: enabled ? onTap : null,
+          borderRadius: S1Shape.full,
+          child: SizedBox(
+            height: S1BottomBarStyle.minTouchTarget,
+            child: Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 16),
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  CompactLabel.text(
+                    '第 $currentPage / $totalPages 页',
+                    style: labelStyle,
+                  ),
+                  const SizedBox(width: 4),
+                  Icon(
+                    Icons.expand_more,
+                    size: 24,
+                    color: enabled
+                        ? scheme.onSecondaryContainer
+                        : scheme.onSurface.withValues(alpha: 0.38),
+                  ),
+                ],
               ),
-              const SizedBox(width: 2),
-              Icon(
-                Icons.expand_more,
-                size: 18,
-                color: enabled
-                    ? scheme.onSecondaryContainer
-                    : scheme.onSurface.withValues(alpha: 0.38),
-              ),
-            ],
+            ),
           ),
         ),
       ),
@@ -229,8 +261,13 @@ class _PaginationIconButton extends StatelessWidget {
     return IconButton(
       onPressed: enabled ? onPressed : null,
       tooltip: tooltip,
-      icon: Icon(icon, size: 22),
+      icon: Icon(icon),
       style: IconButton.styleFrom(
+        iconSize: 24,
+        minimumSize: const Size(
+          S1BottomBarStyle.minTouchTarget,
+          S1BottomBarStyle.minTouchTarget,
+        ),
         foregroundColor: scheme.onSurfaceVariant,
         disabledForegroundColor: scheme.onSurface.withValues(alpha: 0.38),
       ),

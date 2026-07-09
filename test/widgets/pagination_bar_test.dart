@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:s1_app/theme/app_theme.dart';
 import 'package:s1_app/widgets/pagination_bar.dart';
 
 void main() {
@@ -79,5 +80,27 @@ void main() {
 
     expect(find.text('选择页码'), findsOneWidget);
     expect(find.text('跳转'), findsOneWidget);
+  });
+
+  testWidgets('PaginationBar page indicator meets 48dp touch target', (tester) async {
+    await tester.pumpWidget(
+      MaterialApp(
+        home: Scaffold(
+          body: PaginationBar(
+            currentPage: 2,
+            totalPages: 5,
+            onPageChanged: (_) async {},
+          ),
+        ),
+      ),
+    );
+
+    final indicatorBox = tester.getSize(
+      find.ancestor(
+        of: find.text('第 2 / 5 页'),
+        matching: find.byType(InkWell),
+      ),
+    );
+    expect(indicatorBox.height, greaterThanOrEqualTo(S1BottomBarStyle.minTouchTarget));
   });
 }

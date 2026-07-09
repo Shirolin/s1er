@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 
+import '../theme/app_theme.dart';
+
 /// 内容区 FAB 布局常量。
 ///
 /// FAB 叠在 [Expanded] 内容区右下角，物理上位于分页栏上方，
@@ -11,7 +13,7 @@ abstract class S1FabLayout {
   static const double regularFabSize = 56;
 
   /// 分页栏内容高度（不含 SafeArea），供 SnackBar 避让。
-  static const double paginationBarHeight = 52;
+  static const double paginationBarHeight = S1BottomBarStyle.paginationBarHeight;
   static const double snackBarGap = 8;
 
   static double get snackBarClearance => paginationBarHeight + snackBarGap;

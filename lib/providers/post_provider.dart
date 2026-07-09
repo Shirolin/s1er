@@ -1,9 +1,11 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:hive/hive.dart';
 import '../config/constants.dart';
 import '../models/post.dart';
+import '../models/poll.dart';
 import '../services/api_service.dart';
 import '../services/http_client.dart';
-
+import '../services/poll_vote_cache.dart';
 class PostListState {
 
   PostListState({
@@ -14,6 +16,7 @@ class PostListState {
     this.threadFid,
     this.perPage = S1Constants.postsPerPageFallback,
     this.totalReplies = 0,
+    this.poll,
   });
   final List<Post> posts;
   final int currentPage;
@@ -27,6 +30,9 @@ class PostListState {
   /// 帖子总回复数（来自 API `thread.replies`）
   final int totalReplies;
 
+  /// 投票帖数据（仅 `thread.special == 1` 时有值）
+  final ThreadPoll? poll;
+
   PostListState copyWith({
     List<Post>? posts,
     int? currentPage,
@@ -35,6 +41,7 @@ class PostListState {
     String? threadFid,
     int? perPage,
     int? totalReplies,
+    ThreadPoll? poll,
   }) {
     return PostListState(
       posts: posts ?? this.posts,
@@ -44,6 +51,7 @@ class PostListState {
       threadFid: threadFid ?? this.threadFid,
       perPage: perPage ?? this.perPage,
       totalReplies: totalReplies ?? this.totalReplies,
+      poll: poll ?? this.poll,
     );
   }
 }
@@ -52,11 +60,16 @@ final apiServiceProvider = Provider<ApiService>((ref) {
   return ApiService(ref.watch(httpClientProvider));
 });
 
+final pollVoteCacheProvider = Provider.family<PollVoteCache, String>((ref, uid) {
+  return PollVoteCache(Hive.box('cache'), uid);
+});
+
 final postProvider = StateNotifierProvider.family<
     PostNotifier, AsyncValue<PostListState>, String>(
   (ref, tid) => PostNotifier(
     tid: tid,
     apiService: ref.watch(apiServiceProvider),
+    ref: ref,
   ),
 );
 
@@ -65,12 +78,26 @@ class PostNotifier extends StateNotifier<AsyncValue<PostListState>> {
   PostNotifier({
     required this.tid,
     required ApiService apiService,
+    required Ref ref,
   })  : _apiService = apiService,
+        _ref = ref,
         super(const AsyncValue.loading()) {
     _loadPage(1);
   }
   final String tid;
   final ApiService _apiService;
+  final Ref _ref;
+
+  ThreadPoll? _pollWithUserVotes(
+    Map<String, dynamic> variables,
+    ThreadPoll? poll,
+  ) {
+    if (poll == null) return null;
+    final uid = variables['member_uid']?.toString() ?? '';
+    if (uid.isEmpty || uid == '0') return poll;
+    final votes = _ref.read(pollVoteCacheProvider(uid)).getVotes(tid);
+    return votes.isEmpty ? poll : poll.withUserVotes(votes);
+  }
 
   Future<void> _loadPage(int page) async {
     state = const AsyncValue.loading();
@@ -96,6 +123,9 @@ class PostNotifier extends StateNotifier<AsyncValue<PostListState>> {
         threadFid: thread['fid']?.toString(),
         perPage: perPage,
         totalReplies: totalReplies,
+        poll: page == 1
+            ? _pollWithUserVotes(variables, ApiService.parsePoll(result))
+            : null,
       ),);
     } catch (e, st) {
       state = AsyncValue.error(e, st);

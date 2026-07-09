@@ -7,6 +7,7 @@ import '../providers/thread_list_provider.dart';
 import '../services/api_service.dart';
 import '../widgets/app_bar_more_menu.dart';
 import '../widgets/pagination_bar.dart';
+import '../widgets/s1_fab_layout.dart';
 import '../widgets/thread_card.dart';
 
 class ForumListScreen extends ConsumerStatefulWidget {
@@ -123,43 +124,47 @@ class _ForumListScreenState extends ConsumerState<ForumListScreen> {
             ),
           );
         },
-        data: (state) => Column(
+        data: (state) {
+          final fabPadding = S1FabLayout.contentBottomPadding(
+            showSecondary: _showScrollToTop,
+          );
+
+          return Column(
           children: [
             Expanded(
-              child: Stack(
-                children: [
-                  Scrollbar(
-                    controller: _scrollController,
-                    child: RefreshIndicator(
-                      onRefresh: () =>
-                          ref.read(threadListProvider(widget.fid).notifier).refresh(),
-                      child: state.threads.isEmpty
-                          ? ListView(
-                              controller: _scrollController,
-                              children: const [
-                                SizedBox(height: 120),
-                                Center(child: Text('暂无帖子')),
-                              ],
-                            )
-                          : ListView.builder(
-                              controller: _scrollController,
-                              itemCount: state.threads.length,
-                              itemBuilder: (context, index) =>
-                                  ThreadCard(thread: state.threads[index]),
-                            ),
-                    ),
+              child: S1ContentFabOverlay(
+                fab: S1FabStack(
+                  secondary: S1FabItem(
+                    heroTag: 'scrollToTopForum',
+                    icon: Icons.arrow_upward,
+                    tooltip: '返回顶部',
+                    onPressed: _scrollToTop,
+                    visible: _showScrollToTop,
+                    small: true,
                   ),
-                  if (_showScrollToTop)
-                    Positioned(
-                      right: 16,
-                      bottom: 16,
-                      child: FloatingActionButton.small(
-                        onPressed: _scrollToTop,
-                        heroTag: 'scrollToTop',
-                        child: const Icon(Icons.keyboard_arrow_up),
-                      ),
-                    ),
-                ],
+                ),
+                child: Scrollbar(
+                  controller: _scrollController,
+                  child: RefreshIndicator(
+                    onRefresh: () =>
+                        ref.read(threadListProvider(widget.fid).notifier).refresh(),
+                    child: state.threads.isEmpty
+                        ? ListView(
+                            controller: _scrollController,
+                            children: const [
+                              SizedBox(height: 48),
+                              Center(child: Text('暂无帖子')),
+                            ],
+                          )
+                        : ListView.builder(
+                            controller: _scrollController,
+                            padding: EdgeInsets.only(bottom: fabPadding),
+                            itemCount: state.threads.length,
+                            itemBuilder: (context, index) =>
+                                ThreadCard(thread: state.threads[index]),
+                          ),
+                  ),
+                ),
               ),
             ),
             PaginationBar(
@@ -179,7 +184,8 @@ class _ForumListScreenState extends ConsumerState<ForumListScreen> {
               },
             ),
           ],
-        ),
+        );
+        },
       ),
     );
   }

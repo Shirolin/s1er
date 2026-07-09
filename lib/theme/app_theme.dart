@@ -17,7 +17,20 @@ abstract class S1Shape {
     borderRadius: BorderRadius.vertical(top: Radius.circular(28)),
   );
   static const chipShape = RoundedRectangleBorder(borderRadius: small);
+  static const menuShape = RoundedRectangleBorder(borderRadius: small);
   static const inputShape = OutlineInputBorder(borderRadius: BorderRadius.all(Radius.circular(12)));
+}
+
+/// M3 底部固定栏（NavigationBar / PaginationBar）共用表面样式。
+///
+/// 与内容区的分隔靠 [ColorScheme.surface] vs [ColorScheme.surfaceContainer]
+/// 的色阶差实现，不使用 outline 描边（与 M3 NavigationBar 一致）。
+abstract class S1BottomBarStyle {
+  static Color background(ColorScheme scheme) => scheme.surfaceContainer;
+
+  static BoxDecoration decoration(ColorScheme scheme) => BoxDecoration(
+        color: background(scheme),
+      );
 }
 
 /// M3 Alpha tokens — 统一透明度
@@ -40,14 +53,7 @@ class AppTheme {
     'orange': Color(0xFFF57C00),
   };
 
-  static const _fontFamily = 'NotoSansSC';
-  static const _fontFamilyFallback = [
-    'PingFang SC',
-    'Heiti SC',
-    'Microsoft YaHei',
-    'Noto Sans CJK SC',
-    'sans-serif',
-  ];
+
 
   static ThemeData lightTheme(String themeColorKey) {
     final seedColor = themeSeeds[themeColorKey] ?? themeSeeds['purple']!;
@@ -67,8 +73,6 @@ class AppTheme {
     return ThemeData(
       useMaterial3: true,
       colorScheme: colorScheme,
-      fontFamily: _fontFamily,
-      fontFamilyFallback: _fontFamilyFallback,
       appBarTheme: const AppBarTheme(centerTitle: true),
       cardTheme: const CardThemeData(
         shape: S1Shape.cardShape,
@@ -86,6 +90,45 @@ class AppTheme {
       ),
       inputDecorationTheme: const InputDecorationTheme(
         border: S1Shape.inputShape,
+      ),
+      menuTheme: MenuThemeData(
+        style: MenuStyle(
+          backgroundColor: WidgetStatePropertyAll(colorScheme.surfaceContainerHigh),
+          elevation: const WidgetStatePropertyAll(3),
+          shadowColor: WidgetStatePropertyAll(colorScheme.shadow),
+          surfaceTintColor: WidgetStatePropertyAll(colorScheme.surfaceTint),
+          shape: const WidgetStatePropertyAll(S1Shape.menuShape),
+          padding: const WidgetStatePropertyAll(EdgeInsets.symmetric(vertical: 4)),
+        ),
+      ),
+      menuButtonTheme: const MenuButtonThemeData(
+        style: ButtonStyle(
+          minimumSize: WidgetStatePropertyAll(Size(112, 48)),
+          maximumSize: WidgetStatePropertyAll(Size(280, double.infinity)),
+          padding: WidgetStatePropertyAll(EdgeInsetsDirectional.fromSTEB(12, 0, 16, 0)),
+          alignment: AlignmentDirectional.centerStart,
+          iconSize: WidgetStatePropertyAll(24),
+          tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+        ),
+      ),
+      popupMenuTheme: PopupMenuThemeData(
+        color: colorScheme.surfaceContainerHigh,
+        elevation: 3,
+        shape: S1Shape.menuShape,
+        surfaceTintColor: colorScheme.surfaceTint,
+      ),
+      snackBarTheme: SnackBarThemeData(
+        behavior: SnackBarBehavior.floating,
+        shape: S1Shape.menuShape,
+        backgroundColor: colorScheme.inverseSurface,
+        contentTextStyle: TextStyle(color: colorScheme.onInverseSurface),
+        actionTextColor: colorScheme.inversePrimary,
+      ),
+      navigationBarTheme: NavigationBarThemeData(
+        elevation: 0,
+        backgroundColor: S1BottomBarStyle.background(colorScheme),
+        indicatorColor: colorScheme.secondaryContainer,
+        surfaceTintColor: colorScheme.surfaceTint,
       ),
     );
   }

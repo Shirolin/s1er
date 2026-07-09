@@ -206,6 +206,92 @@ void main() {
       });
     });
 
+    group('parsePoll', () {
+      test('parses poll from viewthread JSON when special is 1', () {
+        final json = {
+          'Variables': {
+            'thread': {'special': '1'},
+            'special_poll': {
+              'polloptions': {
+                '1': {
+                  'polloptionid': '82378',
+                  'polloption': '选项 A',
+                  'votes': '80',
+                  'percent': '12.50',
+                  'color': 'E92725',
+                },
+              },
+              'multiple': '0',
+              'maxchoices': '1',
+              'voterscount': '640',
+              'visiblepoll': '1',
+              'allowvote': '1',
+              'remaintime': ['1', '0', '19', '40'],
+            },
+          },
+        };
+
+        final poll = ApiService.parsePoll(json);
+        expect(poll, isNotNull);
+        expect(poll!.options.single.id, '82378');
+        expect(poll.votersCount, 640);
+      });
+
+      test('returns null for normal thread', () {
+        final json = {
+          'Variables': {
+            'thread': {'special': '0'},
+          },
+        };
+        expect(ApiService.parsePoll(json), isNull);
+      });
+
+      test('returns null when special_poll is missing', () {
+        final json = {
+          'Variables': {
+            'thread': {'special': '1'},
+          },
+        };
+        expect(ApiService.parsePoll(json), isNull);
+      });
+    });
+
+    group('parsePollVoteResponse', () {
+      test('returns null on redirect success XML', () {
+        expect(
+          ApiService.parsePollVoteResponse(
+            "<?xml version=\"1.0\"?><root><![CDATA[<script>window.location.href='forum.php?mod=viewthread&tid=2285124';</script>]]></root>",
+          ),
+          isNull,
+        );
+      });
+
+      test('returns null on success handler', () {
+        expect(
+          ApiService.parsePollVoteResponse(
+            "succeedhandle_pollvote('tid_1', '投票成功');",
+          ),
+          isNull,
+        );
+      });
+
+      test('returns error message on error handler', () {
+        expect(
+          ApiService.parsePollVoteResponse(
+            "errorhandle_pollvote('已经投过票了', '');",
+          ),
+          '已经投过票了',
+        );
+      });
+
+      test('returns error message on empty body', () {
+        expect(
+          ApiService.parsePollVoteResponse(''),
+          contains('无响应'),
+        );
+      });
+    });
+
     group('parseForumList', () {
       test('parses forum list from JSON', () {
         final json = {

@@ -1,6 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:url_launcher/url_launcher.dart';
 
+import 's1_popup_menu.dart';
+
+enum _AppBarAction { refresh, openBrowser }
+
 class AppBarMoreMenu extends StatelessWidget {
   const AppBarMoreMenu({
     super.key,
@@ -13,36 +17,29 @@ class AppBarMoreMenu extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return PopupMenuButton<String>(
+    return PopupMenuButton<_AppBarAction>(
       tooltip: '更多操作',
       icon: const Icon(Icons.more_vert),
-      onSelected: (value) {
-        switch (value) {
-          case 'refresh':
+      position: PopupMenuPosition.under,
+      onSelected: (action) {
+        switch (action) {
+          case _AppBarAction.refresh:
             onRefresh?.call();
-          case 'open_browser':
+          case _AppBarAction.openBrowser:
             launchUrl(Uri.parse(browserUrl));
         }
       },
       itemBuilder: (context) => [
         if (onRefresh != null)
-          const PopupMenuItem(
-            value: 'refresh',
-            child: ListTile(
-              leading: Icon(Icons.refresh),
-              title: Text('刷新'),
-              dense: true,
-              contentPadding: EdgeInsets.zero,
-            ),
+          s1PopupMenuItem(
+            value: _AppBarAction.refresh,
+            icon: Icons.refresh,
+            label: '刷新',
           ),
-        const PopupMenuItem(
-          value: 'open_browser',
-          child: ListTile(
-            leading: Icon(Icons.open_in_browser),
-            title: Text('通过浏览器打开'),
-            dense: true,
-            contentPadding: EdgeInsets.zero,
-          ),
+        s1PopupMenuItem(
+          value: _AppBarAction.openBrowser,
+          icon: Icons.open_in_browser,
+          label: '通过浏览器打开',
         ),
       ],
     );

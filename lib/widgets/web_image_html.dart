@@ -3,20 +3,28 @@ import 'dart:html' as html;
 import 'dart:ui_web' as ui_web;
 import 'package:flutter/material.dart';
 
+/// 已注册的 HtmlElementView 工厂，避免每次 build 重复注册导致 WASM 内存损坏。
+final Set<String> _registeredViewTypes = {};
+
 /// Web 端用原生 HTML <img> 加载图片（绕过 CORS）
 /// 必须包裹在有明确尺寸约束的父组件中，否则会触发无限尺寸布局错误
 Widget buildWebImage(String url, {double? width, double? height, BoxFit fit = BoxFit.contain}) {
-  final viewType = 'web-img-$url';
-  ui_web.platformViewRegistry.registerViewFactory(viewType, (int viewId) {
-    final img = html.ImageElement()
-      ..src = url
-      ..style.objectFit = _toCssFit(fit)
-      ..style.display = 'block'
-      ..style.margin = 'auto'
-      ..style.width = '100%'
-      ..style.height = '100%';
-    return img;
-  });
+  final viewType = 'web-img-${url.hashCode}';
+
+  if (!_registeredViewTypes.contains(viewType)) {
+    _registeredViewTypes.add(viewType);
+    ui_web.platformViewRegistry.registerViewFactory(viewType, (int viewId) {
+      final img = html.ImageElement()
+        ..src = url
+        ..style.objectFit = _toCssFit(fit)
+        ..style.display = 'block'
+        ..style.margin = 'auto'
+        ..style.width = '100%'
+        ..style.height = '100%';
+      return img;
+    });
+  }
+
   return SizedBox(
     width: width ?? 200,
     height: height ?? 200,

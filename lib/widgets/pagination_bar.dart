@@ -9,11 +9,6 @@ export 'page_picker_sheet.dart' show PageItemLabelBuilder, showPagePickerSheet;
 typedef PageChangeCallback = Future<void> Function(int page);
 
 /// M3 底部分页栏：上一页 / 下一页 + 可点击页码指示器。
-///
-/// 相比原 ActionChip + AlertDialog 方案：
-/// - 窄屏仅保留核心翻页，宽屏显示首页/末页
-/// - 页码选择使用 BottomSheet（与主题卡片页码选择一致）
-/// - 禁用态、加载态符合 M3 语义色
 class PaginationBar extends StatefulWidget {
   const PaginationBar({
     super.key,
@@ -75,71 +70,82 @@ class _PaginationBarState extends State<PaginationBar> {
     final canNext = page < total && !_isLoading;
     final showEdgeButtons = MediaQuery.sizeOf(context).width >= 400;
 
-    return DecoratedBox(
-      decoration: BoxDecoration(
-        color: scheme.surfaceContainer,
-        border: Border(
-          top: BorderSide(color: scheme.outlineVariant),
-        ),
-      ),
-      child: SafeArea(
-        top: false,
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            if (_isLoading)
-              LinearProgressIndicator(
-                minHeight: 2,
-                backgroundColor: scheme.surfaceContainer,
-                color: scheme.primary,
-              ),
-            Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-              child: Row(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  if (showEdgeButtons) ...[
-                    _PaginationIconButton(
-                      icon: Icons.first_page,
-                      tooltip: '首页',
-                      enabled: canPrev,
-                      onPressed: () => _goTo(1),
+    return SizedBox(
+      width: double.infinity,
+      child: DecoratedBox(
+        decoration: S1BottomBarStyle.decoration(scheme),
+        child: SafeArea(
+          top: false,
+          left: false,
+          right: false,
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              if (_isLoading)
+                LinearProgressIndicator(
+                  minHeight: 2,
+                  backgroundColor: scheme.surfaceContainer,
+                  color: scheme.primary,
+                ),
+              Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                child: Row(
+                  children: [
+                    Expanded(
+                      child: FittedBox(
+                        fit: BoxFit.scaleDown,
+                        child: Row(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            if (showEdgeButtons) ...[
+                              _PaginationIconButton(
+                                icon: Icons.first_page,
+                                tooltip: '首页',
+                                enabled: canPrev,
+                                onPressed: () => _goTo(1),
+                              ),
+                            ],
+                            _PaginationIconButton(
+                              icon: Icons.chevron_left,
+                              tooltip: '上一页',
+                              enabled: canPrev,
+                              onPressed: () => _goTo(page - 1),
+                            ),
+                            const SizedBox(width: 8),
+                            _PageIndicator(
+                              currentPage: page,
+                              totalPages: total,
+                              enabled: !_isLoading,
+                              onTap: _showPagePicker,
+                              textTheme: textTheme,
+                              scheme: scheme,
+                            ),
+                            const SizedBox(width: 8),
+                            _PaginationIconButton(
+                              icon: Icons.chevron_right,
+                              tooltip: '下一页',
+                              enabled: canNext,
+                              onPressed: () => _goTo(page + 1),
+                            ),
+                            if (showEdgeButtons) ...[
+                              _PaginationIconButton(
+                                icon: Icons.last_page,
+                                tooltip: '末页',
+                                enabled: canNext,
+                                onPressed: () => _goTo(total),
+                              ),
+                            ],
+                          ],
+                        ),
+                      ),
                     ),
                   ],
-                  _PaginationIconButton(
-                    icon: Icons.chevron_left,
-                    tooltip: '上一页',
-                    enabled: canPrev,
-                    onPressed: () => _goTo(page - 1),
-                  ),
-                  const SizedBox(width: 8),
-                  _PageIndicator(
-                    currentPage: page,
-                    totalPages: total,
-                    enabled: !_isLoading,
-                    onTap: _showPagePicker,
-                    textTheme: textTheme,
-                    scheme: scheme,
-                  ),
-                  const SizedBox(width: 8),
-                  _PaginationIconButton(
-                    icon: Icons.chevron_right,
-                    tooltip: '下一页',
-                    enabled: canNext,
-                    onPressed: () => _goTo(page + 1),
-                  ),
-                  if (showEdgeButtons) ...[
-                    _PaginationIconButton(
-                      icon: Icons.last_page,
-                      tooltip: '末页',
-                      enabled: canNext,
-                      onPressed: () => _goTo(total),
-                    ),
-                  ],
-                ],
+                ),
               ),
-            ),
-          ],
+            ],
+          ),
         ),
       ),
     );

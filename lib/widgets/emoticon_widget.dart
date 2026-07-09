@@ -13,8 +13,8 @@ class EmoticonWidget extends StatelessWidget {
     if (assetPath != null) {
       return Image.asset(
         assetPath,
-        width: 20,
-        height: 20,
+        width: 24,
+        height: 24,
         fit: BoxFit.contain,
         errorBuilder: (context, error, stackTrace) {
           return Text(code, style: textTheme.bodySmall);

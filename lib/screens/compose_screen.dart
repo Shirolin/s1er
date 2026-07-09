@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import '../services/api_service.dart';
 import '../services/http_client.dart';
+import '../utils/s1_snack_bar.dart';
 
 class ComposeScreen extends ConsumerStatefulWidget {
 
@@ -39,38 +40,15 @@ class _ComposeScreenState extends ConsumerState<ComposeScreen> {
 
       if (mounted) {
         if (error == null) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(
-              behavior: SnackBarBehavior.floating,
-              content: Text('回复成功'),
-            ),
-          );
+          S1SnackBar.show(context, message: '回复成功', bottomClearance: 16);
           context.pop(true);
         } else {
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(
-              behavior: SnackBarBehavior.floating,
-              content: Text(error),
-            ),
-          );
+          S1SnackBar.show(context, message: error, bottomClearance: 16);
         }
       }
     } catch (e) {
       if (mounted) {
-        final scheme = Theme.of(context).colorScheme;
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            behavior: SnackBarBehavior.floating,
-            content: Row(
-              children: [
-                Icon(Icons.error_outline, color: scheme.onError, size: 20),
-                const SizedBox(width: 8),
-                Expanded(child: Text('$e')),
-              ],
-            ),
-            backgroundColor: scheme.error,
-          ),
-        );
+        S1SnackBar.show(context, message: '$e', bottomClearance: 16);
       }
     } finally {
       setState(() => _isSubmitting = false);

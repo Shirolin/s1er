@@ -9,6 +9,9 @@ import '../services/api_service.dart';
 import '../widgets/app_bar_more_menu.dart';
 import '../widgets/pagination_bar.dart';
 import '../widgets/post_item.dart';
+import '../widgets/poll_card.dart';
+import '../widgets/s1_fab_layout.dart';
+import '../utils/s1_snack_bar.dart';
 
 class ThreadDetailScreen extends ConsumerStatefulWidget {
 
@@ -73,16 +76,13 @@ class _ThreadDetailScreenState extends ConsumerState<ThreadDetailScreen> {
     final targetPage = record.lastReadPage;
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text('上次阅读到第 $targetPage 页'),
-          action: SnackBarAction(
-            label: '续读',
-            onPressed: () =>
-                ref.read(postProvider(widget.tid).notifier).goToPage(targetPage),
-          ),
-          duration: const Duration(seconds: 5),
-        ),
+      S1SnackBar.show(
+        context,
+        message: '上次阅读到第 $targetPage 页',
+        actionLabel: '续读',
+        onAction: () =>
+            ref.read(postProvider(widget.tid).notifier).goToPage(targetPage),
+        duration: const Duration(seconds: 5),
       );
     });
   }
@@ -106,6 +106,31 @@ class _ThreadDetailScreenState extends ConsumerState<ThreadDetailScreen> {
       0,
       duration: const Duration(milliseconds: 300),
       curve: Curves.easeOutCubic,
+    );
+  }
+
+  bool _showsPollOnPage(PostListState state) =>
+      state.currentPage == 1 && state.poll != null;
+
+  int _detailItemCount(PostListState state) =>
+      state.posts.length + (_showsPollOnPage(state) ? 1 : 0);
+
+  Widget _buildDetailItem(
+    BuildContext context,
+    PostListState state,
+    int index,
+  ) {
+    if (_showsPollOnPage(state) && index == 1) {
+      return PollCard(poll: state.poll!, tid: widget.tid);
+    }
+
+    final postIndex = _showsPollOnPage(state) && index > 1 ? index - 1 : index;
+    final post = state.posts[postIndex];
+    final floorOffset = (state.currentPage - 1) * state.perPage;
+    return PostItem(
+      post: post,
+      displayFloor: floorOffset + postIndex + 1,
+      tid: widget.tid,
     );
   }
 
@@ -221,28 +246,48 @@ class _ThreadDetailScreenState extends ConsumerState<ThreadDetailScreen> {
             ),
           );
         },
-        data: (state) => Column(
+        data: (state) {
+          final fabPadding = S1FabLayout.contentBottomPadding(
+            showSecondary: _showScrollToTop,
+            showPrimary: isLoggedIn,
+          );
+
+          return Column(
           children: [
             Expanded(
-              child: Scrollbar(
-                controller: _scrollController,
-                child: state.posts.isEmpty
-                    ? const Center(child: Text('暂无回复'))
-                    : ListView.builder(
-                        controller: _scrollController,
-                        padding: const EdgeInsets.only(bottom: 120),
-                        itemCount: state.posts.length,
-                        itemBuilder: (context, index) {
-                          final post = state.posts[index];
-                          final floorOffset =
-                              (state.currentPage - 1) * state.perPage;
-                          return PostItem(
-                            post: post,
-                            displayFloor: floorOffset + index + 1,
-                            tid: widget.tid,
-                          );
-                        },
-                      ),
+              child: S1ContentFabOverlay(
+                fab: S1FabStack(
+                  secondary: S1FabItem(
+                    heroTag: 'scrollToTopDetail',
+                    icon: Icons.arrow_upward,
+                    tooltip: '返回顶部',
+                    onPressed: _scrollToTop,
+                    visible: _showScrollToTop,
+                    small: true,
+                  ),
+                  primary: isLoggedIn
+                      ? S1FabItem(
+                          heroTag: 'replyDetail',
+                          icon: Icons.edit_outlined,
+                          tooltip: '回复',
+                          onPressed: () => context.push(
+                            '/compose?tid=${widget.tid}&fid=${state.threadFid ?? ''}',
+                          ),
+                        )
+                      : null,
+                ),
+                child: Scrollbar(
+                  controller: _scrollController,
+                  child: state.posts.isEmpty
+                      ? const Center(child: Text('暂无回复'))
+                      : ListView.builder(
+                          controller: _scrollController,
+                          padding: EdgeInsets.only(bottom: fabPadding),
+                          itemCount: _detailItemCount(state),
+                          itemBuilder: (context, index) =>
+                              _buildDetailItem(context, state, index),
+                        ),
+                ),
               ),
             ),
             PaginationBar(
@@ -266,55 +311,9 @@ class _ThreadDetailScreenState extends ConsumerState<ThreadDetailScreen> {
               },
             ),
           ],
-        ),
+        );
+        },
       ),
-      floatingActionButton: _ThreadFabGroup(
-        showScrollToTop: _showScrollToTop,
-        onScrollToTop: _scrollToTop,
-        isLoggedIn: isLoggedIn,
-        tid: widget.tid,
-        fid: postsAsync.valueOrNull?.threadFid ?? '',
-      ),
-    );
-  }
-}
-
-class _ThreadFabGroup extends StatelessWidget {
-  const _ThreadFabGroup({
-    required this.showScrollToTop,
-    required this.onScrollToTop,
-    required this.isLoggedIn,
-    required this.tid,
-    required this.fid,
-  });
-
-  final bool showScrollToTop;
-  final VoidCallback onScrollToTop;
-  final bool isLoggedIn;
-  final String tid;
-  final String fid;
-
-  @override
-  Widget build(BuildContext context) {
-    return Column(
-      mainAxisSize: MainAxisSize.min,
-      crossAxisAlignment: CrossAxisAlignment.end,
-      children: [
-        if (showScrollToTop)
-          Padding(
-            padding: const EdgeInsets.only(bottom: 16),
-            child: FloatingActionButton.small(
-              onPressed: onScrollToTop,
-              heroTag: 'scrollToTopDetail',
-              child: const Icon(Icons.arrow_upward),
-            ),
-          ),
-        if (isLoggedIn)
-          FloatingActionButton(
-            onPressed: () => context.push('/compose?tid=$tid&fid=$fid'),
-            child: const Icon(Icons.edit_outlined),
-          ),
-      ],
     );
   }
 }

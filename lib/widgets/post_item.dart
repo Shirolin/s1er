@@ -6,7 +6,9 @@ import '../providers/post_provider.dart';
 import '../theme/app_theme.dart';
 import '../utils/compact_label.dart';
 import '../utils/format_utils.dart';
+import '../utils/s1_snack_bar.dart';
 import 'bbcode_renderer.dart';
+import 'post_action_menu.dart';
 import 'user_profile_sheet.dart';
 import 'web_avatar.dart';
 
@@ -25,9 +27,7 @@ class PostItem extends ConsumerWidget {
       future: future,
       isSelf: currentUid != null && currentUid == post.authorId,
       onFilterByAuthor: () {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('「只看该作者」功能即将推出')),
-        );
+        S1SnackBar.show(context, message: '「只看该作者」功能即将推出');
       },
     );
   }
@@ -72,37 +72,12 @@ class PostItem extends ConsumerWidget {
                     ],
                   ),
                 ),
-                PopupMenuButton<String>(
-                  onSelected: (value) {
-                    if (value == 'author') {
-                      ScaffoldMessenger.of(context).showSnackBar(
-                        const SnackBar(content: Text('「只看该作者」功能即将推出')),
-                      );
-                    }
+                _FloorBadge(floor: floor),
+                const SizedBox(width: 2),
+                PostActionMenu(
+                  onFilterByAuthor: () {
+                    S1SnackBar.show(context, message: '「只看该作者」功能即将推出');
                   },
-                  itemBuilder: (context) => [
-                    const PopupMenuItem(value: 'author', child: Text('只看该作者')),
-                    const PopupMenuItem(value: 'reply', child: Text('回复')),
-                    const PopupMenuItem(value: 'rate', child: Text('评分')),
-                    const PopupMenuItem(value: 'report', child: Text('举报')),
-                  ],
-                  child: Chip(
-                    label: CompactLabel.text(
-                      '#$floor',
-                      style: CompactLabel.style(
-                        context,
-                        base: textTheme.labelSmall,
-                        color: scheme.onSecondaryContainer,
-                        fontWeight: FontWeight.w500,
-                      ),
-                    ),
-                    backgroundColor: scheme.secondaryContainer,
-                    side: BorderSide.none,
-                    labelPadding: const EdgeInsets.symmetric(horizontal: 6),
-                    visualDensity: VisualDensity.compact,
-                    materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
-                    padding: EdgeInsets.zero,
-                  ),
                 ),
               ],
             ),
@@ -111,6 +86,37 @@ class PostItem extends ConsumerWidget {
           ],
         ),
       ),
+    );
+  }
+}
+
+/// 楼层号展示徽章（只读，非交互）。
+class _FloorBadge extends StatelessWidget {
+  const _FloorBadge({required this.floor});
+
+  final int floor;
+
+  @override
+  Widget build(BuildContext context) {
+    final scheme = Theme.of(context).colorScheme;
+    final textTheme = Theme.of(context).textTheme;
+
+    return Chip(
+      label: CompactLabel.text(
+        '#$floor',
+        style: CompactLabel.style(
+          context,
+          base: textTheme.labelSmall,
+          color: scheme.onSecondaryContainer,
+          fontWeight: FontWeight.w500,
+        ),
+      ),
+      backgroundColor: scheme.secondaryContainer,
+      side: BorderSide.none,
+      labelPadding: const EdgeInsets.symmetric(horizontal: 6),
+      visualDensity: VisualDensity.compact,
+      materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
+      padding: EdgeInsets.zero,
     );
   }
 }

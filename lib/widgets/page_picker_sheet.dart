@@ -261,21 +261,18 @@ class _PagePickerSheetState extends State<PagePickerSheet> {
                                     : scheme.surfaceContainerHighest,
                                 borderRadius: BorderRadius.circular(16),
                               ),
-                              child: Column(
-                                mainAxisAlignment: MainAxisAlignment.center,
-                                mainAxisSize: MainAxisSize.min,
-                                children: [
-                                  Text(
-                                    '$page',
-                                    style: textTheme.bodyMedium?.copyWith(
-                                      color: isCurrent
-                                          ? scheme.onPrimary
-                                          : scheme.onSurfaceVariant,
-                                      fontWeight: FontWeight.bold,
-                                      height: 1.1,
-                                    ),
+                              child: Center(
+                                widthFactor: 1,
+                                heightFactor: 1,
+                                child: Text(
+                                  '$page',
+                                  style: textTheme.bodyMedium?.copyWith(
+                                    color: isCurrent
+                                        ? scheme.onPrimary
+                                        : scheme.onSurfaceVariant,
+                                    fontWeight: FontWeight.bold,
                                   ),
-                                ],
+                                ),
                               ),
                             ),
                             title: Text(

@@ -3,6 +3,7 @@ import 'package:dio/dio.dart';
 import '../config/api_config.dart';
 import '../models/thread.dart';
 import '../models/post.dart';
+import '../models/poll.dart';
 import '../models/forum_category.dart';
 import '../models/user.dart';
 import 'http_client.dart';
@@ -96,6 +97,21 @@ class ApiService {
     return postList
         .map((p) => Post.fromJson(p as Map<String, dynamic>))
         .toList();
+  }
+
+  /// 解析投票帖数据。非投票帖或缺少 `special_poll` 时返回 null。
+  static ThreadPoll? parsePoll(Map<String, dynamic> json) {
+    final variables = json['Variables'] as Map<String, dynamic>?;
+    if (variables == null) return null;
+
+    final thread = variables['thread'] as Map<String, dynamic>?;
+    final special = int.tryParse(thread?['special']?.toString() ?? '') ?? 0;
+    if (special != 1) return null;
+
+    final pollData = variables['special_poll'];
+    if (pollData is! Map<String, dynamic>) return null;
+
+    return ThreadPoll.fromJson(pollData);
   }
 
   static List<ForumCategory> parseForumList(Map<String, dynamic> json) {
@@ -318,6 +334,77 @@ class ApiService {
     final data = response.data;
     if (data is! String) return '服务器返回异常';
     return parseReplyResponse(data);
+  }
+
+  static String _buildPollVoteBody(String tid, List<String> optionIds) {
+    final parts = <String>[
+      'tid=${Uri.encodeComponent(tid)}',
+      'pollsubmit=yes',
+    ];
+    for (final id in optionIds) {
+      parts.add('pollanswers%5B%5D=${Uri.encodeComponent(id)}');
+    }
+    return parts.join('&');
+  }
+
+  static String? parsePollVoteResponse(String body) {
+    if (body.contains('thread_poll_succeed') ||
+        body.contains('pollvote_succeed') ||
+        body.contains('投票成功') ||
+        (body.contains('window.location.href') && body.contains('viewthread'))) {
+      return null;
+    }
+
+    final successMatch = RegExp(
+      r"succeedhandle_pollvote\('([^']*)'",
+    ).firstMatch(body);
+    if (successMatch != null) return null;
+
+    final errorMatch = RegExp(
+      r"errorhandle_pollvote\('([^']*)',\s*'([^']*)'\)",
+    ).firstMatch(body);
+    if (errorMatch != null) {
+      return errorMatch.group(1)?.isNotEmpty == true
+          ? errorMatch.group(1)
+          : errorMatch.group(2);
+    }
+
+    final showMessageMatch = RegExp(
+      r"showmessage\('([^']*)'",
+    ).firstMatch(body);
+    if (showMessageMatch != null) {
+      return showMessageMatch.group(1);
+    }
+
+    final alertMatch = RegExp(r"alert\('([^']*)'\)").firstMatch(body);
+    if (alertMatch != null) return alertMatch.group(1);
+
+    if (body.trim().isEmpty) {
+      return '投票请求无响应，请检查是否已登录或已投过票';
+    }
+
+    return '服务器返回未知响应';
+  }
+
+  /// 提交投票。成功返回 null，失败返回错误信息。
+  Future<String?> votePoll({
+    required String tid,
+    required List<String> optionIds,
+  }) async {
+    if (optionIds.isEmpty) return '请至少选择一个选项';
+
+    final url = '${ApiConfig.forumPostUrl}'
+        '?mod=misc&action=votepoll&inajax=1&tid=$tid';
+
+    final response = await _httpClient.post(
+      url,
+      data: _buildPollVoteBody(tid, optionIds),
+      options: Options(contentType: Headers.formUrlEncodedContentType),
+    );
+
+    final data = response.data;
+    if (data is! String) return '服务器返回异常';
+    return parsePollVoteResponse(data);
   }
 
   Future<User?> getUserProfile() async {

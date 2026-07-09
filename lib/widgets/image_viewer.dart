@@ -18,10 +18,14 @@ class ImageViewer extends ConsumerStatefulWidget {
     super.key,
     required this.imageUrl,
     this.isEmoticon = false,
+    this.showBorder = false,
+    this.margin,
   });
 
   final String imageUrl;
   final bool isEmoticon;
+  final bool showBorder;
+  final EdgeInsetsGeometry? margin;
 
   @override
   ConsumerState<ImageViewer> createState() => _ImageViewerState();
@@ -30,10 +34,12 @@ class ImageViewer extends ConsumerStatefulWidget {
 class _ImageViewerState extends ConsumerState<ImageViewer> {
   /// 图片字节缓存（LRU），独立于 widget 生命周期
   static final LinkedHashMap<String, Uint8List> _cache = LinkedHashMap();
+  static final Map<String, MemoryImage> _providerCache = {};
   static const int _maxCacheEntries = 200;
 
   bool _loading = false;
   Uint8List? _bytes;
+  ImageProvider? _imageProvider;
   late ResourceType _resourceType;
 
   @override
@@ -70,6 +76,7 @@ class _ImageViewerState extends ConsumerState<ImageViewer> {
       _cache.remove(widget.imageUrl);
       _cache[widget.imageUrl] = cached;
       _bytes = cached;
+      _imageProvider = _providerCache[widget.imageUrl];
       _loading = false;
       // initState 中不需要 setState（build 还没调用），didUpdateWidget 中需要
       if (_initDone) setState(() {});
@@ -102,12 +109,16 @@ class _ImageViewerState extends ConsumerState<ImageViewer> {
 
       // 写入 LRU 缓存
       _cache[widget.imageUrl] = data;
+      _providerCache[widget.imageUrl] = MemoryImage(data);
       if (_cache.length > _maxCacheEntries) {
-        _cache.remove(_cache.keys.first);
+        final evicted = _cache.keys.first;
+        _cache.remove(evicted);
+        _providerCache.remove(evicted);
       }
 
       setState(() {
         _bytes = data;
+        _imageProvider = _providerCache[widget.imageUrl];
         _loading = false;
       });
     } catch (e) {
@@ -149,9 +160,9 @@ class _ImageViewerState extends ConsumerState<ImageViewer> {
       );
     }
 
-    // 有缓存字节 → 直接渲染
-    if (_bytes != null) {
-      return _buildImage(MemoryImage(_bytes!));
+    // 有缓存字节 → 直接渲染（复用 ImageProvider，避免重复解码/释放 Picture）
+    if (_imageProvider != null) {
+      return _buildImage(_imageProvider!);
     }
 
     // Native 公开资源：NetworkImage
@@ -175,8 +186,10 @@ class _ImageViewerState extends ConsumerState<ImageViewer> {
     return GestureDetector(
       onTap: () => _showFullScreen(context),
       child: Image(
+        key: ValueKey(widget.imageUrl),
         image: provider,
         fit: BoxFit.contain,
+        gaplessPlayback: true,
         frameBuilder: (context, child, frame, wasSynchronouslyLoaded) {
           if (wasSynchronouslyLoaded) return child;
           return Stack(
@@ -233,17 +246,17 @@ class _ImageViewerState extends ConsumerState<ImageViewer> {
   }
 
   Widget _buildEmoticon(BuildContext context) {
-    const double size = 28.0;
+    const double size = 24.0;
     if (_resourceType == ResourceType.publicAsset && kIsWeb) {
       return buildWebImage(widget.imageUrl, width: size, height: size);
     }
     return Image(
-      image: _bytes != null
-          ? MemoryImage(_bytes!)
-          : NetworkImage(widget.imageUrl),
+      key: ValueKey(widget.imageUrl),
+      image: _imageProvider ?? NetworkImage(widget.imageUrl),
       width: size,
       height: size,
       fit: BoxFit.contain,
+      gaplessPlayback: true,
       errorBuilder: (_, __, ___) => const SizedBox(width: size, height: size),
     );
   }

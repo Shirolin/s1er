@@ -1,4 +1,5 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import '../config/constants.dart';
 import '../models/post.dart';
 import '../services/api_service.dart';
 import '../services/http_client.dart';
@@ -11,6 +12,8 @@ class PostListState {
     this.totalPages = 1,
     this.threadSubject,
     this.threadFid,
+    this.perPage = S1Constants.postsPerPageFallback,
+    this.totalReplies = 0,
   });
   final List<Post> posts;
   final int currentPage;
@@ -18,12 +21,20 @@ class PostListState {
   final String? threadSubject;
   final String? threadFid;
 
+  /// 每页帖数（来自 API `ppp`，缺省用 fallback 40）
+  final int perPage;
+
+  /// 帖子总回复数（来自 API `thread.replies`）
+  final int totalReplies;
+
   PostListState copyWith({
     List<Post>? posts,
     int? currentPage,
     int? totalPages,
     String? threadSubject,
     String? threadFid,
+    int? perPage,
+    int? totalReplies,
   }) {
     return PostListState(
       posts: posts ?? this.posts,
@@ -31,6 +42,8 @@ class PostListState {
       totalPages: totalPages ?? this.totalPages,
       threadSubject: threadSubject ?? this.threadSubject,
       threadFid: threadFid ?? this.threadFid,
+      perPage: perPage ?? this.perPage,
+      totalReplies: totalReplies ?? this.totalReplies,
     );
   }
 }
@@ -64,46 +77,29 @@ class PostNotifier extends StateNotifier<AsyncValue<PostListState>> {
     try {
       final result = await _apiService.getThreadDetail(tid, page: page);
       final posts = ApiService.parsePostList(result);
-      final totalPages = _extractTotalPages(result);
-      final subject = _extractSubject(result);
-      final fid = _extractFid(result);
+
+      // 统一提取 variables / thread，避免重复遍历 JSON
+      final variables = result['Variables'] as Map<String, dynamic>? ?? {};
+      final thread = variables['thread'] as Map<String, dynamic>? ?? {};
+      // 每页帖数：API 字段 ppp（viewthread），拿不到时用 fallback 40（不是 30）
+      final perPage = int.tryParse(variables['ppp']?.toString() ?? '') ??
+          S1Constants.postsPerPageFallback;
+      final totalReplies = int.tryParse(thread['replies']?.toString() ?? '') ?? 0;
+      final totalPosts = totalReplies + 1; // 主楼 + 回复
+      final totalPages = (totalPosts / perPage).ceil().clamp(1, 9999);
+
       state = AsyncValue.data(PostListState(
         posts: posts,
         currentPage: page,
         totalPages: totalPages,
-        threadSubject: subject,
-        threadFid: fid,
+        threadSubject: thread['subject']?.toString(),
+        threadFid: thread['fid']?.toString(),
+        perPage: perPage,
+        totalReplies: totalReplies,
       ),);
     } catch (e, st) {
       state = AsyncValue.error(e, st);
     }
-  }
-
-  int _extractTotalPages(Map<String, dynamic> json) {
-    final variables = json['Variables'] as Map<String, dynamic>?;
-    if (variables == null) return 1;
-    // Discuz! viewthread 返回 thread 数组中的 replies + 1 为总帖数
-    final thread = variables['thread'] as Map<String, dynamic>?;
-    if (thread == null) return 1;
-    final replies = int.tryParse(thread['replies']?.toString() ?? '') ?? 0;
-    // 每页帖数，API 字段名为 ppp (posts per page)
-    final perPage = int.tryParse(variables['ppp']?.toString() ?? '') ?? 30;
-    final totalPosts = replies + 1; // 主楼 + 回复
-    return (totalPosts / perPage).ceil().clamp(1, 9999);
-  }
-
-  String? _extractSubject(Map<String, dynamic> json) {
-    final variables = json['Variables'] as Map<String, dynamic>?;
-    if (variables == null) return null;
-    final thread = variables['thread'] as Map<String, dynamic>?;
-    return thread?['subject']?.toString();
-  }
-
-  String? _extractFid(Map<String, dynamic> json) {
-    final variables = json['Variables'] as Map<String, dynamic>?;
-    if (variables == null) return null;
-    final thread = variables['thread'] as Map<String, dynamic>?;
-    return thread?['fid']?.toString();
   }
 
   Future<void> goToPage(int page) async {

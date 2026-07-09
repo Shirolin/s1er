@@ -39,6 +39,7 @@ void main() async {
   await Hive.openBox('cookies');
   await Hive.openBox('settings');
   await Hive.openBox('cache');
+  await Hive.openBox<Map>('reading_history');
 
   final container = ProviderContainer();
   final httpClient = container.read(httpClientProvider);

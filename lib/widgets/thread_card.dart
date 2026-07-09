@@ -1,17 +1,40 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+import '../config/constants.dart';
+import '../models/reading_record.dart';
 import '../models/thread.dart';
+import '../providers/reading_history_provider.dart';
 import '../theme/app_theme.dart';
 import '../utils/format_utils.dart';
 
-class ThreadCard extends StatelessWidget {
+/// 从当前用户的阅读历史列表中查出指定 tid 的记录（无则 null）。
+ReadingRecord? _recordFor(List<ReadingRecord> list, String tid) {
+  for (final r in list) {
+    if (r.tid == tid) return r;
+  }
+  return null;
+}
+
+class ThreadCard extends ConsumerWidget {
 
   const ThreadCard({super.key, required this.thread});
   final Thread thread;
 
-  int _calcTotalPages(int replies, {int perPage = 40}) {
+  int _calcTotalPages(int replies,
+      {int perPage = S1Constants.postsPerPageFallback,}) {
     final totalPosts = replies + 1;
     return (totalPosts / perPage).ceil().clamp(1, 9999);
+  }
+
+  /// 点击：有未读完记录则续读到上次页码，否则从第一页打开。
+  void _handleTap(BuildContext context, WidgetRef ref) {
+    final record = _recordFor(ref.read(readingHistoryProvider), thread.tid);
+    if (record != null && !record.isFinished && record.lastReadPage > 1) {
+      context.push('/thread/${thread.tid}?page=${record.lastReadPage}');
+    } else {
+      context.push('/thread/${thread.tid}');
+    }
   }
 
   void _showPageSheet(BuildContext context) {
@@ -35,7 +58,7 @@ class ThreadCard extends StatelessWidget {
   }
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
     final scheme = Theme.of(context).colorScheme;
     final textTheme = Theme.of(context).textTheme;
     final hasTag = thread.typeName != null && thread.typeName!.isNotEmpty;
@@ -54,7 +77,7 @@ class ThreadCard extends StatelessWidget {
           : scheme.surfaceContainerLow,
       shape: S1Shape.cardShape,
       child: InkWell(
-        onTap: () => context.push('/thread/${thread.tid}'),
+        onTap: () => _handleTap(context, ref),
         borderRadius: const BorderRadius.all(Radius.circular(12)),
         child: Padding(
                       padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
@@ -82,9 +105,72 @@ class ThreadCard extends StatelessWidget {
                     ? () => _showPageSheet(context)
                     : null,
               ),
+              _ReadingProgressBar(tid: thread.tid),
             ],
           ),
         ),
+      ),
+    );
+  }
+}
+
+// ═══════════════════════════════════════════════════════════
+//  阅读进度指示器：无记录时不占位
+// ═══════════════════════════════════════════════════════════
+
+class _ReadingProgressBar extends ConsumerWidget {
+  const _ReadingProgressBar({required this.tid});
+  final String tid;
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    // 从历史列表按 tid 选取，随 readingHistoryProvider 刷新而实时更新。
+    final record = ref.watch(
+      readingHistoryProvider.select((list) => _recordFor(list, tid)),
+    );
+    if (record == null || record.progress <= 0) {
+      return const SizedBox.shrink();
+    }
+
+    final scheme = Theme.of(context).colorScheme;
+    final textTheme = Theme.of(context).textTheme;
+    final isFinished = record.isFinished;
+    final accent = isFinished ? scheme.onSurfaceVariant : scheme.primary;
+
+    return Padding(
+      padding: const EdgeInsets.only(top: 6),
+      child: Row(
+        children: [
+          Icon(
+            isFinished ? Icons.check_circle_outline : Icons.schedule,
+            size: 12,
+            color: accent,
+          ),
+          const SizedBox(width: 4),
+          Expanded(
+            child: ClipRRect(
+              borderRadius: const BorderRadius.all(Radius.circular(2)),
+              child: LinearProgressIndicator(
+                value: record.progress,
+                minHeight: 3,
+                backgroundColor: scheme.surfaceContainerHighest,
+                valueColor: AlwaysStoppedAnimation<Color>(
+                  isFinished
+                      ? scheme.onSurfaceVariant.withValues(alpha: 0.3)
+                      : scheme.primary,
+                ),
+              ),
+            ),
+          ),
+          const SizedBox(width: 6),
+          Text(
+            isFinished ? '已读' : 'P${record.lastReadPage}',
+            style: textTheme.labelSmall?.copyWith(
+              color: accent,
+              fontWeight: FontWeight.w500,
+            ),
+          ),
+        ],
       ),
     );
   }
@@ -308,7 +394,7 @@ class _ThreadPageSheet extends StatelessWidget {
   final String subject;
   final int totalPages;
 
-  static const int _perPage = 40;
+  static const int _perPage = S1Constants.postsPerPageFallback;
 
   @override
   Widget build(BuildContext context) {

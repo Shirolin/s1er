@@ -4,6 +4,7 @@ import 'package:go_router/go_router.dart';
 import '../config/api_config.dart';
 import '../providers/post_provider.dart';
 import '../providers/auth_provider.dart';
+import '../providers/reading_history_provider.dart';
 import '../services/api_service.dart';
 import '../widgets/app_bar_more_menu.dart';
 import '../widgets/post_item.dart';
@@ -21,6 +22,8 @@ class ThreadDetailScreen extends ConsumerStatefulWidget {
 class _ThreadDetailScreenState extends ConsumerState<ThreadDetailScreen> {
   final _scrollController = ScrollController();
   bool _showScrollToTop = false;
+  bool _hasRecordedInitialVisit = false;
+  bool _hasCheckedResume = false;
 
   @override
   void initState() {
@@ -31,6 +34,56 @@ class _ThreadDetailScreenState extends ConsumerState<ThreadDetailScreen> {
         ref.read(postProvider(widget.tid).notifier).goToPage(widget.initialPage!);
       });
     }
+  }
+
+  /// 记录阅读进度：写库 + 刷新历史列表（使列表卡片/历史页/资料计数实时更新）。
+  /// readCount 只在本次进入详情页首帧 +1（isNewVisit 由 _hasRecordedInitialVisit 守卫）。
+  void _recordProgress(PostListState state) {
+    ref.read(readingHistoryServiceProvider).updateProgress(
+          tid: widget.tid,
+          page: state.currentPage,
+          floorInPage: state.posts.length,
+          subject: state.threadSubject ?? '',
+          author: state.posts.isNotEmpty ? state.posts.first.author : '',
+          fid: state.threadFid ?? '',
+          totalPages: state.totalPages,
+          totalReplies: state.totalReplies,
+          perPage: state.perPage,
+          isNewVisit: !_hasRecordedInitialVisit,
+        );
+    _hasRecordedInitialVisit = true;
+    ref.invalidate(readingRecordProvider(widget.tid));
+    // 刷新列表 StateNotifier：ThreadCard 进度条 / 历史页 / 资料计数据此实时更新。
+    ref.read(readingHistoryProvider.notifier).refresh();
+  }
+
+  /// 无指定初始页时，若存在未读完的历史记录，提示续读。
+  /// 必须在 [_recordProgress] 写库**之前**读取，否则读到的就是本次刚写入的当前页。
+  void _checkResumeReading(PostListState state) {
+    if (_hasCheckedResume) return;
+    _hasCheckedResume = true;
+    final record = ref.read(readingRecordProvider(widget.tid));
+    if (record == null ||
+        record.isFinished ||
+        record.lastReadPage <= 1 ||
+        record.lastReadPage == state.currentPage) {
+      return;
+    }
+    final targetPage = record.lastReadPage;
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('上次阅读到第 $targetPage 页'),
+          action: SnackBarAction(
+            label: '续读',
+            onPressed: () =>
+                ref.read(postProvider(widget.tid).notifier).goToPage(targetPage),
+          ),
+          duration: const Duration(seconds: 5),
+        ),
+      );
+    });
   }
 
   @override
@@ -86,6 +139,17 @@ class _ThreadDetailScreenState extends ConsumerState<ThreadDetailScreen> {
 
   @override
   Widget build(BuildContext context) {
+    ref.listen<AsyncValue<PostListState>>(postProvider(widget.tid),
+        (previous, next) {
+      next.whenData((state) {
+        // 先按「上一次」记录判断是否提示续读，再写入本次进度。
+        if (widget.initialPage == null) {
+          _checkResumeReading(state);
+        }
+        _recordProgress(state);
+      });
+    });
+
     final postsAsync = ref.watch(postProvider(widget.tid));
     final isLoggedIn = ref.watch(authStateProvider).isLoggedIn;
 
@@ -170,7 +234,8 @@ class _ThreadDetailScreenState extends ConsumerState<ThreadDetailScreen> {
                         itemCount: state.posts.length,
                         itemBuilder: (context, index) {
                           final post = state.posts[index];
-                          final floorOffset = (state.currentPage - 1) * 30;
+                          final floorOffset =
+                              (state.currentPage - 1) * state.perPage;
                           return PostItem(
                             post: post,
                             displayFloor: floorOffset + index + 1,

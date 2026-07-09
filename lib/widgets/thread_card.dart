@@ -6,6 +6,7 @@ import '../models/reading_record.dart';
 import '../models/thread.dart';
 import '../providers/reading_history_provider.dart';
 import '../theme/app_theme.dart';
+import '../utils/compact_label.dart';
 import '../utils/format_utils.dart';
 
 /// 从当前用户的阅读历史列表中查出指定 tid 的记录（无则 null）。
@@ -301,37 +302,35 @@ class _MetaLine extends StatelessWidget {
         // ── 右侧：统计（固定） + 页码（如果存在） ──
         Row(
           mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.center,
           children: [
-            Text.rich(
-              TextSpan(
-                style: metaStyle?.copyWith(
-                  color: scheme.onSurfaceVariant,
-                ),
-                children: [
-                  WidgetSpan(
-                    alignment: PlaceholderAlignment.middle,
-                    child: Icon(Icons.visibility_outlined, size: 12, color: scheme.onSurfaceVariant),
-                  ),
-                  const TextSpan(text: ' '),
-                  TextSpan(text: views),
-                  const TextSpan(text: '  '),
-                  WidgetSpan(
-                    alignment: PlaceholderAlignment.middle,
-                    child: Icon(Icons.chat_bubble_outline, size: 11, color: scheme.onSurfaceVariant),
-                  ),
-                  const TextSpan(text: ' '),
-                  TextSpan(text: replies),
-                ],
-              ),
+            _MetaStat(
+              icon: Icons.visibility_outlined,
+              value: views,
+              color: scheme.onSurfaceVariant,
+              textStyle: metaStyle,
+            ),
+            const SizedBox(width: 8),
+            _MetaStat(
+              icon: Icons.chat_bubble_outline,
+              value: replies,
+              color: scheme.onSurfaceVariant,
+              textStyle: metaStyle,
+              iconOffset: const Offset(0, 0.5),
             ),
             if (totalPages > 1) ...[
               const SizedBox(width: 8),
               ActionChip(
-                label: Text('$totalPages页'),
-                labelStyle: metaStyle?.copyWith(
-                  fontWeight: FontWeight.w500,
-                  color: scheme.onSecondaryContainer,
+                label: CompactLabel.text(
+                  '$totalPages页',
+                  style: CompactLabel.style(
+                    context,
+                    base: metaStyle,
+                    color: scheme.onSecondaryContainer,
+                    fontWeight: FontWeight.w500,
+                  ),
                 ),
+                labelPadding: const EdgeInsets.symmetric(horizontal: 6),
                 backgroundColor: scheme.secondaryContainer,
                 side: BorderSide.none,
                 visualDensity: VisualDensity.compact,
@@ -341,6 +340,45 @@ class _MetaLine extends StatelessWidget {
               ),
             ],
           ],
+        ),
+      ],
+    );
+  }
+}
+
+class _MetaStat extends StatelessWidget {
+  const _MetaStat({
+    required this.icon,
+    required this.value,
+    required this.color,
+    required this.textStyle,
+    this.iconOffset = Offset.zero,
+  });
+
+  final IconData icon;
+  final String value;
+  final Color color;
+  final TextStyle? textStyle;
+  final Offset iconOffset;
+
+  @override
+  Widget build(BuildContext context) {
+    return Row(
+      mainAxisSize: MainAxisSize.min,
+      crossAxisAlignment: CrossAxisAlignment.center,
+      children: [
+        Transform.translate(
+          offset: iconOffset,
+          child: Icon(icon, size: 12, color: color),
+        ),
+        const SizedBox(width: 2),
+        CompactLabel.text(
+          value,
+          style: CompactLabel.style(
+            context,
+            base: textStyle,
+            color: color,
+          ),
         ),
       ],
     );
@@ -364,13 +402,17 @@ class _CategoryTag extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Chip(
-      label: Text(label),
-      labelStyle: Theme.of(context).textTheme.labelSmall?.copyWith(
-        fontWeight: FontWeight.w600,
-        color: color,
+      label: CompactLabel.text(
+        label,
+        style: CompactLabel.style(
+          context,
+          color: color,
+          fontWeight: FontWeight.w600,
+        ),
       ),
       backgroundColor: bgColor,
       side: BorderSide.none,
+      labelPadding: const EdgeInsets.symmetric(horizontal: 6),
       visualDensity: VisualDensity.compact,
       materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
       padding: EdgeInsets.zero,

@@ -37,3 +37,16 @@ String formatDateTime(int dateline) {
   if (dt.year == now.year) return '$month-$day $hour:$minute';
   return '${dt.year}-$month-$day $hour:$minute';
 }
+
+/// 注册时间：支持 Unix 时间戳或已有日期字符串，输出紧凑格式。
+String formatRegDate(String regdate) {
+  if (regdate.isEmpty) return '';
+  final ts = int.tryParse(regdate);
+  if (ts != null && ts > 0) return formatDateTime(ts);
+
+  final trimmed = regdate.trim();
+  // API 可能返回 "2019-3-19 11:02:33" 等格式，去掉秒数。
+  final noSeconds = RegExp(r'^(.+:\d{2}):\d{2}$').firstMatch(trimmed);
+  if (noSeconds != null) return noSeconds.group(1)!;
+  return trimmed;
+}

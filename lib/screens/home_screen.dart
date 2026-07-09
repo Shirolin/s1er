@@ -9,6 +9,7 @@ import '../models/forum_category.dart';
 import '../services/api_service.dart';
 import '../theme/app_theme.dart';
 import '../widgets/app_bar_more_menu.dart';
+import '../utils/compact_label.dart';
 import '../utils/format_utils.dart';
 import 'profile_screen.dart';
 
@@ -330,9 +331,14 @@ class _ForumTile extends StatelessWidget {
             // 今日新帖数 / 帖子数
             if (forum.todayPosts > 0)
               Badge(
-                label: Text('${forum.todayPosts}'),
+                label: CompactLabel.text(
+                  '${forum.todayPosts}',
+                  style: CompactLabel.style(
+                    context,
+                    color: scheme.onPrimary,
+                  ),
+                ),
                 backgroundColor: scheme.primary,
-                textColor: scheme.onPrimary,
               )
             else
               Text(

@@ -1,4 +1,6 @@
+import 'dart:async';
 import 'dart:typed_data';
+import 'dart:ui' as ui;
 import 'dart:io';
 import 'package:dio/dio.dart';
 import 'package:flutter/foundation.dart' show kIsWeb;
@@ -9,7 +11,7 @@ import '../config/resource_domains.dart';
 import '../widgets/web_image_stub.dart'
     if (dart.library.html) '../widgets/web_image_html.dart';
 
-class ImageViewerScreen extends StatelessWidget {
+class ImageViewerScreen extends StatefulWidget {
   const ImageViewerScreen({
     super.key,
     required this.imageUrl,
@@ -21,10 +23,72 @@ class ImageViewerScreen extends StatelessWidget {
   final Uint8List? imageBytes;
   final ResourceType resourceType;
 
+  @override
+  State<ImageViewerScreen> createState() => _ImageViewerScreenState();
+}
+
+class _ImageViewerScreenState extends State<ImageViewerScreen> {
+  int? _width;
+  int? _height;
+  Uint8List? _fetchedBytes;
+
+  @override
+  void initState() {
+    super.initState();
+    _decodeDimensions();
+  }
+
+  Future<void> _decodeDimensions() async {
+    final bytes = widget.imageBytes ?? await _tryFetchBytes();
+    if (bytes == null || !mounted) return;
+
+    final c = Completer<ui.Image>();
+    ui.decodeImageFromList(bytes, c.complete);
+    final image = await c.future;
+    if (!mounted) return;
+
+    setState(() {
+      _width = image.width;
+      _height = image.height;
+      _fetchedBytes ??= bytes;
+    });
+    image.dispose();
+  }
+
+  Future<Uint8List?> _tryFetchBytes() async {
+    try {
+      final dio = Dio();
+      final response = await dio.get<List<int>>(
+        widget.imageUrl,
+        options: Options(responseType: ResponseType.bytes),
+      );
+      return Uint8List.fromList(response.data!);
+    } catch (_) {
+      return null;
+    }
+  }
+
   String get _fileName {
-    final uri = Uri.parse(imageUrl);
+    final uri = Uri.parse(widget.imageUrl);
     final name = uri.pathSegments.isNotEmpty ? uri.pathSegments.last : 'image';
     return name.contains('.') ? name : '$name.jpg';
+  }
+
+  String get _format {
+    final lower = _fileName.toLowerCase();
+    if (lower.endsWith('.png')) return 'PNG';
+    if (lower.endsWith('.gif')) return 'GIF';
+    if (lower.endsWith('.webp')) return 'WebP';
+    if (lower.endsWith('.bmp')) return 'BMP';
+    return 'JPEG';
+  }
+
+  Uint8List? get _effectiveBytes => widget.imageBytes ?? _fetchedBytes;
+
+  String _formatSize(int bytes) {
+    if (bytes < 1024) return '$bytes B';
+    if (bytes < 1024 * 1024) return '${(bytes / 1024).toStringAsFixed(1)} KB';
+    return '${(bytes / (1024 * 1024)).toStringAsFixed(1)} MB';
   }
 
   Future<void> _downloadImage(BuildContext context) async {
@@ -32,7 +96,7 @@ class ImageViewerScreen extends StatelessWidget {
 
     try {
       if (kIsWeb) {
-        downloadImageWeb(imageUrl, _fileName);
+        downloadImageWeb(widget.imageUrl, _fileName);
         messenger.showSnackBar(
           const SnackBar(content: Text('下载已开始')),
         );
@@ -40,12 +104,12 @@ class ImageViewerScreen extends StatelessWidget {
       }
 
       Uint8List bytes;
-      if (imageBytes != null) {
-        bytes = imageBytes!;
+      if (_effectiveBytes != null) {
+        bytes = _effectiveBytes!;
       } else {
         final dio = Dio();
         final response = await dio.get<List<int>>(
-          imageUrl,
+          widget.imageUrl,
           options: Options(responseType: ResponseType.bytes),
         );
         bytes = Uint8List.fromList(response.data!);
@@ -76,9 +140,9 @@ class ImageViewerScreen extends StatelessWidget {
   Widget build(BuildContext context) {
     final colorScheme = Theme.of(context).colorScheme;
     final topPadding = MediaQuery.of(context).padding.top + kToolbarHeight;
-    final provider = imageBytes != null
-        ? MemoryImage(imageBytes!) as ImageProvider
-        : NetworkImage(imageUrl);
+    final provider = widget.imageBytes != null
+        ? MemoryImage(widget.imageBytes!) as ImageProvider
+        : NetworkImage(widget.imageUrl);
 
     return Scaffold(
       backgroundColor: colorScheme.scrim,
@@ -87,6 +151,11 @@ class ImageViewerScreen extends StatelessWidget {
         elevation: 0,
         foregroundColor: Colors.white,
         actions: [
+          IconButton(
+            icon: const Icon(Icons.info_outline),
+            tooltip: '图片信息',
+            onPressed: () => _showInfoSheet(context),
+          ),
           IconButton(
             icon: const Icon(Icons.download_outlined),
             tooltip: '下载图片',
@@ -100,11 +169,11 @@ class ImageViewerScreen extends StatelessWidget {
         child: InteractiveViewer(
           minScale: 0.5,
           maxScale: 4.0,
-          child: resourceType == ResourceType.publicAsset && kIsWeb
+          child: widget.resourceType == ResourceType.publicAsset && kIsWeb
               ? LayoutBuilder(
                   builder: (context, constraints) {
                     return buildWebImage(
-                      imageUrl,
+                      widget.imageUrl,
                       width: constraints.maxWidth,
                       height: constraints.maxHeight,
                     );
@@ -112,6 +181,69 @@ class ImageViewerScreen extends StatelessWidget {
                 )
               : Image(image: provider),
         ),
+      ),
+    );
+  }
+
+  void _showInfoSheet(BuildContext context) {
+    final textTheme = Theme.of(context).textTheme;
+    final colorScheme = Theme.of(context).colorScheme;
+
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: colorScheme.surfaceContainerHigh,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(28)),
+      ),
+      builder: (context) {
+        return Padding(
+          padding: const EdgeInsets.fromLTRB(24, 16, 24, 24),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Center(
+                child: Container(
+                  width: 32,
+                  height: 4,
+                  decoration: BoxDecoration(
+                    color: colorScheme.onSurfaceVariant.withValues(alpha: 0.4),
+                    borderRadius: BorderRadius.circular(2),
+                  ),
+                ),
+              ),
+              const SizedBox(height: 16),
+              Text('图片信息', style: textTheme.titleMedium),
+              const SizedBox(height: 16),
+              _infoRow('文件名', _fileName, textTheme, colorScheme),
+              _infoRow('格式', _format, textTheme, colorScheme),
+              if (_width != null && _height != null)
+                _infoRow('尺寸', '$_width × $_height px', textTheme, colorScheme),
+              if (_effectiveBytes != null)
+                _infoRow('大小', _formatSize(_effectiveBytes!.length), textTheme, colorScheme),
+            ],
+          ),
+        );
+      },
+    );
+  }
+
+  Widget _infoRow(String label, String value, TextTheme textTheme, ColorScheme colorScheme) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 6),
+      child: Row(
+        children: [
+          SizedBox(
+            width: 64,
+            child: Text(
+              label,
+              style: textTheme.bodyMedium?.copyWith(
+                color: colorScheme.onSurfaceVariant,
+              ),
+            ),
+          ),
+          Expanded(child: Text(value, style: textTheme.bodyMedium)),
+        ],
       ),
     );
   }

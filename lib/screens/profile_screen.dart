@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
@@ -34,11 +35,90 @@ class ProfileScreen extends ConsumerWidget {
   }
 }
 
-class ProfileBody extends ConsumerWidget {
+class ProfileBody extends ConsumerStatefulWidget {
   const ProfileBody({super.key});
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  ConsumerState<ProfileBody> createState() => _ProfileBodyState();
+}
+
+class _ProfileBodyState extends ConsumerState<ProfileBody> {
+  bool _isLoggingOut = false;
+
+  Future<void> _handleLogout() async {
+    final confirmed = await showAdaptiveDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('确认退出'),
+        content: const Text('确定要退出登录吗？'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(false),
+            child: const Text('取消'),
+          ),
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(true),
+            style: TextButton.styleFrom(
+              foregroundColor: Theme.of(context).colorScheme.error,
+            ),
+            child: const Text('退出登录'),
+          ),
+        ],
+      ),
+    );
+
+    if (confirmed != true || !mounted) return;
+
+    setState(() {
+      _isLoggingOut = true;
+    });
+
+    // 显示加载中遮罩
+    unawaited(showDialog<void>(
+      context: context,
+      barrierDismissible: false,
+      builder: (context) => const PopScope(
+        canPop: false,
+        child: AlertDialog(
+          content: Row(
+            children: [
+              CircularProgressIndicator(),
+              SizedBox(width: 24),
+              Text('正在退出登录…'),
+            ],
+          ),
+        ),
+      ),
+    ),);
+
+    try {
+      await ref.read(authStateProvider.notifier).logout();
+      if (mounted) {
+        // 关闭加载遮罩
+        Navigator.of(context).pop();
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('已退出登录')),
+        );
+      }
+    } catch (e) {
+      if (mounted) {
+        // 关闭加载遮罩
+        Navigator.of(context).pop();
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('退出失败: $e')),
+        );
+      }
+    } finally {
+      if (mounted) {
+        setState(() {
+          _isLoggingOut = false;
+        });
+      }
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
     final authState = ref.watch(authStateProvider);
     final user = authState.user;
     final colorScheme = Theme.of(context).colorScheme;
@@ -77,10 +157,7 @@ class ProfileBody extends ConsumerWidget {
             icon: Icons.logout,
             label: '退出登录',
             color: colorScheme.error,
-            onTap: () async {
-              await ref.read(authStateProvider.notifier).logout();
-              if (context.mounted) context.go('/');
-            },
+            onTap: _isLoggingOut ? null : () => unawaited(_handleLogout()),
           ),
         const SizedBox(height: 24),
       ],
@@ -490,7 +567,7 @@ class _ActionTile extends StatelessWidget {
   final IconData icon;
   final String label;
   final Color color;
-  final VoidCallback onTap;
+  final VoidCallback? onTap;
 
   @override
   Widget build(BuildContext context) {

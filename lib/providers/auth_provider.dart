@@ -97,9 +97,13 @@ class AuthNotifier extends StateNotifier<AuthState> {
   }
 
   Future<void> logout() async {
-    await _authService.logout();
-    state = AuthState();
-    _ref.invalidate(forumListProvider);
+    try {
+      await _authService.logout();
+      state = AuthState();
+      _ref.invalidate(forumListProvider);
+    } catch (e) {
+      rethrow;
+    }
   }
 }
 

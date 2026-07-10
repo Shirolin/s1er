@@ -89,6 +89,8 @@ final _router = GoRouter(
       builder: (context, state) => ComposeScreen(
         tid: state.uri.queryParameters['tid'],
         fid: state.uri.queryParameters['fid'],
+        draftId: state.uri.queryParameters['draftId'],
+        reppost: state.uri.queryParameters['reppost'],
       ),
     ),
     GoRoute(
@@ -109,6 +111,7 @@ final _router = GoRouter(
         uid: state.pathParameters['uid']!,
         username: state.uri.queryParameters['username'],
         initialTab: int.tryParse(state.uri.queryParameters['tab'] ?? '') ?? 0,
+        isSelf: state.uri.queryParameters['self'] == '1',
       ),
     ),
     GoRoute(

@@ -1,6 +1,7 @@
 import 'dart:convert';
 import 'dart:io';
 import 'dart:math';
+import '../lib/config/api_config.dart';
 import '../lib/config/env_config.dart';
 import '../lib/config/resource_domains.dart';
 
@@ -109,7 +110,7 @@ Future<void> _handleRequest(HttpRequest req) async {
       return;
     }
     target = Uri.parse(targetUrl);
-    if (!ResourceDomains.isAllowedProxyTarget(target)) {
+    if (!ResourceDomains.isAllowedImgProxyTarget(target)) {
       res.statusCode = 403;
       res.write('Target URL not allowed');
       await res.close();
@@ -140,6 +141,11 @@ Future<void> _handleRequest(HttpRequest req) async {
     final ct = req.headers.contentType;
     if (ct != null) upReq.headers.set('Content-Type', ct.toString());
     upReq.headers.set('User-Agent', mobileUserAgent);
+    upReq.headers.set('Referer', _resolveReferer(target));
+    if (target.path.contains('forum.php') &&
+        target.queryParameters['inajax'] == '1') {
+      upReq.headers.set('X-Requested-With', 'XMLHttpRequest');
+    }
     _attachCookies(upReq);
   }
 
@@ -170,6 +176,26 @@ Future<void> _handleRequest(HttpRequest req) async {
 
   res.add(bytes);
   await res.close();
+}
+
+String _resolveReferer(Uri target) {
+  if (target.path.contains('forum.php')) {
+    final mod = target.queryParameters['mod'];
+    final action = target.queryParameters['action'];
+    if (mod == 'post' && action == 'reply') {
+      final fid = target.queryParameters['fid'] ?? '';
+      final tid = target.queryParameters['tid'] ?? '';
+      final reppost = target.queryParameters['reppost'] ?? '0';
+      if (fid.isNotEmpty && tid.isNotEmpty) {
+        return ApiConfig.forumReplyReferer(
+          fid: fid,
+          tid: tid,
+          reppost: reppost,
+        );
+      }
+    }
+  }
+  return ResourceDomains.defaultReferer;
 }
 
 bool _verifyAuthToken(HttpRequest req) {

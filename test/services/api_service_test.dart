@@ -371,33 +371,59 @@ void main() {
     });
 
     group('parseReplyResponse', () {
-      test('returns null on success', () {
+      test('returns success result with pid and tid', () {
         const xml = "<root><![CDATA[<script>succeedhandle_reply('redirect.php?mod=redirect&goto=findpost&pid=123&ptid=456', '回复发布成功', {fid:'4',tid:'456',pid:'123',from:'1',sechash:'abc'});</script>]]></root>";
-        expect(ApiService.parseReplyResponse(xml), isNull);
+        final result = ApiService.parseReplyResponse(xml);
+        expect(result.isSuccess, isTrue);
+        expect(result.pid, '123');
+        expect(result.tid, '456');
+        expect(result.error, isNull);
       });
 
       test('returns error message from errorhandle_reply', () {
         const xml = "<root><![CDATA[<script>errorhandle_reply('内容过长', 'error');</script>]]></root>";
-        expect(ApiService.parseReplyResponse(xml), equals('内容过长'));
+        final result = ApiService.parseReplyResponse(xml);
+        expect(result.isSuccess, isFalse);
+        expect(result.error, '内容过长');
       });
 
       test('returns second arg when first is empty in errorhandle', () {
         const xml = "<root><![CDATA[<script>errorhandle_reply('', '操作失败');</script>]]></root>";
-        expect(ApiService.parseReplyResponse(xml), equals('操作失败'));
+        final result = ApiService.parseReplyResponse(xml);
+        expect(result.error, '操作失败');
       });
 
       test('returns message from alert', () {
         const xml = "<root><![CDATA[<script>alert('您没有权限回复');</script>]]></root>";
-        expect(ApiService.parseReplyResponse(xml), equals('您没有权限回复'));
+        final result = ApiService.parseReplyResponse(xml);
+        expect(result.error, '您没有权限回复');
+      });
+
+      test('returns message from errorhandle_postform', () {
+        const xml = "<root><![CDATA[<script>errorhandle_postform('抱歉，您的请求来路不正确或表单验证串不符，无法提交', {});</script>]]></root>";
+        final result = ApiService.parseReplyResponse(xml);
+        expect(result.error, '抱歉，您的请求来路不正确或表单验证串不符，无法提交');
+      });
+
+      test('returns message from messagetext html', () {
+        const xml = '''<root><![CDATA[<div class="tip">
+<dt id="messagetext">
+<p>抱歉，您的请求来路不正确或表单验证串不符，无法提交</p>
+</dt>
+</div>]]></root>''';
+        final result = ApiService.parseReplyResponse(xml);
+        expect(result.error, '抱歉，您的请求来路不正确或表单验证串不符，无法提交');
       });
 
       test('returns fallback on unknown response', () {
         const xml = '<root><![CDATA[<p>unexpected</p>]]></root>';
-        expect(ApiService.parseReplyResponse(xml), equals('服务器返回未知响应'));
+        final result = ApiService.parseReplyResponse(xml);
+        expect(result.error, '服务器返回未知响应');
       });
 
       test('returns fallback on empty string', () {
-        expect(ApiService.parseReplyResponse(''), equals('服务器返回未知响应'));
+        final result = ApiService.parseReplyResponse('');
+        expect(result.error, '服务器返回未知响应');
       });
     });
 

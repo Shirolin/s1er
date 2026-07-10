@@ -199,7 +199,7 @@ class _StatsCard extends StatelessWidget {
               label: '帖子',
               value: user.posts,
               onTap: () => context.push(
-                '/user-space/${user.uid}?username=${Uri.encodeComponent(user.username)}&tab=1',
+                '/user-space/${user.uid}?username=${Uri.encodeComponent(user.username)}&self=1&tab=1',
               ),
             ),
             _VerticalDivider(),
@@ -207,7 +207,7 @@ class _StatsCard extends StatelessWidget {
               label: '主题',
               value: user.threads,
               onTap: () => context.push(
-                '/user-space/${user.uid}?username=${Uri.encodeComponent(user.username)}',
+                '/user-space/${user.uid}?username=${Uri.encodeComponent(user.username)}&self=1',
               ),
             ),
             _VerticalDivider(),

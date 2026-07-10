@@ -36,6 +36,30 @@ void main() {
     expect(find.text('只看该作者'), findsNothing);
   });
 
+  testWidgets('PostActionMenu shows enabled reply when callback provided', (tester) async {
+    var replyTapped = false;
+
+    await tester.pumpWidget(
+      MaterialApp(
+        theme: AppTheme.lightTheme('purple'),
+        home: Scaffold(
+          body: PostActionMenu(
+            onFilterByAuthor: () {},
+            onReply: () => replyTapped = true,
+          ),
+        ),
+      ),
+    );
+
+    await tester.tap(find.byIcon(Icons.more_vert));
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.text('回复'));
+    await tester.pumpAndSettle();
+
+    expect(replyTapped, isTrue);
+  });
+
   testWidgets('PostActionMenu shows disabled labels for unimplemented actions', (tester) async {
     await tester.pumpWidget(
       MaterialApp(

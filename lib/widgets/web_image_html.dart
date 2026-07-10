@@ -1,7 +1,7 @@
 // ignore_for_file: deprecated_member_use, avoid_web_libraries_in_flutter, undefined_prefixed_name
 import 'dart:html' as html;
-import 'dart:ui_web' as ui_web;
-import 'package:flutter/material.dart';
+import 'dart:typed_data';
+import 'dart:ui_web' as ui_web;import 'package:flutter/material.dart';
 
 /// 已注册的 HtmlElementView 工厂，避免每次 build 重复注册导致 WASM 内存损坏。
 final Set<String> _registeredViewTypes = {};
@@ -32,14 +32,20 @@ Widget buildWebImage(String url, {double? width, double? height, BoxFit fit = Bo
   );
 }
 
-/// Web 端通过 anchor 元素触发浏览器下载
-void downloadImageWeb(String url, String fileName) {
-  final anchor = html.AnchorElement(href: url)
-    ..download = fileName
-    ..style.display = 'none';
-  html.document.body?.append(anchor);
-  anchor.click();
-  anchor.remove();
+/// Web 端通过 Blob URL 触发浏览器下载（跨域直链的 download 属性无效）
+Future<void> downloadImageWeb(Uint8List bytes, String fileName) async {
+  final blob = html.Blob([bytes]);
+  final objectUrl = html.Url.createObjectUrlFromBlob(blob);
+  try {
+    final anchor = html.AnchorElement(href: objectUrl)
+      ..download = fileName
+      ..style.display = 'none';
+    html.document.body?.append(anchor);
+    anchor.click();
+    anchor.remove();
+  } finally {
+    html.Url.revokeObjectUrl(objectUrl);
+  }
 }
 
 /// Web 端检测图片宽高比，加载失败返回默认 16/9

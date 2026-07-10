@@ -120,4 +120,20 @@ class ResourceDomains {
     return rule?.type == ResourceType.authImage ||
         rule?.type == ResourceType.publicAsset;
   }
+
+  /// img-proxy 允许的 HTTPS 图片 URL（白名单 + 论坛常见外链图床）
+  static bool isAllowedImgProxyTarget(Uri uri) {
+    if (isAllowedProxyTarget(uri)) return true;
+
+    if (uri.scheme != 'https') return false;
+    if (uri.userInfo.isNotEmpty) return false;
+    if (uri.host.isEmpty) return false;
+    if (RegExp(r'^\d{1,3}(\.\d{1,3}){3}$').hasMatch(uri.host)) return false;
+    if (uri.host == 'localhost' || uri.host.endsWith('.localhost')) {
+      return false;
+    }
+    if (uri.hasPort && uri.port != 443) return false;
+
+    return true;
+  }
 }

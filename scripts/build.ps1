@@ -46,6 +46,7 @@ function Show-Menu {
     Clear-Host
     Write-Host "========================================" -ForegroundColor Cyan
     Write-Host "  S1 Forum App - Build Menu" -ForegroundColor Cyan
+    Write-Host "  (Release builds: obfuscate + split-debug-info)" -ForegroundColor Gray
     Write-Host "========================================" -ForegroundColor Cyan
     Write-Host ""
     
@@ -108,10 +109,10 @@ function Test-SigningConfig {
 
 function Build-SplitAPK {
     if (-not (Test-SigningConfig)) { return }
-    
+
     Write-Host ""
-    Write-Host "Building Split APKs with release signing..." -ForegroundColor Green
-    flutter build apk --split-per-abi
+    Write-Host "Building Split APKs with release signing + obfuscate..." -ForegroundColor Green
+    flutter build apk --split-per-abi --obfuscate --split-debug-info=build/debug-info
     if ($LASTEXITCODE -eq 0) {
         Write-Host ""
         Write-Host "Build successful!" -ForegroundColor Green
@@ -122,6 +123,9 @@ function Build-SplitAPK {
             $name = $_.Name
             Write-Host "  $name - $size MB" -ForegroundColor White
         }
+        Write-Host ""
+        Write-Host "Debug symbols saved to: build\debug-info\" -ForegroundColor Gray
+        Write-Host "  (Keep these for crash symbolication)" -ForegroundColor Gray
     } else {
         Write-Host ""
         Write-Host "Build failed!" -ForegroundColor Red
@@ -130,10 +134,10 @@ function Build-SplitAPK {
 
 function Build-SingleAPK {
     if (-not (Test-SigningConfig)) { return }
-    
+
     Write-Host ""
-    Write-Host "Building single APK with release signing..." -ForegroundColor Green
-    flutter build apk
+    Write-Host "Building single APK with release signing + obfuscate..." -ForegroundColor Green
+    flutter build apk --obfuscate --split-debug-info=build/debug-info
     if ($LASTEXITCODE -eq 0) {
         $apk = Get-ChildItem build\app\outputs\flutter-apk\app-release.apk -ErrorAction SilentlyContinue
         if ($apk) {
@@ -142,6 +146,9 @@ function Build-SingleAPK {
             Write-Host ""
             Write-Host "Build successful!" -ForegroundColor Green
             Write-Host "Output: $path - $size MB" -ForegroundColor Yellow
+            Write-Host ""
+            Write-Host "Debug symbols saved to: build\debug-info\" -ForegroundColor Gray
+            Write-Host "  (Keep these for crash symbolication)" -ForegroundColor Gray
         }
     } else {
         Write-Host ""
@@ -151,10 +158,10 @@ function Build-SingleAPK {
 
 function Build-AAB {
     if (-not (Test-SigningConfig)) { return }
-    
+
     Write-Host ""
-    Write-Host "Building Android App Bundle with release signing..." -ForegroundColor Green
-    flutter build appbundle
+    Write-Host "Building Android App Bundle with release signing + obfuscate..." -ForegroundColor Green
+    flutter build appbundle --obfuscate --split-debug-info=build/debug-info
     if ($LASTEXITCODE -eq 0) {
         Write-Host ""
         Write-Host "Build successful!" -ForegroundColor Green
@@ -165,6 +172,9 @@ function Build-AAB {
             $name = $_.Name
             Write-Host "  $name - $size MB" -ForegroundColor White
         }
+        Write-Host ""
+        Write-Host "Debug symbols saved to: build\debug-info\" -ForegroundColor Gray
+        Write-Host "  (Keep these for crash symbolication)" -ForegroundColor Gray
     } else {
         Write-Host ""
         Write-Host "Build failed!" -ForegroundColor Red
@@ -194,7 +204,7 @@ function Analyze-APK {
     Write-Host ""
     Write-Host "Analyzing APK size..." -ForegroundColor Magenta
     Write-Host "Building and analyzing arm64 version..." -ForegroundColor Gray
-    flutter build apk --target-platform android-arm64 --analyze-size
+    flutter build apk --target-platform android-arm64 --analyze-size --obfuscate --split-debug-info=build/debug-info
 }
 
 function Build-Web {

@@ -15,10 +15,10 @@ S1 论坛使用的 Discuz! Mobile API (version=4)。所有请求走 `ApiConfig.m
 | `profile` | 用户资料 | `getUserProfile()` / `getUserProfileByUid()` | ✅ 已完成 | ✅ 已通过 |
 | `newthread` | 发表新主题 | 待实现 | 📄 仅文档 | ✅ 已通过 |
 | `sendpm` | 发私信 | 未使用 | ❌ 未实现 | — |
-| `sendpost` | ⚠️ **S1 已禁用此模块** | `sendPost()` ❌ 需重写 | ❌ 不存在 |
+| `sendpost` | ⚠️ **S1 已禁用此模块** | — | ❌ 不存在 |
 | `editpost` | ⚠️ **S1 已禁用** | — | ❌ 不存在 |
 | `uploadattach` / `postattach` | ⚠️ **S1 已禁用** | — | ❌ 不存在 |
-| `forum.php?mod=post&action=reply` | **发回复（实际使用方式）** | 待实现 | 📄 已文档 | ✅ 已验证 |
+| `forum.php?mod=post&action=reply` | **发回复（实际使用方式）** | `sendPost()` | ✅ 已完成 | ✅ 已验证 |
 | `forum.php?mod=post&action=edit` | 编辑帖子 | 未实现 | 📄 仅文档 | — |
 | `misc.php?mod=swfupload` | 上传附件 | 未实现 | 📄 仅文档 | — |
 

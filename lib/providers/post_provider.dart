@@ -22,6 +22,7 @@ class PostListState {
     this.filterAuthorId,
     this.filterAuthorName,
     this.rateLogs = const {},
+    this.allowReply = true,
   });
   final List<Post> posts;
   final int currentPage;
@@ -47,6 +48,9 @@ class PostListState {
   /// 评分记录（key = pid）
   final Map<String, PostRateLog> rateLogs;
 
+  /// 是否允许回复（来自 API `thread.allowreply`）
+  final bool allowReply;
+
   /// 是否正在按作者筛选
   bool get isFiltering => filterAuthorId != null;
 
@@ -63,6 +67,7 @@ class PostListState {
     String? filterAuthorName,
     bool clearFilter = false,
     Map<String, PostRateLog>? rateLogs,
+    bool? allowReply,
   }) {
     return PostListState(
       posts: posts ?? this.posts,
@@ -76,6 +81,7 @@ class PostListState {
       filterAuthorId: clearFilter ? null : (filterAuthorId ?? this.filterAuthorId),
       filterAuthorName: clearFilter ? null : (filterAuthorName ?? this.filterAuthorName),
       rateLogs: rateLogs ?? this.rateLogs,
+      allowReply: allowReply ?? this.allowReply,
     );
   }
 }
@@ -160,6 +166,7 @@ class PostNotifier extends StateNotifier<AsyncValue<PostListState>> {
       final totalReplies = int.tryParse(thread['replies']?.toString() ?? '') ?? 0;
       final totalPosts = totalReplies + 1; // 主楼 + 回复
       final totalPages = (totalPosts / perPage).ceil().clamp(1, 9999);
+      final allowReply = thread['allowreply']?.toString() != '0';
 
       state = AsyncValue.data(PostListState(
         posts: posts,
@@ -175,6 +182,7 @@ class PostNotifier extends StateNotifier<AsyncValue<PostListState>> {
         filterAuthorId: _filterAuthorId,
         filterAuthorName: _filterAuthorName,
         rateLogs: rateLogs,
+        allowReply: allowReply,
       ),);
     } catch (e, st) {
       state = AsyncValue.error(e, st);

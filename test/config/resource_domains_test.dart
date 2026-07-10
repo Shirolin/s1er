@@ -57,4 +57,42 @@ void main() {
       );
     });
   });
+
+  group('ResourceDomains.isAllowedImgProxyTarget', () {
+    test('allows whitelisted hosts', () {
+      expect(
+        ResourceDomains.isAllowedImgProxyTarget(
+          Uri.parse('https://img.stage1st.com/avatar.jpg'),
+        ),
+        isTrue,
+      );
+    });
+
+    test('allows external https image host', () {
+      expect(
+        ResourceDomains.isAllowedImgProxyTarget(
+          Uri.parse('https://p.sda1.dev/3/test.png'),
+        ),
+        isTrue,
+      );
+    });
+
+    test('rejects http scheme', () {
+      expect(
+        ResourceDomains.isAllowedImgProxyTarget(
+          Uri.parse('http://p.sda1.dev/test.png'),
+        ),
+        isFalse,
+      );
+    });
+
+    test('rejects localhost', () {
+      expect(
+        ResourceDomains.isAllowedImgProxyTarget(
+          Uri.parse('https://localhost/test.png'),
+        ),
+        isFalse,
+      );
+    });
+  });
 }

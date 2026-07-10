@@ -5,6 +5,7 @@ import 'package:cookie_jar/cookie_jar.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:path_provider/path_provider.dart';
+import '../config/api_config.dart';
 import '../config/constants.dart';
 import '../config/env_config.dart';
 import '../config/resource_domains.dart';
@@ -84,11 +85,15 @@ class S1HttpClient {
           }
         }
 
+        _applyForumPostHeaders(options);
+
         if (_isWeb) {
           final uri = Uri.parse(options.path);
           final rule = ResourceDomains.match(uri.host);
 
-          if (rule != null && ResourceDomains.requiresProxy(uri.host)) {
+          if (!options.path.startsWith(_proxyUrl) &&
+              rule != null &&
+              ResourceDomains.requiresProxy(uri.host)) {
             if (rule.type == ResourceType.authImage) {
               options.path =
                   '$_proxyUrl/img-proxy?url=${Uri.encodeComponent(options.path)}';
@@ -100,6 +105,12 @@ class S1HttpClient {
               options.path =
                   '$_proxyUrl$path${rawQuery.isNotEmpty ? '?$rawQuery' : ''}';
             }
+          } else if (!options.path.startsWith(_proxyUrl) &&
+              options.method == 'GET' &&
+              options.responseType == ResponseType.bytes &&
+              ResourceDomains.isAllowedImgProxyTarget(uri)) {
+            options.path =
+                '$_proxyUrl/img-proxy?url=${Uri.encodeComponent(options.path)}';
           }
 
           // 代理请求注入访问令牌
@@ -112,15 +123,9 @@ class S1HttpClient {
         handler.next(options);
       },
       onResponse: (response, handler) {
-        final data = response.data;
-        if (data is Map<String, dynamic>) {
-          final variables = data['Variables'];
-          if (variables is Map<String, dynamic>) {
-            final formhash = variables['formhash'];
-            if (formhash is String) {
-              _ref.read(formhashProvider.notifier).update(formhash);
-            }
-          }
+        final formhash = FormhashExtractor.fromApiResponse(response.data);
+        if (formhash != null) {
+          _ref.read(formhashProvider.notifier).update(formhash);
         }
         handler.next(response);
       },
@@ -151,6 +156,100 @@ class S1HttpClient {
 
   Future<Response> post(String url, {dynamic data, Options? options}) {
     return _dio.post(url, data: data, options: options);
+  }
+
+  /// 发帖前确保 formhash 已从 Mobile API 或回复页 HTML 中缓存。
+  Future<bool> ensureFormhash({
+    String? tid,
+    String? fid,
+  }) async {
+    if (_ref.read(formhashProvider).isNotEmpty) return true;
+
+    if (tid != null && tid.isNotEmpty) {
+      await _fetchFormhashFromMobileApi(
+        '${ApiConfig.mobileApiUrl}'
+            '?module=${ApiConfig.moduleViewThread}&version=4&tid=$tid',
+      );
+    }
+    if (_ref.read(formhashProvider).isNotEmpty) return true;
+
+    await _fetchFormhashFromMobileApi(
+      '${ApiConfig.mobileApiUrl}'
+          '?module=${ApiConfig.moduleForumIndex}&version=4',
+    );
+    if (_ref.read(formhashProvider).isNotEmpty) return true;
+
+    await _fetchFormhashFromMobileApi(
+      '${ApiConfig.mobileApiUrl}?module=${ApiConfig.moduleLogin}&version=4',
+    );
+    if (_ref.read(formhashProvider).isNotEmpty) return true;
+
+    if (fid != null && fid.isNotEmpty && tid != null && tid.isNotEmpty) {
+      await _fetchFormhashFromReplyPage(fid: fid, tid: tid);
+    }
+    return _ref.read(formhashProvider).isNotEmpty;
+  }
+
+  Future<void> _fetchFormhashFromMobileApi(String url) async {
+    try {
+      final response = await get(url);
+      _cacheFormhash(response.data);
+    } catch (_) {}
+  }
+
+  Future<void> _fetchFormhashFromReplyPage({
+    required String fid,
+    required String tid,
+  }) async {
+    try {
+      final url = ApiConfig.forumReplyReferer(fid: fid, tid: tid);
+      final response = await get(url);
+      final html = response.data?.toString() ?? '';
+      final formhash = FormhashExtractor.fromHtml(html);
+      if (formhash != null) {
+        _ref.read(formhashProvider.notifier).update(formhash);
+      }
+    } catch (_) {}
+  }
+
+  void _cacheFormhash(dynamic data) {
+    final formhash = FormhashExtractor.fromApiResponse(data);
+    if (formhash != null) {
+      _ref.read(formhashProvider.notifier).update(formhash);
+    }
+  }
+
+  static void _applyForumPostHeaders(RequestOptions options) {
+    if (options.method != 'POST') return;
+
+    final uri = _requestUri(options);
+    if (!uri.path.contains('forum.php')) return;
+    if (uri.queryParameters['mod'] != 'post') return;
+
+    final action = uri.queryParameters['action'];
+    if (action == 'reply') {
+      final fid = uri.queryParameters['fid'] ?? '';
+      final tid = uri.queryParameters['tid'] ?? '';
+      final reppost = uri.queryParameters['reppost'] ?? '0';
+      if (fid.isNotEmpty && tid.isNotEmpty) {
+        options.headers['Referer'] = ApiConfig.forumReplyReferer(
+          fid: fid,
+          tid: tid,
+          reppost: reppost,
+        );
+      }
+    } else {
+      options.headers['Referer'] = ResourceDomains.defaultReferer;
+    }
+    options.headers['X-Requested-With'] = 'XMLHttpRequest';
+  }
+
+  static Uri _requestUri(RequestOptions options) {
+    final path = options.path;
+    if (path.startsWith('http://') || path.startsWith('https://')) {
+      return Uri.parse(path);
+    }
+    return Uri.parse('https://${ResourceDomains.apiHost}$path');
   }
 
 }

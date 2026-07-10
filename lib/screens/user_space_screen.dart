@@ -17,10 +17,12 @@ class UserSpaceScreen extends ConsumerStatefulWidget {
     required this.uid,
     this.username,
     this.initialTab = 0,
+    this.isSelf = false,
   });
   final String uid;
   final String? username;
   final int initialTab;
+  final bool isSelf;
 
   @override
   ConsumerState<UserSpaceScreen> createState() => _UserSpaceScreenState();
@@ -39,7 +41,7 @@ class _UserSpaceScreenState extends ConsumerState<UserSpaceScreen>
     _tabController.addListener(_onTabChanged);
     if (widget.initialTab == 1) {
       WidgetsBinding.instance.addPostFrameCallback((_) {
-        if (mounted) ref.read(userSpaceProvider(widget.uid).notifier).loadReplies();
+        if (mounted) ref.read(userSpaceProvider((widget.uid, widget.isSelf)).notifier).loadReplies();
       });
     }
   }
@@ -56,13 +58,13 @@ class _UserSpaceScreenState extends ConsumerState<UserSpaceScreen>
   void _onTabChanged() {
     if (!_tabController.indexIsChanging) return;
     if (_tabController.index == 1) {
-      ref.read(userSpaceProvider(widget.uid).notifier).loadReplies();
+      ref.read(userSpaceProvider((widget.uid, widget.isSelf)).notifier).loadReplies();
     }
   }
 
   @override
   Widget build(BuildContext context) {
-    final async = ref.watch(userSpaceProvider(widget.uid));
+    final async = ref.watch(userSpaceProvider((widget.uid, widget.isSelf)));
     final title = widget.username != null && widget.username!.isNotEmpty
         ? '${widget.username} 的空间'
         : '用户空间';
@@ -73,7 +75,7 @@ class _UserSpaceScreenState extends ConsumerState<UserSpaceScreen>
         actions: [
           AppBarMoreMenu(
             onRefresh: () =>
-                ref.read(userSpaceProvider(widget.uid).notifier).refresh(),
+                ref.read(userSpaceProvider((widget.uid, widget.isSelf)).notifier).refresh(),
             browserUrl: '${ApiConfig.baseUrl}/home.php?mod=space&uid=${widget.uid}',
           ),
         ],
@@ -95,7 +97,7 @@ class _UserSpaceScreenState extends ConsumerState<UserSpaceScreen>
         error: (e, st) => S1ErrorView(
           error: e,
           onRetry: () =>
-              ref.read(userSpaceProvider(widget.uid).notifier).refresh(),
+              ref.read(userSpaceProvider((widget.uid, widget.isSelf)).notifier).refresh(),
           onLogin: () => context.push('/login'),
         ),
         data: (state) => TabBarView(

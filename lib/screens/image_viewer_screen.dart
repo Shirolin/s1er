@@ -1,4 +1,5 @@
 import 'dart:io' show Platform;
+import 'dart:math' as math;
 import 'dart:typed_data';
 import 'dart:ui' as ui;
 
@@ -7,6 +8,7 @@ import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:gal/gal.dart';
+import 'package:go_router/go_router.dart';
 
 import '../config/resource_domains.dart';
 import '../services/http_client.dart';
@@ -31,17 +33,48 @@ class ImageViewerScreen extends ConsumerStatefulWidget {
 }
 
 class _ImageViewerScreenState extends ConsumerState<ImageViewerScreen> {
+  static const double _minScale = 0.5;
+  static const double _maxScale = 5.0;
+  static const double _zoomStep = 1.5;
+
+  final TransformationController _transformController =
+      TransformationController();
+  final ValueNotifier<String> _scaleLabel = ValueNotifier('100%');
+
   int? _width;
   int? _height;
   Uint8List? _fetchedBytes;
+  MemoryImage? _cachedMemoryImage;
   bool _downloading = false;
+  double _currentScale = 1.0;
+  double? _viewportWidth;
+  double? _viewportHeight;
 
   bool get _canSaveToGallery => !kIsWeb && !Platform.isLinux;
+
+  ImageProvider _resolveProvider() {
+    final bytes = widget.imageBytes ?? _fetchedBytes;
+    if (bytes == null) return NetworkImage(widget.imageUrl);
+
+    if (_cachedMemoryImage != null && identical(_cachedMemoryImage!.bytes, bytes)) {
+      return _cachedMemoryImage!;
+    }
+
+    _cachedMemoryImage = MemoryImage(bytes);
+    return _cachedMemoryImage!;
+  }
 
   @override
   void initState() {
     super.initState();
     _decodeDimensions();
+  }
+
+  @override
+  void dispose() {
+    _transformController.dispose();
+    _scaleLabel.dispose();
+    super.dispose();
   }
 
   Future<void> _decodeDimensions() async {
@@ -61,6 +94,7 @@ class _ImageViewerScreenState extends ConsumerState<ImageViewerScreen> {
         _width = frameInfo.image.width;
         _height = frameInfo.image.height;
         _fetchedBytes ??= bytes;
+        _cachedMemoryImage ??= MemoryImage(bytes);
       });
       frameInfo.image.dispose();
       codec.dispose();
@@ -103,8 +137,79 @@ class _ImageViewerScreenState extends ConsumerState<ImageViewerScreen> {
     return '${(bytes / (1024 * 1024)).toStringAsFixed(1)} MB';
   }
 
+  void _onInteractionUpdate(ScaleUpdateDetails details) {
+    final scale = _transformController.value.getMaxScaleOnAxis();
+    if ((scale - _currentScale).abs() > 0.01) {
+      _currentScale = scale;
+      _scaleLabel.value =
+          '${(_currentScale * 100).round()}%';
+    }
+  }
+
+  void _updateViewportSize(double width, double height) {
+    if (_viewportWidth == width && _viewportHeight == height) return;
+    _viewportWidth = width;
+    _viewportHeight = height;
+  }
+
+  void _applyScale(double newScale) {
+    final viewportWidth = _viewportWidth;
+    final viewportHeight = _viewportHeight;
+    if (viewportWidth == null || viewportHeight == null) return;
+
+    final clampedScale = newScale.clamp(_minScale, _maxScale);
+    final center = Offset(viewportWidth / 2, viewportHeight / 2);
+    final matrix = Matrix4.identity()
+      ..translateByDouble(center.dx, center.dy, 0, 1)
+      ..scaleByDouble(clampedScale, clampedScale, 1, 1)
+      ..translateByDouble(-center.dx, -center.dy, 0, 1);
+
+    _transformController.value = matrix;
+    setState(() {
+      _currentScale = clampedScale;
+      _scaleLabel.value = '${(_currentScale * 100).round()}%';
+    });
+  }
+
+  void _resetZoom() {
+    _transformController.value = Matrix4.identity();
+    setState(() {
+      _currentScale = 1.0;
+      _scaleLabel.value = '100%';
+    });
+  }
+
+  void _fitToScreen() {
+    final viewportWidth = _viewportWidth;
+    final viewportHeight = _viewportHeight;
+    if (viewportWidth == null ||
+        viewportHeight == null ||
+        _width == null ||
+        _height == null) {
+      _resetZoom();
+      return;
+    }
+
+    final scaleX = viewportWidth / _width!;
+    final scaleY = viewportHeight / _height!;
+    _applyScale(math.min(scaleX, scaleY));
+  }
+
+  void _zoomTo100() {
+    _applyScale(1.0);
+  }
+
+  void _zoomIn() {
+    _applyScale(_currentScale * _zoomStep);
+  }
+
+  void _zoomOut() {
+    _applyScale(_currentScale / _zoomStep);
+  }
+
   Future<void> _downloadImage(BuildContext context) async {
-    if (_downloading || !_canSaveToGallery) return;
+    if (_downloading) return;
+    if (!kIsWeb && !_canSaveToGallery) return;
     setState(() => _downloading = true);
 
     final messenger = ScaffoldMessenger.of(context);
@@ -119,11 +224,19 @@ class _ImageViewerScreenState extends ConsumerState<ImageViewerScreen> {
         bytes = fetched;
       }
 
-      await Gal.putImageBytes(bytes, name: _fileName);
+      if (kIsWeb) {
+        await downloadImageWeb(bytes, _fileName);
+      } else {
+        await Gal.putImageBytes(bytes, name: _fileName);
+      }
 
       if (context.mounted) {
         messenger.clearSnackBars();
-        S1SnackBar.show(context, message: '已保存到相册', bottomClearance: 16);
+        S1SnackBar.show(
+          context,
+          message: kIsWeb ? '下载已开始' : '已保存到相册',
+          bottomClearance: 16,
+        );
       }
     } catch (e) {
       if (context.mounted) {
@@ -135,71 +248,180 @@ class _ImageViewerScreenState extends ConsumerState<ImageViewerScreen> {
     }
   }
 
+  Widget _buildImageContent(ImageProvider provider, ColorScheme colorScheme) {
+    if (widget.resourceType == ResourceType.publicAsset && kIsWeb) {
+      return LayoutBuilder(
+        builder: (context, constraints) {
+          _updateViewportSize(constraints.maxWidth, constraints.maxHeight);
+          return buildWebImage(
+            widget.imageUrl,
+            width: constraints.maxWidth,
+            height: constraints.maxHeight,
+          );
+        },
+      );
+    }
+
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        _updateViewportSize(constraints.maxWidth, constraints.maxHeight);
+        return Image(
+          image: provider,
+          fit: BoxFit.contain,
+          width: constraints.maxWidth,
+          height: constraints.maxHeight,
+          errorBuilder: (_, __, ___) => Center(
+            child: Icon(
+              Icons.broken_image_outlined,
+              color: colorScheme.onInverseSurface.withValues(alpha: 0.54),
+              size: 48,
+            ),
+          ),
+        );
+      },
+    );
+  }
+
+  Widget _buildTopBar(ColorScheme colorScheme) {
+    final topPadding = MediaQuery.paddingOf(context).top;
+
+    return Material(
+      color: colorScheme.surfaceContainerHigh,
+      child: Padding(
+        padding: EdgeInsets.only(top: topPadding),
+        child: SizedBox(
+          height: kToolbarHeight,
+          child: Row(
+            children: [
+              IconButton(
+                icon: const Icon(Icons.arrow_back),
+                tooltip: '返回',
+                color: colorScheme.onSurface,
+                onPressed: () => context.pop(),
+              ),
+              const Spacer(),
+              IconButton(
+                icon: const Icon(Icons.info_outline),
+                tooltip: '图片信息',
+                color: colorScheme.onSurface,
+                onPressed: () => _showInfoSheet(context),
+              ),
+              if (kIsWeb || _canSaveToGallery)
+                IconButton(
+                  tooltip: kIsWeb ? '下载' : '保存到相册',
+                  color: colorScheme.onSurface,
+                  onPressed: _downloading ? null : () => _downloadImage(context),
+                  icon: _downloading
+                      ? SizedBox(
+                          width: 20,
+                          height: 20,
+                          child: CircularProgressIndicator(
+                            strokeWidth: 2,
+                            color: colorScheme.onSurface,
+                          ),
+                        )
+                      : const Icon(Icons.download_outlined),
+                ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildControlBar(ColorScheme colorScheme, TextTheme textTheme) {
+    final bottomPadding = MediaQuery.of(context).padding.bottom;
+
+    return Material(
+      color: colorScheme.surfaceContainerHigh.withValues(alpha: 0.92),
+      borderRadius: const BorderRadius.vertical(top: Radius.circular(16)),
+      child: Padding(
+        padding: EdgeInsets.fromLTRB(4, 4, 4, 4 + bottomPadding),
+        child: Row(
+          mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+          children: [
+            IconButton(
+              icon: const Icon(Icons.fit_screen_outlined),
+              tooltip: '合适',
+              color: colorScheme.onSurface,
+              onPressed: _fitToScreen,
+            ),
+            IconButton(
+              icon: const Icon(Icons.zoom_out_outlined),
+              tooltip: '缩小',
+              color: colorScheme.onSurface,
+              onPressed: _zoomOut,
+            ),
+            SizedBox(
+              width: 52,
+              child: ValueListenableBuilder<String>(
+                valueListenable: _scaleLabel,
+                builder: (_, label, __) {
+                  return Text(
+                    label,
+                    style: textTheme.labelLarge?.copyWith(
+                      color: colorScheme.onSurface,
+                    ),
+                    textAlign: TextAlign.center,
+                  );
+                },
+              ),
+            ),
+            IconButton(
+              icon: const Icon(Icons.zoom_in_outlined),
+              tooltip: '放大',
+              color: colorScheme.onSurface,
+              onPressed: _zoomIn,
+            ),
+            IconButton(
+              icon: const Icon(Icons.filter_1_outlined),
+              tooltip: '100%',
+              color: colorScheme.onSurface,
+              onPressed: _zoomTo100,
+            ),
+            IconButton(
+              icon: const Icon(Icons.restart_alt_outlined),
+              tooltip: '重置',
+              color: colorScheme.onSurface,
+              onPressed: _resetZoom,
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final colorScheme = Theme.of(context).colorScheme;
-    final topPadding = MediaQuery.of(context).padding.top + kToolbarHeight;
-    final provider = _effectiveBytes != null
-        ? MemoryImage(_effectiveBytes!)
-        : NetworkImage(widget.imageUrl) as ImageProvider;
+    final textTheme = Theme.of(context).textTheme;
+    final provider = _resolveProvider();
 
     return Scaffold(
       backgroundColor: colorScheme.scrim,
-      appBar: AppBar(
-        backgroundColor: colorScheme.scrim.withValues(alpha: 0.5),
-        elevation: 0,
-        scrolledUnderElevation: 0,
-        foregroundColor: colorScheme.onInverseSurface,
-        actions: [
-          IconButton(
-            icon: const Icon(Icons.info_outline),
-            tooltip: '图片信息',
-            onPressed: () => _showInfoSheet(context),
+      body: Stack(
+        fit: StackFit.expand,
+        children: [
+          InteractiveViewer(
+            transformationController: _transformController,
+            minScale: _minScale,
+            maxScale: _maxScale,
+            onInteractionUpdate: _onInteractionUpdate,
+            child: _buildImageContent(provider, colorScheme),
           ),
-          if (kIsWeb)
-            IconButton(
-              tooltip: '下载',
-              onPressed: () {
-                downloadImageWeb(widget.imageUrl, _fileName);
-                S1SnackBar.show(context, message: '下载已开始', bottomClearance: 16);
-              },
-              icon: const Icon(Icons.download_outlined),
-            )
-          else if (_canSaveToGallery)
-            IconButton(
-              tooltip: '保存到相册',
-              onPressed: _downloading ? null : () => _downloadImage(context),
-              icon: _downloading
-                  ? SizedBox(
-                      width: 20,
-                      height: 20,
-                      child: CircularProgressIndicator(
-                        strokeWidth: 2,
-                        color: colorScheme.onInverseSurface,
-                      ),
-                    )
-                  : const Icon(Icons.download_outlined),
-            ),
+          Positioned(
+            top: 0,
+            left: 0,
+            right: 0,
+            child: _buildTopBar(colorScheme),
+          ),
+          Positioned(
+            left: 0,
+            right: 0,
+            bottom: 0,
+            child: _buildControlBar(colorScheme, textTheme),
+          ),
         ],
-      ),
-      extendBodyBehindAppBar: true,
-      body: Padding(
-        padding: EdgeInsets.only(top: topPadding),
-        child: InteractiveViewer(
-          minScale: 0.5,
-          maxScale: 4.0,
-          child: widget.resourceType == ResourceType.publicAsset && kIsWeb
-              ? LayoutBuilder(
-                  builder: (context, constraints) {
-                    return buildWebImage(
-                      widget.imageUrl,
-                      width: constraints.maxWidth,
-                      height: constraints.maxHeight,
-                    );
-                  },
-                )
-              : Image(image: provider),
-        ),
       ),
     );
   }

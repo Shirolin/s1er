@@ -2,9 +2,12 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import '../config/api_config.dart';
+import '../models/post.dart';
+import '../models/reply_submit_result.dart';
 import '../providers/post_provider.dart';
 import '../providers/auth_provider.dart';
 import '../providers/reading_history_provider.dart';
+import '../utils/compose_draft_store.dart';
 import '../widgets/app_bar_more_menu.dart';
 import '../widgets/pagination_bar.dart';
 import '../widgets/post_item.dart';
@@ -35,6 +38,7 @@ class _ThreadDetailScreenState extends ConsumerState<ThreadDetailScreen> {
   bool _hasRecordedInitialVisit = false;
   bool _hasCheckedResume = false;
   bool _hasScrolledToTarget = false;
+  String? _highlightPid;
 
   @override
   void initState() {
@@ -52,9 +56,10 @@ class _ThreadDetailScreenState extends ConsumerState<ThreadDetailScreen> {
   }
 
   void _scrollToTarget(PostListState state) {
-    if (widget.targetPid == null || _hasScrolledToTarget) return;
+    final targetPid = widget.targetPid ?? _highlightPid;
+    if (targetPid == null || _hasScrolledToTarget) return;
     
-    final index = state.posts.indexWhere((p) => p.pid == widget.targetPid);
+    final index = state.posts.indexWhere((p) => p.pid == targetPid);
     if (index == -1) return;
 
     // 考虑投票帖占位
@@ -154,6 +159,57 @@ class _ThreadDetailScreenState extends ConsumerState<ThreadDetailScreen> {
   int _detailItemCount(PostListState state) =>
       state.posts.length + (_showsPollOnPage(state) ? 1 : 0);
 
+  Future<void> _openCompose(
+    PostListState state, {
+    Post? replyTo,
+    int? displayFloor,
+  }) async {
+    if (!ref.read(authStateProvider).isLoggedIn) {
+      await context.push('/login');
+      return;
+    }
+    if (!state.allowReply) {
+      S1SnackBar.show(context, message: '该主题已关闭回复');
+      return;
+    }
+
+    String? draftId;
+    if (replyTo != null) {
+      draftId = ComposeDraftStore.put(
+        replyTo,
+        displayFloor: displayFloor ?? replyTo.floor,
+      );
+    }
+
+    final query = StringBuffer(
+      '/compose?tid=${widget.tid}&fid=${state.threadFid ?? ''}',
+    );
+    if (draftId != null) {
+      query.write('&draftId=$draftId');
+    }
+    if (replyTo != null) {
+      query.write('&reppost=${replyTo.pid}');
+    }
+
+    final result = await context.push<ReplySubmitResult>(query.toString());
+    if (!mounted || result == null || !result.isSuccess) return;
+
+    await _afterReplySubmitted(result, state);
+  }
+
+  Future<void> _afterReplySubmitted(
+    ReplySubmitResult result,
+    PostListState state,
+  ) async {
+    final notifier = ref.read(postProvider(widget.tid).notifier);
+    if (result.pid != null && result.pid!.isNotEmpty) {
+      setState(() => _highlightPid = result.pid);
+      await notifier.locatePid(result.pid!);
+    } else {
+      await notifier.goToPage(state.totalPages);
+    }
+  }
+
   Widget _buildDetailItem(
     BuildContext context,
     PostListState state,
@@ -166,12 +222,14 @@ class _ThreadDetailScreenState extends ConsumerState<ThreadDetailScreen> {
     final postIndex = _showsPollOnPage(state) && index > 1 ? index - 1 : index;
     final post = state.posts[postIndex];
     final floorOffset = (state.currentPage - 1) * state.perPage;
+    final displayFloor = floorOffset + postIndex + 1;
+    final highlightPid = widget.targetPid ?? _highlightPid;
     return PostItem(
       post: post,
-      displayFloor: floorOffset + postIndex + 1,
+      displayFloor: displayFloor,
       tid: widget.tid,
       rateLog: state.rateLogs[post.pid],
-      isHighlighted: post.pid == widget.targetPid,
+      isHighlighted: post.pid == highlightPid,
       onFilterByAuthor: () {
         ref.read(postProvider(widget.tid).notifier).filterByAuthor(
               post.authorId,
@@ -179,6 +237,13 @@ class _ThreadDetailScreenState extends ConsumerState<ThreadDetailScreen> {
             );
         _scrollToTop();
       },
+      onReply: state.allowReply
+          ? () => _openCompose(
+                state,
+                replyTo: post,
+                displayFloor: displayFloor,
+              )
+          : null,
     );
   }
 
@@ -268,7 +333,7 @@ class _ThreadDetailScreenState extends ConsumerState<ThreadDetailScreen> {
         data: (state) {
           final fabPadding = S1FabLayout.contentBottomPadding(
             showSecondary: _showScrollToTop,
-            showPrimary: isLoggedIn,
+            showPrimary: isLoggedIn && state.allowReply,
           );
           final scheme = Theme.of(context).colorScheme;
 
@@ -316,14 +381,12 @@ class _ThreadDetailScreenState extends ConsumerState<ThreadDetailScreen> {
                     visible: _showScrollToTop,
                     small: true,
                   ),
-                  primary: isLoggedIn
+                  primary: isLoggedIn && state.allowReply
                       ? S1FabItem(
                           heroTag: 'replyDetail',
                           icon: Icons.edit_outlined,
                           tooltip: '回复',
-                          onPressed: () => context.push(
-                            '/compose?tid=${widget.tid}&fid=${state.threadFid ?? ''}',
-                          ),
+                          onPressed: () => _openCompose(state),
                         )
                       : null,
                 ),

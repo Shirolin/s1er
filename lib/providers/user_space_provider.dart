@@ -2,7 +2,6 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../models/user_space_item.dart';
 import '../services/api_service.dart';
 import '../services/http_client.dart';
-import 'auth_provider.dart';
 
 class UserSpaceState {
 
@@ -41,11 +40,11 @@ class UserSpaceState {
 }
 
 final userSpaceProvider = StateNotifierProvider.autoDispose.family<
-    UserSpaceNotifier, AsyncValue<UserSpaceState>, String>(
-  (ref, uid) => UserSpaceNotifier(
-    uid: uid,
+    UserSpaceNotifier, AsyncValue<UserSpaceState>, (String, bool)>(
+  (ref, params) => UserSpaceNotifier(
+    uid: params.$1,
     apiService: ApiService(ref.watch(httpClientProvider)),
-    selfUid: ref.watch(authStateProvider).user?.uid,
+    isSelf: params.$2,
   ),
 );
 
@@ -54,23 +53,22 @@ class UserSpaceNotifier extends StateNotifier<AsyncValue<UserSpaceState>> {
   UserSpaceNotifier({
     required this.uid,
     required ApiService apiService,
-    required this.selfUid,
+    required this.isSelf,
   })  : _apiService = apiService,
         super(const AsyncValue.loading()) {
     _loadThreads();
   }
   final String uid;
-  final String? selfUid;
+  final bool isSelf;
   final ApiService _apiService;
-
-  bool get _isSelf => selfUid != null && selfUid == uid;
 
   Future<void> _loadThreads() async {
     try {
-      final result = _isSelf
+      final current = state.valueOrNull;
+      final result = isSelf
           ? await _apiService.getMySpaceList(type: 'thread', page: 1)
           : await _apiService.getUserSpaceList(uid: uid, type: 'thread', page: 1);
-      state = AsyncValue.data(UserSpaceState(
+      state = AsyncValue.data((current ?? UserSpaceState()).copyWith(
         threads: result.items,
         threadTotalPages: result.totalPages,
       ),);
@@ -100,7 +98,7 @@ class UserSpaceNotifier extends StateNotifier<AsyncValue<UserSpaceState>> {
   Future<void> goToThreadPage(int page) async {
     final current = state.valueOrNull;
     try {
-      final result = _isSelf
+      final result = isSelf
           ? await _apiService.getMySpaceList(type: 'thread', page: page)
           : await _apiService.getUserSpaceList(uid: uid, type: 'thread', page: page);
       state = AsyncValue.data((current ?? UserSpaceState()).copyWith(

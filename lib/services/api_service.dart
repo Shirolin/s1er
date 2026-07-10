@@ -6,6 +6,7 @@ import '../models/thread.dart';
 import '../models/post.dart';
 import '../models/user_space_item.dart';
 import '../models/poll.dart';
+import '../models/reply_submit_result.dart';
 import '../models/forum_category.dart';
 import '../models/user.dart';
 import '../utils/error_handler.dart';
@@ -331,52 +332,105 @@ class ApiService {
     }
   }
 
-  static String? parseReplyResponse(String xml) {
+  static ReplySubmitResult parseReplyResponse(String xml) {
     final successMatch = RegExp(
       r"succeedhandle_reply\('([^']*)',\s*'([^']*)',\s*\{([^}]*)\}\)",
     ).firstMatch(xml);
-    if (successMatch != null) return null;
+    if (successMatch != null) {
+      final meta = successMatch.group(3) ?? '';
+      return ReplySubmitResult(
+        pid: _extractReplyField(meta, 'pid'),
+        tid: _extractReplyField(meta, 'tid'),
+      );
+    }
 
     final errorMatch = RegExp(
       r"errorhandle_reply\('([^']*)',\s*'([^']*)'\)",
     ).firstMatch(xml);
     if (errorMatch != null) {
-      return errorMatch.group(1)?.isNotEmpty == true
+      final message = errorMatch.group(1)?.isNotEmpty == true
           ? errorMatch.group(1)
           : errorMatch.group(2);
+      return ReplySubmitResult(error: message);
+    }
+
+    final postformError = RegExp(
+      r"errorhandle_postform\('([^']*)'",
+    ).firstMatch(xml);
+    if (postformError != null) {
+      return ReplySubmitResult(error: postformError.group(1));
     }
 
     final alertMatch = RegExp(r"alert\('([^']*)'\)").firstMatch(xml);
-    if (alertMatch != null) return alertMatch.group(1);
+    if (alertMatch != null) {
+      return ReplySubmitResult(error: alertMatch.group(1));
+    }
 
-    return '服务器返回未知响应';
+    final messageText = RegExp(
+      r'id="messagetext"[^>]*>\s*<p>([^<]+)',
+      dotAll: true,
+    ).firstMatch(xml);
+    if (messageText != null) {
+      return ReplySubmitResult(error: messageText.group(1)?.trim());
+    }
+
+    return const ReplySubmitResult(error: '服务器返回未知响应');
   }
 
-  /// 发回复。成功返回 null，失败返回错误信息。
-  Future<String?> sendPost({
+  static String? _extractReplyField(String meta, String key) {
+    final match = RegExp("$key:'([^']*)'").firstMatch(meta);
+    final value = match?.group(1);
+    return value != null && value.isNotEmpty ? value : null;
+  }
+
+  /// 发回复。成功时 [ReplySubmitResult.error] 为 null。
+  Future<ReplySubmitResult> sendPost({
     required String fid,
     required String tid,
     required String message,
+    String? reppost,
+    String? noticeAuthor,
+    String? noticeAuthorMsg,
   }) async {
-    final url = '${ApiConfig.forumPostUrl}'
+    final hasFormhash = await _httpClient.ensureFormhash(tid: tid, fid: fid);
+    if (!hasFormhash) {
+      return const ReplySubmitResult(
+        error: '无法获取表单验证串，请刷新主题页后重试',
+      );
+    }
+
+    var url = '${ApiConfig.forumPostUrl}'
         '?mod=post&action=reply&fid=$fid&tid=$tid'
         '&extra=&replysubmit=yes&mobile=2&handlekey=postform&inajax=1';
+    if (reppost != null && reppost.isNotEmpty) {
+      url += '&reppost=$reppost';
+    }
+
+    final data = <String, String>{
+      'posttime': (DateTime.now().millisecondsSinceEpoch ~/ 1000).toString(),
+      'usesig': '1',
+      'subject': '',
+      'message': message,
+      'replysubmit': 'yes',
+    };
+    if (noticeAuthor != null && noticeAuthor.isNotEmpty) {
+      data['noticeauthor'] = noticeAuthor;
+    }
+    if (noticeAuthorMsg != null && noticeAuthorMsg.isNotEmpty) {
+      data['noticeauthormsg'] = noticeAuthorMsg;
+    }
 
     final response = await _httpClient.post(
       url,
-      data: {
-        'posttime': (DateTime.now().millisecondsSinceEpoch ~/ 1000).toString(),
-        'usesig': '1',
-        'subject': '',
-        'message': message,
-        'replysubmit': 'yes',
-      },
+      data: data,
       options: Options(contentType: Headers.formUrlEncodedContentType),
     );
 
-    final data = response.data;
-    if (data is! String) return '服务器返回异常';
-    return parseReplyResponse(data);
+    final responseData = response.data;
+    if (responseData is! String) {
+      return const ReplySubmitResult(error: '服务器返回异常');
+    }
+    return parseReplyResponse(responseData);
   }
 
   static String _buildPollVoteBody(String tid, List<String> optionIds) {

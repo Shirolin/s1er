@@ -31,4 +31,24 @@ void main() {
       expect(container.read(formhashProvider), '');
     });
   });
+
+  group('FormhashExtractor', () {
+    test('fromApiResponse parses JSON string', () {
+      const json = '{"Variables":{"formhash":"a526b208"}}';
+      expect(FormhashExtractor.fromApiResponse(json), 'a526b208');
+    });
+
+    test('fromApiResponse parses Map', () {
+      final json = {
+        'Variables': {'formhash': '58ef71fc'},
+      };
+      expect(FormhashExtractor.fromApiResponse(json), '58ef71fc');
+    });
+
+    test('fromHtml extracts hidden input value', () {
+      const html =
+          '<input type="hidden" name="formhash" value="de12ab34" />';
+      expect(FormhashExtractor.fromHtml(html), 'de12ab34');
+    });
+  });
 }

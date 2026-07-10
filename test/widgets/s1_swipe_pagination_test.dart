@@ -181,7 +181,7 @@ void main() {
     controller.jumpTo(500);
     await tester.pump();
 
-    state.scrollToTop();
+    unawaited(state.scrollToTop());
     for (var i = 0; i < 8; i++) {
       await tester.pump(const Duration(milliseconds: 50));
     }

@@ -64,7 +64,7 @@ class AuthService {
   Future<void> logout() async {
     if (kIsWeb && EnvConfig.proxyAuthToken.isNotEmpty) {
       try {
-        final proxyUrl =
+        const proxyUrl =
             'http://localhost:${EnvConfig.proxyPort}/proxy/session/clear';
         await _httpClient.post(
           proxyUrl,

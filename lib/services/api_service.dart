@@ -358,6 +358,7 @@ class ApiService {
           final messagestr = message['messagestr'] as String?;
           
           if (messageval == 'login_succeed' || messageval?.contains('succeed') == true) {
+            await _httpClient.refreshFormhashAfterAuth();
             return null; // 登录成功
           } else if (messagestr != null) {
             return messagestr; // 登录失败，返回 Discuz 的错误提示
@@ -430,7 +431,11 @@ class ApiService {
     String? noticeAuthor,
     String? noticeAuthorMsg,
   }) async {
-    final hasFormhash = await _httpClient.ensureFormhash(tid: tid, fid: fid);
+    final hasFormhash = await _httpClient.ensureFormhash(
+      tid: tid,
+      fid: fid,
+      force: true,
+    );
     if (!hasFormhash) {
       return const ReplySubmitResult(
         error: '无法获取表单验证串，请刷新主题页后重试',

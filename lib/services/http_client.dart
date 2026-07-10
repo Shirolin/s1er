@@ -11,14 +11,22 @@ import '../config/env_config.dart';
 import '../config/resource_domains.dart';
 import 'formhash_service.dart';
 import 'encrypted_cookie_storage.dart';
+import 'talker.dart';
 
 class S1HttpClient {
 
-  S1HttpClient(this._ref);
+  S1HttpClient(this._ref) : _testContainer = null;
+
+  @visibleForTesting
+  S1HttpClient.test(this._testContainer, Dio dio)
+      : _ref = null,
+        _dio = dio;
+
   late Dio _dio;
   PersistCookieJar? _cookieJar;
   final List<DateTime> _requestTimestamps = [];
-  final Ref _ref;
+  final Ref? _ref;
+  final ProviderContainer? _testContainer;
 
   static String get _proxyUrl => 'http://localhost:${EnvConfig.proxyPort}';
   static bool get _isWeb => kIsWeb;
@@ -60,7 +68,7 @@ class S1HttpClient {
       onRequest: (options, handler) async {
         await _enforceRateLimit();
 
-        final currentFormhash = _ref.read(formhashProvider);
+        final currentFormhash = _read(formhashProvider);
         if (currentFormhash.isNotEmpty &&
             (options.method == 'POST' || options.method == 'PUT')) {
           if (!options.path.contains('formhash=')) {
@@ -125,7 +133,7 @@ class S1HttpClient {
       onResponse: (response, handler) {
         final formhash = FormhashExtractor.fromApiResponse(response.data);
         if (formhash != null) {
-          _ref.read(formhashProvider.notifier).update(formhash);
+          _read(formhashProvider.notifier).update(formhash);
         }
         handler.next(response);
       },
@@ -159,11 +167,19 @@ class S1HttpClient {
   }
 
   /// 发帖前确保 formhash 已从 Mobile API 或回复页 HTML 中缓存。
+  ///
+  /// [force] 为 true 时丢弃缓存并重新拉取（回复 POST 前必须使用，避免登录等
+  /// 操作消耗掉旧的 formhash）。
   Future<bool> ensureFormhash({
     String? tid,
     String? fid,
+    bool force = false,
   }) async {
-    if (_ref.read(formhashProvider).isNotEmpty) return true;
+    if (force) {
+      _read(formhashProvider.notifier).clear();
+    } else if (_read(formhashProvider).isNotEmpty) {
+      return true;
+    }
 
     if (tid != null && tid.isNotEmpty) {
       await _fetchFormhashFromMobileApi(
@@ -171,30 +187,46 @@ class S1HttpClient {
             '?module=${ApiConfig.moduleViewThread}&version=4&tid=$tid',
       );
     }
-    if (_ref.read(formhashProvider).isNotEmpty) return true;
+    if (_read(formhashProvider).isNotEmpty) return true;
 
     await _fetchFormhashFromMobileApi(
       '${ApiConfig.mobileApiUrl}'
           '?module=${ApiConfig.moduleForumIndex}&version=4',
     );
-    if (_ref.read(formhashProvider).isNotEmpty) return true;
+    if (_read(formhashProvider).isNotEmpty) return true;
 
     await _fetchFormhashFromMobileApi(
       '${ApiConfig.mobileApiUrl}?module=${ApiConfig.moduleLogin}&version=4',
     );
-    if (_ref.read(formhashProvider).isNotEmpty) return true;
+    if (_read(formhashProvider).isNotEmpty) return true;
 
     if (fid != null && fid.isNotEmpty && tid != null && tid.isNotEmpty) {
       await _fetchFormhashFromReplyPage(fid: fid, tid: tid);
     }
-    return _ref.read(formhashProvider).isNotEmpty;
+    return _read(formhashProvider).isNotEmpty;
+  }
+
+  /// 登录/登出后刷新 formhash，避免沿用已消耗的验证串。
+  Future<void> refreshFormhashAfterAuth() async {
+    _read(formhashProvider.notifier).clear();
+    await _fetchFormhashFromMobileApi(
+      '${ApiConfig.mobileApiUrl}?module=${ApiConfig.moduleLogin}&version=4',
+    );
+    if (_read(formhashProvider).isNotEmpty) return;
+
+    await _fetchFormhashFromMobileApi(
+      '${ApiConfig.mobileApiUrl}'
+          '?module=${ApiConfig.moduleForumIndex}&version=4',
+    );
   }
 
   Future<void> _fetchFormhashFromMobileApi(String url) async {
     try {
       final response = await get(url);
       _cacheFormhash(response.data);
-    } catch (_) {}
+    } catch (e, st) {
+      talker.handle(e, st, 'Fetch formhash from mobile API failed');
+    }
   }
 
   Future<void> _fetchFormhashFromReplyPage({
@@ -207,16 +239,24 @@ class S1HttpClient {
       final html = response.data?.toString() ?? '';
       final formhash = FormhashExtractor.fromHtml(html);
       if (formhash != null) {
-        _ref.read(formhashProvider.notifier).update(formhash);
+        _read(formhashProvider.notifier).update(formhash);
       }
-    } catch (_) {}
+    } catch (e, st) {
+      talker.handle(e, st, 'Fetch formhash from reply page failed');
+    }
   }
 
   void _cacheFormhash(dynamic data) {
     final formhash = FormhashExtractor.fromApiResponse(data);
     if (formhash != null) {
-      _ref.read(formhashProvider.notifier).update(formhash);
+      _read(formhashProvider.notifier).update(formhash);
     }
+  }
+
+  T _read<T>(ProviderListenable<T> provider) {
+    final ref = _ref;
+    if (ref != null) return ref.read(provider);
+    return _testContainer!.read(provider);
   }
 
   static void _applyForumPostHeaders(RequestOptions options) {

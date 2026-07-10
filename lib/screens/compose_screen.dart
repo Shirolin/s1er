@@ -29,6 +29,7 @@ class ComposeScreen extends ConsumerStatefulWidget {
 class _ComposeScreenState extends ConsumerState<ComposeScreen> {
   final _messageController = TextEditingController();
   bool _isSubmitting = false;
+  bool _redirectedToLogin = false;
   ComposeDraft? _draft;
   bool _includeQuote = true;
 
@@ -44,10 +45,9 @@ class _ComposeScreenState extends ConsumerState<ComposeScreen> {
 
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (!mounted) return;
-      if (!ref.read(authStateProvider).isLoggedIn) {
-        if (context.canPop()) {
-          context.pop();
-        }
+      if (!ref.read(authStateProvider).isLoggedIn && !_redirectedToLogin) {
+        _redirectedToLogin = true;
+        // 勿 pop 再 push：会在 Web 上触发 disposed EngineFlutterView 断言刷屏
         context.push('/login');
       }
     });
@@ -159,10 +159,11 @@ class _ComposeScreenState extends ConsumerState<ComposeScreen> {
           FilledButton(
             onPressed: _isSubmitting ? null : _submit,
             child: _isSubmitting
-                ? const SizedBox(
-                    width: 20,
-                    height: 20,
-                    child: CircularProgressIndicator(strokeWidth: 2),
+                ? Text(
+                    '发送中…',
+                    style: textTheme.labelLarge?.copyWith(
+                      color: scheme.onPrimary,
+                    ),
                   )
                 : const Text('发送'),
           ),

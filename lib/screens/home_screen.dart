@@ -39,12 +39,10 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
       }
     });
 
-    // 游客模式下只有 2 个 Tab（论坛/我的），若当前索引越界则重置
-    if (!isLoggedIn && _currentTab > 1) {
-      _currentTab = 0;
-    }
+    // 游客只有 2 个 Tab，越界时用计算值，避免在 build 中改写 state
+    final tabIndex = (!isLoggedIn && _currentTab > 1) ? 0 : _currentTab;
 
-    final isProfileTab = isLoggedIn ? _currentTab == 3 : _currentTab == 1;
+    final isProfileTab = isLoggedIn ? tabIndex == 3 : tabIndex == 1;
 
     return Scaffold(
       appBar: AppBar(
@@ -74,18 +72,18 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
               ],
       ),
       body: isLoggedIn
-          ? _currentTab == 0
+          ? tabIndex == 0
               ? const _ForumTab()
-              : _currentTab == 1
+              : tabIndex == 1
                   ? const Center(child: Text('Search'))
-                  : _currentTab == 2
+                  : tabIndex == 2
                       ? const Center(child: Text('Messages'))
                       : const ProfileBody()
-          : _currentTab == 0
+          : tabIndex == 0
               ? const _ForumTab()
               : const ProfileBody(),
       bottomNavigationBar: NavigationBar(
-        selectedIndex: _currentTab,
+        selectedIndex: tabIndex,
         onDestinationSelected: (index) {
           setState(() => _currentTab = index);
         },

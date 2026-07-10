@@ -15,9 +15,15 @@ import '../utils/s1_snack_bar.dart';
 
 class ThreadDetailScreen extends ConsumerStatefulWidget {
 
-  const ThreadDetailScreen({super.key, required this.tid, this.initialPage});
+  const ThreadDetailScreen({
+    super.key,
+    required this.tid,
+    this.initialPage,
+    this.targetPid,
+  });
   final String tid;
   final int? initialPage;
+  final String? targetPid;
 
   @override
   ConsumerState<ThreadDetailScreen> createState() => _ThreadDetailScreenState();
@@ -28,16 +34,45 @@ class _ThreadDetailScreenState extends ConsumerState<ThreadDetailScreen> {
   bool _showScrollToTop = false;
   bool _hasRecordedInitialVisit = false;
   bool _hasCheckedResume = false;
+  bool _hasScrolledToTarget = false;
 
   @override
   void initState() {
     super.initState();
     _scrollController.addListener(_onScroll);
-    if (widget.initialPage != null && widget.initialPage! > 1) {
-      WidgetsBinding.instance.addPostFrameCallback((_) {
+    
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) return;
+      if (widget.targetPid != null) {
+        ref.read(postProvider(widget.tid).notifier).locatePid(widget.targetPid!);
+      } else if (widget.initialPage != null && widget.initialPage! > 1) {
         ref.read(postProvider(widget.tid).notifier).goToPage(widget.initialPage!);
-      });
-    }
+      }
+    });
+  }
+
+  void _scrollToTarget(PostListState state) {
+    if (widget.targetPid == null || _hasScrolledToTarget) return;
+    
+    final index = state.posts.indexWhere((p) => p.pid == widget.targetPid);
+    if (index == -1) return;
+
+    // 考虑投票帖占位
+    final scrollIndex = index + (_showsPollOnPage(state) && index >= 1 ? 1 : 0);
+
+    _hasScrolledToTarget = true;
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted || !_scrollController.hasClients) return;
+      // 简单估算滚动位置（每楼大概 150-300px），或者使用精确位置。
+      // 为保持简单，我们滚动到那个位置并给个提示。
+      // 在 ListView.builder 中精确滚动到 index 比较复杂，通常需要 GlobalKey 或预估高度。
+      // 这里先尝试一个基础的跳转。
+      _scrollController.animateTo(
+        scrollIndex * 200.0, 
+        duration: const Duration(milliseconds: 500),
+        curve: Curves.easeOut,
+      );
+    });
   }
 
   /// 记录阅读进度：写库 + 刷新历史列表（使列表卡片/历史页/资料计数实时更新）。
@@ -136,6 +171,7 @@ class _ThreadDetailScreenState extends ConsumerState<ThreadDetailScreen> {
       displayFloor: floorOffset + postIndex + 1,
       tid: widget.tid,
       rateLog: state.rateLogs[post.pid],
+      isHighlighted: post.pid == widget.targetPid,
       onFilterByAuthor: () {
         ref.read(postProvider(widget.tid).notifier).filterByAuthor(
               post.authorId,
@@ -181,10 +217,11 @@ class _ThreadDetailScreenState extends ConsumerState<ThreadDetailScreen> {
         (previous, next) {
       next.whenData((state) {
         // 先按「上一次」记录判断是否提示续读，再写入本次进度。
-        if (widget.initialPage == null) {
+        if (widget.initialPage == null && widget.targetPid == null) {
           _checkResumeReading(state);
         }
         _recordProgress(state);
+        _scrollToTarget(state);
       });
     });
 

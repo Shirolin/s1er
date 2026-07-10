@@ -181,6 +181,13 @@ class PostNotifier extends StateNotifier<AsyncValue<PostListState>> {
     }
   }
 
+  /// 定位特定回复，自动跳转到对应页。
+  Future<void> locatePid(String pid) async {
+    state = const AsyncValue.loading();
+    final page = await _apiService.locatePostPage(tid, pid);
+    await _loadPage(page);
+  }
+
   Future<void> goToPage(int page) async {
     await _loadPage(page);
   }

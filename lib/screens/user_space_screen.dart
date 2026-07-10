@@ -322,7 +322,15 @@ class _ReplyCard extends StatelessWidget {
       color: scheme.surfaceContainerLow,
       shape: S1Shape.cardShape,
       child: InkWell(
-        onTap: () => context.push('/thread/${item.tid}'),
+        onTap: () {
+          final uri = Uri(
+            path: '/thread/${item.tid}',
+            queryParameters: {
+              if (item.pid != null) 'pid': item.pid,
+            },
+          );
+          context.push(uri.toString());
+        },
         borderRadius: S1Shape.medium,
         child: Padding(
           padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),

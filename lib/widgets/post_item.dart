@@ -21,12 +21,14 @@ class PostItem extends ConsumerWidget {
     this.tid,
     this.onFilterByAuthor,
     this.rateLog,
+    this.isHighlighted = false,
   });
   final Post post;
   final int? displayFloor;
   final String? tid;
   final VoidCallback? onFilterByAuthor;
   final PostRateLog? rateLog;
+  final bool isHighlighted;
 
   void _showUserInfo(BuildContext context, WidgetRef ref) {
     final currentUid = ref.read(authStateProvider).user?.uid;
@@ -50,7 +52,9 @@ class PostItem extends ConsumerWidget {
     return Card(
       margin: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
       elevation: 0,
-      color: scheme.surfaceContainerLow,
+      color: isHighlighted
+          ? scheme.primaryContainer.withValues(alpha: 0.5)
+          : scheme.surfaceContainerLow,
       shape: S1Shape.cardShape,
       child: Padding(
         padding: const EdgeInsets.all(12),

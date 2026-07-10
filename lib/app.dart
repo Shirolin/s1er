@@ -68,9 +68,11 @@ final _router = GoRouter(
       builder: (context, state) {
         final pageStr = state.uri.queryParameters['page'];
         final page = pageStr != null ? int.tryParse(pageStr) : null;
+        final pid = state.uri.queryParameters['pid'];
         return ThreadDetailScreen(
           tid: state.pathParameters['tid']!,
           initialPage: page,
+          targetPid: pid,
         );
       },
     ),

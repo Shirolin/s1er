@@ -74,15 +74,16 @@ class ImageViewerScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final colorScheme = Theme.of(context).colorScheme;
     final topPadding = MediaQuery.of(context).padding.top + kToolbarHeight;
     final provider = imageBytes != null
         ? MemoryImage(imageBytes!) as ImageProvider
         : NetworkImage(imageUrl);
 
     return Scaffold(
-      backgroundColor: Colors.black,
+      backgroundColor: colorScheme.scrim,
       appBar: AppBar(
-        backgroundColor: Colors.black.withValues(alpha: 0.5),
+        backgroundColor: colorScheme.scrim.withValues(alpha: 0.5),
         elevation: 0,
         foregroundColor: Colors.white,
         actions: [

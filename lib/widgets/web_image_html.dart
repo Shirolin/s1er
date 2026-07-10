@@ -42,6 +42,18 @@ void downloadImageWeb(String url, String fileName) {
   anchor.remove();
 }
 
+/// Web 端检测图片宽高比，加载失败返回默认 16/9
+Future<double> detectImageAspectRatio(String url) async {
+  try {
+    final img = html.ImageElement()..src = url;
+    await img.onLoad.first;
+    final w = img.naturalWidth;
+    final h = img.naturalHeight;
+    if (h > 0) return w / h;
+  } catch (_) {}
+  return 16 / 9;
+}
+
 String _toCssFit(BoxFit fit) {
   switch (fit) {
     case BoxFit.cover:

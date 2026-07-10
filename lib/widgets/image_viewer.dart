@@ -41,6 +41,7 @@ class _ImageViewerState extends ConsumerState<ImageViewer> {
   Uint8List? _bytes;
   ImageProvider? _imageProvider;
   late ResourceType _resourceType;
+  double _webAspectRatio = 16 / 9;
 
   @override
   void initState() {
@@ -86,6 +87,7 @@ class _ImageViewerState extends ConsumerState<ImageViewer> {
     // 公开资源：Web 端用原生 <img>，Native 端用 NetworkImage，都不需要 Dio
     if (_resourceType == ResourceType.publicAsset) {
       _loading = false;
+      if (kIsWeb) _detectAspectRatio();
       return;
     }
 
@@ -129,6 +131,16 @@ class _ImageViewerState extends ConsumerState<ImageViewer> {
     }
   }
 
+  Future<void> _detectAspectRatio() async {
+    final ratio = await detectImageAspectRatio(widget.imageUrl);
+    if (!mounted) return;
+    if (ratio != _webAspectRatio) {
+      setState(() {
+        _webAspectRatio = ratio;
+      });
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     final showImages = widget.isEmoticon ||
@@ -155,7 +167,8 @@ class _ImageViewerState extends ConsumerState<ImageViewer> {
         child: LayoutBuilder(
           builder: (context, constraints) {
             final w = constraints.hasBoundedWidth ? constraints.maxWidth : 300.0;
-            return buildWebImage(widget.imageUrl, width: w, height: w);
+            final h = w / _webAspectRatio;
+            return buildWebImage(widget.imageUrl, width: w, height: h);
           },
         ),
       );

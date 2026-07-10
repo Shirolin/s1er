@@ -7,3 +7,7 @@ Widget buildWebImage(String url, {double? width, double? height, BoxFit fit = Bo
 void downloadImageWeb(String url, String fileName) {
   throw UnsupportedError('downloadImageWeb is only available on web');
 }
+
+Future<double> detectImageAspectRatio(String url) async {
+  return 16 / 9;
+}

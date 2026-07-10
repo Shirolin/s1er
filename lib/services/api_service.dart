@@ -70,26 +70,51 @@ class ApiService {
     return '${ApiConfig.mobileApiUrl}?$queryString';
   }
 
-  /// 检查 API 响应是否包含需要登录的错误
+  /// 检查 API 响应是否表示需要登录（仅用于必须鉴权的接口）。
   static void checkAuthError(dynamic data) {
-    Map<String, dynamic>? json;
-    if (data is Map<String, dynamic>) {
-      json = data;
-    } else if (data is String) {
+    final json = _asJsonMap(data);
+    if (json != null && isLoginRequiredResponse(json)) {
+      throw LoginRequiredException();
+    }
+  }
+
+  /// 响应是否表示需要登录。
+  ///
+  /// 公开浏览接口（forumindex / forumdisplay / viewthread）应先尝试解析
+  /// 业务数据；仅当解析结果为空且命中此条件时才视为需要登录。
+  static bool isLoginRequiredResponse(Map<String, dynamic> json) {
+    final message = json['Message'];
+    if (message is Map<String, dynamic> && message['messageval'] == 'to_login') {
+      return true;
+    }
+    if (json['error'] == 'to_login') return true;
+    return false;
+  }
+
+  static Map<String, dynamic>? _asJsonMap(dynamic data) {
+    if (data is Map<String, dynamic>) return data;
+    if (data is String) {
       try {
-        json = jsonDecode(data) as Map<String, dynamic>;
+        return jsonDecode(data) as Map<String, dynamic>;
       } catch (_) {}
     }
-    if (json != null) {
-      final message = json['Message'];
-      if (message is Map<String, dynamic> && message['messageval'] == 'to_login') {
-        throw LoginRequiredException();
-      }
-      final variables = json['Variables'];
-      if (variables is Map<String, dynamic> && variables['auth'] == null && json['error'] == 'to_login') {
-        throw LoginRequiredException();
-      }
+    return null;
+  }
+
+  static void _throwIfLoginRequiredWithNoData(
+    Map<String, dynamic> json,
+    bool hasData,
+  ) {
+    if (!hasData && isLoginRequiredResponse(json)) {
+      throw LoginRequiredException();
     }
+  }
+
+  static bool _hasThreadDetailData(Map<String, dynamic> json) {
+    final variables = json['Variables'] as Map<String, dynamic>?;
+    if (variables == null) return false;
+    if (variables['thread'] is Map<String, dynamic>) return true;
+    return parsePostList(json).isNotEmpty;
   }
 
   static Map<String, String> parseThreadTypes(Map<String, dynamic> json) {
@@ -199,10 +224,27 @@ class ApiService {
 
   Future<List<ForumCategory>> getForumList() async {
     final url = buildApiUrl(module: ApiConfig.moduleForumIndex);
+    var json = await _fetchJson(url);
+    var forums = parseForumList(json);
+    if (forums.isEmpty && isLoginRequiredResponse(json)) {
+      await _warmGuestSession();
+      json = await _fetchJson(url);
+      forums = parseForumList(json);
+    }
+    _throwIfLoginRequiredWithNoData(json, forums.isNotEmpty);
+    return forums;
+  }
+
+  Future<Map<String, dynamic>> _fetchJson(String url) async {
     final response = await _httpClient.get(url);
-    final json = ensureJson(response.data);
-    checkAuthError(json);
-    return parseForumList(json);
+    return ensureJson(response.data);
+  }
+
+  Future<void> _warmGuestSession() async {
+    try {
+      final url = buildApiUrl(module: ApiConfig.moduleLogin);
+      await _httpClient.get(url);
+    } catch (_) {}
   }
 
   Future<List<Thread>> getThreadList(String fid, {int page = 1}) async {
@@ -217,7 +259,7 @@ class ApiService {
     );
     final response = await _httpClient.get(url);
     final json = ensureJson(response.data);
-    checkAuthError(json);
+    _throwIfLoginRequiredWithNoData(json, parseThreadList(json).isNotEmpty);
     return json;
   }
 
@@ -238,7 +280,7 @@ class ApiService {
     );
     final response = await _httpClient.get(url);
     final json = ensureJson(response.data);
-    checkAuthError(json);
+    _throwIfLoginRequiredWithNoData(json, _hasThreadDetailData(json));
     return json;
   }
 
@@ -708,10 +750,10 @@ class ApiService {
         final block = blocks[i];
 
         final tidMatch = RegExp(
-          r'mod=viewthread&(?:amp;)?(?:p)?tid=(\d+)',
+          r'mod=viewthread&(?:amp;)?(?:p)?tid=(\d+)|goto=findpost&(?:amp;)?ptid=(\d+)&(?:amp;)?pid=&',
         ).firstMatch(block);
         if (tidMatch == null) continue;
-        final tid = tidMatch.group(1) ?? '';
+        final tid = tidMatch.group(1) ?? tidMatch.group(2) ?? '';
 
         final titleMatch = RegExp(
           r'<em[^>]*>(.*?)</em>',

@@ -636,43 +636,78 @@ class ApiService {
   static UserSpaceListResult _parseReplyHtml(String html, {required int page}) {
     final items = <UserSpaceItem>[];
 
-    // 回复页中，主题头与回复都使用 goto=findpost 链接。
-    // 区别：主题头 pid=""（空），回复 pid=数字。
-    final findpostRe = RegExp(
-      r'goto=findpost&amp;ptid=(\d+)&amp;pid=(\d*)"[^>]*>(.*?)</a>',
-      dotAll: true,
-    );
-    final forumLinkRe = RegExp(
-      r'<a href="forum-\d+-\d+-\d+.html" class="xg1"[^>]*>(.*?)</a>',
-      dotAll: true,
-    );
+    if (html.contains('<div class="threadlist cl">')) {
+      // 手机版模板（原生平台 UA 触发）：<li class="list"> 结构
+      final blocks = html.split('<li class="list">');
+      for (var i = 1; i < blocks.length; i++) {
+        final block = blocks[i];
 
-    String? currentSubject;
-    String? currentForum;
-    String? currentTid;
+        final tidMatch = RegExp(
+          r'goto=findpost&amp;ptid=(\d+)&amp;pid=&',
+        ).firstMatch(block);
+        if (tidMatch == null) continue;
+        final tid = tidMatch.group(1) ?? '';
 
-    for (final match in findpostRe.allMatches(html)) {
-      final tid = match.group(1) ?? '';
-      final pid = match.group(2) ?? '';
-      final text = _stripHtml(match.group(3) ?? '');
-      if (tid.isEmpty) continue;
+        final titleMatch = RegExp(
+          r'<em[^>]*>(.*?)</em>',
+          dotAll: true,
+        ).firstMatch(block);
+        final subject = titleMatch != null
+            ? _stripHtml(titleMatch.group(1) ?? '')
+            : '';
 
-      if (pid.isEmpty) {
-        currentTid = tid;
-        currentSubject = text;
-        final after = html.substring(match.end, match.end + 300);
-        final fm = forumLinkRe.firstMatch(after);
-        currentForum = fm != null ? _stripHtml(fm.group(1) ?? '') : null;
-      } else {
-        items.add(UserSpaceItem(
-          tid: tid,
-          subject: currentTid == tid ? (currentSubject ?? '') : '',
-          forumName: currentTid == tid ? currentForum : null,
-          dateline: 0,
-          replyExcerpt: text,
-          pid: pid,
-          isReply: true,
-        ),);
+        final replyRe = RegExp(
+          r'goto=findpost&amp;ptid=\d+&amp;pid=(\d+)&amp;mobile=2[^>]*>\s*<div class="quote"><blockquote>(.*?)</blockquote>',
+          dotAll: true,
+        );
+        for (final rm in replyRe.allMatches(block)) {
+          items.add(UserSpaceItem(
+            tid: tid,
+            subject: subject,
+            dateline: 0,
+            replyExcerpt: _stripHtml(rm.group(2) ?? ''),
+            pid: rm.group(1),
+            isReply: true,
+          ),);
+        }
+      }
+    } else {
+      // 桌面版模板（Web 平台 UA 触发）：<table> 结构
+      String? currentSubject;
+      String? currentForum;
+      String? currentTid;
+      final forumLinkRe = RegExp(
+        r'<a href="forum-\d+-\d+-\d+.html" class="xg1"[^>]*>(.*?)</a>',
+        dotAll: true,
+      );
+
+      final findpostRe = RegExp(
+        r'goto=findpost&amp;ptid=(\d+)&amp;pid=(\d*)"[^>]*>(.*?)</a>',
+        dotAll: true,
+      );
+      for (final match in findpostRe.allMatches(html)) {
+        final tid = match.group(1) ?? '';
+        final pid = match.group(2) ?? '';
+        final text = _stripHtml(match.group(3) ?? '');
+        if (tid.isEmpty) continue;
+
+        if (pid.isEmpty) {
+          currentTid = tid;
+          currentSubject = text;
+          final after = html.substring(match.end, match.end + 300);
+          final fm = forumLinkRe.firstMatch(after);
+          currentForum = fm != null ? _stripHtml(fm.group(1) ?? '') : null;
+        } else {
+          items.add(UserSpaceItem(
+            tid: tid,
+            subject: currentTid == tid ? (currentSubject ?? '') : '',
+            forumName: currentTid == tid ? currentForum : null,
+            dateline: 0,
+            replyExcerpt: text,
+            pid: pid,
+            isReply: true,
+          ),);
+        }
       }
     }
 

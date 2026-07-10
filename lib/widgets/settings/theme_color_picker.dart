@@ -39,9 +39,7 @@ class ThemeColorPicker extends StatelessWidget {
         final key = entry.key;
         final color = entry.value;
         final isSelected = selectedKey == key;
-        final checkColor = color.computeLuminance() > 0.5
-            ? Colors.black87
-            : Colors.white;
+        final checkColor = S1Contrast.on(color, scheme);
 
         return Semantics(
           label: '${_colorLabels[key] ?? key}主题',
@@ -51,7 +49,7 @@ class ThemeColorPicker extends StatelessWidget {
             message: _colorLabels[key] ?? key,
             child: InkWell(
               onTap: () => onChanged(key),
-              borderRadius: BorderRadius.circular(32),
+              borderRadius: S1Shape.full,
               child: Padding(
                 padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 6),
                 child: Column(

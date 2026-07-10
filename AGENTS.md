@@ -178,6 +178,19 @@ flutter run -d chrome --dart-define=TALKER_LOG_LEVEL=all --dart-define=TALKER_MA
 - 表情包资源通过脚本从 GitHub 下载（`scripts/download_emoticons.dart`），未内置到仓库
 - test 目录已有基础测试，但覆盖率不足，尤其是 screens 和 widgets 层
 
+### M3 已知例外
+
+> MD3 审计脚本：`dart run scripts/audit_m3.dart --fail-on-error`（CI / 本地均需通过）
+
+| 例外 | 位置 | 理由 |
+|:---|:---|:---|
+| `themeSeeds` 中 `Color(0xFF...)` | `lib/theme/app_theme.dart` | `ColorScheme.fromSeed` 合法输入，非 UI 语义色 |
+| `Colors.transparent` | `S1SegmentedButtonStyle`、bbcode/quote/poll | 非语义透明底，M3 SegmentedButton 未选中态标准做法 |
+| `fontSize: FontSize(n)` | `lib/widgets/bbcode_renderer.dart` | flutter_html beta 无法用 `textTheme` |
+| `TextStyle(fontSize: radius * 0.8)` | `lib/widgets/web_avatar*.dart` | 头像 fallback 字号随半径缩放 |
+| poll 选项 API 十六进制色 | `lib/widgets/poll_card.dart` | 服务端下发选项色，客户端映射展示 |
+| Menu/PopupMenu `elevation: 3` | `lib/theme/app_theme.dart` | M3 浮层菜单规范允许，与 Card/AppBar 零阴影规则不冲突 |
+
 ---
 
 ## Cursor Cloud specific instructions
@@ -186,6 +199,7 @@ flutter run -d chrome --dart-define=TALKER_LOG_LEVEL=all --dart-define=TALKER_MA
 
 - **Flutter SDK**：预装在 `/home/ubuntu/flutter`（stable，Dart 3.12+），已通过 `~/.bashrc` 加入交互式 shell 的 PATH。非交互式脚本请用全路径 `/home/ubuntu/flutter/bin/flutter`。
 - **Lint / Test**：`flutter analyze`（当前 0 issue）与 `flutter test`（80 个测试全绿）。注意：**首次** `flutter test` 会一次性编译引擎测试产物，可能数分钟无输出（输出被 shell 缓冲），属正常；产物缓存后整套测试约 6s。用 `--reporter expanded` 可看到实时进度。
+- **M3 审计**：`dart run scripts/audit_m3.dart --fail-on-error` 扫描 `lib/` 的 MD3 合规性（P0 违规时 exit 1），报告输出至 `reports/m3_audit_<date>.md`。
 - **运行 Web 开发环境（推荐的可测试目标）**：需要同时启动两个进程（标准命令见 `README.md`）：
   1. CORS 代理：`dart run scripts/proxy_server.dart`，监听 `http://localhost:19080`，转发到 `https://stage1st.com/2b/...` 并处理 CORS/Cookie。
   2. Flutter Web：`flutter run -d web-server --web-port 8080 --web-hostname 0.0.0.0`（无头 VM 用 `web-server` 设备，避免依赖 Chrome 调试扩展；桌面 Chrome 可直接访问 `http://localhost:8080`）。

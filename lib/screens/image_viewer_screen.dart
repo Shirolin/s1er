@@ -12,6 +12,7 @@ import 'package:go_router/go_router.dart';
 
 import '../config/resource_domains.dart';
 import '../services/http_client.dart';
+import '../theme/app_theme.dart';
 import '../utils/s1_snack_bar.dart';
 import '../widgets/web_image_stub.dart'
     if (dart.library.html) '../widgets/web_image_html.dart';
@@ -334,7 +335,7 @@ class _ImageViewerScreenState extends ConsumerState<ImageViewerScreen> {
 
     return Material(
       color: colorScheme.surfaceContainerHigh.withValues(alpha: 0.92),
-      borderRadius: const BorderRadius.vertical(top: Radius.circular(16)),
+      borderRadius: BorderRadius.vertical(top: S1Shape.large.topLeft),
       child: Padding(
         padding: EdgeInsets.fromLTRB(4, 4, 4, 4 + bottomPadding),
         child: Row(
@@ -433,9 +434,7 @@ class _ImageViewerScreenState extends ConsumerState<ImageViewerScreen> {
     showModalBottomSheet(
       context: context,
       backgroundColor: colorScheme.surfaceContainerHigh,
-      shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(top: Radius.circular(28)),
-      ),
+      shape: S1Shape.bottomSheetShape,
       builder: (context) {
         return Padding(
           padding: const EdgeInsets.fromLTRB(24, 16, 24, 24),
@@ -449,7 +448,7 @@ class _ImageViewerScreenState extends ConsumerState<ImageViewerScreen> {
                   height: 4,
                   decoration: BoxDecoration(
                     color: colorScheme.onSurfaceVariant.withValues(alpha: 0.4),
-                    borderRadius: BorderRadius.circular(2),
+                    borderRadius: S1Shape.extraSmall,
                   ),
                 ),
               ),

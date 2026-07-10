@@ -34,7 +34,7 @@ class DisplaySettingsSection extends ConsumerWidget {
               onChanged: ref.read(settingsProvider.notifier).setShowImages,
               contentPadding: const EdgeInsets.symmetric(horizontal: 8),
               shape: const RoundedRectangleBorder(
-                borderRadius: BorderRadius.all(Radius.circular(8)),
+                borderRadius: S1Shape.small,
               ),
             ),
             const _VersionTile(),
@@ -74,7 +74,7 @@ class _VersionTileState extends ConsumerState<_VersionTile> {
     final packageInfo = ref.watch(packageInfoProvider);
     final scheme = Theme.of(context).colorScheme;
     const itemShape = RoundedRectangleBorder(
-      borderRadius: BorderRadius.all(Radius.circular(8)),
+      borderRadius: S1Shape.small,
     );
 
     return packageInfo.when(

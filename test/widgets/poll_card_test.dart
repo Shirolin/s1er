@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:s1_app/theme/app_theme.dart';
 import 'package:s1_app/models/poll.dart';
 import 'package:s1_app/widgets/poll_card.dart';
 
@@ -8,7 +9,7 @@ void main() {
   Widget wrap(Widget child) {
     return ProviderScope(
       child: MaterialApp(
-        theme: ThemeData(useMaterial3: true),
+        theme: AppTheme.lightTheme('purple'),
         home: Scaffold(body: child),
       ),
     );

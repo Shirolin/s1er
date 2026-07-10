@@ -52,7 +52,7 @@ class ThemeSettingsSection extends ConsumerWidget {
               onChanged: notifier.setUseDynamicColor,
               contentPadding: const EdgeInsets.symmetric(horizontal: 8),
               shape: const RoundedRectangleBorder(
-                borderRadius: BorderRadius.all(Radius.circular(8)),
+                borderRadius: S1Shape.small,
               ),
             ),
             const SizedBox(height: 12),
@@ -122,28 +122,13 @@ class ThemeModeSelector extends StatelessWidget {
         selected: {themeMode},
         onSelectionChanged: (v) => onChanged(v.first),
         showSelectedIcon: false,
-        style: ButtonStyle(
-          visualDensity: VisualDensity.standard,
-          tapTargetSize: MaterialTapTargetSize.shrinkWrap,
-          backgroundColor: WidgetStateProperty.resolveWith((states) {
-            if (states.contains(WidgetState.selected)) {
-              return scheme.secondaryContainer;
-            }
-            return Colors.transparent;
-          }),
-          foregroundColor: WidgetStateProperty.resolveWith((states) {
-            if (states.contains(WidgetState.selected)) {
-              return scheme.onSecondaryContainer;
-            }
-            return scheme.onSurfaceVariant;
-          }),
-          shape: WidgetStateProperty.all(
-            const RoundedRectangleBorder(borderRadius: S1Shape.medium),
-          ),
-          padding: WidgetStateProperty.all(
-            EdgeInsets.symmetric(
-              horizontal: compact ? 8 : 12,
-              vertical: 10,
+        style: S1SegmentedButtonStyle.forScheme(scheme).merge(
+          ButtonStyle(
+            padding: WidgetStateProperty.all(
+              EdgeInsets.symmetric(
+                horizontal: compact ? 8 : 12,
+                vertical: 10,
+              ),
             ),
           ),
         ),

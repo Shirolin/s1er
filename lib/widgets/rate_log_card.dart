@@ -86,8 +86,8 @@ class _RateLogCardState extends State<RateLogCard> {
                       padding: const EdgeInsets.only(bottom: 8),
                       decoration: BoxDecoration(
                         color: scheme.surfaceContainer,
-                        borderRadius: const BorderRadius.vertical(
-                          bottom: Radius.circular(12),
+                        borderRadius: BorderRadius.vertical(
+                          bottom: S1Shape.medium.bottomLeft,
                         ),
                       ),
                       child: Column(
@@ -174,7 +174,7 @@ class _SummaryRow extends StatelessWidget {
             height: 16,
             decoration: BoxDecoration(
               color: accentColor,
-              borderRadius: BorderRadius.circular(2),
+              borderRadius: S1Shape.extraSmall,
             ),
           ),
           const SizedBox(width: 8),

@@ -81,7 +81,9 @@ class AuthService {
     }
     _currentUser = null;
     _isLoggedIn = false;
-    await _httpClient.cookieJar.deleteAll();
+    if (!kIsWeb) {
+      await _httpClient.cookieJar.deleteAll();
+    }
   }
 
   /// WebView 登录成功后同步 Cookie 并拉取资料

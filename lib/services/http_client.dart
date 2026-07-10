@@ -15,20 +15,18 @@ class S1HttpClient {
 
   S1HttpClient(this._ref);
   late Dio _dio;
-  late PersistCookieJar _cookieJar;
+  PersistCookieJar? _cookieJar;
   final List<DateTime> _requestTimestamps = [];
   final Ref _ref;
 
   static String get _proxyUrl => 'http://localhost:${EnvConfig.proxyPort}';
   static bool get _isWeb => kIsWeb;
 
-  PersistCookieJar get cookieJar => _cookieJar;
+  PersistCookieJar get cookieJar => _cookieJar!;
   Dio get dio => _dio;
 
   Future<void> init() async {
-    if (_isWeb) {
-      _cookieJar = PersistCookieJar();
-    } else {
+    if (!_isWeb) {
       final appDocDir = await getApplicationDocumentsDirectory();
       final cookiePath = '${appDocDir.path}/.cookies/';
       final storage = await EncryptedCookieStorage.create(cookiePath);
@@ -54,7 +52,7 @@ class S1HttpClient {
     }
 
     if (!_isWeb) {
-      _dio.interceptors.add(CookieManager(_cookieJar));
+      _dio.interceptors.add(CookieManager(_cookieJar!));
     }
 
     _dio.interceptors.add(InterceptorsWrapper(

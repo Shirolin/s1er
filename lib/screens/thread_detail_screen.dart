@@ -34,7 +34,6 @@ class ThreadDetailScreen extends ConsumerStatefulWidget {
 
 class _ThreadDetailScreenState extends ConsumerState<ThreadDetailScreen> {
   final _scrollController = ScrollController();
-  final _targetKey = GlobalKey();
   bool _showScrollToTop = false;
   bool _hasRecordedInitialVisit = false;
   bool _hasCheckedResume = false;
@@ -188,18 +187,21 @@ class _ThreadDetailScreenState extends ConsumerState<ThreadDetailScreen> {
   void _scheduleScrollToTarget(PostListState state) {
     final target = widget.targetPid ?? _highlightPid;
     if (target == null) return;
-    if (!state.posts.any((p) => p.pid == target)) return;
+
+    final targetIndex = state.posts.indexWhere((p) => p.pid == target);
+    if (targetIndex == -1) return;
+
+    final pollExtra = _showsPollOnPage(state) ? 1 : 0;
+    final listIndex = targetIndex + pollExtra;
+    final estimatedOffset = listIndex * 200.0;
 
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      if (!mounted) return;
-      final ctx = _targetKey.currentContext;
-      if (ctx != null) {
-        Scrollable.ensureVisible(
-          ctx,
-          alignment: 0.15,
-          duration: const Duration(milliseconds: 300),
-        );
-      }
+      if (!mounted || !_scrollController.hasClients) return;
+      _scrollController.animateTo(
+        estimatedOffset.clamp(0.0, _scrollController.position.maxScrollExtent),
+        duration: const Duration(milliseconds: 300),
+        curve: Curves.easeOut,
+      );
     });
   }
 
@@ -217,9 +219,7 @@ class _ThreadDetailScreenState extends ConsumerState<ThreadDetailScreen> {
     final floorOffset = (state.currentPage - 1) * state.perPage;
     final displayFloor = floorOffset + postIndex + 1;
     final highlightPid = widget.targetPid ?? _highlightPid;
-    final isTarget = post.pid == highlightPid && highlightPid != null;
     return PostItem(
-      key: isTarget ? _targetKey : null,
       post: post,
       displayFloor: displayFloor,
       tid: widget.tid,

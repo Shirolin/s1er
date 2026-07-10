@@ -740,9 +740,8 @@ class ApiService {
           dateline: dateline,
           replies: replies,
           views: views,
-        ));
+        ),);
       }
-    }
     } else {
       // 桌面版模板
       for (final match in _threadLinkRe.allMatches(html)) {
@@ -904,25 +903,23 @@ class ApiService {
   }
 
   /// 定位特定回复所在的页码。
-  /// 返回页码，失败返回 1。
+  /// 跟随 redirect 后从返回的 HTML 中解析页码。失败返回 1。
   Future<int> locatePostPage(String tid, String pid) async {
     final url = '${ApiConfig.baseUrl}/forum.php'
         '?mod=redirect&goto=findpost&ptid=$tid&pid=$pid';
     try {
       final response = await _httpClient.get(
         url,
-        options: Options(
-          followRedirects: false, // 我们需要检查重定向 header
-          validateStatus: (status) => status != null && status < 500,
-        ),
+        options: Options(responseType: ResponseType.plain),
       );
+      final html = response.data as String;
 
-      // 检查 location header: forum.php?mod=viewthread&tid=...&page=N#pidPID
-      final location = response.headers.value('location');
-      if (location != null) {
-        final uri = Uri.parse(location);
-        final page = int.tryParse(uri.queryParameters['page'] ?? '1');
-        return page ?? 1;
+      final pageMatch = RegExp(
+        r'<strong[^>]*>(\d+)</strong>|class="cur"[^>]*>(\d+)<',
+      ).firstMatch(html);
+      if (pageMatch != null) {
+        final p = pageMatch.group(1) ?? pageMatch.group(2) ?? '';
+        return int.tryParse(p) ?? 1;
       }
     } catch (_) {}
     return 1;

@@ -1,12 +1,10 @@
 import 'dart:async';
 import 'dart:typed_data';
 import 'dart:ui' as ui;
-import 'dart:io';
 import 'package:dio/dio.dart';
 import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart';
 import 'package:gal/gal.dart';
-import 'package:path_provider/path_provider.dart';
 import '../config/resource_domains.dart';
 import '../widgets/web_image_stub.dart'
     if (dart.library.html) '../widgets/web_image_html.dart';
@@ -107,6 +105,9 @@ class _ImageViewerScreenState extends State<ImageViewerScreen> {
       if (_effectiveBytes != null) {
         bytes = _effectiveBytes!;
       } else {
+        messenger.showSnackBar(
+          const SnackBar(content: Text('正在下载...'), duration: Duration(seconds: 30)),
+        );
         final dio = Dio();
         final response = await dio.get<List<int>>(
           widget.imageUrl,
@@ -115,20 +116,17 @@ class _ImageViewerScreenState extends State<ImageViewerScreen> {
         bytes = Uint8List.fromList(response.data!);
       }
 
-      final tempDir = await getTemporaryDirectory();
-      final ext = _fileName.contains('.') ? _fileName.split('.').last : 'jpg';
-      final tempFile = File('${tempDir.path}/s1_download_${DateTime.now().millisecondsSinceEpoch}.$ext');
-      await tempFile.writeAsBytes(bytes);
-      await Gal.putImage(tempFile.path);
-      await tempFile.delete();
+      await Gal.putImageBytes(bytes, name: _fileName);
 
       if (context.mounted) {
+        messenger.clearSnackBars();
         messenger.showSnackBar(
           const SnackBar(content: Text('已保存到相册')),
         );
       }
     } catch (e) {
       if (context.mounted) {
+        messenger.clearSnackBars();
         messenger.showSnackBar(
           SnackBar(content: Text('下载失败: $e')),
         );

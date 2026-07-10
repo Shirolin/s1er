@@ -61,13 +61,21 @@ class UserSpaceNotifier extends StateNotifier<AsyncValue<UserSpaceState>> {
 
   Future<void> _loadThreads() async {
     try {
-      final result = await _apiService.getUserSpaceList(uid: uid, type: 'thread', page: 1);
+      final result = await _fetchThreads(page: 1);
       state = AsyncValue.data(UserSpaceState(
         threads: result.items,
         threadTotalPages: result.totalPages,
       ),);
     } catch (e, st) {
       state = AsyncValue.error(e, st);
+    }
+  }
+
+  Future<UserSpaceListResult> _fetchThreads({required int page}) async {
+    try {
+      return await _apiService.getMySpaceList(type: 'thread', page: page);
+    } catch (_) {
+      return await _apiService.getUserSpaceList(uid: uid, type: 'thread', page: page);
     }
   }
 
@@ -92,7 +100,7 @@ class UserSpaceNotifier extends StateNotifier<AsyncValue<UserSpaceState>> {
   Future<void> goToThreadPage(int page) async {
     final current = state.valueOrNull;
     try {
-      final result = await _apiService.getUserSpaceList(uid: uid, type: 'thread', page: page);
+      final result = await _fetchThreads(page: page);
       state = AsyncValue.data((current ?? UserSpaceState()).copyWith(
         threads: result.items,
         threadPage: page,

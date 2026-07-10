@@ -185,6 +185,39 @@ class _ThreadDetailScreenState extends ConsumerState<ThreadDetailScreen> {
     }
   }
 
+  void _scheduleScrollToTarget(PostListState state) {
+    final target = widget.targetPid ?? _highlightPid;
+    if (target == null) return;
+
+    final targetIndex = state.posts.indexWhere((p) => p.pid == target);
+    if (targetIndex == -1) return;
+
+    final pollExtra = _showsPollOnPage(state) ? 1 : 0;
+    final listIndex = targetIndex + pollExtra;
+    final estimatedOffset = listIndex * 200.0;
+
+    // 第一帧：粗定位到估算位置，触发 ListView.builder 构建目标 item
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted || !_scrollController.hasClients) return;
+      _scrollController.jumpTo(
+        estimatedOffset.clamp(0.0, _scrollController.position.maxScrollExtent),
+      );
+
+      // 第二帧：item 已构建，用 ensureVisible 精确定位
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (!mounted) return;
+        final ctx = _targetKey.currentContext;
+        if (ctx != null) {
+          Scrollable.ensureVisible(
+            ctx,
+            alignment: 0.15,
+            duration: const Duration(milliseconds: 200),
+          );
+        }
+      });
+    });
+  }
+
   Widget _buildDetailItem(
     BuildContext context,
     PostListState state,
@@ -263,19 +296,7 @@ class _ThreadDetailScreenState extends ConsumerState<ThreadDetailScreen> {
           _checkResumeReading(state);
         }
         _recordProgress(state);
-        final target = widget.targetPid ?? _highlightPid;
-        if (target != null && state.posts.any((p) => p.pid == target)) {
-          WidgetsBinding.instance.addPostFrameCallback((_) {
-            final ctx = _targetKey.currentContext;
-            if (ctx != null && mounted) {
-              Scrollable.ensureVisible(
-                ctx,
-                alignment: 0.15,
-                duration: const Duration(milliseconds: 300),
-              );
-            }
-          });
-        }
+        _scheduleScrollToTarget(state);
       });
     });
 

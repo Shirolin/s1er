@@ -174,7 +174,7 @@ class ApiService {
     if (variables == null) return [];
 
     // 1. 从 forumlist 构建 fid -> ForumCategory 查找表（含 sublist 子版块）
-    final forumList = variables['forumlist'] as List? ?? [];
+    final forumList = _asList(variables['forumlist']);
     final Map<String, ForumCategory> forumMap = {};
     for (final f in forumList) {
       final forum = ForumCategory.fromJson(f as Map<String, dynamic>);
@@ -182,16 +182,14 @@ class ApiService {
     }
 
     // 2. 从 catlist 构建分类树：每个分类的 forums 是 fid 字符串列表
-    final catList = variables['catlist'] as List? ?? [];
+    final catList = _asList(variables['catlist']);
     final List<ForumCategory> categories = [];
     for (final cat in catList) {
       final catMap = cat as Map<String, dynamic>;
       final catName = catMap['name']?.toString() ?? '';
       final catFid = catMap['fid']?.toString() ?? '';
-      final forumIds = (catMap['forums'] as List?)
-              ?.map((e) => e.toString())
-              .toList() ??
-          [];
+      final forumIds =
+          _asList(catMap['forums']).map((e) => e.toString()).toList();
 
       // 将 fid 列表转为 ForumCategory 子版块列表
       final subforums = forumIds
@@ -220,6 +218,12 @@ class ApiService {
     }
 
     return categories;
+  }
+
+  static List<dynamic> _asList(dynamic value) {
+    if (value is List) return value;
+    if (value is Map) return value.values.toList();
+    return [];
   }
 
   Future<List<ForumCategory>> getForumList() async {
@@ -252,7 +256,10 @@ class ApiService {
     return parseThreadList(result);
   }
 
-  Future<Map<String, dynamic>> getThreadListRaw(String fid, {int page = 1}) async {
+  Future<Map<String, dynamic>> getThreadListRaw(
+    String fid, {
+    int page = 1,
+  }) async {
     final url = buildApiUrl(
       module: ApiConfig.moduleForumDisplay,
       params: {'fid': fid, 'page': page.toString()},
@@ -290,7 +297,7 @@ class ApiService {
       // 1. 发起 GET 请求以获取当前会话的 formhash
       final loginInitUrl = buildApiUrl(module: ApiConfig.moduleLogin);
       final initResponse = await _httpClient.get(loginInitUrl);
-      
+
       String formhash = '';
       final initData = initResponse.data;
       Map<String, dynamic>? initDataMap;
@@ -686,7 +693,10 @@ class ApiService {
     return _parseThreadHtml(html, page: page);
   }
 
-  static UserSpaceListResult _parseThreadHtml(String html, {required int page}) {
+  static UserSpaceListResult _parseThreadHtml(
+    String html, {
+    required int page,
+  }) {
     final items = <UserSpaceItem>[];
 
     if (html.contains('<div class="threadlist cl">')) {
@@ -787,7 +797,10 @@ class ApiService {
       }
     }
 
-    return UserSpaceListResult(items: items, totalPages: _extractTotalPages(html, page));
+    return UserSpaceListResult(
+      items: items,
+      totalPages: _extractTotalPages(html, page),
+    );
   }
 
   static UserSpaceListResult _parseReplyHtml(String html, {required int page}) {
@@ -995,4 +1008,3 @@ class UserSpaceListResult {
   final List<UserSpaceItem> items;
   final int totalPages;
 }
-

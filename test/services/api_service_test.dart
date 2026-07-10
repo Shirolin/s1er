@@ -293,6 +293,74 @@ void main() {
     });
 
     group('parseForumList', () {
+      test(
+        'parses guest forumindex data even when response also has to_login message',
+        () {
+          final json = {
+            'Message': {'messageval': 'to_login'},
+            'Variables': {
+              'catlist': [
+                {
+                  'fid': '1',
+                  'name': '主论坛',
+                  'forums': ['4'],
+                },
+              ],
+              'forumlist': [
+                {
+                  'fid': '4',
+                  'name': '游戏论坛',
+                  'description': '游戏文化，原创，新闻',
+                  'threads': '203673',
+                  'posts': '8788642',
+                  'todayposts': '835',
+                },
+              ],
+            },
+          };
+
+          final forums = ApiService.parseForumList(json);
+
+          expect(forums, hasLength(1));
+          expect(forums.single.name, '主论坛');
+          expect(forums.single.subforums, hasLength(1));
+          expect(forums.single.subforums.single.name, '游戏论坛');
+        },
+      );
+
+      test('parses Discuz object-shaped guest forumindex lists', () {
+        final json = {
+          'Message': {'messageval': 'to_login'},
+          'Variables': {
+            'catlist': {
+              '1': {
+                'fid': '1',
+                'name': '主论坛',
+                'forums': {
+                  '0': '4',
+                },
+              },
+            },
+            'forumlist': {
+              '4': {
+                'fid': '4',
+                'name': '游戏论坛',
+                'description': '游戏文化，原创，新闻',
+                'threads': '203673',
+                'posts': '8788642',
+                'todayposts': '835',
+              },
+            },
+          },
+        };
+
+        final forums = ApiService.parseForumList(json);
+
+        expect(forums, hasLength(1));
+        expect(forums.single.name, '主论坛');
+        expect(forums.single.subforums.single.fid, '4');
+      });
+
       test('parses forum list from JSON', () {
         final json = {
           'Variables': {

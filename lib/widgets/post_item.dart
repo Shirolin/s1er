@@ -89,8 +89,8 @@ class PostItem extends ConsumerWidget {
             ),
             const Divider(height: 16),
             BbcodeRenderer(bbcode: post.message, currentTid: tid),
-            if (rateLog != null && !rateLog!.isEmpty)
-              RateLogCard(rateLog: rateLog!),
+            if (rateLog != null && !rateLog!.isEmpty && tid != null)
+              RateLogCard(rateLog: rateLog!, tid: tid!),
           ],
         ),
       ),

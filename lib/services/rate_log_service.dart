@@ -27,6 +27,23 @@ class RateLogService {
     }
   }
 
+  /// 获取特定帖子的完整评分记录
+  Future<PostRateLog?> fetchFullRateLog(String tid, String pid) async {
+    try {
+      final url = '${ApiConfig.forumPostUrl}'
+          '?mod=misc&action=viewratings&tid=$tid&pid=$pid&mobile=2';
+      final response = await _httpClient.get(
+        url,
+        options: Options(responseType: ResponseType.plain),
+      );
+      final html = response.data as String;
+      final results = parseRateLogs(html);
+      return results[pid];
+    } catch (_) {
+      return null;
+    }
+  }
+
   static Map<String, PostRateLog> parseRateLogs(String html) {
     final result = <String, PostRateLog>{};
     if (html.isEmpty) return result;

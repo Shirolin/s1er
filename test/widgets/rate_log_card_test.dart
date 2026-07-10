@@ -19,7 +19,7 @@ void main() {
         participantCount: 4,
       );
 
-      await tester.pumpWidget(wrap(const RateLogCard(rateLog: rateLog)));
+      await tester.pumpWidget(wrap(const RateLogCard(rateLog: rateLog, tid: '123')));
       await tester.pumpAndSettle();
 
       expect(find.text('评分 +6'), findsOneWidget);
@@ -34,7 +34,7 @@ void main() {
         participantCount: 1,
       );
 
-      await tester.pumpWidget(wrap(const RateLogCard(rateLog: rateLog)));
+      await tester.pumpWidget(wrap(const RateLogCard(rateLog: rateLog, tid: '123')));
       await tester.pumpAndSettle();
 
       expect(find.text('评分 -3'), findsOneWidget);
@@ -52,7 +52,7 @@ void main() {
         participantCount: 2,
       );
 
-      await tester.pumpWidget(wrap(const RateLogCard(rateLog: rateLog)));
+      await tester.pumpWidget(wrap(const RateLogCard(rateLog: rateLog, tid: '123')));
       await tester.pumpAndSettle();
 
       expect(find.text('rustincohle'), findsNothing);
@@ -76,7 +76,7 @@ void main() {
         participantCount: 1,
       );
 
-      await tester.pumpWidget(wrap(const RateLogCard(rateLog: rateLog)));
+      await tester.pumpWidget(wrap(const RateLogCard(rateLog: rateLog, tid: '123')));
       await tester.pumpAndSettle();
 
       await tester.tap(find.byType(RateLogCard));

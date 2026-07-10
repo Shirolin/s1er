@@ -203,4 +203,17 @@ class PostNotifier extends StateNotifier<AsyncValue<PostListState>> {
     final current = state.valueOrNull?.currentPage ?? 1;
     await _loadPage(current);
   }
+
+  /// 异步加载特定帖子的完整评分记录
+  Future<void> loadFullRateLog(String pid) async {
+    final currentState = state.valueOrNull;
+    if (currentState == null) return;
+
+    final fullRateLog = await _rateLogService.fetchFullRateLog(tid, pid);
+    if (fullRateLog != null) {
+      final newRateLogs = Map<String, PostRateLog>.from(currentState.rateLogs);
+      newRateLogs[pid] = fullRateLog;
+      state = AsyncValue.data(currentState.copyWith(rateLogs: newRateLogs));
+    }
+  }
 }

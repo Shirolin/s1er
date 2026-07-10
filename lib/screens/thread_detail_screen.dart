@@ -37,7 +37,6 @@ class _ThreadDetailScreenState extends ConsumerState<ThreadDetailScreen> {
   bool _showScrollToTop = false;
   bool _hasRecordedInitialVisit = false;
   bool _hasCheckedResume = false;
-  bool _hasScrolledToTarget = false;
   String? _highlightPid;
 
   @override
@@ -52,31 +51,6 @@ class _ThreadDetailScreenState extends ConsumerState<ThreadDetailScreen> {
       } else if (widget.initialPage != null && widget.initialPage! > 1) {
         ref.read(postProvider(widget.tid).notifier).goToPage(widget.initialPage!);
       }
-    });
-  }
-
-  void _scrollToTarget(PostListState state) {
-    final targetPid = widget.targetPid ?? _highlightPid;
-    if (targetPid == null || _hasScrolledToTarget) return;
-    
-    final index = state.posts.indexWhere((p) => p.pid == targetPid);
-    if (index == -1) return;
-
-    // 考虑投票帖占位
-    final scrollIndex = index + (_showsPollOnPage(state) && index >= 1 ? 1 : 0);
-
-    _hasScrolledToTarget = true;
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      if (!mounted || !_scrollController.hasClients) return;
-      // 简单估算滚动位置（每楼大概 150-300px），或者使用精确位置。
-      // 为保持简单，我们滚动到那个位置并给个提示。
-      // 在 ListView.builder 中精确滚动到 index 比较复杂，通常需要 GlobalKey 或预估高度。
-      // 这里先尝试一个基础的跳转。
-      _scrollController.animateTo(
-        scrollIndex * 200.0, 
-        duration: const Duration(milliseconds: 500),
-        curve: Curves.easeOut,
-      );
     });
   }
 
@@ -286,7 +260,6 @@ class _ThreadDetailScreenState extends ConsumerState<ThreadDetailScreen> {
           _checkResumeReading(state);
         }
         _recordProgress(state);
-        _scrollToTarget(state);
       });
     });
 

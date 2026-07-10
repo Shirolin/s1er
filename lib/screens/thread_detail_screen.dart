@@ -387,12 +387,14 @@ class _ThreadDetailScreenState extends ConsumerState<ThreadDetailScreen> {
                   controller: _scrollController,
                   child: state.posts.isEmpty
                       ? const Center(child: Text('暂无回复'))
-                      : ListView(
+                      : SingleChildScrollView(
                           controller: _scrollController,
                           padding: EdgeInsets.only(bottom: fabPadding),
-                          children: List.generate(
-                            _detailItemCount(state),
-                            (index) => _buildDetailItem(context, state, index),
+                          child: Column(
+                            children: List.generate(
+                              _detailItemCount(state),
+                              (index) => _buildDetailItem(context, state, index),
+                            ),
                           ),
                         ),
                 ),

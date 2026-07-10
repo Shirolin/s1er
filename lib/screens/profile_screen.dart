@@ -77,9 +77,9 @@ class ProfileBody extends ConsumerWidget {
             icon: Icons.logout,
             label: '退出登录',
             color: colorScheme.error,
-            onTap: () {
-              ref.read(authStateProvider.notifier).logout();
-              context.go('/');
+            onTap: () async {
+              await ref.read(authStateProvider.notifier).logout();
+              if (context.mounted) context.go('/');
             },
           ),
         const SizedBox(height: 24),

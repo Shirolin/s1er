@@ -5,6 +5,8 @@
 /// 新增/修改域名只需改动此文件。
 library resource_domains;
 
+import 'env_config.dart';
+
 // ──────────────────────── 资源类型 ────────────────────────
 
 enum ResourceType {
@@ -42,8 +44,8 @@ class DomainRule {
 class ResourceDomains {
   ResourceDomains._();
 
-  /// 代理服务器端口
-  static const int proxyPort = 19080;
+  /// 代理服务器端口（与 [EnvConfig.proxyPort] 统一）
+  static int get proxyPort => EnvConfig.proxyPort;
 
   /// API 主域名（用于代理默认路由）
   static const String apiHost = 'stage1st.com';
@@ -101,5 +103,21 @@ class ResourceDomains {
   static String getReferer(String host) {
     final rule = match(host);
     return rule?.referer ?? defaultReferer;
+  }
+
+  /// `/img-proxy` 允许转发的目标 URL（仅 https + 白名单域名）
+  static bool isAllowedProxyTarget(Uri uri) {
+    if (uri.scheme != 'https') return false;
+    if (uri.userInfo.isNotEmpty) return false;
+    if (uri.host.isEmpty) return false;
+    // 拒绝 IP 字面量
+    if (RegExp(r'^\d{1,3}(\.\d{1,3}){3}$').hasMatch(uri.host)) return false;
+    if (uri.host.contains(':')) return false;
+    // 仅标准 HTTPS 端口（或未指定端口）
+    if (uri.hasPort && uri.port != 443) return false;
+
+    final rule = match(uri.host);
+    return rule?.type == ResourceType.authImage ||
+        rule?.type == ResourceType.publicAsset;
   }
 }

@@ -36,6 +36,8 @@ class _ImageViewerState extends ConsumerState<ImageViewer> {
   static final LinkedHashMap<String, Uint8List> _cache = LinkedHashMap();
   static final Map<String, MemoryImage> _providerCache = {};
   static const int _maxCacheEntries = 200;
+  static const int _maxCacheBytes = 50 * 1024 * 1024;
+  static int _cacheBytes = 0;
 
   bool _loading = false;
   Uint8List? _bytes;
@@ -94,6 +96,24 @@ class _ImageViewerState extends ConsumerState<ImageViewer> {
     _loadViaDio();
   }
 
+  void _putInCache(String url, Uint8List data) {
+    if (_cache.containsKey(url)) {
+      _cacheBytes -= _cache[url]!.length;
+      _cache.remove(url);
+      _providerCache.remove(url);
+    }
+    _cache[url] = data;
+    _providerCache[url] = MemoryImage(data);
+    _cacheBytes += data.length;
+
+    while (_cache.length > _maxCacheEntries || _cacheBytes > _maxCacheBytes) {
+      final evicted = _cache.keys.first;
+      _cacheBytes -= _cache[evicted]!.length;
+      _cache.remove(evicted);
+      _providerCache.remove(evicted);
+    }
+  }
+
   Future<void> _loadViaDio() async {
     if (!mounted) return;
     setState(() {
@@ -110,13 +130,7 @@ class _ImageViewerState extends ConsumerState<ImageViewer> {
       final data = response.data as Uint8List;
 
       // 写入 LRU 缓存
-      _cache[widget.imageUrl] = data;
-      _providerCache[widget.imageUrl] = MemoryImage(data);
-      if (_cache.length > _maxCacheEntries) {
-        final evicted = _cache.keys.first;
-        _cache.remove(evicted);
-        _providerCache.remove(evicted);
-      }
+      _putInCache(widget.imageUrl, data);
 
       setState(() {
         _bytes = data;
@@ -164,22 +178,26 @@ class _ImageViewerState extends ConsumerState<ImageViewer> {
       final scheme = Theme.of(context).colorScheme;
       // HtmlElementView 是平台视图，浏览器 <img> 会消费点击事件，
       // GestureDetector 包在外面收不到。改用 Stack 叠加透明点击层。
-      Widget child = LayoutBuilder(
-        builder: (context, constraints) {
-          final w = constraints.hasBoundedWidth ? constraints.maxWidth : 300.0;
-          final h = w / _webAspectRatio;
-          return Stack(
-            children: [
-              buildWebImage(widget.imageUrl, width: w, height: h),
-              Positioned.fill(
-                child: GestureDetector(
-                  onTap: () => _showFullScreen(context),
-                  behavior: HitTestBehavior.translucent,
+      Widget child = Semantics(
+        button: true,
+        label: '查看大图',
+        child: LayoutBuilder(
+          builder: (context, constraints) {
+            final w = constraints.hasBoundedWidth ? constraints.maxWidth : 300.0;
+            final h = w / _webAspectRatio;
+            return Stack(
+              children: [
+                buildWebImage(widget.imageUrl, width: w, height: h),
+                Positioned.fill(
+                  child: GestureDetector(
+                    onTap: () => _showFullScreen(context),
+                    behavior: HitTestBehavior.translucent,
+                  ),
                 ),
-              ),
-            ],
-          );
-        },
+              ],
+            );
+          },
+        ),
       );
 
       if (widget.showBorder) {
@@ -227,32 +245,36 @@ class _ImageViewerState extends ConsumerState<ImageViewer> {
   Widget _buildImage(ImageProvider provider) {
     final scheme = Theme.of(context).colorScheme;
 
-    Widget child = GestureDetector(
-      onTap: () => _showFullScreen(context),
-      child: Image(
-        key: ValueKey(widget.imageUrl),
-        image: provider,
-        fit: BoxFit.contain,
-        gaplessPlayback: true,
-        frameBuilder: (context, child, frame, wasSynchronouslyLoaded) {
-          if (wasSynchronouslyLoaded) return child;
-          return Stack(
-            alignment: Alignment.center,
-            children: [
-              if (frame == null)
-                const SizedBox(
-                  height: 96,
-                  child: Center(child: CircularProgressIndicator(strokeWidth: 2)),
+    Widget child = Semantics(
+      button: true,
+      label: '查看大图',
+      child: GestureDetector(
+        onTap: () => _showFullScreen(context),
+        child: Image(
+          key: ValueKey(widget.imageUrl),
+          image: provider,
+          fit: BoxFit.contain,
+          gaplessPlayback: true,
+          frameBuilder: (context, child, frame, wasSynchronouslyLoaded) {
+            if (wasSynchronouslyLoaded) return child;
+            return Stack(
+              alignment: Alignment.center,
+              children: [
+                if (frame == null)
+                  const SizedBox(
+                    height: 96,
+                    child: Center(child: CircularProgressIndicator(strokeWidth: 2)),
+                  ),
+                AnimatedOpacity(
+                  opacity: frame != null ? 1.0 : 0.0,
+                  duration: const Duration(milliseconds: 150),
+                  child: child,
                 ),
-              AnimatedOpacity(
-                opacity: frame != null ? 1.0 : 0.0,
-                duration: const Duration(milliseconds: 150),
-                child: child,
-              ),
-            ],
-          );
-        },
-        errorBuilder: (_, __, ___) => _buildError(),
+              ],
+            );
+          },
+          errorBuilder: (_, __, ___) => _buildError(),
+        ),
       ),
     );
 
@@ -295,15 +317,25 @@ class _ImageViewerState extends ConsumerState<ImageViewer> {
   }
 
   Widget _buildError() {
-    return GestureDetector(
-      onTap: _loadViaDio,
-      child: Container(
-        height: 80,
-        decoration: BoxDecoration(
-          color: Theme.of(context).colorScheme.surfaceContainerHighest,
-          borderRadius: S1Shape.small,
+    return Semantics(
+      button: true,
+      label: '重试加载图片',
+      child: GestureDetector(
+        onTap: _loadViaDio,
+        child: Container(
+          height: 80,
+          decoration: BoxDecoration(
+            color: Theme.of(context).colorScheme.surfaceContainerHighest,
+            borderRadius: S1Shape.small,
+          ),
+          child: Center(
+            child: Icon(
+              Icons.broken_image_outlined,
+              size: 24,
+              color: Theme.of(context).colorScheme.outline,
+            ),
+          ),
         ),
-        child: Center(child: Icon(Icons.broken_image_outlined, size: 24, color: Theme.of(context).colorScheme.outline)),
       ),
     );
   }
@@ -333,10 +365,14 @@ class _ImageViewerState extends ConsumerState<ImageViewer> {
   }
 
   void _showFullScreen(BuildContext context) {
-    context.push('/image-viewer', extra: {
-      'imageUrl': widget.imageUrl,
-      'imageBytes': _bytes,
-      'resourceType': _resourceType,
-    },);
+    final encodedUrl = Uri.encodeComponent(widget.imageUrl);
+    context.push(
+      '/image-viewer?url=$encodedUrl&type=${_resourceType.name}',
+      extra: {
+        'imageUrl': widget.imageUrl,
+        'imageBytes': _bytes,
+        'resourceType': _resourceType,
+      },
+    );
   }
 }

@@ -93,6 +93,28 @@ class ReadingHistoryService {
     await _box.deleteAll(keys);
   }
 
+  /// 将 guest_* 记录迁移到真实 uid 前缀（登录后调用一次）
+  void migrateGuestRecords(String uid) {
+    if (uid.isEmpty) return;
+    const guestPrefix = 'guest_';
+    final targetPrefix = '${uid}_';
+    final toMigrate = <String, Map<dynamic, dynamic>>{};
+    for (final key in _box.keys) {
+      if (key is! String || !key.startsWith(guestPrefix)) continue;
+      final tid = key.substring(guestPrefix.length);
+      final value = _box.get(key);
+      if (value == null) continue;
+      toMigrate['$targetPrefix$tid'] = Map<dynamic, dynamic>.from(value);
+    }
+    for (final entry in toMigrate.entries) {
+      _box.put(entry.key, entry.value);
+    }
+    final guestKeys = _box.keys
+        .where((k) => k is String && k.startsWith(guestPrefix))
+        .toList();
+    _box.deleteAll(guestKeys);
+  }
+
   /// LRU 淘汰：仅按当前用户计数，超限删除最旧（`lastReadAt` 最小）。
   void _evictIfNeeded() {
     final keys = _box.keys.where(_belongsToUser).toList();

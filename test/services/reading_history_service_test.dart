@@ -118,4 +118,16 @@ void main() {
     expect(s.getRecord('t1'), isNull);
     expect(s.getRecord('t2'), isNotNull);
   });
+
+  test('migrateGuestRecords moves guest keys to uid prefix', () {
+    final guest = service('guest');
+    record(guest, '42');
+    expect(guest.getRecord('42'), isNotNull);
+
+    final user = ReadingHistoryService(box, '10001');
+    user.migrateGuestRecords('10001');
+
+    expect(guest.getRecord('42'), isNull);
+    expect(user.getRecord('42'), isNotNull);
+  });
 }

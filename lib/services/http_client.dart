@@ -9,6 +9,7 @@ import '../config/constants.dart';
 import '../config/env_config.dart';
 import '../config/resource_domains.dart';
 import 'formhash_service.dart';
+import 'encrypted_cookie_storage.dart';
 
 class S1HttpClient {
 
@@ -30,9 +31,8 @@ class S1HttpClient {
     } else {
       final appDocDir = await getApplicationDocumentsDirectory();
       final cookiePath = '${appDocDir.path}/.cookies/';
-      _cookieJar = PersistCookieJar(
-        storage: FileStorage(cookiePath),
-      );
+      final storage = await EncryptedCookieStorage.create(cookiePath);
+      _cookieJar = PersistCookieJar(storage: storage);
     }
 
     final headers = <String, String>{
@@ -92,17 +92,23 @@ class S1HttpClient {
 
           if (rule != null && ResourceDomains.requiresProxy(uri.host)) {
             if (rule.type == ResourceType.authImage) {
-              // 需认证的图片走 /img-proxy
-              options.path = '$_proxyUrl/img-proxy?url=${Uri.encodeComponent(options.path)}';
+              options.path =
+                  '$_proxyUrl/img-proxy?url=${Uri.encodeComponent(options.path)}';
             } else if (rule.type == ResourceType.api) {
-              // API 走默认路由
               final path = uri.path;
               final queryParts = options.path.split('?');
-              final rawQuery = queryParts.length > 1 ? queryParts.sublist(1).join('?') : '';
-              options.path = '$_proxyUrl$path${rawQuery.isNotEmpty ? '?$rawQuery' : ''}';
+              final rawQuery =
+                  queryParts.length > 1 ? queryParts.sublist(1).join('?') : '';
+              options.path =
+                  '$_proxyUrl$path${rawQuery.isNotEmpty ? '?$rawQuery' : ''}';
             }
           }
-          // publicAsset 不重写，浏览器直加载
+
+          // 代理请求注入访问令牌
+          if (options.path.startsWith(_proxyUrl) &&
+              EnvConfig.proxyAuthToken.isNotEmpty) {
+            options.headers[proxyAuthHeader] = EnvConfig.proxyAuthToken;
+          }
         }
 
         handler.next(options);

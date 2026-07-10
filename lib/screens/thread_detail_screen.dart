@@ -43,6 +43,10 @@ class _ThreadDetailScreenState extends ConsumerState<ThreadDetailScreen> {
   /// 记录阅读进度：写库 + 刷新历史列表（使列表卡片/历史页/资料计数实时更新）。
   /// readCount 只在本次进入详情页首帧 +1（isNewVisit 由 _hasRecordedInitialVisit 守卫）。
   void _recordProgress(PostListState state) {
+    final auth = ref.read(authStateProvider);
+    if (auth.isLoggedIn && (auth.user?.uid.isEmpty ?? true)) {
+      return;
+    }
     ref.read(readingHistoryServiceProvider).updateProgress(
           tid: widget.tid,
           page: state.currentPage,

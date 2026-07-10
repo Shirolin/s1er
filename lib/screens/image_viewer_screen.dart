@@ -1,14 +1,20 @@
+import 'dart:io' show Platform;
 import 'dart:typed_data';
 import 'dart:ui' as ui;
+
 import 'package:dio/dio.dart';
 import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:gal/gal.dart';
+
 import '../config/resource_domains.dart';
+import '../services/http_client.dart';
+import '../utils/s1_snack_bar.dart';
 import '../widgets/web_image_stub.dart'
     if (dart.library.html) '../widgets/web_image_html.dart';
 
-class ImageViewerScreen extends StatefulWidget {
+class ImageViewerScreen extends ConsumerStatefulWidget {
   const ImageViewerScreen({
     super.key,
     required this.imageUrl,
@@ -21,14 +27,16 @@ class ImageViewerScreen extends StatefulWidget {
   final ResourceType resourceType;
 
   @override
-  State<ImageViewerScreen> createState() => _ImageViewerScreenState();
+  ConsumerState<ImageViewerScreen> createState() => _ImageViewerScreenState();
 }
 
-class _ImageViewerScreenState extends State<ImageViewerScreen> {
+class _ImageViewerScreenState extends ConsumerState<ImageViewerScreen> {
   int? _width;
   int? _height;
   Uint8List? _fetchedBytes;
   bool _downloading = false;
+
+  bool get _canSaveToGallery => !kIsWeb && !Platform.isLinux;
 
   @override
   void initState() {
@@ -61,12 +69,12 @@ class _ImageViewerScreenState extends State<ImageViewerScreen> {
 
   Future<Uint8List?> _tryFetchBytes() async {
     try {
-      final dio = Dio();
-      final response = await dio.get<List<int>>(
+      final httpClient = ref.read(httpClientProvider);
+      final response = await httpClient.get(
         widget.imageUrl,
         options: Options(responseType: ResponseType.bytes),
       );
-      return Uint8List.fromList(response.data!);
+      return Uint8List.fromList(response.data as List<int>);
     } catch (_) {
       return null;
     }
@@ -96,46 +104,31 @@ class _ImageViewerScreenState extends State<ImageViewerScreen> {
   }
 
   Future<void> _downloadImage(BuildContext context) async {
-    if (_downloading) return;
+    if (_downloading || !_canSaveToGallery) return;
     setState(() => _downloading = true);
 
     final messenger = ScaffoldMessenger.of(context);
 
     try {
-      if (kIsWeb) {
-        downloadImageWeb(widget.imageUrl, _fileName);
-        messenger.showSnackBar(
-          const SnackBar(content: Text('下载已开始')),
-        );
-        return;
-      }
-
       Uint8List bytes;
       if (_effectiveBytes != null) {
         bytes = _effectiveBytes!;
       } else {
-        final dio = Dio();
-        final response = await dio.get<List<int>>(
-          widget.imageUrl,
-          options: Options(responseType: ResponseType.bytes),
-        );
-        bytes = Uint8List.fromList(response.data!);
+        final fetched = await _tryFetchBytes();
+        if (fetched == null) throw StateError('无法获取图片数据');
+        bytes = fetched;
       }
 
       await Gal.putImageBytes(bytes, name: _fileName);
 
       if (context.mounted) {
         messenger.clearSnackBars();
-        messenger.showSnackBar(
-          const SnackBar(content: Text('已保存到相册')),
-        );
+        S1SnackBar.show(context, message: '已保存到相册', bottomClearance: 16);
       }
     } catch (e) {
       if (context.mounted) {
         messenger.clearSnackBars();
-        messenger.showSnackBar(
-          SnackBar(content: Text('下载失败: $e')),
-        );
+        S1SnackBar.show(context, message: '下载失败: $e', bottomClearance: 16);
       }
     } finally {
       if (mounted) setState(() => _downloading = false);
@@ -146,33 +139,47 @@ class _ImageViewerScreenState extends State<ImageViewerScreen> {
   Widget build(BuildContext context) {
     final colorScheme = Theme.of(context).colorScheme;
     final topPadding = MediaQuery.of(context).padding.top + kToolbarHeight;
-    final provider = widget.imageBytes != null
-        ? MemoryImage(widget.imageBytes!) as ImageProvider
-        : NetworkImage(widget.imageUrl);
+    final provider = _effectiveBytes != null
+        ? MemoryImage(_effectiveBytes!)
+        : NetworkImage(widget.imageUrl) as ImageProvider;
 
     return Scaffold(
       backgroundColor: colorScheme.scrim,
       appBar: AppBar(
         backgroundColor: colorScheme.scrim.withValues(alpha: 0.5),
         elevation: 0,
-        foregroundColor: Colors.white,
+        scrolledUnderElevation: 0,
+        foregroundColor: colorScheme.onInverseSurface,
         actions: [
           IconButton(
             icon: const Icon(Icons.info_outline),
             tooltip: '图片信息',
             onPressed: () => _showInfoSheet(context),
           ),
-          IconButton(
-            icon: _downloading
-                ? const SizedBox(
-                    width: 20,
-                    height: 20,
-                    child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white),
-                  )
-                : const Icon(Icons.download_outlined),
-            tooltip: '下载图片',
-            onPressed: _downloading ? null : () => _downloadImage(context),
-          ),
+          if (kIsWeb)
+            IconButton(
+              tooltip: '下载',
+              onPressed: () {
+                downloadImageWeb(widget.imageUrl, _fileName);
+                S1SnackBar.show(context, message: '下载已开始', bottomClearance: 16);
+              },
+              icon: const Icon(Icons.download_outlined),
+            )
+          else if (_canSaveToGallery)
+            IconButton(
+              tooltip: '保存到相册',
+              onPressed: _downloading ? null : () => _downloadImage(context),
+              icon: _downloading
+                  ? SizedBox(
+                      width: 20,
+                      height: 20,
+                      child: CircularProgressIndicator(
+                        strokeWidth: 2,
+                        color: colorScheme.onInverseSurface,
+                      ),
+                    )
+                  : const Icon(Icons.download_outlined),
+            ),
         ],
       ),
       extendBodyBehindAppBar: true,

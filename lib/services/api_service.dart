@@ -1,5 +1,6 @@
 import 'dart:convert';
 import 'package:dio/dio.dart';
+import 'package:flutter/foundation.dart' show kIsWeb;
 import '../config/api_config.dart';
 import '../models/thread.dart';
 import '../models/post.dart';
@@ -229,8 +230,11 @@ class ApiService {
     return json;
   }
 
-  /// 纯 API 登录：返回 null 表示成功，否则返回错误信息
+  /// 纯 API 登录：返回 null 表示成功，否则返回错误信息（仅 Web 端）
   Future<String?> login(String username, String password) async {
+    if (!kIsWeb) {
+      throw UnsupportedError('Native login must use WebView');
+    }
     try {
       // 1. 发起 GET 请求以获取当前会话的 formhash
       final loginInitUrl = buildApiUrl(module: ApiConfig.moduleLogin);

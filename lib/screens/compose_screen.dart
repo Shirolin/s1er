@@ -1,8 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
-import '../services/api_service.dart';
-import '../services/http_client.dart';
+import '../providers/post_provider.dart';
 import '../utils/s1_snack_bar.dart';
 
 class ComposeScreen extends ConsumerStatefulWidget {
@@ -31,7 +30,7 @@ class _ComposeScreenState extends ConsumerState<ComposeScreen> {
     setState(() => _isSubmitting = true);
 
     try {
-      final apiService = ApiService(ref.read(httpClientProvider));
+      final apiService = ref.read(apiServiceProvider);
       final error = await apiService.sendPost(
         fid: widget.fid ?? '',
         tid: widget.tid ?? '',
@@ -51,7 +50,7 @@ class _ComposeScreenState extends ConsumerState<ComposeScreen> {
         S1SnackBar.show(context, message: '$e', bottomClearance: 16);
       }
     } finally {
-      setState(() => _isSubmitting = false);
+      if (mounted) setState(() => _isSubmitting = false);
     }
   }
 

@@ -54,7 +54,10 @@ class QuoteBlock extends StatelessWidget {
           if (author != null || parsedLink != null)
             Material(
               color: Colors.transparent,
-              child: InkWell(
+              child: Semantics(
+                button: parsedLink != null,
+                label: parsedLink != null ? '跳转到引用帖子' : null,
+                child: InkWell(
                 borderRadius: S1Shape.small,
                 onTap: parsedLink != null
                     ? () => _navigateToPost(context, parsedLink)
@@ -92,6 +95,7 @@ class QuoteBlock extends StatelessWidget {
                     ],
                   ),
                 ),
+              ),
               ),
             ),
           Padding(

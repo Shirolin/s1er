@@ -7,6 +7,7 @@ import '../models/post.dart';
 import '../models/poll.dart';
 import '../models/forum_category.dart';
 import '../models/user.dart';
+import '../utils/error_handler.dart';
 import 'http_client.dart';
 
 class LoginRequiredException implements Exception {
@@ -219,10 +220,20 @@ class ApiService {
     return json;
   }
 
-  Future<Map<String, dynamic>> getThreadDetail(String tid, {int page = 1}) async {
+  Future<Map<String, dynamic>> getThreadDetail(String tid, {
+    int page = 1,
+    String? authorId,
+  }) async {
+    final params = <String, String>{
+      'tid': tid,
+      'page': page.toString(),
+    };
+    if (authorId != null && authorId.isNotEmpty) {
+      params['authorid'] = authorId;
+    }
     final url = buildApiUrl(
       module: ApiConfig.moduleViewThread,
-      params: {'tid': tid, 'page': page.toString()},
+      params: params,
     );
     final response = await _httpClient.get(url);
     final json = ensureJson(response.data);
@@ -315,7 +326,7 @@ class ApiService {
       }
       return '登录失败，服务器返回未知错误';
     } catch (e) {
-      return '登录失败: $e';
+      return friendlyError(e, '登录');
     }
   }
 

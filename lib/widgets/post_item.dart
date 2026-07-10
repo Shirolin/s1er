@@ -6,17 +6,23 @@ import '../providers/post_provider.dart';
 import '../theme/app_theme.dart';
 import '../utils/compact_label.dart';
 import '../utils/format_utils.dart';
-import '../utils/s1_snack_bar.dart';
 import 'bbcode_renderer.dart';
 import 'post_action_menu.dart';
 import 'user_profile_sheet.dart';
 import 'web_avatar.dart';
 
 class PostItem extends ConsumerWidget {
-  const PostItem({super.key, required this.post, this.displayFloor, this.tid});
+  const PostItem({
+    super.key,
+    required this.post,
+    this.displayFloor,
+    this.tid,
+    this.onFilterByAuthor,
+  });
   final Post post;
   final int? displayFloor;
   final String? tid;
+  final VoidCallback? onFilterByAuthor;
 
   void _showUserInfo(BuildContext context, WidgetRef ref) {
     final currentUid = ref.read(authStateProvider).user?.uid;
@@ -26,9 +32,7 @@ class PostItem extends ConsumerWidget {
       context,
       future: future,
       isSelf: currentUid != null && currentUid == post.authorId,
-      onFilterByAuthor: () {
-        S1SnackBar.show(context, message: '「只看该作者」功能即将推出');
-      },
+      onFilterByAuthor: onFilterByAuthor,
     );
   }
 
@@ -75,9 +79,7 @@ class PostItem extends ConsumerWidget {
                 _FloorBadge(floor: floor),
                 const SizedBox(width: 2),
                 PostActionMenu(
-                  onFilterByAuthor: () {
-                    S1SnackBar.show(context, message: '「只看该作者」功能即将推出');
-                  },
+                  onFilterByAuthor: onFilterByAuthor,
                 ),
               ],
             ),

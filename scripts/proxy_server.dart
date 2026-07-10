@@ -27,8 +27,9 @@ void main() async {
   final server = await HttpServer.bind('localhost', port);
   print('Proxy on http://localhost:$port');
   if (EnvConfig.proxyAuthToken.isEmpty) {
-    print('PROXY_AUTH_TOKEN (auto-generated): $_proxyAuthToken');
-    print('Pass to Flutter: --dart-define=PROXY_AUTH_TOKEN=$_proxyAuthToken');
+    print('Auth token: DISABLED (dev mode, set PROXY_AUTH_TOKEN to enable)');
+  } else {
+    print('Auth token: ENABLED');
   }
 
   await for (final req in server) {
@@ -172,6 +173,8 @@ Future<void> _handleRequest(HttpRequest req) async {
 }
 
 bool _verifyAuthToken(HttpRequest req) {
+  // 未显式配置 token 时跳过验证（开发模式）
+  if (EnvConfig.proxyAuthToken.isEmpty) return true;
   final token = req.headers.value(proxyAuthHeader);
   return token != null && token == _proxyAuthToken;
 }

@@ -7,6 +7,7 @@ import '../models/user.dart';
 import 'http_client.dart';
 import 'api_service.dart';
 import 'talker.dart';
+import '../utils/error_handler.dart';
 
 class AuthService {
 
@@ -41,8 +42,7 @@ class AuthService {
       }
       return error;
     } catch (e, st) {
-      talker.handle(e, st, 'Login failed');
-      return '网络错误: $e';
+      return friendlyError(e, '登录', st);
     }
   }
 
@@ -97,8 +97,7 @@ class AuthService {
       }
       return null;
     } catch (e, st) {
-      talker.handle(e, st, 'WebView login completion failed');
-      return '登录失败: $e';
+      return friendlyError(e, '登录', st);
     }
   }
 

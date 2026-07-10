@@ -27,11 +27,18 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
   Widget build(BuildContext context) {
     final isLoggedIn = ref.watch(authStateProvider).isLoggedIn;
 
+    // 游客模式下只有 2 个 Tab（论坛/我的），若当前索引越界则重置
+    if (!isLoggedIn && _currentTab > 1) {
+      _currentTab = 0;
+    }
+
+    final isProfileTab = isLoggedIn ? _currentTab == 3 : _currentTab == 1;
+
     return Scaffold(
       appBar: AppBar(
         elevation: 0,
-        title: Text(_currentTab == 3 ? '个人资料' : 'Stage1st'),
-        actions: _currentTab == 3
+        title: Text(isProfileTab ? '个人资料' : 'Stage1st'),
+        actions: isProfileTab
             ? [
                 if (isLoggedIn)
                   AppBarMoreMenu(
@@ -54,26 +61,33 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                   ),
               ],
       ),
-      body: !isLoggedIn && _currentTab < 3
-          ? _LoginPrompt()
-          : _currentTab == 0
+      body: isLoggedIn
+          ? _currentTab == 0
               ? const _ForumTab()
               : _currentTab == 1
                   ? const Center(child: Text('Search'))
                   : _currentTab == 2
                       ? const Center(child: Text('Messages'))
-                      : const ProfileBody(),
+                      : const ProfileBody()
+          : _currentTab == 0
+              ? const _ForumTab()
+              : const ProfileBody(),
       bottomNavigationBar: NavigationBar(
         selectedIndex: _currentTab,
         onDestinationSelected: (index) {
           setState(() => _currentTab = index);
         },
-        destinations: const [
-          NavigationDestination(icon: Icon(Icons.forum), label: '论坛'),
-          NavigationDestination(icon: Icon(Icons.search), label: '搜索'),
-          NavigationDestination(icon: Icon(Icons.message), label: '消息'),
-          NavigationDestination(icon: Icon(Icons.person), label: '我的'),
-        ],
+        destinations: isLoggedIn
+            ? const [
+                NavigationDestination(icon: Icon(Icons.forum), label: '论坛'),
+                NavigationDestination(icon: Icon(Icons.search), label: '搜索'),
+                NavigationDestination(icon: Icon(Icons.message), label: '消息'),
+                NavigationDestination(icon: Icon(Icons.person), label: '我的'),
+              ]
+            : const [
+                NavigationDestination(icon: Icon(Icons.forum), label: '论坛'),
+                NavigationDestination(icon: Icon(Icons.person), label: '我的'),
+              ],
       ),
     );
   }
@@ -313,38 +327,4 @@ class _ForumTile extends StatelessWidget {
   }
 }
 
-class _LoginPrompt extends StatelessWidget {
-  @override
-  Widget build(BuildContext context) {
-    return Center(
-      child: Padding(
-        padding: const EdgeInsets.all(32),
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Icon(Icons.lock_outline,
-                size: 64, color: Theme.of(context).colorScheme.onSurfaceVariant,),
-            const SizedBox(height: 20),
-            Text(
-              '登录后即可浏览',
-              style: Theme.of(context).textTheme.titleMedium,
-            ),
-            const SizedBox(height: 8),
-            Text(
-              'S1 论坛需要登录才能查看内容',
-              style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                  color: Theme.of(context).colorScheme.onSurfaceVariant,
-                ),
-            ),
-            const SizedBox(height: 24),
-            FilledButton.icon(
-              onPressed: () => context.push('/login'),
-              icon: const Icon(Icons.login),
-              label: const Text('去登录'),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-}
+

@@ -135,6 +135,13 @@ class _ThreadDetailScreenState extends ConsumerState<ThreadDetailScreen> {
       post: post,
       displayFloor: floorOffset + postIndex + 1,
       tid: widget.tid,
+      onFilterByAuthor: () {
+        ref.read(postProvider(widget.tid).notifier).filterByAuthor(
+              post.authorId,
+              post.author,
+            );
+        _scrollToTop();
+      },
     );
   }
 
@@ -225,9 +232,41 @@ class _ThreadDetailScreenState extends ConsumerState<ThreadDetailScreen> {
             showSecondary: _showScrollToTop,
             showPrimary: isLoggedIn,
           );
+          final scheme = Theme.of(context).colorScheme;
 
           return Column(
           children: [
+            if (state.isFiltering)
+              Container(
+                width: double.infinity,
+                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+                color: scheme.primaryContainer,
+                child: Row(
+                  children: [
+                    Icon(Icons.filter_alt, size: 18, color: scheme.onPrimaryContainer),
+                    const SizedBox(width: 8),
+                    Expanded(
+                      child: Text(
+                        '只看「${state.filterAuthorName}」的帖子',
+                        style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                              color: scheme.onPrimaryContainer,
+                              fontWeight: FontWeight.w500,
+                            ),
+                      ),
+                    ),
+                    TextButton.icon(
+                      onPressed: () => ref
+                          .read(postProvider(widget.tid).notifier)
+                          .clearFilter(),
+                      icon: Icon(Icons.close, size: 18, color: scheme.onPrimaryContainer),
+                      label: Text(
+                        '取消',
+                        style: TextStyle(color: scheme.onPrimaryContainer),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
             Expanded(
               child: S1ContentFabOverlay(
                 fab: S1FabStack(

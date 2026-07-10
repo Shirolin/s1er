@@ -17,6 +17,8 @@ class PostListState {
     this.perPage = S1Constants.postsPerPageFallback,
     this.totalReplies = 0,
     this.poll,
+    this.filterAuthorId,
+    this.filterAuthorName,
   });
   final List<Post> posts;
   final int currentPage;
@@ -33,6 +35,15 @@ class PostListState {
   /// 投票帖数据（仅 `thread.special == 1` 时有值）
   final ThreadPoll? poll;
 
+  /// 当前激活的作者筛选 ID（服务端过滤），null 表示不过滤
+  final String? filterAuthorId;
+
+  /// 当前筛选的作者名（用于 UI 提示）
+  final String? filterAuthorName;
+
+  /// 是否正在按作者筛选
+  bool get isFiltering => filterAuthorId != null;
+
   PostListState copyWith({
     List<Post>? posts,
     int? currentPage,
@@ -42,6 +53,9 @@ class PostListState {
     int? perPage,
     int? totalReplies,
     ThreadPoll? poll,
+    String? filterAuthorId,
+    String? filterAuthorName,
+    bool clearFilter = false,
   }) {
     return PostListState(
       posts: posts ?? this.posts,
@@ -52,6 +66,8 @@ class PostListState {
       perPage: perPage ?? this.perPage,
       totalReplies: totalReplies ?? this.totalReplies,
       poll: poll ?? this.poll,
+      filterAuthorId: clearFilter ? null : (filterAuthorId ?? this.filterAuthorId),
+      filterAuthorName: clearFilter ? null : (filterAuthorName ?? this.filterAuthorName),
     );
   }
 }
@@ -88,6 +104,10 @@ class PostNotifier extends StateNotifier<AsyncValue<PostListState>> {
   final ApiService _apiService;
   final Ref _ref;
 
+  /// 服务端按作者筛选：null 表示不过滤
+  String? _filterAuthorId;
+  String? _filterAuthorName;
+
   ThreadPoll? _pollWithUserVotes(
     Map<String, dynamic> variables,
     ThreadPoll? poll,
@@ -102,7 +122,11 @@ class PostNotifier extends StateNotifier<AsyncValue<PostListState>> {
   Future<void> _loadPage(int page) async {
     state = const AsyncValue.loading();
     try {
-      final result = await _apiService.getThreadDetail(tid, page: page);
+      final result = await _apiService.getThreadDetail(
+        tid,
+        page: page,
+        authorId: _filterAuthorId,
+      );
       final posts = ApiService.parsePostList(result);
 
       // 统一提取 variables / thread，避免重复遍历 JSON
@@ -126,6 +150,8 @@ class PostNotifier extends StateNotifier<AsyncValue<PostListState>> {
         poll: page == 1
             ? _pollWithUserVotes(variables, ApiService.parsePoll(result))
             : null,
+        filterAuthorId: _filterAuthorId,
+        filterAuthorName: _filterAuthorName,
       ),);
     } catch (e, st) {
       state = AsyncValue.error(e, st);
@@ -134,6 +160,20 @@ class PostNotifier extends StateNotifier<AsyncValue<PostListState>> {
 
   Future<void> goToPage(int page) async {
     await _loadPage(page);
+  }
+
+  /// 按指定作者筛选帖子（服务端过滤，翻页保持生效）
+  void filterByAuthor(String authorId, String authorName) {
+    _filterAuthorId = authorId;
+    _filterAuthorName = authorName;
+    _loadPage(1);
+  }
+
+  /// 取消作者筛选
+  void clearFilter() {
+    _filterAuthorId = null;
+    _filterAuthorName = null;
+    _loadPage(1);
   }
 
   Future<void> refresh() async {

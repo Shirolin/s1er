@@ -19,7 +19,6 @@ import 'theme/app_theme.dart';
 
 final _router = GoRouter(
   initialLocation: '/',
-  observers: [TalkerRouteObserver(talker)],
   routes: [
     GoRoute(
       path: '/',

@@ -213,6 +213,10 @@ class QuoteBlock extends StatelessWidget {
     BuildContext context,
     ({String tid, String? pid}) link,
   ) {
-    context.push('/thread/${link.tid}');
+    if (link.pid != null) {
+      context.push('/thread/${link.tid}?pid=${link.pid}');
+    } else {
+      context.push('/thread/${link.tid}');
+    }
   }
 }

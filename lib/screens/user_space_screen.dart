@@ -11,7 +11,6 @@ import '../widgets/pagination_bar.dart';
 import '../widgets/s1_error_view.dart';
 
 class UserSpaceScreen extends ConsumerStatefulWidget {
-
   const UserSpaceScreen({
     super.key,
     required this.uid,
@@ -37,29 +36,19 @@ class _UserSpaceScreenState extends ConsumerState<UserSpaceScreen>
   @override
   void initState() {
     super.initState();
-    _tabController = TabController(length: 2, vsync: this, initialIndex: widget.initialTab);
-    _tabController.addListener(_onTabChanged);
-    if (widget.initialTab == 1) {
-      WidgetsBinding.instance.addPostFrameCallback((_) {
-        if (mounted) ref.read(userSpaceProvider((widget.uid, widget.isSelf)).notifier).loadReplies();
-      });
-    }
+    _tabController = TabController(
+      length: 2,
+      vsync: this,
+      initialIndex: widget.initialTab,
+    );
   }
 
   @override
   void dispose() {
-    _tabController.removeListener(_onTabChanged);
     _tabController.dispose();
     _threadScrollController.dispose();
     _replyScrollController.dispose();
     super.dispose();
-  }
-
-  void _onTabChanged() {
-    if (!_tabController.indexIsChanging) return;
-    if (_tabController.index == 1) {
-      ref.read(userSpaceProvider((widget.uid, widget.isSelf)).notifier).loadReplies();
-    }
   }
 
   @override
@@ -152,15 +141,13 @@ class _ThreadList extends ConsumerWidget {
         ],
       );
     }
-
     return Column(
       children: [
         Expanded(
           child: ListView.builder(
             controller: scrollController,
             itemCount: items.length,
-            itemBuilder: (context, index) =>
-                _ThreadCard(item: items[index]),
+            itemBuilder: (context, index) => _ThreadCard(item: items[index]),
           ),
         ),
         PaginationBar(
@@ -206,15 +193,13 @@ class _ReplyList extends ConsumerWidget {
         ],
       );
     }
-
     return Column(
       children: [
         Expanded(
           child: ListView.builder(
             controller: scrollController,
             itemCount: items.length,
-            itemBuilder: (context, index) =>
-                _ReplyCard(item: items[index]),
+            itemBuilder: (context, index) => _ReplyCard(item: items[index]),
           ),
         ),
         PaginationBar(
@@ -246,7 +231,6 @@ class _ThreadCard extends StatelessWidget {
       color: scheme.onSurfaceVariant,
       height: 1.2,
     );
-
     return Card(
       margin: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
       elevation: 0,
@@ -262,10 +246,7 @@ class _ThreadCard extends StatelessWidget {
             children: [
               if (item.forumName != null && item.forumName!.isNotEmpty) ...[
                 Container(
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 8,
-                    vertical: 2,
-                  ),
+                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
                   decoration: BoxDecoration(
                     color: scheme.secondaryContainer,
                     borderRadius: S1Shape.full,
@@ -290,14 +271,11 @@ class _ThreadCard extends StatelessWidget {
               Row(
                 children: [
                   if (item.dateline > 0) ...[
-                    Text(
-                      formatTimeAgo(item.dateline),
-                      style: metaStyle,
-                    ),
+                    Text(formatTimeAgo(item.dateline), style: metaStyle),
                     const SizedBox(width: 12),
                   ],
                   Icon(Icons.visibility_outlined,
-                      size: 12, color: scheme.onSurfaceVariant,),
+                      size: 12, color: scheme.onSurfaceVariant),
                   const SizedBox(width: 2),
                   Text(formatCount(item.views), style: metaStyle,),
                   const SizedBox(width: 8),
@@ -323,7 +301,6 @@ class _ReplyCard extends StatelessWidget {
   Widget build(BuildContext context) {
     final scheme = Theme.of(context).colorScheme;
     final textTheme = Theme.of(context).textTheme;
-
     return Card(
       margin: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
       elevation: 0,
@@ -354,8 +331,7 @@ class _ReplyCard extends StatelessWidget {
                 maxLines: 1,
                 overflow: TextOverflow.ellipsis,
               ),
-              if (item.replyExcerpt != null &&
-                  item.replyExcerpt!.isNotEmpty) ...[
+              if (item.replyExcerpt != null && item.replyExcerpt!.isNotEmpty) ...[
                 const SizedBox(height: 4),
                 Container(
                   padding: const EdgeInsets.only(left: 8),

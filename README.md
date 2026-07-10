@@ -11,6 +11,7 @@
 - **用户登录** — 原生平台通过 WebView 完成 Discuz! 登录并同步 Cookie；Web 端通过 API 表单登录
 - **发帖回复** — 登录后可回复主题
 - **用户资料** — 查看个人资料（积分、帖子数、主题数、用户组）
+- **用户空间** — 查看任意用户的主题列表（Tab：「主题」/「回复」），回复列表展示每条回复摘要
 - **深色模式** — 跟随系统主题或手动切换
 - **图片查看** — 点击放大查看帖子内图片，支持手势缩放
 - **表情支持** — 渲染 S1 论坛专用表情
@@ -45,20 +46,24 @@ lib/
 │   ├── forum_category.dart  # 版块分类
 │   ├── post.dart            # 回复
 │   ├── thread.dart          # 主题
-│   └── user.dart            # 用户
+│   ├── user.dart            # 用户
+│   └── user_space_item.dart # 用户空间（主题/回复列表项）
 ├── providers/           # Riverpod 状态管理
 │   ├── auth_provider.dart       # 登录状态
 │   ├── forum_list_provider.dart # 版块列表
 │   ├── post_provider.dart       # 帖子内容
 │   ├── settings_provider.dart   # 应用设置
-│   └── thread_list_provider.dart# 主题列表
+│   ├── thread_list_provider.dart# 主题列表
+│   └── user_space_provider.dart # 用户空间主题/回复列表
 ├── screens/             # 页面
 │   ├── home_screen.dart        # 首页（版块导航）
 │   ├── forum_list_screen.dart  # 版块主题列表
 │   ├── thread_detail_screen.dart# 帖子详情
 │   ├── login_screen.dart       # 登录页
 │   ├── compose_screen.dart     # 发帖/回复
-│   └── profile_screen.dart     # 个人资料
+│   ├── profile_screen.dart     # 个人资料
+│   ├── user_space_screen.dart  # 用户空间（Tab：主题/回复）
+│   └── settings_screen.dart    # 设置页面
 ├── services/            # 服务层
 │   ├── http_client.dart        # HTTP 客户端（限速、formhash 注入、Cookie 管理）
 │   ├── api_service.dart        # Discuz! API 封装

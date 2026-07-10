@@ -17,6 +17,7 @@ import 'screens/profile_screen.dart';
 import 'screens/settings_screen.dart';
 import 'screens/reading_history_screen.dart';
 import 'screens/image_viewer_screen.dart';
+import 'screens/user_space_screen.dart';
 import 'services/talker.dart';
 import 'theme/app_theme.dart';
 
@@ -99,6 +100,14 @@ final _router = GoRouter(
     GoRoute(
       path: '/reading-history',
       builder: (context, state) => const ReadingHistoryScreen(),
+    ),
+    GoRoute(
+      path: '/user-space/:uid',
+      builder: (context, state) => UserSpaceScreen(
+        uid: state.pathParameters['uid']!,
+        username: state.uri.queryParameters['username'],
+        initialTab: int.tryParse(state.uri.queryParameters['tab'] ?? '') ?? 0,
+      ),
     ),
     GoRoute(
       path: '/image-viewer',

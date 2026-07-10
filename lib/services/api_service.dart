@@ -4,6 +4,7 @@ import 'package:flutter/foundation.dart' show kIsWeb;
 import '../config/api_config.dart';
 import '../models/thread.dart';
 import '../models/post.dart';
+import '../models/user_space_item.dart';
 import '../models/poll.dart';
 import '../models/forum_category.dart';
 import '../models/user.dart';
@@ -489,8 +490,8 @@ class ApiService {
               follower: int.tryParse(space['follower']?.toString() ?? '') ?? 0,
               following: int.tryParse(space['following']?.toString() ?? '') ?? 0,
               oltime: int.tryParse(space['oltime']?.toString() ?? '') ?? 0,
-              deadfish: int.tryParse(space['extcredits1']?.toString() ?? '') ?? 0,
-              combat: int.tryParse(space['extcredits5']?.toString() ?? '') ?? 0,
+              combat: int.tryParse(space['extcredits1']?.toString() ?? '') ?? 0,
+              deadfish: int.tryParse(space['extcredits5']?.toString() ?? '') ?? 0,
               regdate: space['regdate']?.toString() ?? '',
             );
           }
@@ -500,6 +501,217 @@ class ApiService {
       return user;
     } catch (_) {
       return null;
+    }
+  }
+
+  // ── 用户空间：主题列表 / 回复列表 ──────────────────────────
+
+  /// 获取当前登录用户的空间列表（通过 mythread 移动端 API）。
+  /// [type] 为 'thread' 或 'reply'。
+  Future<UserSpaceListResult> getMySpaceList({
+    required String type,
+    int page = 1,
+  }) async {
+    final url = buildApiUrl(
+      module: 'mythread',
+      params: {'type': type, 'page': page.toString()},
+    );
+    final response = await _httpClient.get(url);
+    final json = ensureJson(response.data);
+    checkAuthError(json);
+    return _parseSpaceList(json, type: type, page: page);
+  }
+
+  /// 获取任意用户的空间列表（通过 HTML 解析）。
+  /// 需要已登录才能查看。
+  Future<UserSpaceListResult> getUserSpaceList({
+    required String uid,
+    required String type,
+    int page = 1,
+  }) async {
+    final url = '${ApiConfig.baseUrl}/home.php'
+        '?mod=space&uid=$uid&do=thread&view=me&type=$type&from=space&page=$page';
+    final response = await _httpClient.get(
+      url,
+      options: Options(responseType: ResponseType.plain),
+    );
+    final html = response.data as String;
+    if (html.contains('id="loginform_') || html.contains('name="login"')) {
+      throw LoginRequiredException();
+    }
+    return _parseSpaceHtml(html, type: type, page: page);
+  }
+
+  static UserSpaceListResult _parseSpaceList(
+    Map<String, dynamic> json, {
+    required String type,
+    int page = 1,
+  }) {
+    final variables = json['Variables'] as Map<String, dynamic>?;
+    if (variables == null) return UserSpaceListResult.empty;
+
+    final list = variables['data'] as List? ?? [];
+    final items = list
+        .map((t) => UserSpaceItem.fromThreadJson(t as Map<String, dynamic>))
+        .toList();
+    final perpage = int.tryParse(variables['perpage']?.toString() ?? '') ?? 50;
+    final hasMore = items.length >= perpage;
+    return UserSpaceListResult(
+      items: items,
+      totalPages: hasMore ? page + 1 : page,
+    );
+  }
+
+  static final _threadLinkRe = RegExp(
+    r'<a\s+href="(?:forum\.php\?mod=viewthread&)?tid=(\d+)[^"]*"[^>]*class="[^"]*xst[^"]*"[^>]*>(.*?)</a>',
+    caseSensitive: false,
+    dotAll: true,
+  );
+  static final _forumNameRe = RegExp(
+    r'<p\s+class="xg1">(.*?)</p>',
+    caseSensitive: false,
+    dotAll: true,
+  );
+  static final _replyViewRe = RegExp(r'<em>(\d+)</em>/(\d+)');
+  static final _datelineRe = RegExp(
+    r'class="num"><em>(\d{4}-\d{1,2}-\d{1,2}[^<]*)</em>',
+  );
+  static final _totalPageRe = RegExp(r'page=(\d+)[^"]*"[^>]*>\s*(\d+)\s*</a>');
+
+  static UserSpaceListResult _parseSpaceHtml(
+    String html, {
+    required String type,
+    required int page,
+  }) {
+    if (type == 'reply') {
+      return _parseReplyHtml(html, page: page);
+    }
+    return _parseThreadHtml(html, page: page);
+  }
+
+  static UserSpaceListResult _parseThreadHtml(String html, {required int page}) {
+    final items = <UserSpaceItem>[];
+    final linkMatches = _threadLinkRe.allMatches(html).toList();
+
+    for (final match in linkMatches) {
+      final tid = match.group(1) ?? '';
+      final subject = _stripHtml(match.group(2) ?? '');
+      if (tid.isEmpty) continue;
+
+      String? forumName;
+      int replies = 0;
+      int views = 0;
+      int dateline = 0;
+
+      final afterLink = html.substring(match.end, match.end + 500);
+      final forumMatch = _forumNameRe.firstMatch(afterLink);
+      if (forumMatch != null) {
+        forumName = _stripHtml(forumMatch.group(1) ?? '');
+      }
+
+      final rvMatch = _replyViewRe.firstMatch(afterLink);
+      if (rvMatch != null) {
+        replies = int.tryParse(rvMatch.group(1) ?? '') ?? 0;
+        views = int.tryParse(rvMatch.group(2) ?? '') ?? 0;
+      }
+
+      final dlMatch = _datelineRe.firstMatch(afterLink);
+      if (dlMatch != null) {
+        dateline = _parseDateString(dlMatch.group(1) ?? '');
+      }
+
+      items.add(UserSpaceItem(
+        tid: tid,
+        subject: subject,
+        forumName: forumName,
+        dateline: dateline,
+        replies: replies,
+        views: views,
+      ),);
+    }
+
+    return UserSpaceListResult(items: items, totalPages: _extractTotalPages(html, page));
+  }
+
+  static UserSpaceListResult _parseReplyHtml(String html, {required int page}) {
+    final items = <UserSpaceItem>[];
+
+    // 回复页中，主题头与回复都使用 goto=findpost 链接。
+    // 区别：主题头 pid=""（空），回复 pid=数字。
+    final findpostRe = RegExp(
+      r'goto=findpost&amp;ptid=(\d+)&amp;pid=(\d*)"[^>]*>(.*?)</a>',
+      dotAll: true,
+    );
+    final forumLinkRe = RegExp(
+      r'<a href="forum-\d+-\d+-\d+.html" class="xg1"[^>]*>(.*?)</a>',
+      dotAll: true,
+    );
+
+    String? currentSubject;
+    String? currentForum;
+    String? currentTid;
+
+    for (final match in findpostRe.allMatches(html)) {
+      final tid = match.group(1) ?? '';
+      final pid = match.group(2) ?? '';
+      final text = _stripHtml(match.group(3) ?? '');
+      if (tid.isEmpty) continue;
+
+      if (pid.isEmpty) {
+        currentTid = tid;
+        currentSubject = text;
+        final after = html.substring(match.end, match.end + 300);
+        final fm = forumLinkRe.firstMatch(after);
+        currentForum = fm != null ? _stripHtml(fm.group(1) ?? '') : null;
+      } else {
+        items.add(UserSpaceItem(
+          tid: tid,
+          subject: currentTid == tid ? (currentSubject ?? '') : '',
+          forumName: currentTid == tid ? currentForum : null,
+          dateline: 0,
+          replyExcerpt: text,
+          pid: pid,
+          isReply: true,
+        ),);
+      }
+    }
+
+    final total = html.contains('class="nxt"') ? page + 1 : page;
+    return UserSpaceListResult(items: items, totalPages: total);
+  }
+
+  static int _extractTotalPages(String html, int currentPage) {
+    int totalPages = 1;
+    for (final m in _totalPageRe.allMatches(html)) {
+      final p = int.tryParse(m.group(2) ?? '') ?? 0;
+      if (p > totalPages) totalPages = p;
+    }
+    // "下一页" 链接存在说明至少还有一页
+    if (html.contains('class="nxt"') && totalPages <= currentPage) {
+      totalPages = currentPage + 1;
+    }
+    return totalPages;
+  }
+
+  static String _stripHtml(String text) {
+    return text
+        .replaceAll(RegExp(r'<[^>]+>'), '')
+        .replaceAll('&amp;', '&')
+        .replaceAll('&lt;', '<')
+        .replaceAll('&gt;', '>')
+        .replaceAll('&quot;', '"')
+        .replaceAll('&#039;', "'")
+        .replaceAll('&#39;', "'")
+        .replaceAll('&nbsp;', ' ')
+        .trim();
+  }
+
+  static int _parseDateString(String s) {
+    try {
+      final dt = DateTime.parse(s.trim());
+      return dt.millisecondsSinceEpoch ~/ 1000;
+    } catch (_) {
+      return 0;
     }
   }
 
@@ -529,12 +741,20 @@ class ApiService {
         follower: int.tryParse(space['follower']?.toString() ?? '') ?? 0,
         following: int.tryParse(space['following']?.toString() ?? '') ?? 0,
         oltime: int.tryParse(space['oltime']?.toString() ?? '') ?? 0,
-        deadfish: int.tryParse(space['extcredits1']?.toString() ?? '') ?? 0,
-        combat: int.tryParse(space['extcredits5']?.toString() ?? '') ?? 0,
+        combat: int.tryParse(space['extcredits1']?.toString() ?? '') ?? 0,
+        deadfish: int.tryParse(space['extcredits5']?.toString() ?? '') ?? 0,
         regdate: space['regdate']?.toString() ?? '',
       );
     } catch (_) {
       return null;
     }
   }
+}
+
+class UserSpaceListResult {
+
+  const UserSpaceListResult({required this.items, this.totalPages = 1});
+  static const empty = UserSpaceListResult(items: []);
+  final List<UserSpaceItem> items;
+  final int totalPages;
 }

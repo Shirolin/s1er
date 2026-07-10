@@ -135,6 +135,7 @@ class _ThreadDetailScreenState extends ConsumerState<ThreadDetailScreen> {
       post: post,
       displayFloor: floorOffset + postIndex + 1,
       tid: widget.tid,
+      rateLog: state.rateLogs[post.pid],
       onFilterByAuthor: () {
         ref.read(postProvider(widget.tid).notifier).filterByAuthor(
               post.authorId,

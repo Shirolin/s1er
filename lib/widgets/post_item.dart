@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../models/post.dart';
+import '../models/rate_log.dart';
 import '../providers/auth_provider.dart';
 import '../providers/post_provider.dart';
 import '../theme/app_theme.dart';
@@ -8,6 +9,7 @@ import '../utils/compact_label.dart';
 import '../utils/format_utils.dart';
 import 'bbcode_renderer.dart';
 import 'post_action_menu.dart';
+import 'rate_log_card.dart';
 import 'user_profile_sheet.dart';
 import 'web_avatar.dart';
 
@@ -18,11 +20,13 @@ class PostItem extends ConsumerWidget {
     this.displayFloor,
     this.tid,
     this.onFilterByAuthor,
+    this.rateLog,
   });
   final Post post;
   final int? displayFloor;
   final String? tid;
   final VoidCallback? onFilterByAuthor;
+  final PostRateLog? rateLog;
 
   void _showUserInfo(BuildContext context, WidgetRef ref) {
     final currentUid = ref.read(authStateProvider).user?.uid;
@@ -85,6 +89,8 @@ class PostItem extends ConsumerWidget {
             ),
             const Divider(height: 16),
             BbcodeRenderer(bbcode: post.message, currentTid: tid),
+            if (rateLog != null && !rateLog!.isEmpty)
+              RateLogCard(rateLog: rateLog!),
           ],
         ),
       ),

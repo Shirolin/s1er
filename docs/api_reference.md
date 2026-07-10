@@ -665,6 +665,86 @@ S1 实际配置：
 
 ---
 
+---
+
+## module=mythread（用户空间：我的主题 / 回复）
+
+仅返回**当前登录用户**的数据。查看其他用户需通过 HTML 解析 `home.php?mod=space&uid=X&do=thread&type=thread|reply`。
+
+### 请求参数
+
+| 参数 | 必填 | 说明 |
+|------|------|------|
+| `type` | ❌ | `"thread"`（默认）= 用户创建的主题，`"reply"` = 用户回复过的主题 |
+| `page` | ❌ | 页码，从 1 开始 |
+
+### 响应 `Variables` 新增字段
+
+#### `data` — 主题列表（核心）
+
+两种 `type` 共用同一响应结构。
+
+| 字段 | 类型 | 示例值 | 说明 |
+|------|------|--------|------|
+| `tid` | string | `"2274556"` | 主题 ID |
+| `fid` | string | `"51"` | 版块 ID |
+| `subject` | string | `"搞了个X(Twitter)拼图拆图用的浏览器扩展"` | 标题 |
+| `author` | string | `"shirolin"` | 作者用户名 |
+| `authorid` | string | `"426519"` | 作者用户 ID |
+| `dateline` | string | `"2026-2-11 19:40"` | ⚠️ **日期字符串**（`type=reply` 时为此主题的原始发帖时间） |
+| `dbdateline` | string | `"1770810009"` | ✅ **Unix 时间戳** |
+| `lastpost` | string | `"2026-3-12 20:00"` | 最后回复时间 |
+| `lastposter` | string | `"勿徨哉"` | 最后回复者 |
+| `views` | string | `"2953"` | 浏览数 |
+| `replies` | string | `"11"` | 回复数 |
+| `displayorder` | string | `"0"` | 排序，`>0` = 置顶 |
+| `special` | string | `"0"` | 特殊帖子标记 |
+| `attachment` | string | `"0"` | 附件标记 |
+| `fname` | — | — | ⚠️ **此接口不返回版块名称**，需要 `fid` 自行查表 |
+
+> **注意**：`type=reply` 返回的是用户**回复过的主题列表**（不含具体的回复内容）。
+> 要获取每条回复的 `pid` 和摘要，需通过 HTML 解析 `home.php?mod=space&uid=X&do=thread&type=reply`。
+
+#### `perpage` — 每页条数
+
+```json
+"perpage": "50"
+```
+
+无总条数字段。分页通过判断 `data` 长度是否等于 `perpage` 来推算是否有下一页。
+
+---
+
+## HTML 解析：用户空间（主题 / 回复）
+
+`mythread` API 仅返回当前用户数据。查看任意用户（含他人）的空间列表需解析 `home.php` 的 HTML。
+
+### 主题列表
+
+- URL: `{baseUrl}/home.php?mod=space&uid={uid}&do=thread&view=me&type=thread&from=space&page={page}`
+- 需要登录 Cookie
+- 每条主题含：`tid`、标题、版块名、回复/查看数、最后回复时间
+
+### 回复列表
+
+- URL: `{baseUrl}/home.php?mod=space&uid={uid}&do=thread&view=me&type=reply&from=space&page={page}`
+- 需要登录 Cookie
+- 结构为**主题 + 该用户在此主题下的多条回复**，每行格式：
+
+```html
+<!-- 主题标题行（<tr class="bw0_all">）→ 提取 tid、subject、forum -->
+<!-- 回复行（<tr><td colspan="5">）→ 提取 pid、回复摘要 -->
+<a href="forum.php?mod=redirect&amp;goto=findpost&amp;ptid={tid}&amp;pid={pid}">回复内容摘要</a>
+```
+
+- `tid` / `pid` 均从 `goto=findpost&ptid={tid}&pid={pid}` 链接中解析
+
+### 分页
+
+响应 HTML 中通过 `class="nxt"`（下一页）和 `page=N` 标签推断总页数。
+
+---
+
 ## Mobile API 模块可用性总表
 
 以下为对 `api/mobile/index.php?module={name}&version=4` 的实测结果（GET，未登录）：
@@ -674,6 +754,7 @@ S1 实际配置：
 | `forumindex` | 正常返回 JSON | ✅ 可用 |
 | `forumdisplay` | 正常返回 JSON | ✅ 可用 |
 | `viewthread` | 正常返回 JSON | ✅ 可用 |
+| `mythread` | 返回 JSON，未登录时提示 `to_login` | ✅ 可用（仅当前用户） |
 | `login` | 正常返回 JSON | ✅ 可用 |
 | `profile` | 正常返回 JSON | ✅ 可用 |
 | `newthread` | 返回 JSON，缺参数时提示 `forum_nonexistence` | ✅ 可用（发新帖） |
@@ -685,7 +766,7 @@ S1 实际配置：
 | `checkpostrule` | `{"error":"module_not_exists"}` | ❌ S1 已禁用 |
 | 其余 20+ 模块 | `{"error":"module_not_exists"}` | ❌ 均不可用 |
 
-结论：S1 的 Mobile API **仅开放了读/登录/私信/发新帖**，所有回复、编辑、附件功能必须走浏览器端点。
+结论：S1 的 Mobile API **仅开放了读/登录/私信/发新帖**，所有回复、编辑、附件功能必须走浏览器端点。用户空间列表的回复摘要数据也需走 HTML 解析。
 
 ---
 

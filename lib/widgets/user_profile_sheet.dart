@@ -129,22 +129,43 @@ class _UserProfileContent extends StatelessWidget {
             const SizedBox(height: 12),
             _DetailCard(user: user),
             const SizedBox(height: 16),
-            if (isSelf)
+            if (isSelf) ...[
               FilledButton(
                 onPressed: () {
                   Navigator.pop(context);
                   context.push('/profile');
                 },
                 child: const Text('我的资料'),
-              )
-            else if (onFilterByAuthor != null)
-              OutlinedButton(
-                onPressed: () {
-                  Navigator.pop(context);
-                  onFilterByAuthor!();
-                },
-                child: const Text('只看该作者'),
               ),
+            ] else ...[
+              Row(
+                children: [
+                  if (onFilterByAuthor != null)
+                    Expanded(
+                      child: OutlinedButton(
+                        onPressed: () {
+                          Navigator.pop(context);
+                          onFilterByAuthor!();
+                        },
+                        child: const Text('只看该作者'),
+                      ),
+                    ),
+                  if (onFilterByAuthor != null) const SizedBox(width: 8),
+                  Expanded(
+                    child: FilledButton.icon(
+                      onPressed: () {
+                        Navigator.pop(context);
+                        context.push(
+                          '/user-space/${user.uid}?username=${Uri.encodeComponent(user.username)}',
+                        );
+                      },
+                      icon: const Icon(Icons.article_outlined, size: 18),
+                      label: const Text('Ta的帖子'),
+                    ),
+                  ),
+                ],
+              ),
+            ],
           ],
         ),
       ),

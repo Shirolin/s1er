@@ -3,9 +3,11 @@ import 'package:hive/hive.dart';
 import '../config/constants.dart';
 import '../models/post.dart';
 import '../models/poll.dart';
+import '../models/rate_log.dart';
 import '../services/api_service.dart';
 import '../services/http_client.dart';
 import '../services/poll_vote_cache.dart';
+import '../services/rate_log_service.dart';
 class PostListState {
 
   PostListState({
@@ -19,6 +21,7 @@ class PostListState {
     this.poll,
     this.filterAuthorId,
     this.filterAuthorName,
+    this.rateLogs = const {},
   });
   final List<Post> posts;
   final int currentPage;
@@ -41,6 +44,9 @@ class PostListState {
   /// 当前筛选的作者名（用于 UI 提示）
   final String? filterAuthorName;
 
+  /// 评分记录（key = pid）
+  final Map<String, PostRateLog> rateLogs;
+
   /// 是否正在按作者筛选
   bool get isFiltering => filterAuthorId != null;
 
@@ -56,6 +62,7 @@ class PostListState {
     String? filterAuthorId,
     String? filterAuthorName,
     bool clearFilter = false,
+    Map<String, PostRateLog>? rateLogs,
   }) {
     return PostListState(
       posts: posts ?? this.posts,
@@ -68,12 +75,17 @@ class PostListState {
       poll: poll ?? this.poll,
       filterAuthorId: clearFilter ? null : (filterAuthorId ?? this.filterAuthorId),
       filterAuthorName: clearFilter ? null : (filterAuthorName ?? this.filterAuthorName),
+      rateLogs: rateLogs ?? this.rateLogs,
     );
   }
 }
 
 final apiServiceProvider = Provider<ApiService>((ref) {
   return ApiService(ref.watch(httpClientProvider));
+});
+
+final rateLogServiceProvider = Provider<RateLogService>((ref) {
+  return RateLogService(ref.watch(httpClientProvider));
 });
 
 final pollVoteCacheProvider = Provider.family<PollVoteCache, String>((ref, uid) {
@@ -85,6 +97,7 @@ final postProvider = StateNotifierProvider.autoDispose.family<
   (ref, tid) => PostNotifier(
     tid: tid,
     apiService: ref.watch(apiServiceProvider),
+    rateLogService: ref.watch(rateLogServiceProvider),
     ref: ref,
   ),
 );
@@ -94,14 +107,17 @@ class PostNotifier extends StateNotifier<AsyncValue<PostListState>> {
   PostNotifier({
     required this.tid,
     required ApiService apiService,
+    required RateLogService rateLogService,
     required Ref ref,
   })  : _apiService = apiService,
+        _rateLogService = rateLogService,
         _ref = ref,
         super(const AsyncValue.loading()) {
     _loadPage(1);
   }
   final String tid;
   final ApiService _apiService;
+  final RateLogService _rateLogService;
   final Ref _ref;
 
   /// 服务端按作者筛选：null 表示不过滤
@@ -122,11 +138,17 @@ class PostNotifier extends StateNotifier<AsyncValue<PostListState>> {
   Future<void> _loadPage(int page) async {
     state = const AsyncValue.loading();
     try {
-      final result = await _apiService.getThreadDetail(
+      final detailFuture = _apiService.getThreadDetail(
         tid,
         page: page,
         authorId: _filterAuthorId,
       );
+      final rateLogFuture = _rateLogService.fetchRateLogs(tid, page: page);
+
+      final results = await Future.wait<Object>([detailFuture, rateLogFuture]);
+      final result = results[0] as Map<String, dynamic>;
+      final rateLogs = results[1] as Map<String, PostRateLog>;
+
       final posts = ApiService.parsePostList(result);
 
       // 统一提取 variables / thread，避免重复遍历 JSON
@@ -152,6 +174,7 @@ class PostNotifier extends StateNotifier<AsyncValue<PostListState>> {
             : null,
         filterAuthorId: _filterAuthorId,
         filterAuthorName: _filterAuthorName,
+        rateLogs: rateLogs,
       ),);
     } catch (e, st) {
       state = AsyncValue.error(e, st);

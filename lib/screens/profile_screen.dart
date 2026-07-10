@@ -195,9 +195,21 @@ class _StatsCard extends StatelessWidget {
           children: [
             _StatItem(label: '积分', value: user.credits),
             _VerticalDivider(),
-            _StatItem(label: '帖子', value: user.posts),
+            _StatItem(
+              label: '帖子',
+              value: user.posts,
+              onTap: () => context.push(
+                '/user-space/${user.uid}?username=${Uri.encodeComponent(user.username)}&tab=1',
+              ),
+            ),
             _VerticalDivider(),
-            _StatItem(label: '主题', value: user.threads),
+            _StatItem(
+              label: '主题',
+              value: user.threads,
+              onTap: () => context.push(
+                '/user-space/${user.uid}?username=${Uri.encodeComponent(user.username)}',
+              ),
+            ),
             _VerticalDivider(),
             _StatItem(label: '好友', value: user.friends),
           ],
@@ -292,23 +304,24 @@ class _VerticalDivider extends StatelessWidget {
 
 class _StatItem extends StatelessWidget {
 
-  const _StatItem({required this.label, required this.value});
+  const _StatItem({required this.label, required this.value, this.onTap});
   final String label;
   final int value;
+  final VoidCallback? onTap;
 
   @override
   Widget build(BuildContext context) {
     final colorScheme = Theme.of(context).colorScheme;
     final textTheme = Theme.of(context).textTheme;
 
-    return Column(
+    final content = Column(
       mainAxisSize: MainAxisSize.min,
       children: [
         Text(
           formatCount(value),
           style: textTheme.titleMedium?.copyWith(
             fontWeight: FontWeight.bold,
-            color: colorScheme.onSurface,
+            color: onTap != null ? colorScheme.primary : colorScheme.onSurface,
           ),
         ),
         const SizedBox(height: 2),
@@ -319,6 +332,16 @@ class _StatItem extends StatelessWidget {
           ),
         ),
       ],
+    );
+
+    if (onTap == null) return content;
+    return InkWell(
+      onTap: onTap,
+      borderRadius: S1Shape.medium,
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+        child: content,
+      ),
     );
   }
 }

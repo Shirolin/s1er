@@ -702,16 +702,16 @@ class ApiService {
     final items = <UserSpaceItem>[];
 
     if (html.contains('<div class="threadlist cl">')) {
-      // 手机版模板（原生平台 UA 触发）：<li class="list"> 结构
+      // 手机版模板
       final blocks = html.split('<li class="list">');
       for (var i = 1; i < blocks.length; i++) {
         final block = blocks[i];
 
         final tidMatch = RegExp(
-          r'goto=findpost&ptid=(\d+)&pid=&|goto=findpost&amp;ptid=(\d+)&amp;pid=&',
+          r'mod=viewthread&(?:amp;)?(?:p)?tid=(\d+)',
         ).firstMatch(block);
         if (tidMatch == null) continue;
-        final tid = tidMatch.group(1) ?? tidMatch.group(2) ?? '';
+        final tid = tidMatch.group(1) ?? '';
 
         final titleMatch = RegExp(
           r'<em[^>]*>(.*?)</em>',
@@ -722,7 +722,7 @@ class ApiService {
             : '';
 
         final replyRe = RegExp(
-          r'goto=findpost&(?:amp;)?ptid=\d+&(?:amp;)?pid=(\d+)[^>]*>\s*(?:<div class="quote">)?<blockquote>(.*?)</blockquote>',
+          r'mod=redirect&(?:amp;)?goto=findpost&(?:amp;)?ptid=\d+&(?:amp;)?pid=(\d+)[^>]*>\s*(?:<div class="quote">)?<blockquote>(.*?)</blockquote>',
           dotAll: true,
         );
         for (final rm in replyRe.allMatches(block)) {
@@ -735,6 +735,50 @@ class ApiService {
             isReply: true,
           ),);
         }
+      }
+    } else {
+      // 桌面版模板
+      String? currentSubject;
+      String? currentForum;
+      String? currentTid;
+      final forumLinkRe = RegExp(
+        r'<a href="forum-\d+-\d+-\d+.html" class="xg1"[^>]*>(.*?)</a>',
+        dotAll: true,
+      );
+
+      final findpostRe = RegExp(
+        r'mod=redirect&(?:amp;)?goto=findpost&(?:amp;)?ptid=(\d+)&(?:amp;)?pid=(\d*)[&"][^>]*>(.*?)</a>',
+        dotAll: true,
+      );
+      for (final match in findpostRe.allMatches(html)) {
+        final tid = match.group(1) ?? '';
+        final pid = match.group(2) ?? '';
+        final text = _stripHtml(match.group(3) ?? '');
+        if (tid.isEmpty) continue;
+
+        if (pid.isEmpty) {
+          currentTid = tid;
+          currentSubject = text;
+          final after = html.substring(match.end, match.end + 300);
+          final fm = forumLinkRe.firstMatch(after);
+          currentForum = fm != null ? _stripHtml(fm.group(1) ?? '') : null;
+        } else {
+          items.add(UserSpaceItem(
+            tid: tid,
+            subject: currentTid == tid ? (currentSubject ?? '') : '',
+            forumName: currentTid == tid ? currentForum : null,
+            dateline: 0,
+            replyExcerpt: text,
+            pid: pid,
+            isReply: true,
+          ),);
+        }
+      }
+    }
+
+    final total = html.contains('class="nxt"') ? page + 1 : page;
+    return UserSpaceListResult(items: items, totalPages: total);
+  }
       }
     } else {
       // 桌面版模板（Web 平台 UA 触发）：<table> 结构

@@ -64,13 +64,16 @@ class UserSpaceNotifier extends StateNotifier<AsyncValue<UserSpaceState>> {
 
   Future<void> _loadThreads() async {
     try {
-      final current = state.valueOrNull;
       final result = isSelf
           ? await _apiService.getMySpaceList(type: 'thread', page: 1)
           : await _apiService.getUserSpaceList(uid: uid, type: 'thread', page: 1);
-      state = AsyncValue.data((current ?? UserSpaceState()).copyWith(
+      
+      // 重要：必须在 await 之后获取最新的 state，防止 loadReplies 的结果被覆盖
+      final current = state.valueOrNull ?? UserSpaceState();
+      state = AsyncValue.data(current.copyWith(
         threads: result.items,
         threadTotalPages: result.totalPages,
+        threadPage: 1,
       ),);
     } catch (e, st) {
       state = AsyncValue.error(e, st);
@@ -78,30 +81,36 @@ class UserSpaceNotifier extends StateNotifier<AsyncValue<UserSpaceState>> {
   }
 
   Future<void> loadReplies() async {
-    final current = state.valueOrNull;
-    if (current != null && current.replies.isNotEmpty) return;
+    // 如果已经加载过第一页，不再重复加载
+    if (state.valueOrNull?.replies.isNotEmpty ?? false) return;
+    
     try {
-      final result = await _apiService.getUserSpaceList(uid: uid, type: 'reply');
-      state = AsyncValue.data((current ?? UserSpaceState()).copyWith(
+      final result = await _apiService.getUserSpaceList(uid: uid, type: 'reply', page: 1);
+      
+      // 重要：必须在 await 之后获取最新的 state，防止 _loadThreads 的结果被覆盖
+      final current = state.valueOrNull ?? UserSpaceState();
+      state = AsyncValue.data(current.copyWith(
         replies: result.items,
         replyTotalPages: result.totalPages,
+        replyPage: 1,
       ),);
     } catch (e, st) {
-      if (current != null) {
-        state = AsyncValue.data(current);
-      } else {
-        state = AsyncValue.error(e, st);
+      // 如果 thread 已经加载成功，不要因为回复加载失败就显示全屏错误
+      if (state.hasValue) {
+        return;
       }
+      state = AsyncValue.error(e, st);
     }
   }
 
   Future<void> goToThreadPage(int page) async {
-    final current = state.valueOrNull;
     try {
       final result = isSelf
           ? await _apiService.getMySpaceList(type: 'thread', page: page)
           : await _apiService.getUserSpaceList(uid: uid, type: 'thread', page: page);
-      state = AsyncValue.data((current ?? UserSpaceState()).copyWith(
+      
+      final current = state.valueOrNull ?? UserSpaceState();
+      state = AsyncValue.data(current.copyWith(
         threads: result.items,
         threadPage: page,
         threadTotalPages: result.totalPages,
@@ -110,10 +119,11 @@ class UserSpaceNotifier extends StateNotifier<AsyncValue<UserSpaceState>> {
   }
 
   Future<void> goToReplyPage(int page) async {
-    final current = state.valueOrNull;
     try {
       final result = await _apiService.getUserSpaceList(uid: uid, type: 'reply', page: page);
-      state = AsyncValue.data((current ?? UserSpaceState()).copyWith(
+      
+      final current = state.valueOrNull ?? UserSpaceState();
+      state = AsyncValue.data(current.copyWith(
         replies: result.items,
         replyPage: page,
         replyTotalPages: result.totalPages,

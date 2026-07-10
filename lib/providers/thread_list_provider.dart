@@ -27,7 +27,7 @@ class ThreadListState {
   }
 }
 
-final threadListProvider = StateNotifierProvider.family<
+final threadListProvider = StateNotifierProvider.autoDispose.family<
     ThreadListNotifier, AsyncValue<ThreadListState>, String>(
   (ref, fid) => ThreadListNotifier(
     fid: fid,

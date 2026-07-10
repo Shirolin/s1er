@@ -107,7 +107,17 @@ flutter run
 dart run scripts/proxy_server.dart
 ```
 
-代理运行在 `http://localhost:19080`，会自动转发请求到 `https://stage1st.com` 并处理 CORS 头。
+代理默认运行在 `http://localhost:19080`（可通过 `--dart-define=PROXY_PORT=` 修改），会自动转发请求到 `https://stage1st.com` 并处理 CORS 头。
+
+启动时会生成或校验访问令牌 `PROXY_AUTH_TOKEN`。若未通过 `--dart-define` 传入，代理会打印随机 token，Flutter Web 需使用相同值：
+
+```bash
+# 终端 1
+dart run scripts/proxy_server.dart
+
+# 终端 2（将 token 替换为代理启动时打印的值）
+flutter run -d chrome --dart-define=PROXY_AUTH_TOKEN=your_token_here
+```
 
 ## 架构说明
 

@@ -64,7 +64,7 @@ final pollVoteCacheProvider = Provider.family<PollVoteCache, String>((ref, uid) 
   return PollVoteCache(Hive.box('cache'), uid);
 });
 
-final postProvider = StateNotifierProvider.family<
+final postProvider = StateNotifierProvider.autoDispose.family<
     PostNotifier, AsyncValue<PostListState>, String>(
   (ref, tid) => PostNotifier(
     tid: tid,

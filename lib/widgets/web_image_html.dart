@@ -43,3 +43,13 @@ String _toCssFit(BoxFit fit) {
       return 'contain';
   }
 }
+
+/// Web 端触发浏览器下载图片
+void downloadImageWeb(String url, String fileName) {
+  final anchor = html.AnchorElement(href: url)
+    ..download = fileName
+    ..target = '_blank';
+  html.document.body?.append(anchor);
+  anchor.click();
+  anchor.remove();
+}

@@ -36,6 +36,8 @@ class _ImageViewerState extends ConsumerState<ImageViewer> {
   static final LinkedHashMap<String, Uint8List> _cache = LinkedHashMap();
   static final Map<String, MemoryImage> _providerCache = {};
   static const int _maxCacheEntries = 200;
+  static const int _maxCacheBytes = 50 * 1024 * 1024;
+  static int _cacheBytes = 0;
 
   bool _loading = false;
   Uint8List? _bytes;
@@ -92,6 +94,24 @@ class _ImageViewerState extends ConsumerState<ImageViewer> {
     _loadViaDio();
   }
 
+  void _putInCache(String url, Uint8List data) {
+    if (_cache.containsKey(url)) {
+      _cacheBytes -= _cache[url]!.length;
+      _cache.remove(url);
+      _providerCache.remove(url);
+    }
+    _cache[url] = data;
+    _providerCache[url] = MemoryImage(data);
+    _cacheBytes += data.length;
+
+    while (_cache.length > _maxCacheEntries || _cacheBytes > _maxCacheBytes) {
+      final evicted = _cache.keys.first;
+      _cacheBytes -= _cache[evicted]!.length;
+      _cache.remove(evicted);
+      _providerCache.remove(evicted);
+    }
+  }
+
   Future<void> _loadViaDio() async {
     if (!mounted) return;
     setState(() {
@@ -108,13 +128,7 @@ class _ImageViewerState extends ConsumerState<ImageViewer> {
       final data = response.data as Uint8List;
 
       // 写入 LRU 缓存
-      _cache[widget.imageUrl] = data;
-      _providerCache[widget.imageUrl] = MemoryImage(data);
-      if (_cache.length > _maxCacheEntries) {
-        final evicted = _cache.keys.first;
-        _cache.remove(evicted);
-        _providerCache.remove(evicted);
-      }
+      _putInCache(widget.imageUrl, data);
 
       setState(() {
         _bytes = data;
@@ -149,13 +163,17 @@ class _ImageViewerState extends ConsumerState<ImageViewer> {
 
     // Web 公开资源：原生 <img>，无 CORS
     if (_resourceType == ResourceType.publicAsset && kIsWeb) {
-      return GestureDetector(
-        onTap: () => _showFullScreen(context),
-        child: LayoutBuilder(
-          builder: (context, constraints) {
-            final w = constraints.hasBoundedWidth ? constraints.maxWidth : 300.0;
-            return buildWebImage(widget.imageUrl, width: w, height: w);
-          },
+      return Semantics(
+        button: true,
+        label: '查看大图',
+        child: GestureDetector(
+          onTap: () => _showFullScreen(context),
+          child: LayoutBuilder(
+            builder: (context, constraints) {
+              final w = constraints.hasBoundedWidth ? constraints.maxWidth : 300.0;
+              return buildWebImage(widget.imageUrl, width: w, height: w);
+            },
+          ),
         ),
       );
     }
@@ -183,9 +201,12 @@ class _ImageViewerState extends ConsumerState<ImageViewer> {
   }
 
   Widget _buildImage(ImageProvider provider) {
-    return GestureDetector(
-      onTap: () => _showFullScreen(context),
-      child: Image(
+    return Semantics(
+      button: true,
+      label: '查看大图',
+      child: GestureDetector(
+        onTap: () => _showFullScreen(context),
+        child: Image(
         key: ValueKey(widget.imageUrl),
         image: provider,
         fit: BoxFit.contain,
@@ -210,6 +231,7 @@ class _ImageViewerState extends ConsumerState<ImageViewer> {
         },
         errorBuilder: (_, __, ___) => _buildError(),
       ),
+      ),
     );
   }
 
@@ -232,15 +254,25 @@ class _ImageViewerState extends ConsumerState<ImageViewer> {
   }
 
   Widget _buildError() {
-    return GestureDetector(
-      onTap: _loadViaDio,
-      child: Container(
-        height: 80,
-        decoration: BoxDecoration(
-          color: Theme.of(context).colorScheme.surfaceContainerHighest,
-          borderRadius: S1Shape.small,
+    return Semantics(
+      button: true,
+      label: '重试加载图片',
+      child: GestureDetector(
+        onTap: _loadViaDio,
+        child: Container(
+          height: 80,
+          decoration: BoxDecoration(
+            color: Theme.of(context).colorScheme.surfaceContainerHighest,
+            borderRadius: S1Shape.small,
+          ),
+          child: Center(
+            child: Icon(
+              Icons.broken_image_outlined,
+              size: 24,
+              color: Theme.of(context).colorScheme.outline,
+            ),
+          ),
         ),
-        child: Center(child: Icon(Icons.broken_image_outlined, size: 24, color: Theme.of(context).colorScheme.outline)),
       ),
     );
   }
@@ -262,10 +294,14 @@ class _ImageViewerState extends ConsumerState<ImageViewer> {
   }
 
   void _showFullScreen(BuildContext context) {
-    context.push('/image-viewer', extra: {
-      'imageUrl': widget.imageUrl,
-      'imageBytes': _bytes,
-      'resourceType': _resourceType,
-    },);
+    final encodedUrl = Uri.encodeComponent(widget.imageUrl);
+    context.push(
+      '/image-viewer?url=$encodedUrl&type=${_resourceType.name}',
+      extra: {
+        'imageUrl': widget.imageUrl,
+        'imageBytes': _bytes,
+        'resourceType': _resourceType,
+      },
+    );
   }
 }

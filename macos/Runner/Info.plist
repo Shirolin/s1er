@@ -26,6 +26,8 @@
 	<string>$(PRODUCT_COPYRIGHT)</string>
 	<key>NSMainNibFile</key>
 	<string>MainMenu</string>
+	<key>NSPhotoLibraryAddUsageDescription</key>
+	<string>保存论坛图片到相册需要访问照片库</string>
 	<key>NSPrincipalClass</key>
 	<string>NSApplication</string>
 </dict>

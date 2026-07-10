@@ -190,7 +190,13 @@ class _ForumCategoryTile extends ConsumerWidget {
                     .read(settingsProvider.notifier)
                     .toggleForumCollapse(category.fid)
                 : null,
-            child: Container(
+            child: Semantics(
+              button: hasSubs,
+              expanded: hasSubs ? !isCollapsed : null,
+              label: category.name,
+              child: ConstrainedBox(
+                constraints: const BoxConstraints(minHeight: 48),
+                child: Container(
               width: double.infinity,
               padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
               color: scheme.surfaceContainer,
@@ -231,6 +237,8 @@ class _ForumCategoryTile extends ConsumerWidget {
                 ],
               ),
             ),
+          ),
+        ),
           ),
           // 子版块列表
           AnimatedSize(

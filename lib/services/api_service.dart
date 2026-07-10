@@ -902,24 +902,46 @@ class ApiService {
     }
   }
 
+  final Map<String, int> _pageCache = {};
+
   /// 定位特定回复所在的页码。
-  /// 跟随 redirect 后从返回的 HTML 中解析页码。失败返回 1。
   Future<int> locatePostPage(String tid, String pid) async {
+    final cacheKey = '$tid:$pid';
+    final cached = _pageCache[cacheKey];
+    if (cached != null) return cached;
+
     final url = '${ApiConfig.baseUrl}/forum.php'
         '?mod=redirect&goto=findpost&ptid=$tid&pid=$pid';
     try {
+      // 原生平台：只拿 302 header，不下 body
       final response = await _httpClient.get(
         url,
-        options: Options(responseType: ResponseType.plain),
+        options: Options(
+          followRedirects: false,
+          validateStatus: (s) => s != null && s < 500,
+          responseType: ResponseType.plain,
+        ),
       );
-      final html = response.data as String;
 
+      // 优先从 Location header 解析
+      final location = response.headers.value('location');
+      if (location != null) {
+        final uri = Uri.parse(location);
+        final page = int.tryParse(uri.queryParameters['page'] ?? '1') ?? 1;
+        _pageCache[cacheKey] = page;
+        return page;
+      }
+
+      // Web 代理已跟随重定向，从响应 HTML 解析
+      final html = response.data as String;
       final pageMatch = RegExp(
         r'<strong[^>]*>(\d+)</strong>|class="cur"[^>]*>(\d+)<',
       ).firstMatch(html);
       if (pageMatch != null) {
         final p = pageMatch.group(1) ?? pageMatch.group(2) ?? '';
-        return int.tryParse(p) ?? 1;
+        final page = int.tryParse(p) ?? 1;
+        _pageCache[cacheKey] = page;
+        return page;
       }
     } catch (_) {}
     return 1;

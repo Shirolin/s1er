@@ -643,10 +643,10 @@ class ApiService {
         final block = blocks[i];
 
         final tidMatch = RegExp(
-          r'goto=findpost&amp;ptid=(\d+)&amp;pid=&',
+          r'goto=findpost&ptid=(\d+)&pid=&|goto=findpost&amp;ptid=(\d+)&amp;pid=&',
         ).firstMatch(block);
         if (tidMatch == null) continue;
-        final tid = tidMatch.group(1) ?? '';
+        final tid = tidMatch.group(1) ?? tidMatch.group(2) ?? '';
 
         final titleMatch = RegExp(
           r'<em[^>]*>(.*?)</em>',
@@ -657,7 +657,7 @@ class ApiService {
             : '';
 
         final replyRe = RegExp(
-          r'goto=findpost&amp;ptid=\d+&amp;pid=(\d+)&amp;mobile=2[^>]*>\s*<div class="quote"><blockquote>(.*?)</blockquote>',
+          r'goto=findpost&(?:amp;)?ptid=\d+&(?:amp;)?pid=(\d+)[^>]*>\s*(?:<div class="quote">)?<blockquote>(.*?)</blockquote>',
           dotAll: true,
         );
         for (final rm in replyRe.allMatches(block)) {

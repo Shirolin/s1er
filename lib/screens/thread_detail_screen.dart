@@ -34,6 +34,7 @@ class ThreadDetailScreen extends ConsumerStatefulWidget {
 
 class _ThreadDetailScreenState extends ConsumerState<ThreadDetailScreen> {
   final _scrollController = ScrollController();
+  final _targetKey = GlobalKey();
   bool _showScrollToTop = false;
   bool _hasRecordedInitialVisit = false;
   bool _hasCheckedResume = false;
@@ -198,7 +199,9 @@ class _ThreadDetailScreenState extends ConsumerState<ThreadDetailScreen> {
     final floorOffset = (state.currentPage - 1) * state.perPage;
     final displayFloor = floorOffset + postIndex + 1;
     final highlightPid = widget.targetPid ?? _highlightPid;
+    final isTarget = post.pid == highlightPid && highlightPid != null;
     return PostItem(
+      key: isTarget ? _targetKey : null,
       post: post,
       displayFloor: displayFloor,
       tid: widget.tid,
@@ -260,6 +263,19 @@ class _ThreadDetailScreenState extends ConsumerState<ThreadDetailScreen> {
           _checkResumeReading(state);
         }
         _recordProgress(state);
+        final target = widget.targetPid ?? _highlightPid;
+        if (target != null && state.posts.any((p) => p.pid == target)) {
+          WidgetsBinding.instance.addPostFrameCallback((_) {
+            final ctx = _targetKey.currentContext;
+            if (ctx != null && mounted) {
+              Scrollable.ensureVisible(
+                ctx,
+                alignment: 0.15,
+                duration: const Duration(milliseconds: 300),
+              );
+            }
+          });
+        }
       });
     });
 

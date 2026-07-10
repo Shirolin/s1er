@@ -29,6 +29,7 @@ class _ImageViewerScreenState extends State<ImageViewerScreen> {
   int? _width;
   int? _height;
   Uint8List? _fetchedBytes;
+  bool _downloading = false;
 
   @override
   void initState() {
@@ -90,6 +91,9 @@ class _ImageViewerScreenState extends State<ImageViewerScreen> {
   }
 
   Future<void> _downloadImage(BuildContext context) async {
+    if (_downloading) return;
+    setState(() => _downloading = true);
+
     final messenger = ScaffoldMessenger.of(context);
 
     try {
@@ -105,9 +109,6 @@ class _ImageViewerScreenState extends State<ImageViewerScreen> {
       if (_effectiveBytes != null) {
         bytes = _effectiveBytes!;
       } else {
-        messenger.showSnackBar(
-          const SnackBar(content: Text('正在下载...'), duration: Duration(seconds: 30)),
-        );
         final dio = Dio();
         final response = await dio.get<List<int>>(
           widget.imageUrl,
@@ -131,6 +132,8 @@ class _ImageViewerScreenState extends State<ImageViewerScreen> {
           SnackBar(content: Text('下载失败: $e')),
         );
       }
+    } finally {
+      if (mounted) setState(() => _downloading = false);
     }
   }
 
@@ -155,9 +158,15 @@ class _ImageViewerScreenState extends State<ImageViewerScreen> {
             onPressed: () => _showInfoSheet(context),
           ),
           IconButton(
-            icon: const Icon(Icons.download_outlined),
+            icon: _downloading
+                ? const SizedBox(
+                    width: 20,
+                    height: 20,
+                    child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white),
+                  )
+                : const Icon(Icons.download_outlined),
             tooltip: '下载图片',
-            onPressed: () => _downloadImage(context),
+            onPressed: _downloading ? null : () => _downloadImage(context),
           ),
         ],
       ),

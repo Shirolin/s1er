@@ -1,4 +1,3 @@
-import 'dart:async';
 import 'dart:typed_data';
 import 'dart:ui' as ui;
 import 'package:dio/dio.dart';
@@ -41,17 +40,23 @@ class _ImageViewerScreenState extends State<ImageViewerScreen> {
     final bytes = widget.imageBytes ?? await _tryFetchBytes();
     if (bytes == null || !mounted) return;
 
-    final c = Completer<ui.Image>();
-    ui.decodeImageFromList(bytes, c.complete);
-    final image = await c.future;
-    if (!mounted) return;
+    try {
+      final codec = await ui.instantiateImageCodec(bytes);
+      final frameInfo = await codec.getNextFrame();
+      if (!mounted) {
+        frameInfo.image.dispose();
+        codec.dispose();
+        return;
+      }
 
-    setState(() {
-      _width = image.width;
-      _height = image.height;
-      _fetchedBytes ??= bytes;
-    });
-    image.dispose();
+      setState(() {
+        _width = frameInfo.image.width;
+        _height = frameInfo.image.height;
+        _fetchedBytes ??= bytes;
+      });
+      frameInfo.image.dispose();
+      codec.dispose();
+    } catch (_) {}
   }
 
   Future<Uint8List?> _tryFetchBytes() async {

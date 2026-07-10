@@ -79,7 +79,11 @@ class AppTheme {
     return ThemeData(
       useMaterial3: true,
       colorScheme: colorScheme,
-      appBarTheme: const AppBarTheme(centerTitle: true),
+      appBarTheme: const AppBarTheme(
+        centerTitle: true,
+        elevation: 0,
+        scrolledUnderElevation: 0,
+      ),
       cardTheme: const CardThemeData(
         shape: S1Shape.cardShape,
         elevation: 0,

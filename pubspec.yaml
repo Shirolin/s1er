@@ -26,6 +26,8 @@ dependencies:
   talker_dio_logger: ^5.1.17
   dynamic_color: ^1.8.1
   gal: ^2.3.0
+  flutter_secure_storage: ^10.3.1
+  cryptography: ^2.9.0
 
 dev_dependencies:
   flutter_test:

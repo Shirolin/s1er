@@ -3,6 +3,8 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../models/user.dart';
 import '../services/auth_service.dart';
 import '../services/http_client.dart';
+import '../services/reading_history_service.dart';
+import 'reading_history_provider.dart';
 
 final authServiceProvider = Provider<AuthService>((ref) {
   return AuthService(httpClient: ref.watch(httpClientProvider));
@@ -26,55 +28,70 @@ class AuthState {
 
 class AuthNotifier extends StateNotifier<AuthState> {
 
-  AuthNotifier(this._authService) : super(AuthState()) {
+  AuthNotifier(this._authService, this._ref) : super(AuthState()) {
     _init();
   }
   final AuthService _authService;
+  final Ref _ref;
 
   Future<void> _init() async {
     final ok = await _authService.checkSession();
     if (ok) {
-      state = AuthState(
-        isLoggedIn: true,
-        username: _authService.currentUser?.username,
-        user: _authService.currentUser,
-      );
+      _syncStateFromService();
     }
+  }
+
+  void _syncStateFromService() {
+    state = AuthState(
+      isLoggedIn: true,
+      username: _authService.currentUser?.username,
+      user: _authService.currentUser,
+    );
+    _maybeMigrateGuestHistory();
+  }
+
+  void _maybeMigrateGuestHistory() {
+    final uid = _authService.currentUser?.uid;
+    if (uid == null || uid.isEmpty) return;
+    final box = _ref.read(readingBoxProvider);
+    ReadingHistoryService(box, uid).migrateGuestRecords(uid);
+    _ref.read(readingHistoryProvider.notifier).refresh();
   }
 
   void setLoggedIn(String username) {
     _authService.setLoggedIn(username);
-    state = AuthState(
-      isLoggedIn: true,
-      username: username,
-      user: _authService.currentUser,
-    );
-    unawaited(_authService.fetchProfile().then((user) {
-      if (user != null) {
-        try {
-          state = state.copyWith(user: user, username: user.username);
-        } catch (_) {}
-      }
-    }),);
+    _syncStateFromService();
   }
 
   Future<String?> login(String username, String password) async {
     final error = await _authService.login(username, password);
     if (error == null) {
-      state = AuthState(
-        isLoggedIn: true,
-        username: _authService.currentUser?.username,
-        user: _authService.currentUser,
-      );
-      unawaited(_authService.fetchProfile().then((user) {
-        if (user != null) {
-          try {
-            state = state.copyWith(user: user, username: user.username);
-          } catch (_) {}
-        }
-      }),);
+      _syncStateFromService();
+      // profile 由 AuthService.login 内 _fetchProfile 拉取，此处轮询等待 uid
+      await _waitForProfile();
     }
     return error;
+  }
+
+  Future<String?> completeWebViewLogin() async {
+    final error = await _authService.completeWebViewLogin();
+    if (error == null) {
+      _syncStateFromService();
+      _maybeMigrateGuestHistory();
+    }
+    return error;
+  }
+
+  Future<void> _waitForProfile() async {
+    for (var i = 0; i < 20; i++) {
+      final user = _authService.currentUser;
+      if (user != null && user.uid.isNotEmpty) {
+        state = state.copyWith(user: user, username: user.username);
+        _maybeMigrateGuestHistory();
+        return;
+      }
+      await Future<void>.delayed(const Duration(milliseconds: 100));
+    }
   }
 
   Future<void> refreshProfile() async {
@@ -82,16 +99,17 @@ class AuthNotifier extends StateNotifier<AuthState> {
     if (user != null) {
       try {
         state = state.copyWith(user: user, username: user.username);
+        _maybeMigrateGuestHistory();
       } catch (_) {}
     }
   }
 
-  void logout() {
-    _authService.logout();
+  Future<void> logout() async {
+    await _authService.logout();
     state = AuthState();
   }
 }
 
 final authStateProvider = StateNotifierProvider<AuthNotifier, AuthState>((ref) {
-  return AuthNotifier(ref.watch(authServiceProvider));
+  return AuthNotifier(ref.watch(authServiceProvider), ref);
 });

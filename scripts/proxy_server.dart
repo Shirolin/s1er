@@ -1,4 +1,7 @@
+import 'dart:convert';
 import 'dart:io';
+import 'dart:math';
+import '../lib/config/env_config.dart';
 import '../lib/config/resource_domains.dart';
 
 const String mobileUserAgent =
@@ -13,97 +16,24 @@ final Map<String, String> _cookieJar = {};
 /// img-proxy 404 缓存（避免对无头像用户重复请求）
 final Set<String> _imgProxy404Cache = {};
 
+/// 允许的 CORS Origin（仅 localhost）
+final _localhostOrigin = RegExp(r'^http://localhost(:\d+)?$');
+
+late final String _proxyAuthToken;
+
 void main() async {
-  final server = await HttpServer.bind('localhost', ResourceDomains.proxyPort);
-  print('Proxy on http://localhost:${ResourceDomains.proxyPort}');
+  _proxyAuthToken = _resolveAuthToken();
+  final port = ResourceDomains.proxyPort;
+  final server = await HttpServer.bind('localhost', port);
+  print('Proxy on http://localhost:$port');
+  if (EnvConfig.proxyAuthToken.isEmpty) {
+    print('PROXY_AUTH_TOKEN (auto-generated): $_proxyAuthToken');
+    print('Pass to Flutter: --dart-define=PROXY_AUTH_TOKEN=$_proxyAuthToken');
+  }
 
   await for (final req in server) {
     try {
-      final res = req.response;
-
-      if (req.method == 'OPTIONS') {
-        _cors(req, res);
-        res.statusCode = 204;
-        await res.close();
-        continue;
-      }
-
-      final isImgProxy = req.uri.path.startsWith('/img-proxy');
-
-      // 确定目标 URL
-      Uri target;
-      if (isImgProxy) {
-        final targetUrl = req.uri.queryParameters['url'];
-        if (targetUrl == null) {
-          res.statusCode = 400;
-          await res.close();
-          continue;
-        }
-        // 404 缓存命中：直接返回，不请求上游
-        if (_imgProxy404Cache.contains(targetUrl)) {
-          _cors(req, res);
-          res.statusCode = 404;
-          await res.close();
-          continue;
-        }
-        target = Uri.parse(targetUrl);
-      } else {
-        var path = req.uri.path;
-        final query = req.uri.query;
-        if (!path.startsWith('/2b/')) path = '/2b$path';
-        target = Uri.parse('https://${ResourceDomains.apiHost}$path${query.isNotEmpty ? '?$query' : ''}');
-      }
-
-      final client = HttpClient()
-        ..badCertificateCallback = (_, __, ___) => true;
-      final upReq = await client.openUrl(req.method, target);
-
-      if (isImgProxy) {
-        // 认证图片：根据 resource_domains 配置决定请求头
-        upReq.headers.set('Host', target.host);
-        upReq.headers.set('Referer', ResourceDomains.getReferer(target.host));
-        upReq.headers.set('User-Agent', mobileUserAgent);
-        upReq.headers.set('Accept', 'image/*,*/*;q=0.8');
-        _attachCookies(upReq);
-      } else {
-        // API：转发原始请求头 + Cookie
-        final ct = req.headers.contentType;
-        if (ct != null) upReq.headers.set('Content-Type', ct.toString());
-        upReq.headers.set('User-Agent', mobileUserAgent);
-        _attachCookies(upReq);
-      }
-
-      final body = await req.fold<List<int>>([], (a, b) => a..addAll(b));
-      if (body.isNotEmpty) {
-        upReq.bufferOutput = true;
-        upReq.headers.set('Content-Length', body.length.toString());
-        upReq.add(body);
-      }
-
-      print('>>> ${req.method} $target');
-      final upRes = await upReq.close();
-      print('<<< ${upRes.statusCode}');
-
-      // 存储上游响应的 Cookie
-      _storeCookies(upRes.headers['set-cookie']);
-
-      final bytes = await upRes.fold<List<int>>([], (a, b) => a..addAll(b));
-      client.close(force: true);
-
-      // img-proxy 404 写入缓存
-      if (isImgProxy && upRes.statusCode == 404) {
-        _imgProxy404Cache.add(req.uri.queryParameters['url']!);
-        print('  404 cached: ${req.uri.queryParameters['url']}');
-      }
-
-      res.statusCode = upRes.statusCode;
-      _cors(req, res);
-
-      // 转发 set-cookie 给浏览器
-      _forwardCookies(res, upRes.headers['set-cookie']);
-
-      res.add(bytes);
-      await res.close();
+      await _handleRequest(req);
     } catch (e, st) {
       print('ERROR: $e\n$st');
       try {
@@ -115,7 +45,156 @@ void main() async {
   }
 }
 
-/// 从 Cookie 罐中加载匹配的 Cookie 并附加到请求
+String _resolveAuthToken() {
+  if (EnvConfig.proxyAuthToken.isNotEmpty) {
+    return EnvConfig.proxyAuthToken;
+  }
+  final random = Random.secure();
+  final bytes = List<int>.generate(32, (_) => random.nextInt(256));
+  return base64Url.encode(bytes);
+}
+
+Future<void> _handleRequest(HttpRequest req) async {
+  final res = req.response;
+
+  if (req.method == 'OPTIONS') {
+    if (!_applyCors(req, res)) {
+      res.statusCode = 403;
+      await res.close();
+      return;
+    }
+    res.statusCode = 204;
+    await res.close();
+    return;
+  }
+
+  if (!_verifyAuthToken(req)) {
+    res.statusCode = 403;
+    res.write('Invalid proxy token');
+    await res.close();
+    return;
+  }
+
+  // 注销：清除代理端会话
+  if (req.method == 'POST' && req.uri.path == '/proxy/session/clear') {
+    _cookieJar.clear();
+    _imgProxy404Cache.clear();
+    if (!_applyCors(req, res)) {
+      res.statusCode = 403;
+      await res.close();
+      return;
+    }
+    res.statusCode = 204;
+    await res.close();
+    print('Session cleared');
+    return;
+  }
+
+  final isImgProxy = req.uri.path.startsWith('/img-proxy');
+
+  Uri target;
+  ResourceType? imgResourceType;
+  if (isImgProxy) {
+    final targetUrl = req.uri.queryParameters['url'];
+    if (targetUrl == null) {
+      res.statusCode = 400;
+      await res.close();
+      return;
+    }
+    if (_imgProxy404Cache.contains(targetUrl)) {
+      _applyCors(req, res);
+      res.statusCode = 404;
+      await res.close();
+      return;
+    }
+    target = Uri.parse(targetUrl);
+    if (!ResourceDomains.isAllowedProxyTarget(target)) {
+      res.statusCode = 403;
+      res.write('Target URL not allowed');
+      await res.close();
+      return;
+    }
+    imgResourceType = ResourceDomains.match(target.host)?.type;
+  } else {
+    var path = req.uri.path;
+    final query = req.uri.query;
+    if (!path.startsWith('/2b/')) path = '/2b$path';
+    target = Uri.parse(
+      'https://${ResourceDomains.apiHost}$path${query.isNotEmpty ? '?$query' : ''}',
+    );
+  }
+
+  final client = HttpClient();
+  final upReq = await client.openUrl(req.method, target);
+
+  if (isImgProxy) {
+    upReq.headers.set('Host', target.host);
+    upReq.headers.set('Referer', ResourceDomains.getReferer(target.host));
+    upReq.headers.set('User-Agent', mobileUserAgent);
+    upReq.headers.set('Accept', 'image/*,*/*;q=0.8');
+    if (imgResourceType == ResourceType.authImage) {
+      _attachCookies(upReq);
+    }
+  } else {
+    final ct = req.headers.contentType;
+    if (ct != null) upReq.headers.set('Content-Type', ct.toString());
+    upReq.headers.set('User-Agent', mobileUserAgent);
+    _attachCookies(upReq);
+  }
+
+  final body = await req.fold<List<int>>([], (a, b) => a..addAll(b));
+  if (body.isNotEmpty) {
+    upReq.bufferOutput = true;
+    upReq.headers.set('Content-Length', body.length.toString());
+    upReq.add(body);
+  }
+
+  print('>>> ${req.method} $target');
+  final upRes = await upReq.close();
+  print('<<< ${upRes.statusCode}');
+
+  _storeCookies(upRes.headers['set-cookie']);
+
+  final bytes = await upRes.fold<List<int>>([], (a, b) => a..addAll(b));
+  client.close(force: true);
+
+  if (isImgProxy && upRes.statusCode == 404) {
+    _imgProxy404Cache.add(req.uri.queryParameters['url']!);
+    print('  404 cached: ${req.uri.queryParameters['url']}');
+  }
+
+  res.statusCode = upRes.statusCode;
+  _applyCors(req, res);
+  _forwardCookies(res, upRes.headers['set-cookie']);
+
+  res.add(bytes);
+  await res.close();
+}
+
+bool _verifyAuthToken(HttpRequest req) {
+  final token = req.headers.value(proxyAuthHeader);
+  return token != null && token == _proxyAuthToken;
+}
+
+bool _applyCors(HttpRequest req, HttpResponse res) {
+  final origin = req.headers.value('Origin');
+  if (origin != null && _localhostOrigin.hasMatch(origin)) {
+    res.headers.set('Access-Control-Allow-Origin', origin);
+    res.headers.set('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS');
+    res.headers.set(
+      'Access-Control-Allow-Headers',
+      'Content-Type, Cookie, $proxyAuthHeader',
+    );
+    res.headers.set('Access-Control-Allow-Credentials', 'true');
+    return true;
+  }
+  if (origin == null) {
+    // 非浏览器直连（如 curl）无需 CORS
+    return true;
+  }
+  return false;
+}
+
 void _attachCookies(HttpClientRequest req) {
   final matched = <String>[];
   for (final entry in _cookieJar.entries) {
@@ -129,7 +208,6 @@ void _attachCookies(HttpClientRequest req) {
   }
 }
 
-/// 从响应的 Set-Cookie 头解析并存储到 Cookie 罐
 void _storeCookies(List<String>? setCookieHeaders) {
   if (setCookieHeaders == null) return;
   for (final header in setCookieHeaders) {
@@ -145,7 +223,6 @@ void _storeCookies(List<String>? setCookieHeaders) {
   }
 }
 
-/// 转发 set-cookie 给浏览器（清理 domain/secure 限制）
 void _forwardCookies(HttpResponse res, List<String>? setCookieHeaders) {
   if (setCookieHeaders == null) return;
   for (final v in setCookieHeaders) {
@@ -156,12 +233,4 @@ void _forwardCookies(HttpResponse res, List<String>? setCookieHeaders) {
     }).toList();
     res.headers.add('set-cookie', cleanedParts.join('; '));
   }
-}
-
-void _cors(HttpRequest req, HttpResponse res) {
-  final origin = req.headers.value('Origin') ?? 'http://localhost:${ResourceDomains.proxyPort}';
-  res.headers.set('Access-Control-Allow-Origin', origin);
-  res.headers.set('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS');
-  res.headers.set('Access-Control-Allow-Headers', 'Content-Type, Cookie');
-  res.headers.set('Access-Control-Allow-Credentials', 'true');
 }

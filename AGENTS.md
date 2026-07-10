@@ -24,6 +24,8 @@
 | WebView | webview_flutter | ^4.7.0 |
 | HTML 渲染 | flutter_html | ^3.0.0-beta.2 |
 | Cookie 管理 | dio_cookie_manager / cookie_jar | ^3.1.1 / ^4.0.8 |
+| 安全存储 | flutter_secure_storage | ^10.x |
+| 加密 | cryptography | ^2.x |
 | 包管理 | flutter pub | — |
 | 运行环境 | Flutter SDK >=3.4 | 支持 Web / Android / iOS / Windows / macOS / Linux |
 

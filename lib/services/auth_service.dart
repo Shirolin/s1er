@@ -1,6 +1,8 @@
 import 'dart:async';
 import 'package:flutter/foundation.dart';
 import 'package:cookie_jar/cookie_jar.dart';
+import 'package:dio/dio.dart';
+import '../config/env_config.dart';
 import '../models/user.dart';
 import 'http_client.dart';
 import 'api_service.dart';
@@ -24,6 +26,9 @@ class AuthService {
   }
 
   Future<String?> login(String username, String password) async {
+    if (!kIsWeb) {
+      throw UnsupportedError('Native login must use WebView');
+    }
     try {
       final apiService = ApiService(_httpClient);
       final error = await apiService.login(username, password);
@@ -59,10 +64,49 @@ class AuthService {
     return await _fetchProfile();
   }
 
-  void logout() {
+  Future<void> logout() async {
+    if (kIsWeb && EnvConfig.proxyAuthToken.isNotEmpty) {
+      try {
+        final proxyUrl =
+            'http://localhost:${EnvConfig.proxyPort}/proxy/session/clear';
+        await _httpClient.post(
+          proxyUrl,
+          options: Options(
+            headers: {proxyAuthHeader: EnvConfig.proxyAuthToken},
+          ),
+        );
+      } catch (e, st) {
+        talker.handle(e, st, 'Clear proxy session failed');
+      }
+    }
     _currentUser = null;
     _isLoggedIn = false;
-    _httpClient.cookieJar.deleteAll();
+    await _httpClient.cookieJar.deleteAll();
+  }
+
+  /// WebView 登录成功后同步 Cookie 并拉取资料
+  Future<String?> completeWebViewLogin() async {
+    try {
+      final ok = await checkSession();
+      if (!ok) {
+        return '登录未完成，请重试';
+      }
+      final profile = await _fetchProfile();
+      if (profile == null || profile.uid.isEmpty) {
+        return '获取用户资料失败';
+      }
+      return null;
+    } catch (e, st) {
+      talker.handle(e, st, 'WebView login completion failed');
+      return '登录失败: $e';
+    }
+  }
+
+  /// 将 WebView 读取的 Cookie 写入本地 CookieJar（原生平台）
+  Future<void> importWebViewCookies(List<Cookie> cookies) async {
+    if (kIsWeb) return;
+    final uri = Uri.parse('https://stage1st.com/2b/');
+    await _httpClient.cookieJar.saveFromResponse(uri, cookies);
   }
 
   Future<bool> checkSession() async {

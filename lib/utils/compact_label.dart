@@ -1,17 +1,13 @@
 import 'package:flutter/material.dart';
 
-/// 紧凑标签文字修正工具。
+/// 紧凑标签文字样式工具。
 ///
-/// Material [Chip] / [Badge] 配合 CJK 字体时，字形常在容器内视觉偏下；
-/// 通过收紧行高、[TextHeightBehavior] 与微量上移补偿修正。
+/// 为 [Chip] / [Badge] 等紧凑容器提供一致的 [labelSmall] 样式；
+/// 使用平台默认行高，不做额外偏移补偿。
 abstract final class CompactLabel {
-  static const textHeightBehavior = TextHeightBehavior(
-    applyHeightToFirstAscent: false,
-    applyHeightToLastDescent: false,
-  );
+  static const textHeightBehavior = TextHeightBehavior();
 
-  /// CJK 在紧凑容器内的视觉上移补偿（约 0.5–1 逻辑像素）。
-  static const visualNudge = Offset(0, -0.75);
+  static const visualNudge = Offset.zero;
 
   static TextStyle style(
     BuildContext context, {
@@ -20,7 +16,6 @@ abstract final class CompactLabel {
     FontWeight? fontWeight,
   }) {
     return (base ?? Theme.of(context).textTheme.labelSmall)!.copyWith(
-      height: 1.0,
       color: color,
       fontWeight: fontWeight,
     );

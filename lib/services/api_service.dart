@@ -591,43 +591,58 @@ class ApiService {
 
   static UserSpaceListResult _parseThreadHtml(String html, {required int page}) {
     final items = <UserSpaceItem>[];
-    final linkMatches = _threadLinkRe.allMatches(html).toList();
 
-    for (final match in linkMatches) {
-      final tid = match.group(1) ?? '';
-      final subject = _stripHtml(match.group(2) ?? '');
-      if (tid.isEmpty) continue;
-
-      String? forumName;
-      int replies = 0;
-      int views = 0;
-      int dateline = 0;
-
-      final afterLink = html.substring(match.end, match.end + 500);
-      final forumMatch = _forumNameRe.firstMatch(afterLink);
-      if (forumMatch != null) {
-        forumName = _stripHtml(forumMatch.group(1) ?? '');
+    if (html.contains('<div class="threadlist cl">')) {
+      // 手机版模板
+      final blockRe = RegExp(
+        r'<li class="list">.*?mod=viewthread&(?:amp;)?tid=(\d+).*?<em[^>]*>(.*?)</em>',
+        dotAll: true,
+      );
+      for (final m in blockRe.allMatches(html)) {
+        items.add(UserSpaceItem(
+          tid: m.group(1) ?? '',
+          subject: _stripHtml(m.group(2) ?? ''),
+          dateline: 0,
+        ),);
       }
+    } else {
+      // 桌面版模板
+      for (final match in _threadLinkRe.allMatches(html)) {
+        final tid = match.group(1) ?? '';
+        final subject = _stripHtml(match.group(2) ?? '');
+        if (tid.isEmpty) continue;
 
-      final rvMatch = _replyViewRe.firstMatch(afterLink);
-      if (rvMatch != null) {
-        replies = int.tryParse(rvMatch.group(1) ?? '') ?? 0;
-        views = int.tryParse(rvMatch.group(2) ?? '') ?? 0;
+        String? forumName;
+        int replies = 0;
+        int views = 0;
+        int dateline = 0;
+
+        final afterLink = html.substring(match.end, match.end + 500);
+        final forumMatch = _forumNameRe.firstMatch(afterLink);
+        if (forumMatch != null) {
+          forumName = _stripHtml(forumMatch.group(1) ?? '');
+        }
+
+        final rvMatch = _replyViewRe.firstMatch(afterLink);
+        if (rvMatch != null) {
+          replies = int.tryParse(rvMatch.group(1) ?? '') ?? 0;
+          views = int.tryParse(rvMatch.group(2) ?? '') ?? 0;
+        }
+
+        final dlMatch = _datelineRe.firstMatch(afterLink);
+        if (dlMatch != null) {
+          dateline = _parseDateString(dlMatch.group(1) ?? '');
+        }
+
+        items.add(UserSpaceItem(
+          tid: tid,
+          subject: subject,
+          forumName: forumName,
+          dateline: dateline,
+          replies: replies,
+          views: views,
+        ),);
       }
-
-      final dlMatch = _datelineRe.firstMatch(afterLink);
-      if (dlMatch != null) {
-        dateline = _parseDateString(dlMatch.group(1) ?? '');
-      }
-
-      items.add(UserSpaceItem(
-        tid: tid,
-        subject: subject,
-        forumName: forumName,
-        dateline: dateline,
-        replies: replies,
-        views: views,
-      ),);
     }
 
     return UserSpaceListResult(items: items, totalPages: _extractTotalPages(html, page));

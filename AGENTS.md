@@ -59,7 +59,11 @@
 
 ```
 lib/
-├── config/       # 配置常量（API 地址、应用常量）
+├── config/       # 配置常量（API 地址、应用常量、环境变量）
+│   ├── api_config.dart       # API 地址与模块名
+│   ├── constants.dart        # 应用常量（UA、限速等）
+│   ├── env_config.dart       # --dart-define 环境配置（日志、超时等）
+│   └── resource_domains.dart # 资源域名规则（代理、认证、公开）
 ├── models/       # 纯数据模型（不含业务逻辑）
 ├── providers/    # Riverpod 状态管理（连接 services 与 UI）
 ├── screens/      # 页面级 Widget（路由目标）
@@ -67,6 +71,8 @@ lib/
 ├── theme/        # Material 3 主题定义
 ├── utils/        # 工具函数（BBCode 解析等）
 ├── widgets/      # 可复用 UI 组件
+│   ├── s1_error_view.dart    # 统一错误视图（维护/登录/通用）
+│   └── ...
 ├── app.dart      # 应用入口与路由配置
 └── main.dart     # 主入口（初始化 Hive、HTTP 客户端）
 ```
@@ -109,6 +115,40 @@ lib/
 - 敏感数据范围：用户 Cookie（auth/session）通过 `PersistCookieJar` 加密存储；用户密码仅在 WebView 内传输，不经过应用代码
 - CSRF 防护：`S1HttpClient` 自动从响应提取 formhash 并注入后续 POST 请求
 - 速率限制：`S1HttpClient` 内置每秒最多 2 个请求的限速，保护 S1 服务器
+
+---
+
+## 环境变量配置（--dart-define）
+
+> 所有可通过环境调整的参数统一在 `lib/config/env_config.dart` 中定义，通过 Flutter `--dart-define` 在编译期注入，零依赖。
+
+```bash
+# 默认（仅错误日志）
+flutter run -d chrome
+
+# 查看所有请求日志
+flutter run -d chrome --dart-define=TALKER_LOG_LEVEL=all
+
+# 关闭 Talker
+flutter run -d chrome --dart-define=TALKER_ENABLED=false
+
+# 组合
+flutter run -d chrome --dart-define=TALKER_LOG_LEVEL=all --dart-define=TALKER_MAX_HISTORY=1000
+```
+
+| Key | 类型 | 默认值 | 说明 |
+|:---|:---|:---|:---|
+| `TALKER_ENABLED` | bool | `true` | Talker 日志总开关 |
+| `TALKER_LOG_LEVEL` | String | `error` | `error` 仅错误 / `all` 全部 |
+| `TALKER_MAX_HISTORY` | int | `500` | Talker 历史记录上限 |
+| `PROXY_PORT` | int | `19080` | Web CORS 代理端口 |
+| `CONNECT_TIMEOUT` | int | `20` | Dio 连接超时（秒） |
+| `RECEIVE_TIMEOUT` | int | `30` | Dio 响应超时（秒） |
+
+新增配置项规则：
+1. 在 `EnvConfig` 中添加 `static const` 字段，使用 `Xxx.fromEnvironment('KEY', defaultValue: ...)` 
+2. 使用处引用 `EnvConfig.xxx`，禁止硬编码
+3. 代理端口需与 `scripts/proxy_server.dart` 保持一致
 
 ---
 

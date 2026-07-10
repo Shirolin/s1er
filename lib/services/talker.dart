@@ -1,9 +1,10 @@
 import 'package:talker_flutter/talker_flutter.dart';
+import '../config/env_config.dart';
 
 final talker = TalkerFlutter.init(
   settings: TalkerSettings(
-    enabled: true,
+    enabled: EnvConfig.talkerEnabled,
     useHistory: true,
-    maxHistoryItems: 500,
+    maxHistoryItems: EnvConfig.talkerMaxHistory,
   ),
 );

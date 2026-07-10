@@ -4,6 +4,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:hive_flutter/hive_flutter.dart';
 import 'package:talker_dio_logger/talker_dio_logger.dart';
 import 'app.dart';
+import 'config/env_config.dart';
 import 'models/emoticon.dart';
 import 'services/http_client.dart';
 import 'services/talker.dart';
@@ -53,8 +54,8 @@ void main() async {
         printResponseData: false,
         printResponseHeaders: false,
         printResponseMessage: true,
-        requestFilter: (_) => false,
-        responseFilter: (_) => false,
+        requestFilter: EnvConfig.talkerLogAll ? null : (_) => false,
+        responseFilter: EnvConfig.talkerLogAll ? null : (_) => false,
       ),
     ),
   );

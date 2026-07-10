@@ -6,6 +6,7 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:path_provider/path_provider.dart';
 import '../config/constants.dart';
+import '../config/env_config.dart';
 import '../config/resource_domains.dart';
 import 'formhash_service.dart';
 
@@ -17,7 +18,7 @@ class S1HttpClient {
   final List<DateTime> _requestTimestamps = [];
   final Ref _ref;
 
-  static const String _proxyUrl = 'http://localhost:${ResourceDomains.proxyPort}';
+  static String get _proxyUrl => 'http://localhost:${EnvConfig.proxyPort}';
   static bool get _isWeb => kIsWeb;
 
   PersistCookieJar get cookieJar => _cookieJar;
@@ -43,8 +44,8 @@ class S1HttpClient {
     }
 
     _dio = Dio(BaseOptions(
-      connectTimeout: const Duration(seconds: 10),
-      receiveTimeout: const Duration(seconds: 15),
+      connectTimeout: const Duration(seconds: EnvConfig.connectTimeoutSeconds),
+      receiveTimeout: const Duration(seconds: EnvConfig.receiveTimeoutSeconds),
       headers: headers,
     ),);
 

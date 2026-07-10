@@ -37,7 +37,9 @@
 lib/
 ├── config/              # 配置
 │   ├── api_config.dart      # API 地址与模块名
-│   └── constants.dart       # 应用常量（UA、限速等）
+│   ├── constants.dart       # 应用常量（UA、限速等）
+│   ├── env_config.dart      # --dart-define 环境变量配置
+│   └── resource_domains.dart# 资源域名规则
 ├── models/              # 数据模型
 │   ├── emoticon.dart        # 表情映射
 │   ├── forum_category.dart  # 版块分类
@@ -73,6 +75,7 @@ lib/
 │   ├── image_viewer.dart       # 图片查看器
 │   ├── post_item.dart          # 回复卡片
 │   ├── quote_block.dart        # 引用块
+│   ├── s1_error_view.dart      # 统一错误视图（维护/登录/通用）
 │   ├── thread_card.dart        # 主题卡片
 │   └── web_avatar.dart         # 跨平台头像组件
 ├── app.dart             # 应用入口与路由

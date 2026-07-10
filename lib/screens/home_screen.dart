@@ -6,9 +6,9 @@ import '../providers/auth_provider.dart';
 import '../providers/forum_list_provider.dart';
 import '../providers/settings_provider.dart';
 import '../models/forum_category.dart';
-import '../services/api_service.dart';
 import '../theme/app_theme.dart';
 import '../widgets/app_bar_more_menu.dart';
+import '../widgets/s1_error_view.dart';
 import '../utils/compact_label.dart';
 import '../utils/format_utils.dart';
 import 'profile_screen.dart';
@@ -93,7 +93,11 @@ class _ForumTab extends ConsumerWidget {
           Expanded(child: SizedBox()),
         ],
       ),
-      error: (e, st) => _ForumErrorView(error: e),
+      error: (e, st) => S1ErrorView(
+        error: e,
+        onRetry: () => ref.read(forumListProvider.notifier).refresh(),
+        onLogin: () => context.push('/login'),
+      ),
       data: (categories) => Scrollbar(
         child: RefreshIndicator(
           onRefresh: () => ref.read(forumListProvider.notifier).refresh(),
@@ -104,59 +108,6 @@ class _ForumTab extends ConsumerWidget {
             itemBuilder: (context, index) =>
                 _ForumCategoryTile(category: categories[index]),
           ),
-        ),
-      ),
-    );
-  }
-}
-
-class _ForumErrorView extends ConsumerWidget {
-
-  const _ForumErrorView({required this.error});
-  final Object error;
-
-  @override
-  Widget build(BuildContext context, WidgetRef ref) {
-    final isLogin = error is LoginRequiredException;
-    return Center(
-      child: Padding(
-        padding: const EdgeInsets.all(32),
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Icon(
-              isLogin ? Icons.lock_outline : Icons.error_outline,
-              size: 56,
-              color: isLogin ? Theme.of(context).colorScheme.onSurfaceVariant : Theme.of(context).colorScheme.error,
-            ),
-            const SizedBox(height: 16),
-            Text(
-              isLogin ? '请先登录' : '加载失败',
-              style: Theme.of(context).textTheme.titleMedium,
-            ),
-            if (!isLogin) ...[
-              const SizedBox(height: 8),
-              Text(
-                error.toString(),
-                style: Theme.of(context).textTheme.bodySmall?.copyWith(color: Theme.of(context).colorScheme.onSurfaceVariant),
-                textAlign: TextAlign.center,
-                maxLines: 3,
-                overflow: TextOverflow.ellipsis,
-              ),
-            ],
-            const SizedBox(height: 24),
-            FilledButton.icon(
-              onPressed: () {
-                if (isLogin) {
-                  context.push('/login');
-                } else {
-                  ref.read(forumListProvider.notifier).refresh();
-                }
-              },
-              icon: Icon(isLogin ? Icons.login : Icons.refresh),
-              label: Text(isLogin ? '去登录' : '重试'),
-            ),
-          ],
         ),
       ),
     );

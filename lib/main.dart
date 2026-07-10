@@ -47,12 +47,14 @@ void main() async {
   httpClient.dio.interceptors.add(
     TalkerDioLogger(
       talker: talker,
-      settings: const TalkerDioLoggerSettings(
+      settings: TalkerDioLoggerSettings(
         printRequestData: false,
         printRequestHeaders: false,
         printResponseData: false,
         printResponseHeaders: false,
         printResponseMessage: true,
+        requestFilter: (_) => false,
+        responseFilter: (_) => false,
       ),
     ),
   );

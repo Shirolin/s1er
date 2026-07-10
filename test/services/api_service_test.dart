@@ -400,5 +400,67 @@ void main() {
         expect(ApiService.parseReplyResponse(''), equals('服务器返回未知响应'));
       });
     });
+
+    group('ServerMaintenanceException', () {
+      test('ensureJson throws on HTML response', () {
+        const html = '<!DOCTYPE html><html><body>'
+            '<div id="messagetext" class="alert_error"><p>姨妈一会，太卡了</p></div>'
+            '</body></html>';
+        expect(
+          () => ApiService.ensureJson(html),
+          throwsA(isA<ServerMaintenanceException>()),
+        );
+      });
+
+      test('ensureJson extracts maintenance message from HTML', () {
+        const html = '<!DOCTYPE html><html><body>'
+            '<div id="messagetext" class="alert_error"><p>姨妈一会，太卡了</p></div>'
+            '</body></html>';
+        try {
+          ApiService.ensureJson(html);
+          fail('Expected ServerMaintenanceException');
+        } catch (e) {
+          expect(e, isA<ServerMaintenanceException>());
+          expect((e as ServerMaintenanceException).message, '姨妈一会，太卡了');
+        }
+      });
+
+      test('ensureJson falls back to default message when no messagetext div', () {
+        const html = '<!DOCTYPE html><html><body><p>Something else</p></body></html>';
+        try {
+          ApiService.ensureJson(html);
+          fail('Expected ServerMaintenanceException');
+        } catch (e) {
+          expect(e, isA<ServerMaintenanceException>());
+          expect((e as ServerMaintenanceException).message, '服务器维护中，请稍后再试');
+        }
+      });
+
+      test('ensureJson parses valid JSON string', () {
+        const json = '{"Variables": {}}';
+        final result = ApiService.ensureJson(json);
+        expect(result, isA<Map<String, dynamic>>());
+      });
+
+      test('ensureJson accepts Map directly', () {
+        final map = <String, dynamic>{'Variables': <String, dynamic>{}};
+        final result = ApiService.ensureJson(map);
+        expect(result, map);
+      });
+
+      test('extractMaintenanceMessage extracts message from real S1 HTML', () {
+        const html = '<div id="messagetext" class="alert_error">\n'
+            '<p>姨妈一会，太卡了</p>\n'
+            '<script type="text/javascript">';
+        expect(ApiService.extractMaintenanceMessage(html), '姨妈一会，太卡了');
+      });
+
+      test('extractMaintenanceMessage returns fallback for empty HTML', () {
+        expect(
+          ApiService.extractMaintenanceMessage('<html></html>'),
+          '服务器维护中，请稍后再试',
+        );
+      });
+    });
   });
 }

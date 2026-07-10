@@ -5,11 +5,11 @@ import '../config/api_config.dart';
 import '../providers/post_provider.dart';
 import '../providers/auth_provider.dart';
 import '../providers/reading_history_provider.dart';
-import '../services/api_service.dart';
 import '../widgets/app_bar_more_menu.dart';
 import '../widgets/pagination_bar.dart';
 import '../widgets/post_item.dart';
 import '../widgets/poll_card.dart';
+import '../widgets/s1_error_view.dart';
 import '../widgets/s1_fab_layout.dart';
 import '../utils/s1_snack_bar.dart';
 
@@ -210,42 +210,12 @@ class _ThreadDetailScreenState extends ConsumerState<ThreadDetailScreen> {
             Expanded(child: SizedBox()),
           ],
         ),
-        error: (e, st) {
-          final scheme = Theme.of(context).colorScheme;
-          return Center(
-            child: SingleChildScrollView(
-              child: Column(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  if (e is LoginRequiredException) ...[
-                    Icon(Icons.lock_outline, size: 64, color: scheme.onSurfaceVariant),
-                    const SizedBox(height: 16),
-                    Text('请先登录', style: Theme.of(context).textTheme.titleMedium),
-                    const SizedBox(height: 16),
-                    FilledButton.icon(
-                      onPressed: () => context.push('/login'),
-                      icon: const Icon(Icons.login),
-                      label: const Text('去登录'),
-                    ),
-                  ] else ...[
-                    Icon(Icons.error_outline, size: 56, color: scheme.error),
-                    const SizedBox(height: 16),
-                    Text(e.toString(),
-                      textAlign: TextAlign.center,
-                      style: Theme.of(context).textTheme.bodyMedium?.copyWith(color: scheme.error),
-                    ),
-                    FilledButton.icon(
-                      onPressed: () =>
-                          ref.read(postProvider(widget.tid).notifier).refresh(),
-                      icon: const Icon(Icons.refresh),
-                      label: const Text('重试'),
-                    ),
-                  ],
-                ],
-              ),
-            ),
-          );
-        },
+        error: (e, st) => S1ErrorView(
+          error: e,
+          onRetry: () =>
+              ref.read(postProvider(widget.tid).notifier).refresh(),
+          onLogin: () => context.push('/login'),
+        ),
         data: (state) {
           final fabPadding = S1FabLayout.contentBottomPadding(
             showSecondary: _showScrollToTop,

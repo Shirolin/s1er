@@ -13,16 +13,43 @@ class LoginRequiredException implements Exception {
   String toString() => '请先登录';
 }
 
+class ServerMaintenanceException implements Exception {
+  ServerMaintenanceException([this.message = '服务器维护中']);
+  final String message;
+  @override
+  String toString() => message;
+}
+
 class ApiService {
 
   ApiService(this._httpClient);
   final S1HttpClient _httpClient;
 
   /// Dio 未自动解析 JSON 时，response.data 可能是 String
-  static Map<String, dynamic> _ensureJson(dynamic data) {
+  static Map<String, dynamic> ensureJson(dynamic data) {
     if (data is Map<String, dynamic>) return data;
-    if (data is String) return jsonDecode(data) as Map<String, dynamic>;
+    if (data is String) {
+      final trimmed = data.trimLeft();
+      if (trimmed.startsWith('<!DOCTYPE') || trimmed.startsWith('<html')) {
+        final msg = extractMaintenanceMessage(data);
+        throw ServerMaintenanceException(msg);
+      }
+      return jsonDecode(data) as Map<String, dynamic>;
+    }
     throw FormatException('Unexpected response type: ${data.runtimeType}');
+  }
+
+  static String extractMaintenanceMessage(String html) {
+    final match = RegExp(
+      r'<div\s+id="messagetext"[^>]*>\s*<p>(.*?)</p>',
+      caseSensitive: false,
+      dotAll: true,
+    ).firstMatch(html);
+    if (match != null) {
+      final raw = match.group(1)!.replaceAll(RegExp(r'<[^>]+>'), '').trim();
+      if (raw.isNotEmpty) return raw;
+    }
+    return '服务器维护中，请稍后再试';
   }
 
   static String buildApiUrl({
@@ -170,7 +197,7 @@ class ApiService {
   Future<List<ForumCategory>> getForumList() async {
     final url = buildApiUrl(module: ApiConfig.moduleForumIndex);
     final response = await _httpClient.get(url);
-    final json = _ensureJson(response.data);
+    final json = ensureJson(response.data);
     checkAuthError(json);
     return parseForumList(json);
   }
@@ -186,7 +213,7 @@ class ApiService {
       params: {'fid': fid, 'page': page.toString()},
     );
     final response = await _httpClient.get(url);
-    final json = _ensureJson(response.data);
+    final json = ensureJson(response.data);
     checkAuthError(json);
     return json;
   }
@@ -197,7 +224,7 @@ class ApiService {
       params: {'tid': tid, 'page': page.toString()},
     );
     final response = await _httpClient.get(url);
-    final json = _ensureJson(response.data);
+    final json = ensureJson(response.data);
     checkAuthError(json);
     return json;
   }
@@ -411,7 +438,7 @@ class ApiService {
     try {
       final url = buildApiUrl(module: ApiConfig.moduleForumIndex);
       final response = await _httpClient.get(url);
-      final json = _ensureJson(response.data);
+      final json = ensureJson(response.data);
       checkAuthError(json);
       final variables = json['Variables'] as Map<String, dynamic>?;
       if (variables == null) return null;
@@ -435,7 +462,7 @@ class ApiService {
           params: {'uid': uid},
         );
         final profileResponse = await _httpClient.get(profileUrl);
-        final profileJson = _ensureJson(profileResponse.data);
+        final profileJson = ensureJson(profileResponse.data);
         final profileVars = profileJson['Variables'] as Map<String, dynamic>?;
         if (profileVars != null) {
           final space = profileVars['space'] as Map<String, dynamic>?;
@@ -468,7 +495,7 @@ class ApiService {
         params: {'uid': uid},
       );
       final response = await _httpClient.get(profileUrl);
-      final json = _ensureJson(response.data);
+      final json = ensureJson(response.data);
       final variables = json['Variables'] as Map<String, dynamic>?;
       if (variables == null) return null;
 

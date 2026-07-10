@@ -27,9 +27,6 @@ class AuthService {
   }
 
   Future<String?> login(String username, String password) async {
-    if (!kIsWeb) {
-      throw UnsupportedError('Native login must use WebView');
-    }
     try {
       final apiService = ApiService(_httpClient);
       final error = await apiService.login(username, password);
@@ -84,30 +81,6 @@ class AuthService {
     if (!kIsWeb) {
       await _httpClient.cookieJar.deleteAll();
     }
-  }
-
-  /// WebView 登录成功后同步 Cookie 并拉取资料
-  Future<String?> completeWebViewLogin() async {
-    try {
-      final ok = await checkSession();
-      if (!ok) {
-        return '登录未完成，请重试';
-      }
-      final profile = await _fetchProfile();
-      if (profile == null || profile.uid.isEmpty) {
-        return '获取用户资料失败';
-      }
-      return null;
-    } catch (e, st) {
-      return friendlyError(e, '登录', st);
-    }
-  }
-
-  /// 将 WebView 读取的 Cookie 写入本地 CookieJar（原生平台）
-  Future<void> importWebViewCookies(List<Cookie> cookies) async {
-    if (kIsWeb) return;
-    final uri = Uri.parse('https://stage1st.com/2b/');
-    await _httpClient.cookieJar.saveFromResponse(uri, cookies);
   }
 
   Future<bool> checkSession() async {

@@ -109,6 +109,7 @@ class _UserSpaceScreenState extends ConsumerState<UserSpaceScreen>
               totalPages: state.threadTotalPages,
               scrollController: _threadScrollController,
               uid: widget.uid,
+              isSelf: widget.isSelf,
             ),
             _ReplyList(
               items: state.replies,
@@ -116,6 +117,7 @@ class _UserSpaceScreenState extends ConsumerState<UserSpaceScreen>
               totalPages: state.replyTotalPages,
               scrollController: _replyScrollController,
               uid: widget.uid,
+              isSelf: widget.isSelf,
             ),
           ],
         ),
@@ -131,12 +133,14 @@ class _ThreadList extends ConsumerWidget {
     required this.totalPages,
     required this.scrollController,
     required this.uid,
+    required this.isSelf,
   });
   final List<UserSpaceItem> items;
   final int currentPage;
   final int totalPages;
   final ScrollController scrollController;
   final String uid;
+  final bool isSelf;
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -164,7 +168,7 @@ class _ThreadList extends ConsumerWidget {
           totalPages: totalPages,
           onPageChanged: (page) async {
             await ref
-                .read(userSpaceProvider(uid).notifier)
+                .read(userSpaceProvider((uid, isSelf)).notifier)
                 .goToThreadPage(page);
             if (scrollController.hasClients) {
               scrollController.jumpTo(0);
@@ -183,12 +187,14 @@ class _ReplyList extends ConsumerWidget {
     required this.totalPages,
     required this.scrollController,
     required this.uid,
+    required this.isSelf,
   });
   final List<UserSpaceItem> items;
   final int currentPage;
   final int totalPages;
   final ScrollController scrollController;
   final String uid;
+  final bool isSelf;
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -216,7 +222,7 @@ class _ReplyList extends ConsumerWidget {
           totalPages: totalPages,
           onPageChanged: (page) async {
             await ref
-                .read(userSpaceProvider(uid).notifier)
+                .read(userSpaceProvider((uid, isSelf)).notifier)
                 .goToReplyPage(page);
             if (scrollController.hasClients) {
               scrollController.jumpTo(0);

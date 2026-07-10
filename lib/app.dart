@@ -9,7 +9,6 @@ import 'config/resource_domains.dart';
 import 'providers/settings_provider.dart';
 import 'screens/home_screen.dart';
 import 'screens/login_screen.dart';
-import 'screens/login_webview_screen.dart';
 import 'screens/forum_list_screen.dart';
 import 'screens/thread_detail_screen.dart';
 import 'screens/compose_screen.dart';
@@ -79,10 +78,6 @@ final _router = GoRouter(
     GoRoute(
       path: '/login',
       builder: (context, state) => const LoginScreen(),
-    ),
-    GoRoute(
-      path: '/login-webview',
-      builder: (context, state) => const LoginWebViewScreen(),
     ),
     GoRoute(
       path: '/compose',

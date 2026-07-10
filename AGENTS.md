@@ -112,9 +112,9 @@ lib/
 
 ## 安全边界
 
-- Secrets 管理方式：API 地址硬编码于 `ApiConfig`（公开论坛 API，无密钥）；用户凭据通过 WebView 登录流程处理，不在客户端存储明文密码
+- Secrets 管理方式：API 地址硬编码于 `ApiConfig`（公开论坛 API，无密钥）；用户凭据通过 API 登录表单提交，不在客户端持久化明文密码
 - 认证方案：Cookie-based（Discuz! 原生 Cookie 认证） + formhash CSRF 防护
-- 敏感数据范围：用户 Cookie（auth/session）通过 `PersistCookieJar` 加密存储；用户密码仅在 WebView 内传输，不经过应用代码
+- 敏感数据范围：用户 Cookie（auth/session）通过 `PersistCookieJar` 加密存储；用户密码仅在登录请求中传输，不本地持久化
 - CSRF 防护：`S1HttpClient` 自动从响应提取 formhash 并注入后续 POST 请求
 - 速率限制：`S1HttpClient` 内置每秒最多 2 个请求的限速，保护 S1 服务器
 
@@ -173,7 +173,7 @@ flutter run -d chrome --dart-define=TALKER_LOG_LEVEL=all --dart-define=TALKER_MA
 
 - flutter_html 使用 beta 版本（^3.0.0-beta.2），API 可能不稳定，升级时需谨慎
 - Web 端受 CORS 限制，开发时需启动 `scripts/proxy_server.dart` 代理服务器
-- 登录流程平台分化：原生平台走 WebView，Web 平台走 API 表单登录，两套逻辑需同时维护
+- 登录流程：全平台统一走 API 表单登录（`ApiService.login()`）；Web 端需配合 CORS 代理
 - Hive 用于本地存储（cookies / settings / cache），未做加密，生产环境可考虑迁移到 hive 加密 box 或 flutter_secure_storage
 - 表情包资源通过脚本从 GitHub 下载（`scripts/download_emoticons.dart`），未内置到仓库
 - test 目录已有基础测试，但覆盖率不足，尤其是 screens 和 widgets 层

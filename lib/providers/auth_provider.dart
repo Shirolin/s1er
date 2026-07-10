@@ -4,6 +4,7 @@ import '../models/user.dart';
 import '../services/auth_service.dart';
 import '../services/http_client.dart';
 import '../services/reading_history_service.dart';
+import 'forum_list_provider.dart';
 import 'reading_history_provider.dart';
 
 final authServiceProvider = Provider<AuthService>((ref) {
@@ -67,17 +68,8 @@ class AuthNotifier extends StateNotifier<AuthState> {
     final error = await _authService.login(username, password);
     if (error == null) {
       _syncStateFromService();
-      // profile 由 AuthService.login 内 _fetchProfile 拉取，此处轮询等待 uid
       await _waitForProfile();
-    }
-    return error;
-  }
-
-  Future<String?> completeWebViewLogin() async {
-    final error = await _authService.completeWebViewLogin();
-    if (error == null) {
-      _syncStateFromService();
-      _maybeMigrateGuestHistory();
+      _ref.invalidate(forumListProvider);
     }
     return error;
   }
@@ -107,6 +99,7 @@ class AuthNotifier extends StateNotifier<AuthState> {
   Future<void> logout() async {
     await _authService.logout();
     state = AuthState();
+    _ref.invalidate(forumListProvider);
   }
 }
 

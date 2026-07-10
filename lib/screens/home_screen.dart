@@ -27,6 +27,18 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
   Widget build(BuildContext context) {
     final isLoggedIn = ref.watch(authStateProvider).isLoggedIn;
 
+    ref.listen<AuthState>(authStateProvider, (previous, next) {
+      final wasLoggedIn = previous?.isLoggedIn ?? false;
+      if (!wasLoggedIn && next.isLoggedIn) {
+        // 游客「我的」(index 1) 登录后会误落到「搜索」，强制回到论坛并刷新列表
+        setState(() => _currentTab = 0);
+        ref.invalidate(forumListProvider);
+      } else if (wasLoggedIn && !next.isLoggedIn && _currentTab > 1) {
+        setState(() => _currentTab = 0);
+        ref.invalidate(forumListProvider);
+      }
+    });
+
     // 游客模式下只有 2 个 Tab（论坛/我的），若当前索引越界则重置
     if (!isLoggedIn && _currentTab > 1) {
       _currentTab = 0;
@@ -112,18 +124,45 @@ class _ForumTab extends ConsumerWidget {
         onRetry: () => ref.read(forumListProvider.notifier).refresh(),
         onLogin: () => context.push('/login'),
       ),
-      data: (categories) => Scrollbar(
-        child: RefreshIndicator(
-          onRefresh: () => ref.read(forumListProvider.notifier).refresh(),
-          child: ListView.builder(
-            primary: true,
-            padding: const EdgeInsets.only(bottom: 16),
-            itemCount: categories.length,
-            itemBuilder: (context, index) =>
-                _ForumCategoryTile(category: categories[index]),
+      data: (categories) {
+        if (categories.isEmpty) {
+          return Center(
+            child: Padding(
+              padding: const EdgeInsets.all(32),
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  const Icon(Icons.forum_outlined, size: 48),
+                  const SizedBox(height: 16),
+                  Text(
+                    '暂无版块数据',
+                    style: Theme.of(context).textTheme.titleMedium,
+                  ),
+                  const SizedBox(height: 8),
+                  Text(
+                    '请下拉刷新或稍后重试',
+                    style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                          color: Theme.of(context).colorScheme.onSurfaceVariant,
+                        ),
+                  ),
+                ],
+              ),
+            ),
+          );
+        }
+        return Scrollbar(
+          child: RefreshIndicator(
+            onRefresh: () => ref.read(forumListProvider.notifier).refresh(),
+            child: ListView.builder(
+              primary: true,
+              padding: const EdgeInsets.only(bottom: 16),
+              itemCount: categories.length,
+              itemBuilder: (context, index) =>
+                  _ForumCategoryTile(category: categories[index]),
+            ),
           ),
-        ),
-      ),
+        );
+      },
     );
   }
 }

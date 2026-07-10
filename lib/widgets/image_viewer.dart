@@ -162,15 +162,24 @@ class _ImageViewerState extends ConsumerState<ImageViewer> {
     // Web 公开资源：原生 <img>，无 CORS
     if (_resourceType == ResourceType.publicAsset && kIsWeb) {
       final scheme = Theme.of(context).colorScheme;
-      Widget child = GestureDetector(
-        onTap: () => _showFullScreen(context),
-        child: LayoutBuilder(
-          builder: (context, constraints) {
-            final w = constraints.hasBoundedWidth ? constraints.maxWidth : 300.0;
-            final h = w / _webAspectRatio;
-            return buildWebImage(widget.imageUrl, width: w, height: h);
-          },
-        ),
+      // HtmlElementView 是平台视图，浏览器 <img> 会消费点击事件，
+      // GestureDetector 包在外面收不到。改用 Stack 叠加透明点击层。
+      Widget child = LayoutBuilder(
+        builder: (context, constraints) {
+          final w = constraints.hasBoundedWidth ? constraints.maxWidth : 300.0;
+          final h = w / _webAspectRatio;
+          return Stack(
+            children: [
+              buildWebImage(widget.imageUrl, width: w, height: h),
+              Positioned.fill(
+                child: GestureDetector(
+                  onTap: () => _showFullScreen(context),
+                  behavior: HitTestBehavior.translucent,
+                ),
+              ),
+            ],
+          );
+        },
       );
 
       if (widget.showBorder) {

@@ -76,7 +76,7 @@ class UserSpaceNotifier extends StateNotifier<AsyncValue<UserSpaceState>> {
     if (current != null && current.replies.isNotEmpty) return;
     try {
       final result = await _apiService.getUserSpaceList(uid: uid, type: 'reply');
-      state = AsyncValue.data(current!.copyWith(
+      state = AsyncValue.data((current ?? UserSpaceState()).copyWith(
         replies: result.items,
         replyTotalPages: result.totalPages,
       ),);

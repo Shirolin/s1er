@@ -14,6 +14,7 @@ import '../widgets/post_item.dart';
 import '../widgets/poll_card.dart';
 import '../widgets/s1_error_view.dart';
 import '../widgets/s1_fab_layout.dart';
+import '../widgets/s1_swipe_pagination.dart';
 import '../utils/s1_snack_bar.dart';
 
 class ThreadDetailScreen extends ConsumerStatefulWidget {
@@ -33,7 +34,7 @@ class ThreadDetailScreen extends ConsumerStatefulWidget {
 }
 
 class _ThreadDetailScreenState extends ConsumerState<ThreadDetailScreen> {
-  final _scrollController = ScrollController();
+  final _swipeKey = GlobalKey<S1SwipePaginationState>();
   final _targetKey = GlobalKey();
   String? _scrollOncePid;
   bool _showScrollToTop = false;
@@ -44,7 +45,6 @@ class _ThreadDetailScreenState extends ConsumerState<ThreadDetailScreen> {
   @override
   void initState() {
     super.initState();
-    _scrollController.addListener(_onScroll);
     
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (!mounted) return;
@@ -107,26 +107,15 @@ class _ThreadDetailScreenState extends ConsumerState<ThreadDetailScreen> {
     });
   }
 
-  @override
-  void dispose() {
-    _scrollController.removeListener(_onScroll);
-    _scrollController.dispose();
-    super.dispose();
-  }
-
-  void _onScroll() {
-    final show = _scrollController.offset > 400;
+  void _onScrollOffsetChanged(double offset) {
+    final show = offset > 400;
     if (show != _showScrollToTop) {
       setState(() => _showScrollToTop = show);
     }
   }
 
   void _scrollToTop() {
-    _scrollController.animateTo(
-      0,
-      duration: const Duration(milliseconds: 300),
-      curve: Curves.easeOutCubic,
-    );
+    _swipeKey.currentState?.scrollToTop();
   }
 
   bool _showsPollOnPage(PostListState state) =>
@@ -383,20 +372,30 @@ class _ThreadDetailScreenState extends ConsumerState<ThreadDetailScreen> {
                         )
                       : null,
                 ),
-                child: Scrollbar(
-                  controller: _scrollController,
-                  child: state.posts.isEmpty
-                      ? const Center(child: Text('暂无回复'))
-                      : SingleChildScrollView(
-                          controller: _scrollController,
-                          padding: EdgeInsets.only(bottom: fabPadding),
-                          child: Column(
-                            children: List.generate(
-                              _detailItemCount(state),
-                              (index) => _buildDetailItem(context, state, index),
+                child: S1SwipePagination(
+                  key: _swipeKey,
+                  currentPage: state.currentPage,
+                  totalPages: state.totalPages,
+                  onScrollOffsetChanged: _onScrollOffsetChanged,
+                  onPageChanged: (page) => ref
+                      .read(postProvider(widget.tid).notifier)
+                      .goToPage(page),
+                  pageBuilder: (context, scrollController) => Scrollbar(
+                    controller: scrollController,
+                    child: state.posts.isEmpty
+                        ? const Center(child: Text('暂无回复'))
+                        : SingleChildScrollView(
+                            controller: scrollController,
+                            padding: EdgeInsets.only(bottom: fabPadding),
+                            child: Column(
+                              children: List.generate(
+                                _detailItemCount(state),
+                                (index) =>
+                                    _buildDetailItem(context, state, index),
+                              ),
                             ),
                           ),
-                        ),
+                  ),
                 ),
               ),
             ),
@@ -409,16 +408,9 @@ class _ThreadDetailScreenState extends ConsumerState<ThreadDetailScreen> {
                 final end = page * state.perPage;
                 return '第 $start - $end 楼';
               },
-              onPageChanged: (page) async {
-                await ref.read(postProvider(widget.tid).notifier).goToPage(page);
-                if (_scrollController.hasClients) {
-                  await _scrollController.animateTo(
-                    0,
-                    duration: const Duration(milliseconds: 300),
-                    curve: Curves.easeOutCubic,
-                  );
-                }
-              },
+              onPageChanged: (page) => ref
+                  .read(postProvider(widget.tid).notifier)
+                  .goToPage(page),
             ),
           ],
         );

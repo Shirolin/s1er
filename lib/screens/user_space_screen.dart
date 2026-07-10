@@ -9,6 +9,7 @@ import '../utils/format_utils.dart';
 import '../widgets/app_bar_more_menu.dart';
 import '../widgets/pagination_bar.dart';
 import '../widgets/s1_error_view.dart';
+import '../widgets/s1_swipe_pagination.dart';
 
 class UserSpaceScreen extends ConsumerStatefulWidget {
   const UserSpaceScreen({
@@ -30,8 +31,6 @@ class UserSpaceScreen extends ConsumerStatefulWidget {
 class _UserSpaceScreenState extends ConsumerState<UserSpaceScreen>
     with SingleTickerProviderStateMixin {
   late final TabController _tabController;
-  final _threadScrollController = ScrollController();
-  final _replyScrollController = ScrollController();
 
   @override
   void initState() {
@@ -46,8 +45,6 @@ class _UserSpaceScreenState extends ConsumerState<UserSpaceScreen>
   @override
   void dispose() {
     _tabController.dispose();
-    _threadScrollController.dispose();
-    _replyScrollController.dispose();
     super.dispose();
   }
 
@@ -91,12 +88,12 @@ class _UserSpaceScreenState extends ConsumerState<UserSpaceScreen>
         ),
         data: (state) => TabBarView(
           controller: _tabController,
+          physics: const NeverScrollableScrollPhysics(),
           children: [
             _ThreadList(
               items: state.threads,
               currentPage: state.threadPage,
               totalPages: state.threadTotalPages,
-              scrollController: _threadScrollController,
               uid: widget.uid,
               isSelf: widget.isSelf,
             ),
@@ -104,7 +101,6 @@ class _UserSpaceScreenState extends ConsumerState<UserSpaceScreen>
               items: state.replies,
               currentPage: state.replyPage,
               totalPages: state.replyTotalPages,
-              scrollController: _replyScrollController,
               uid: widget.uid,
               isSelf: widget.isSelf,
             ),
@@ -120,14 +116,12 @@ class _ThreadList extends ConsumerWidget {
     required this.items,
     required this.currentPage,
     required this.totalPages,
-    required this.scrollController,
     required this.uid,
     required this.isSelf,
   });
   final List<UserSpaceItem> items;
   final int currentPage;
   final int totalPages;
-  final ScrollController scrollController;
   final String uid;
   final bool isSelf;
 
@@ -144,23 +138,25 @@ class _ThreadList extends ConsumerWidget {
     return Column(
       children: [
         Expanded(
-          child: ListView.builder(
-            controller: scrollController,
-            itemCount: items.length,
-            itemBuilder: (context, index) => _ThreadCard(item: items[index]),
+          child: S1SwipePagination(
+            currentPage: currentPage,
+            totalPages: totalPages,
+            onPageChanged: (page) => ref
+                .read(userSpaceProvider((uid, isSelf)).notifier)
+                .goToThreadPage(page),
+            pageBuilder: (context, scrollController) => ListView.builder(
+              controller: scrollController,
+              itemCount: items.length,
+              itemBuilder: (context, index) => _ThreadCard(item: items[index]),
+            ),
           ),
         ),
         PaginationBar(
           currentPage: currentPage,
           totalPages: totalPages,
-          onPageChanged: (page) async {
-            await ref
-                .read(userSpaceProvider((uid, isSelf)).notifier)
-                .goToThreadPage(page);
-            if (scrollController.hasClients) {
-              scrollController.jumpTo(0);
-            }
-          },
+          onPageChanged: (page) => ref
+              .read(userSpaceProvider((uid, isSelf)).notifier)
+              .goToThreadPage(page),
         ),
       ],
     );
@@ -172,14 +168,12 @@ class _ReplyList extends ConsumerWidget {
     required this.items,
     required this.currentPage,
     required this.totalPages,
-    required this.scrollController,
     required this.uid,
     required this.isSelf,
   });
   final List<UserSpaceItem> items;
   final int currentPage;
   final int totalPages;
-  final ScrollController scrollController;
   final String uid;
   final bool isSelf;
 
@@ -196,23 +190,25 @@ class _ReplyList extends ConsumerWidget {
     return Column(
       children: [
         Expanded(
-          child: ListView.builder(
-            controller: scrollController,
-            itemCount: items.length,
-            itemBuilder: (context, index) => _ReplyCard(item: items[index]),
+          child: S1SwipePagination(
+            currentPage: currentPage,
+            totalPages: totalPages,
+            onPageChanged: (page) => ref
+                .read(userSpaceProvider((uid, isSelf)).notifier)
+                .goToReplyPage(page),
+            pageBuilder: (context, scrollController) => ListView.builder(
+              controller: scrollController,
+              itemCount: items.length,
+              itemBuilder: (context, index) => _ReplyCard(item: items[index]),
+            ),
           ),
         ),
         PaginationBar(
           currentPage: currentPage,
           totalPages: totalPages,
-          onPageChanged: (page) async {
-            await ref
-                .read(userSpaceProvider((uid, isSelf)).notifier)
-                .goToReplyPage(page);
-            if (scrollController.hasClients) {
-              scrollController.jumpTo(0);
-            }
-          },
+          onPageChanged: (page) => ref
+              .read(userSpaceProvider((uid, isSelf)).notifier)
+              .goToReplyPage(page),
         ),
       ],
     );
@@ -274,8 +270,11 @@ class _ThreadCard extends StatelessWidget {
                     Text(formatTimeAgo(item.dateline), style: metaStyle),
                     const SizedBox(width: 12),
                   ],
-                  Icon(Icons.visibility_outlined,
-                      size: 12, color: scheme.onSurfaceVariant),
+                  Icon(
+                    Icons.visibility_outlined,
+                    size: 12,
+                    color: scheme.onSurfaceVariant,
+                  ),
                   const SizedBox(width: 2),
                   Text(formatCount(item.views), style: metaStyle,),
                   const SizedBox(width: 8),

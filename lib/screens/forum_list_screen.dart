@@ -8,6 +8,7 @@ import '../widgets/app_bar_more_menu.dart';
 import '../widgets/pagination_bar.dart';
 import '../widgets/s1_error_view.dart';
 import '../widgets/s1_fab_layout.dart';
+import '../widgets/s1_swipe_pagination.dart';
 import '../widgets/thread_card.dart';
 
 class ForumListScreen extends ConsumerStatefulWidget {
@@ -20,35 +21,14 @@ class ForumListScreen extends ConsumerStatefulWidget {
 }
 
 class _ForumListScreenState extends ConsumerState<ForumListScreen> {
-  final _scrollController = ScrollController();
+  final _swipeKey = GlobalKey<S1SwipePaginationState>();
   bool _showScrollToTop = false;
 
-  @override
-  void initState() {
-    super.initState();
-    _scrollController.addListener(_onScroll);
-  }
-
-  @override
-  void dispose() {
-    _scrollController.removeListener(_onScroll);
-    _scrollController.dispose();
-    super.dispose();
-  }
-
-  void _onScroll() {
-    final show = _scrollController.offset > 400;
+  void _onScrollOffsetChanged(double offset) {
+    final show = offset > 400;
     if (show != _showScrollToTop) {
       setState(() => _showScrollToTop = show);
     }
-  }
-
-  void _scrollToTop() {
-    _scrollController.animateTo(
-      0,
-      duration: const Duration(milliseconds: 300),
-      curve: Curves.easeOutCubic,
-    );
   }
 
   String _forumName() {
@@ -107,31 +87,41 @@ class _ForumListScreenState extends ConsumerState<ForumListScreen> {
                     heroTag: 'scrollToTopForum',
                     icon: Icons.arrow_upward,
                     tooltip: '返回顶部',
-                    onPressed: _scrollToTop,
+                    onPressed: () => _swipeKey.currentState?.scrollToTop(),
                     visible: _showScrollToTop,
                     small: true,
                   ),
                 ),
-                child: Scrollbar(
-                  controller: _scrollController,
-                  child: RefreshIndicator(
-                    onRefresh: () =>
-                        ref.read(threadListProvider(widget.fid).notifier).refresh(),
-                    child: state.threads.isEmpty
-                        ? ListView(
-                            controller: _scrollController,
-                            children: const [
-                              SizedBox(height: 48),
-                              Center(child: Text('暂无帖子')),
-                            ],
-                          )
-                        : ListView.builder(
-                            controller: _scrollController,
-                            padding: EdgeInsets.only(bottom: fabPadding),
-                            itemCount: state.threads.length,
-                            itemBuilder: (context, index) =>
-                                ThreadCard(thread: state.threads[index]),
-                          ),
+                child: S1SwipePagination(
+                  key: _swipeKey,
+                  currentPage: state.currentPage,
+                  totalPages: state.totalPages,
+                  onScrollOffsetChanged: _onScrollOffsetChanged,
+                  onPageChanged: (page) => ref
+                      .read(threadListProvider(widget.fid).notifier)
+                      .goToPage(page),
+                  pageBuilder: (context, scrollController) => Scrollbar(
+                    controller: scrollController,
+                    child: RefreshIndicator(
+                      onRefresh: () => ref
+                          .read(threadListProvider(widget.fid).notifier)
+                          .refresh(),
+                      child: state.threads.isEmpty
+                          ? ListView(
+                              controller: scrollController,
+                              children: const [
+                                SizedBox(height: 48),
+                                Center(child: Text('暂无帖子')),
+                              ],
+                            )
+                          : ListView.builder(
+                              controller: scrollController,
+                              padding: EdgeInsets.only(bottom: fabPadding),
+                              itemCount: state.threads.length,
+                              itemBuilder: (context, index) =>
+                                  ThreadCard(thread: state.threads[index]),
+                            ),
+                    ),
                   ),
                 ),
               ),
@@ -139,18 +129,9 @@ class _ForumListScreenState extends ConsumerState<ForumListScreen> {
             PaginationBar(
               currentPage: state.currentPage,
               totalPages: state.totalPages,
-              onPageChanged: (page) async {
-                await ref
-                    .read(threadListProvider(widget.fid).notifier)
-                    .goToPage(page);
-                if (_scrollController.hasClients) {
-                  await _scrollController.animateTo(
-                    0,
-                    duration: const Duration(milliseconds: 300),
-                    curve: Curves.easeOutCubic,
-                  );
-                }
-              },
+              onPageChanged: (page) => ref
+                  .read(threadListProvider(widget.fid).notifier)
+                  .goToPage(page),
             ),
           ],
         );

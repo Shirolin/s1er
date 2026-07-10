@@ -119,7 +119,7 @@ class PostNotifier extends StateNotifier<AsyncValue<PostListState>> {
         _rateLogService = rateLogService,
         _ref = ref,
         super(const AsyncValue.loading()) {
-    _loadPage(1);
+    _loadPage(1, showFullLoading: true);
   }
   final String tid;
   final ApiService _apiService;
@@ -141,8 +141,11 @@ class PostNotifier extends StateNotifier<AsyncValue<PostListState>> {
     return votes.isEmpty ? poll : poll.withUserVotes(votes);
   }
 
-  Future<void> _loadPage(int page) async {
-    state = const AsyncValue.loading();
+  Future<void> _loadPage(int page, {bool showFullLoading = false}) async {
+    final previous = state.valueOrNull;
+    if (showFullLoading) {
+      state = const AsyncValue.loading();
+    }
     try {
       final detailFuture = _apiService.getThreadDetail(
         tid,
@@ -185,7 +188,9 @@ class PostNotifier extends StateNotifier<AsyncValue<PostListState>> {
         allowReply: allowReply,
       ),);
     } catch (e, st) {
-      state = AsyncValue.error(e, st);
+      if (showFullLoading || previous == null) {
+        state = AsyncValue.error(e, st);
+      }
     }
   }
 
@@ -193,7 +198,7 @@ class PostNotifier extends StateNotifier<AsyncValue<PostListState>> {
   Future<void> locatePid(String pid) async {
     state = const AsyncValue.loading();
     final page = await _apiService.locatePostPage(tid, pid);
-    await _loadPage(page);
+    await _loadPage(page, showFullLoading: true);
   }
 
   Future<void> goToPage(int page) async {
@@ -216,7 +221,7 @@ class PostNotifier extends StateNotifier<AsyncValue<PostListState>> {
 
   Future<void> refresh() async {
     final current = state.valueOrNull?.currentPage ?? 1;
-    await _loadPage(current);
+    await _loadPage(current, showFullLoading: true);
   }
 
   /// 异步加载特定帖子的完整评分记录

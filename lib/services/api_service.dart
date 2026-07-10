@@ -779,50 +779,6 @@ class ApiService {
     final total = html.contains('class="nxt"') ? page + 1 : page;
     return UserSpaceListResult(items: items, totalPages: total);
   }
-      }
-    } else {
-      // 桌面版模板（Web 平台 UA 触发）：<table> 结构
-      String? currentSubject;
-      String? currentForum;
-      String? currentTid;
-      final forumLinkRe = RegExp(
-        r'<a href="forum-\d+-\d+-\d+.html" class="xg1"[^>]*>(.*?)</a>',
-        dotAll: true,
-      );
-
-      final findpostRe = RegExp(
-        r'goto=findpost&amp;ptid=(\d+)&amp;pid=(\d*)"[^>]*>(.*?)</a>',
-        dotAll: true,
-      );
-      for (final match in findpostRe.allMatches(html)) {
-        final tid = match.group(1) ?? '';
-        final pid = match.group(2) ?? '';
-        final text = _stripHtml(match.group(3) ?? '');
-        if (tid.isEmpty) continue;
-
-        if (pid.isEmpty) {
-          currentTid = tid;
-          currentSubject = text;
-          final after = html.substring(match.end, match.end + 300);
-          final fm = forumLinkRe.firstMatch(after);
-          currentForum = fm != null ? _stripHtml(fm.group(1) ?? '') : null;
-        } else {
-          items.add(UserSpaceItem(
-            tid: tid,
-            subject: currentTid == tid ? (currentSubject ?? '') : '',
-            forumName: currentTid == tid ? currentForum : null,
-            dateline: 0,
-            replyExcerpt: text,
-            pid: pid,
-            isReply: true,
-          ),);
-        }
-      }
-    }
-
-    final total = html.contains('class="nxt"') ? page + 1 : page;
-    return UserSpaceListResult(items: items, totalPages: total);
-  }
 
   static int _extractTotalPages(String html, int currentPage) {
     int totalPages = 1;
@@ -927,3 +883,4 @@ class UserSpaceListResult {
   final List<UserSpaceItem> items;
   final int totalPages;
 }
+

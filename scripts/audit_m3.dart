@@ -1,6 +1,7 @@
 // ignore_for_file: avoid_print
 //
 // Material Design 3 compliance audit for lib/**/*.dart.
+// Allowed patterns: see AGENTS.md「M3 允许模式」
 // Usage: dart run scripts/audit_m3.dart [--fail-on-error] [--output=path]
 //
 // Exit code 1 when --fail-on-error and P0 violations are found.
@@ -51,7 +52,9 @@ final _rules = <AuditRule>[
     severity: AuditSeverity.p0,
     message: 'Hardcoded Color(0x...) outside theme seeds',
     pattern: RegExp(r'Color\(0x'),
-    fileFilter: (path) => !path.endsWith('lib/theme/app_theme.dart'),
+    fileFilter: (path) =>
+        !path.endsWith('lib/theme/app_theme.dart') &&
+        !path.endsWith('lib/utils/poll_bar_color.dart'),
   ),
   AuditRule(
     id: 'hardcoded-colors-semantic',
@@ -65,11 +68,6 @@ final _rules = <AuditRule>[
     severity: AuditSeverity.p0,
     message: 'Bare fontSize literal in TextStyle',
     pattern: RegExp(r'fontSize:\s*\d'),
-    lineFilter: (line, path) {
-      if (path.contains('bbcode_renderer.dart')) return false;
-      if (path.contains('web_avatar')) return false;
-      return true;
-    },
   ),
   AuditRule(
     id: 'm2-components',
@@ -90,12 +88,10 @@ final _rules = <AuditRule>[
     severity: AuditSeverity.p0,
     message: 'TextStyle( without textTheme base on same line',
     pattern: RegExp(r'TextStyle\('),
-    lineFilter: (line, path) {
-      if (path.contains('web_avatar')) return false;
-      return !line.contains('textTheme') &&
-          !line.contains('contentTextStyle') &&
-          !line.contains('//');
-    },
+    lineFilter: (line, _) =>
+        !line.contains('textTheme') &&
+        !line.contains('contentTextStyle') &&
+        !line.contains('//'),
   ),
   AuditRule(
     id: 'inline-border-radius',
@@ -123,7 +119,7 @@ final _rules = <AuditRule>[
   AuditRule(
     id: 'chip-display-badge',
     severity: AuditSeverity.warn,
-    message: 'Chip( used — verify if Badge is more appropriate',
+    message: 'Chip( on post_item — floor badge should use Badge',
     pattern: RegExp(r'\bChip\('),
     fileFilter: (path) => path.contains('post_item.dart'),
   ),
@@ -220,31 +216,31 @@ String _formatReport(List<AuditFinding> findings, {required DateTime at}) {
 
   if (findings.isEmpty) {
     buffer.writeln('No violations found.');
-    return buffer.toString();
-  }
-
-  buffer.writeln('## Findings');
-  buffer.writeln();
-
-  final byFile = <String, List<AuditFinding>>{};
-  for (final f in findings) {
-    byFile.putIfAbsent(f.file, () => []).add(f);
-  }
-
-  for (final entry in byFile.entries) {
-    buffer.writeln('### `${entry.key}`');
+  } else {
+    buffer.writeln('## Findings');
     buffer.writeln();
-    for (final f in entry.value) {
-      buffer.writeln(
-        '- **[${_severityLabel(f.severity)}] ${f.ruleId}** (L${f.line}): ${f.message}',
-      );
-      buffer.writeln('  ```dart');
-      buffer.writeln('  ${f.snippet}');
-      buffer.writeln('  ```');
+
+    final byFile = <String, List<AuditFinding>>{};
+    for (final f in findings) {
+      byFile.putIfAbsent(f.file, () => []).add(f);
     }
-    buffer.writeln();
+
+    for (final entry in byFile.entries) {
+      buffer.writeln('### `${entry.key}`');
+      buffer.writeln();
+      for (final f in entry.value) {
+        buffer.writeln(
+          '- **[${_severityLabel(f.severity)}] ${f.ruleId}** (L${f.line}): ${f.message}',
+        );
+        buffer.writeln('  ```dart');
+        buffer.writeln('  ${f.snippet}');
+        buffer.writeln('  ```');
+      }
+      buffer.writeln();
+    }
   }
 
+  buffer.writeln('See AGENTS.md「M3 允许模式」for documented allowed patterns.');
   return buffer.toString();
 }
 

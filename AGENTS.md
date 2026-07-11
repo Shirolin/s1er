@@ -35,11 +35,17 @@
 
 > 所有 Flutter UI 代码必须遵守以下 M3 规则，违者视为 bug。
 
-- **主题**：`useMaterial3: true` + `ColorScheme.fromSeed(seedColor: ...)`，禁用手写色板
-- **色彩**：一律从 `Theme.of(context).colorScheme` 取语义色（`.primary`、`.surface` 等）
-- **排版**：一律用 `textTheme.*` 标准层级，禁用 `fontSize` 裸写
-- **组件映射**：`NavigationBar`(替代 BottomNavigationBar) / `FilledButton`(替代 RaisedButton/ElevatedButton) / `SegmentedButton`(替代 ToggleButtons) / 原生 `Badge` 组件
-- **层级**：`elevation: 0` 为默认，区分靠 Surface Tint
+- **主题**：`useMaterial3: true` + `ColorScheme.fromSeed(seedColor: ...)`，禁手写色板
+- **色彩**：UI 绘制一律从 `Theme.of(context).colorScheme` 取语义色
+  - **允许**（见下方「M3 允许模式」）：`themeSeeds` 种子色、`Colors.transparent`、API 数据驱动色
+  - **禁止**：`screens/` / `widgets/` 中 `Color(0xFF...)`、`Colors.red` 等语义替代
+- **排版**：一律 `textTheme.*`；HTML 渲染须从 `textTheme` 桥接到 `flutter_html` 的 `FontSize`
+  - **禁止**：裸写 `fontSize: 14` 等常量（头像 fallback 用 `FittedBox` + `textTheme`）
+- **组件映射**：`NavigationBar` / `FilledButton` / `SegmentedButton` / 原生 `Badge`
+  - 计数/楼层 → `Badge`；可点击标签/分页 → `Chip` / `ActionChip`
+- **层级**：`Card` / `AppBar` 必须 `elevation: 0`；浮层 Menu/PopupMenu 可按 M3 使用低 elevation
+
+**审计**：`dart run scripts/audit_m3.dart --fail-on-error`（CI / 本地均需通过）
 
 ---
 
@@ -178,18 +184,22 @@ flutter run -d chrome --dart-define=TALKER_LOG_LEVEL=all --dart-define=TALKER_MA
 - 表情包资源通过脚本从 GitHub 下载（`scripts/download_emoticons.dart`），未内置到仓库
 - test 目录已有基础测试，但覆盖率不足，尤其是 screens 和 widgets 层
 
-### M3 已知例外
+### M3 允许模式
 
-> MD3 审计脚本：`dart run scripts/audit_m3.dart --fail-on-error`（CI / 本地均需通过）
+> 下列模式**合规**，不是 bug；审计脚本已排除或仅 WARN。
 
-| 例外 | 位置 | 理由 |
+| 模式 | 位置 | 说明 |
 |:---|:---|:---|
-| `themeSeeds` 中 `Color(0xFF...)` | `lib/theme/app_theme.dart` | `ColorScheme.fromSeed` 合法输入，非 UI 语义色 |
-| `Colors.transparent` | `S1SegmentedButtonStyle`、bbcode/quote/poll | 非语义透明底，M3 SegmentedButton 未选中态标准做法 |
-| `fontSize: FontSize(n)` | `lib/widgets/bbcode_renderer.dart` | flutter_html beta 无法用 `textTheme` |
-| `TextStyle(fontSize: radius * 0.8)` | `lib/widgets/web_avatar*.dart` | 头像 fallback 字号随半径缩放 |
-| poll 选项 API 十六进制色 | `lib/widgets/poll_card.dart` | 服务端下发选项色，客户端映射展示 |
-| Menu/PopupMenu `elevation: 3` | `lib/theme/app_theme.dart` | M3 浮层菜单规范允许，与 Card/AppBar 零阴影规则不冲突 |
+| `themeSeeds` 中 `Color(0xFF...)` | `lib/theme/app_theme.dart` | 仅作 `ColorScheme.fromSeed` 输入，非 UI 语义色 |
+| `Colors.transparent` | SegmentedButton 未选中段、bbcode `.hide-content`、poll 未选中底 | 表示「无底色」，不是语义色替代 |
+| Menu/PopupMenu `elevation: 3` | `lib/theme/app_theme.dart` | M3 浮层菜单规范；与 Card/AppBar 零阴影规则无关 |
+| 装饰性 `BoxShadow` | `theme_color_picker.dart` 选中色块高亮 | 非 Card/AppBar elevation |
+| API 投票色（对比度校验后） | `lib/utils/poll_bar_color.dart` | 优先 API `#RRGGBB`；对 `surfaceContainerHighest` 不足 3:1 时回退 `scheme.primary` |
+| 交互/只读 `Chip` | 分类标签、分页、`ActionChip` | M3 合法；纯计数用 `Badge` |
+
+### M3 技术债
+
+> 当前无未偿还项。新增偏差须先尝试改代码消除，无法消除时再写入「允许模式」并说明理由。
 
 ---
 

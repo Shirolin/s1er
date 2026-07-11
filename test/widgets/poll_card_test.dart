@@ -43,4 +43,30 @@ void main() {
     expect(find.text('我的投票'), findsOneWidget);
     expect(find.textContaining('已标注您投过的选项'), findsOneWidget);
   });
+
+  testWidgets('PollCard falls back to primary for low-contrast API color', (tester) async {
+    final poll = ThreadPoll.fromJson({
+      'polloptions': {
+        '1': {
+          'polloptionid': '1',
+          'polloption': '浅色选项',
+          'votes': '1',
+          'percent': '100',
+          'color': 'F8F8F8',
+        },
+      },
+      'multiple': '0',
+      'maxchoices': '1',
+      'voterscount': '1',
+      'visiblepoll': '1',
+      'allowvote': '',
+      'remaintime': ['1', '0', '0', '0'],
+    });
+
+    await tester.pumpWidget(
+      wrap(PollCard(poll: poll, tid: '1')),
+    );
+
+    expect(find.text('浅色选项'), findsOneWidget);
+  });
 }

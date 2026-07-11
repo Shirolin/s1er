@@ -92,16 +92,24 @@ class BbcodeRenderer extends StatelessWidget {
 
   Widget _buildHtmlContent(BuildContext context, String html) {
     final scheme = Theme.of(context).colorScheme;
+    final textTheme = Theme.of(context).textTheme;
+    final bodyStyle = textTheme.bodyMedium;
+    final codeStyle = textTheme.bodySmall;
+    final bodySize = bodyStyle?.fontSize ?? 14;
+    final codeSize = codeStyle?.fontSize ?? 12;
+    final bodyLineHeight = bodyStyle?.height ?? 1.6;
+    final codeFontFamily = codeStyle?.fontFamily ?? 'monospace';
 
     return Html(
       data: html,
       style: {
         'body': Style(
-          fontSize: FontSize(15), // M3 TODO: flutter_html beta 限制，无法使用 textTheme
-          lineHeight: LineHeight.number(1.6),
+          fontSize: FontSize(bodySize),
+          lineHeight: LineHeight.number(bodyLineHeight),
           margin: Margins.zero,
           padding: HtmlPaddings.zero,
           color: scheme.onSurface,
+          fontFamily: bodyStyle?.fontFamily,
         ),
         'a': Style(
           color: scheme.primary,
@@ -116,8 +124,8 @@ class BbcodeRenderer extends StatelessWidget {
           backgroundColor: scheme.surfaceContainerHighest,
           padding: HtmlPaddings.all(12),
           margin: Margins.symmetric(vertical: 8),
-          fontFamily: 'monospace',
-          fontSize: FontSize(13), // M3 TODO: flutter_html beta 限制，无法使用 textTheme
+          fontFamily: codeFontFamily,
+          fontSize: FontSize(codeSize),
           display: Display.block,
         ),
         '.hide-content': Style(

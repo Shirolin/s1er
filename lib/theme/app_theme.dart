@@ -111,6 +111,8 @@ class AppTheme {
   }
 
   static ThemeData fromColorScheme(ColorScheme colorScheme) {
+    final textTheme = ThemeData(useMaterial3: true, colorScheme: colorScheme).textTheme;
+
     return ThemeData(
       useMaterial3: true,
       colorScheme: colorScheme,
@@ -166,7 +168,9 @@ class AppTheme {
         behavior: SnackBarBehavior.floating,
         shape: S1Shape.menuShape,
         backgroundColor: colorScheme.inverseSurface,
-        contentTextStyle: TextStyle(color: colorScheme.onInverseSurface),
+        contentTextStyle: textTheme.bodyMedium?.copyWith(
+          color: colorScheme.onInverseSurface,
+        ),
         actionTextColor: colorScheme.inversePrimary,
       ),
       navigationBarTheme: NavigationBarThemeData(

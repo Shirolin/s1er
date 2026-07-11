@@ -29,9 +29,10 @@
 | lib/widgets/s1_swipe_pagination.dart | ✓ | ✓ | ✓ | — | ✓ | — |
 | lib/widgets/web_image_stub.dart | — | — | — | — | — | 平台桩，无 UI 主题 |
 | lib/widgets/web_image_html.dart | — | — | — | — | — | 平台桩 |
-| lib/widgets/web_avatar_stub.dart | — | △ | — | — | — | 动态 fontSize 例外 |
-| lib/widgets/web_avatar_html.dart | — | △ | — | — | — | 动态 fontSize 例外 |
-| lib/widgets/web_avatar.dart | — | △ | — | — | — | 动态 fontSize 例外 |
+| lib/widgets/web_avatar_stub.dart | — | — | — | — | — | 平台桩，委托 AvatarFallbackLetter |
+| lib/widgets/web_avatar_html.dart | — | — | — | — | — | 平台桩，委托 AvatarFallbackLetter |
+| lib/widgets/web_avatar.dart | ✓ | ✓ | ✓ | — | ✓ | AvatarFallbackLetter + FittedBox |
+| lib/widgets/avatar_fallback.dart | ✓ | ✓ | ✓ | — | ✓ | 新增共享 fallback |
 | lib/widgets/user_profile_sheet.dart | ✓ | ✓ | ✓ FilledButton, OutlinedButton, Chip | ✓ | ✓ | Chip 为交互标签 |
 | lib/widgets/thread_card.dart | ✓ | ✓ | ✓ ActionChip | ✓ | ✓ S1Shape | — |
 | lib/widgets/settings/theme_settings_section.dart | ✓ | ✓ | ✓ SegmentedButton, SwitchListTile | ✓ | ✓ S1Shape | 样式来自主题 |
@@ -42,15 +43,15 @@
 | lib/widgets/settings/display_settings_section.dart | ✓ | ✓ | ✓ SwitchListTile, ListTile | ✓ | ✓ S1Shape | — |
 | lib/widgets/s1_popup_menu.dart | ✓ | ✓ | ✓ | — | ✓ | 继承 menuTheme |
 | lib/widgets/s1_fab_layout.dart | ✓ | — | ✓ FAB | — | ✓ | 继承 floatingActionButtonTheme |
-| lib/widgets/quote_block.dart | △ | ✓ | ✓ Material | — | ✓ S1Shape | Colors.transparent 例外 |
+| lib/widgets/quote_block.dart | ✓ | ✓ | ✓ Material | — | ✓ S1Shape | Colors.transparent 允许模式 |
 | lib/widgets/post_item.dart | ✓ | ✓ | ✓ Badge | ✓ | ✓ S1Shape | 已从 Chip 改为 Badge |
 | lib/widgets/post_action_menu.dart | ✓ | ✓ | ✓ | — | ✓ | 继承 menuTheme |
-| lib/widgets/poll_card.dart | △ | ✓ | ✓ FilledButton | ✓ | ✓ S1Shape | API 色 + transparent 例外 |
+| lib/widgets/poll_card.dart | ✓ | ✓ | ✓ FilledButton | ✓ | ✓ S1Shape | API 色 + 对比度回退 |
 | lib/widgets/pagination_bar.dart | ✓ | ✓ | ✓ IconButton | — | ✓ | — |
 | lib/widgets/page_picker_sheet.dart | ✓ | ✓ | ✓ FilledButton, ListTile | — | ✓ S1Shape | — |
 | lib/widgets/image_viewer.dart | ✓ | ✓ | ✓ | — | ✓ | — |
 | lib/widgets/emoticon_widget.dart | ✓ | ✓ | ✓ | — | — | — |
-| lib/widgets/bbcode_renderer.dart | ✓ | △ | ✓ | — | ✓ | flutter_html fontSize 例外 |
+| lib/widgets/bbcode_renderer.dart | ✓ | ✓ | ✓ | — | ✓ | 字号从 textTheme 桥接 |
 | lib/widgets/app_bar_more_menu.dart | ✓ | ✓ | ✓ | — | ✓ | — |
 
 ## 主题层
@@ -65,4 +66,4 @@
 - **38/38** UI 文件已逐项勾选
 - **P0** 违规已修复（theme_color_picker、thread_detail TextStyle、post_item Badge）
 - **P1** 已修复（SegmentedButton 主题化、S1SnackBar、S1Shape 统一）
-- **P2** 例外已写入 AGENTS.md「M3 已知例外」
+- **P2** 已拆分为 AGENTS.md「M3 允许模式」；技术债已清零（bbcode / web_avatar / poll 对比度）

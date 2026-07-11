@@ -136,7 +136,37 @@ class AppTheme {
     );
   }
 
-  static ThemeData fromColorScheme(ColorScheme colorScheme) {
+  static bool _isTooClose(Color a, Color b) {
+    return (a.red - b.red).abs() <= 2 &&
+        (a.green - b.green).abs() <= 2 &&
+        (a.blue - b.blue).abs() <= 2;
+  }
+
+  static ThemeData fromColorScheme(ColorScheme rawColorScheme) {
+    // 仅当检测到系统动态取色异常（即 surfaceContainerLow 与 surface 极其接近，偏差在 2 个 RGB 单位内）时，
+    // 才使用 primary 种子色重新生成标准的 M3 容器色进行覆盖。对于正常的手动预设颜色则保持原样，避免卡片过亮。
+    final isLowContrast = _isTooClose(rawColorScheme.surfaceContainerLow, rawColorScheme.surface);
+    final colorScheme = isLowContrast
+        ? rawColorScheme.copyWith(
+            surfaceContainerLow: ColorScheme.fromSeed(
+              seedColor: rawColorScheme.primary,
+              brightness: rawColorScheme.brightness,
+            ).surfaceContainerLow,
+            surfaceContainer: ColorScheme.fromSeed(
+              seedColor: rawColorScheme.primary,
+              brightness: rawColorScheme.brightness,
+            ).surfaceContainer,
+            surfaceContainerHigh: ColorScheme.fromSeed(
+              seedColor: rawColorScheme.primary,
+              brightness: rawColorScheme.brightness,
+            ).surfaceContainerHigh,
+            surfaceContainerHighest: ColorScheme.fromSeed(
+              seedColor: rawColorScheme.primary,
+              brightness: rawColorScheme.brightness,
+            ).surfaceContainerHighest,
+          )
+        : rawColorScheme;
+
     final textTheme = ThemeData(useMaterial3: true, colorScheme: colorScheme).textTheme;
 
     return ThemeData(
@@ -147,10 +177,11 @@ class AppTheme {
         elevation: 0,
         scrolledUnderElevation: 0,
       ),
-      cardTheme: const CardThemeData(
+      cardTheme: CardThemeData(
         shape: S1Shape.cardShape,
         elevation: 0,
-        margin: EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+        color: colorScheme.surfaceContainerLow,
+        margin: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
       ),
       dialogTheme: const DialogThemeData(shape: S1Shape.dialogShape),
       bottomSheetTheme: const BottomSheetThemeData(shape: S1Shape.bottomSheetShape),

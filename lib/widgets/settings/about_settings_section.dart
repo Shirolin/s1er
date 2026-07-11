@@ -14,12 +14,9 @@ class AboutSettingsSection extends StatelessWidget {
   Widget build(BuildContext context) {
     final scheme = Theme.of(context).colorScheme;
 
-    return Card(
+    return const Card(
       elevation: 0,
-      shape: S1Shape.cardShape,
-      color:
-          scheme.surfaceContainerHighest.withValues(alpha: S1Alpha.cardOverlay),
-      child: const Padding(
+      child: Padding(
         padding: EdgeInsets.all(20),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,

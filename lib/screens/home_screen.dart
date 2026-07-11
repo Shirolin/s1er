@@ -4,6 +4,9 @@ import 'package:go_router/go_router.dart';
 import '../config/api_config.dart';
 import '../providers/auth_provider.dart';
 import '../providers/forum_list_provider.dart';
+import '../providers/pm_list_provider.dart';
+import '../providers/notice_list_provider.dart';
+import '../providers/messages_segment_provider.dart';
 import '../providers/settings_provider.dart';
 import '../models/forum_category.dart';
 import '../theme/app_theme.dart';
@@ -12,6 +15,7 @@ import '../widgets/s1_error_view.dart';
 import '../utils/compact_label.dart';
 import '../utils/format_utils.dart';
 import 'profile_screen.dart';
+import 'messages_screen.dart';
 
 class HomeScreen extends ConsumerStatefulWidget {
   const HomeScreen({super.key});
@@ -43,11 +47,20 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
     final tabIndex = (!isLoggedIn && _currentTab > 1) ? 0 : _currentTab;
 
     final isProfileTab = isLoggedIn ? tabIndex == 3 : tabIndex == 1;
+    final isMessagesTab = isLoggedIn && tabIndex == 2;
+    final messagesSegment =
+        isMessagesTab ? ref.watch(messagesSegmentProvider) : 0;
 
     return Scaffold(
       appBar: AppBar(
         elevation: 0,
-        title: Text(isProfileTab ? '个人资料' : 'Stage1st'),
+        title: Text(
+          isProfileTab
+              ? '个人资料'
+              : isMessagesTab
+                  ? '消息'
+                  : 'Stage1st',
+        ),
         actions: isProfileTab
             ? [
                 if (isLoggedIn)
@@ -57,7 +70,17 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                     browserUrl: '${ApiConfig.baseUrl}/home.php?mod=space',
                   ),
               ]
-            : [
+            : isMessagesTab
+                ? [
+                    AppBarMoreMenu(
+                      onRefresh: () {
+                        ref.read(pmListProvider.notifier).refresh();
+                        ref.read(noticeListProvider.notifier).refresh();
+                      },
+                      browserUrl: messagesBrowserUrl(messagesSegment),
+                    ),
+                  ]
+                : [
                 if (isLoggedIn)
                   AppBarMoreMenu(
                     onRefresh: () =>
@@ -65,9 +88,12 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                     browserUrl: ApiConfig.baseUrl,
                   )
                 else
-                  FilledButton.tonal(
-                    onPressed: () => context.push('/login'),
-                    child: const Text('登录'),
+                  Padding(
+                    padding: const EdgeInsets.only(right: 16),
+                    child: FilledButton.tonal(
+                      onPressed: () => context.push('/login'),
+                      child: const Text('登录'),
+                    ),
                   ),
               ],
       ),
@@ -77,7 +103,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
               : tabIndex == 1
                   ? const Center(child: Text('搜索'))
                   : tabIndex == 2
-                      ? const Center(child: Text('消息'))
+                      ? const MessagesScreen()
                       : const ProfileBody()
           : tabIndex == 0
               ? const _ForumTab()
@@ -85,6 +111,9 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
       bottomNavigationBar: NavigationBar(
         selectedIndex: tabIndex,
         onDestinationSelected: (index) {
+          if (_currentTab == 2 && index != 2) {
+            ref.read(messagesSegmentProvider.notifier).state = 0;
+          }
           setState(() => _currentTab = index);
         },
         destinations: isLoggedIn
@@ -199,9 +228,9 @@ class _ForumCategoryTile extends ConsumerWidget {
               child: ConstrainedBox(
                 constraints: const BoxConstraints(minHeight: 48),
                 child: Container(
-              width: double.infinity,
-              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-              color: scheme.surfaceContainer,
+                  width: double.infinity,
+                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                  color: scheme.surfaceContainer,
               child: Row(
                 children: [
                   Icon(Icons.folder_outlined, size: 18, color: scheme.primary),

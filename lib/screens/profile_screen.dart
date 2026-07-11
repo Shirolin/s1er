@@ -184,8 +184,7 @@ class _HeaderCard extends StatelessWidget {
 
     return Card(
       elevation: 0,
-      shape: S1Shape.cardShape,
-      color: colorScheme.surfaceContainerHighest,
+      color: colorScheme.surfaceContainerHigh,
       child: Padding(
         padding: const EdgeInsets.symmetric(vertical: 24, horizontal: 16),
         child: Column(
@@ -258,9 +257,6 @@ class _StatsCard extends StatelessWidget {
 
     return Card(
       elevation: 0,
-      shape: S1Shape.cardShape,
-      color: colorScheme.surfaceContainerHighest
-          .withValues(alpha: S1Alpha.cardOverlay),
       child: Padding(
         padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 8),
         child: IntrinsicHeight(
@@ -308,9 +304,6 @@ class _S1StatsCard extends StatelessWidget {
 
     return Card(
       elevation: 0,
-      shape: S1Shape.cardShape,
-      color: colorScheme.surfaceContainerHighest
-          .withValues(alpha: S1Alpha.cardOverlay),
       child: Padding(
         padding: const EdgeInsets.symmetric(vertical: 20, horizontal: 16),
         child: Row(
@@ -446,9 +439,6 @@ class _InfoCard extends StatelessWidget {
 
     return Card(
       elevation: 0,
-      shape: S1Shape.cardShape,
-      color: colorScheme.surfaceContainerHighest
-          .withValues(alpha: S1Alpha.cardOverlay),
       child: Column(
         children: [
           _InfoTile(label: 'UID', value: user.uid),
@@ -520,9 +510,6 @@ class _SystemGroupCard extends ConsumerWidget {
 
     return Card(
       elevation: 0,
-      shape: S1Shape.cardShape,
-      color: colorScheme.surfaceContainerHighest
-          .withValues(alpha: S1Alpha.cardOverlay),
       clipBehavior: Clip.antiAlias,
       child: Column(
         mainAxisSize: MainAxisSize.min,
@@ -531,20 +518,20 @@ class _SystemGroupCard extends ConsumerWidget {
             icon: Icons.history_outlined,
             title: '阅读历史',
             subtitle: '浏览过的帖子记录',
-            trailing: count > 0
-                ? Badge(
-                    label: Text('$count'),
-                    child: Icon(
-                      Icons.chevron_right,
-                      size: _ProfileListMetrics.iconSize,
-                      color: colorScheme.onSurfaceVariant,
-                    ),
-                  )
-                : Icon(
-                    Icons.chevron_right,
-                    size: _ProfileListMetrics.iconSize,
-                    color: colorScheme.onSurfaceVariant,
-                  ),
+            trailing: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                if (count > 0) ...[
+                  Badge(label: Text('$count')),
+                  const SizedBox(width: 8),
+                ],
+                Icon(
+                  Icons.chevron_right,
+                  size: _ProfileListMetrics.iconSize,
+                  color: colorScheme.onSurfaceVariant,
+                ),
+              ],
+            ),
             onTap: () => context.push('/reading-history'),
           ),
           Padding(
@@ -634,11 +621,12 @@ class _ProfileTwoLineRow extends StatelessWidget {
                 ),
               ),
               const SizedBox(width: _ProfileListMetrics.gap),
-              SizedBox(
-                width: _ProfileListMetrics.iconSize,
-                height: _ProfileListMetrics.iconSize,
-                child: Center(child: trailing ?? chevron),
-              ),
+              trailing ??
+                  SizedBox(
+                    width: _ProfileListMetrics.iconSize,
+                    height: _ProfileListMetrics.iconSize,
+                    child: Center(child: chevron),
+                  ),
             ],
           ),
         ),
@@ -658,9 +646,6 @@ class _LogoutTile extends StatelessWidget {
 
     return Card(
       elevation: 0,
-      shape: S1Shape.cardShape,
-      color: colorScheme.surfaceContainerHighest
-          .withValues(alpha: S1Alpha.cardOverlay),
       child: Material(
         color: Colors.transparent,
         child: InkWell(

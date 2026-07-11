@@ -23,8 +23,6 @@ class FontSizeSection extends ConsumerWidget {
 
     return Card(
       elevation: 0,
-      shape: S1Shape.cardShape,
-      color: scheme.surfaceContainerHighest.withValues(alpha: S1Alpha.cardOverlay),
       child: Padding(
         padding: const EdgeInsets.all(20),
         child: Column(

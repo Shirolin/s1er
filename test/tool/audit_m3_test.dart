@@ -15,7 +15,7 @@ void main() {
       0,
       reason: 'P0 violations:\n${result.stdout}\n${result.stderr}',
     );
-    expect(result.stdout.toString(), contains('| P0 | 0 |'));
+    expect(result.stdout.toString(), contains('Scanned: lib/ + test/'));
   });
 
   test('audit rules detect semantic Colors and bare fontSize', () {

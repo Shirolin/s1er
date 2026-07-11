@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_html/flutter_html.dart';
 import 'package:url_launcher/url_launcher.dart';
 import '../config/constants.dart';
+import '../theme/app_theme.dart';
 import '../utils/bbcode_parser.dart';
 import 'emoticon_widget.dart';
 import 'quote_block.dart';
@@ -93,12 +94,10 @@ class BbcodeRenderer extends StatelessWidget {
   Widget _buildHtmlContent(BuildContext context, String html) {
     final scheme = Theme.of(context).colorScheme;
     final textTheme = Theme.of(context).textTheme;
-    final bodyStyle = textTheme.bodyMedium;
-    final codeStyle = textTheme.bodySmall;
-    final bodySize = bodyStyle?.fontSize ?? 14;
-    final codeSize = codeStyle?.fontSize ?? 12;
-    final bodyLineHeight = bodyStyle?.height ?? 1.6;
-    final codeFontFamily = codeStyle?.fontFamily ?? 'monospace';
+    final bodySize = S1Typography.bodySize(textTheme);
+    final codeSize = S1Typography.codeSize(textTheme);
+    final bodyLineHeight = S1Typography.bodyLineHeight(textTheme);
+    final codeFontFamily = textTheme.bodySmall?.fontFamily ?? 'monospace';
 
     return Html(
       data: html,
@@ -109,7 +108,7 @@ class BbcodeRenderer extends StatelessWidget {
           margin: Margins.zero,
           padding: HtmlPaddings.zero,
           color: scheme.onSurface,
-          fontFamily: bodyStyle?.fontFamily,
+          fontFamily: textTheme.bodyMedium?.fontFamily,
         ),
         'a': Style(
           color: scheme.primary,

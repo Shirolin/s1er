@@ -7,6 +7,7 @@ void main() {
   testWidgets('PaginationBar hidden when only one page', (tester) async {
     await tester.pumpWidget(
       MaterialApp(
+        theme: AppTheme.lightTheme('purple'),
         home: Scaffold(
           body: PaginationBar(
             currentPage: 1,
@@ -24,6 +25,7 @@ void main() {
   testWidgets('PaginationBar shows controls for multiple pages', (tester) async {
     await tester.pumpWidget(
       MaterialApp(
+        theme: AppTheme.lightTheme('purple'),
         home: Scaffold(
           body: PaginationBar(
             currentPage: 2,
@@ -43,6 +45,7 @@ void main() {
     int? requestedPage;
     await tester.pumpWidget(
       MaterialApp(
+        theme: AppTheme.lightTheme('purple'),
         home: Scaffold(
           body: PaginationBar(
             currentPage: 3,
@@ -65,6 +68,7 @@ void main() {
   testWidgets('Page picker opens from indicator tap', (tester) async {
     await tester.pumpWidget(
       MaterialApp(
+        theme: AppTheme.lightTheme('purple'),
         home: Scaffold(
           body: PaginationBar(
             currentPage: 2,
@@ -85,6 +89,7 @@ void main() {
   testWidgets('PaginationBar page indicator meets 48dp touch target', (tester) async {
     await tester.pumpWidget(
       MaterialApp(
+        theme: AppTheme.lightTheme('purple'),
         home: Scaffold(
           body: PaginationBar(
             currentPage: 2,

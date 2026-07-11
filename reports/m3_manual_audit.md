@@ -1,6 +1,6 @@
 # M3 人工审计矩阵
 
-> 审计日期：2026-07-10  
+> 审计日期：2026-07-11  
 > 依据：[AGENTS.md](../AGENTS.md) M3 规范 + `dart run scripts/audit_m3.dart`
 
 字段说明：色彩 / 排版 / 组件 / elevation / 形状 — `✓` 合规，`△` 有文档化例外，`—` 不适用

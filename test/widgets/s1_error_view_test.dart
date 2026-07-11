@@ -1,10 +1,12 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:s1_app/theme/app_theme.dart';
 import 'package:s1_app/services/api_service.dart';
 import 'package:s1_app/widgets/s1_error_view.dart';
 
 void main() {
   Widget wrap(Widget child) => MaterialApp(
+        theme: AppTheme.lightTheme('purple'),
         home: Scaffold(body: child),
       );
 

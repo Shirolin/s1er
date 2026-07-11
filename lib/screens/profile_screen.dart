@@ -21,6 +21,7 @@ class ProfileScreen extends ConsumerWidget {
 
     return Scaffold(
       appBar: AppBar(
+        elevation: 0,
         title: const Text('个人资料'),
         actions: [
           if (authState.isLoggedIn)
@@ -532,7 +533,7 @@ class _SystemGroupCard extends ConsumerWidget {
             ),
             Padding(
               padding: const EdgeInsets.symmetric(horizontal: 16),
-              child: Divider(height: 1, color: colorScheme.outlineVariant.withValues(alpha: 0.5)),
+              child: Divider(height: 1, color: colorScheme.outlineVariant.withValues(alpha: S1Alpha.half)),
             ),
             ListTile(
               leading: Icon(Icons.settings_outlined, color: colorScheme.primary),

@@ -55,7 +55,7 @@ class PostItem extends ConsumerWidget {
       margin: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
       elevation: 0,
       color: isHighlighted
-          ? scheme.primaryContainer.withValues(alpha: 0.5)
+          ? scheme.primaryContainer.withValues(alpha: S1Alpha.half)
           : scheme.surfaceContainerLow,
       shape: S1Shape.cardShape,
       child: Padding(

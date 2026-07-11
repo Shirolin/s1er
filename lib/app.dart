@@ -115,7 +115,10 @@ final _router = GoRouter(
         final screen = _parseImageViewerRoute(state);
         if (screen != null) return screen;
         return Scaffold(
-          appBar: AppBar(title: const Text('图片')),
+          appBar: AppBar(
+            elevation: 0,
+            title: const Text('图片'),
+          ),
           body: Center(
             child: Column(
               mainAxisSize: MainAxisSize.min,

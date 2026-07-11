@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:package_info_plus/package_info_plus.dart';
+import 'package:s1_app/theme/app_theme.dart';
 import 'package:s1_app/providers/settings_provider.dart';
 import 'package:s1_app/providers/talker_provider.dart';
 import 'package:s1_app/screens/settings_screen.dart';
@@ -23,7 +24,10 @@ void main() {
             ),
           ),
         ],
-        child: const MaterialApp(home: SettingsScreen()),
+        child: MaterialApp(
+          theme: AppTheme.lightTheme('purple'),
+          home: SettingsScreen(),
+        ),
       ),
     );
     await tester.pump();

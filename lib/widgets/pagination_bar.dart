@@ -229,7 +229,7 @@ class _PageIndicator extends StatelessWidget {
                     size: 24,
                     color: enabled
                         ? scheme.onSecondaryContainer
-                        : scheme.onSurface.withValues(alpha: 0.38),
+                        : scheme.onSurface.withValues(alpha: S1Alpha.disabledIcon),
                   ),
                 ],
               ),
@@ -269,7 +269,7 @@ class _PaginationIconButton extends StatelessWidget {
           S1BottomBarStyle.minTouchTarget,
         ),
         foregroundColor: scheme.onSurfaceVariant,
-        disabledForegroundColor: scheme.onSurface.withValues(alpha: 0.38),
+        disabledForegroundColor: scheme.onSurface.withValues(alpha: S1Alpha.disabledIcon),
       ),
     );
   }

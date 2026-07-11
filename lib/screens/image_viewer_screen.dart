@@ -274,7 +274,7 @@ class _ImageViewerScreenState extends ConsumerState<ImageViewerScreen> {
           errorBuilder: (_, __, ___) => Center(
             child: Icon(
               Icons.broken_image_outlined,
-              color: colorScheme.onInverseSurface.withValues(alpha: 0.54),
+              color: colorScheme.onInverseSurface.withValues(alpha: S1Alpha.viewerScrim),
               size: 48,
             ),
           ),
@@ -334,7 +334,7 @@ class _ImageViewerScreenState extends ConsumerState<ImageViewerScreen> {
     final bottomPadding = MediaQuery.of(context).padding.bottom;
 
     return Material(
-      color: colorScheme.surfaceContainerHigh.withValues(alpha: 0.92),
+      color: colorScheme.surfaceContainerHigh.withValues(alpha: S1Alpha.controlBar),
       borderRadius: BorderRadius.vertical(top: S1Shape.large.topLeft),
       child: Padding(
         padding: EdgeInsets.fromLTRB(4, 4, 4, 4 + bottomPadding),
@@ -447,7 +447,7 @@ class _ImageViewerScreenState extends ConsumerState<ImageViewerScreen> {
                   width: 32,
                   height: 4,
                   decoration: BoxDecoration(
-                    color: colorScheme.onSurfaceVariant.withValues(alpha: 0.4),
+                    color: colorScheme.onSurfaceVariant.withValues(alpha: S1Alpha.cardOverlay),
                     borderRadius: S1Shape.extraSmall,
                   ),
                 ),

@@ -313,7 +313,7 @@ class _PollOptionTile extends StatelessWidget {
                     if (isUserVote)
                       Padding(
                         padding: const EdgeInsets.only(left: 8, top: 2),
-                        child: Chip(
+                        child: Badge(
                           label: Text(
                             '我的投票',
                             style: textTheme.labelSmall?.copyWith(
@@ -322,11 +322,10 @@ class _PollOptionTile extends StatelessWidget {
                             ),
                           ),
                           backgroundColor: scheme.primaryContainer,
-                          side: BorderSide.none,
-                          labelPadding: const EdgeInsets.symmetric(horizontal: 4),
-                          visualDensity: VisualDensity.compact,
-                          materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
-                          padding: EdgeInsets.zero,
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 4,
+                            vertical: 2,
+                          ),
                         ),
                       ),
                     if (showResults) ...[

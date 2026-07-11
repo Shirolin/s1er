@@ -68,7 +68,7 @@ class ThemeColorPicker extends StatelessWidget {
                             boxShadow: isSelected
                                 ? [
                                     BoxShadow(
-                                      color: color.withValues(alpha: 0.4),
+                                      color: color.withValues(alpha: S1Alpha.cardOverlay),
                                       blurRadius: 8,
                                       spreadRadius: 2,
                                     ),

@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:convert';
 import 'dart:io';
 import 'dart:math';
@@ -34,16 +35,21 @@ void main() async {
   }
 
   await for (final req in server) {
+    unawaited(_handleRequestSafely(req));
+  }
+}
+
+Future<void> _handleRequestSafely(HttpRequest req) async {
+  try {
+    await _handleRequest(req);
+  } catch (e, st) {
+    print('ERROR: $e\n$st');
     try {
-      await _handleRequest(req);
-    } catch (e, st) {
-      print('ERROR: $e\n$st');
-      try {
-        req.response.statusCode = 502;
-        req.response.write('Proxy error: $e');
-        await req.response.close();
-      } catch (_) {}
-    }
+      _applyCors(req, req.response);
+      req.response.statusCode = e is TimeoutException ? 504 : 502;
+      req.response.write('Proxy error: $e');
+      await req.response.close();
+    } catch (_) {}
   }
 }
 
@@ -71,6 +77,7 @@ Future<void> _handleRequest(HttpRequest req) async {
   }
 
   if (!_verifyAuthToken(req)) {
+    _applyCors(req, res);
     res.statusCode = 403;
     res.write('Invalid proxy token');
     await res.close();
@@ -99,6 +106,7 @@ Future<void> _handleRequest(HttpRequest req) async {
   if (isImgProxy) {
     final targetUrl = req.uri.queryParameters['url'];
     if (targetUrl == null) {
+      _applyCors(req, res);
       res.statusCode = 400;
       await res.close();
       return;
@@ -111,6 +119,7 @@ Future<void> _handleRequest(HttpRequest req) async {
     }
     target = Uri.parse(targetUrl);
     if (!ResourceDomains.isAllowedImgProxyTarget(target)) {
+      _applyCors(req, res);
       res.statusCode = 403;
       res.write('Target URL not allowed');
       await res.close();
@@ -126,7 +135,11 @@ Future<void> _handleRequest(HttpRequest req) async {
     );
   }
 
-  final client = HttpClient();
+  final client = HttpClient()
+    ..connectionTimeout = const Duration(
+      seconds: EnvConfig.connectTimeoutSeconds,
+    )
+    ..findProxy = _findProxy;
   final upReq = await client.openUrl(req.method, target);
 
   if (isImgProxy) {
@@ -157,12 +170,24 @@ Future<void> _handleRequest(HttpRequest req) async {
   }
 
   print('>>> ${req.method} $target');
-  final upRes = await upReq.close();
+  final upRes = await upReq.close().timeout(
+    const Duration(seconds: EnvConfig.receiveTimeoutSeconds),
+    onTimeout: () {
+      client.close(force: true);
+      throw TimeoutException('Upstream response timed out: $target');
+    },
+  );
   print('<<< ${upRes.statusCode}');
 
   _storeCookies(upRes.headers['set-cookie']);
 
-  final bytes = await upRes.fold<List<int>>([], (a, b) => a..addAll(b));
+  final bytes = await upRes.fold<List<int>>([], (a, b) => a..addAll(b)).timeout(
+    const Duration(seconds: EnvConfig.receiveTimeoutSeconds),
+    onTimeout: () {
+      client.close(force: true);
+      throw TimeoutException('Upstream body timed out: $target');
+    },
+  );
   client.close(force: true);
 
   if (isImgProxy && upRes.statusCode == 404) {
@@ -176,6 +201,22 @@ Future<void> _handleRequest(HttpRequest req) async {
 
   res.add(bytes);
   await res.close();
+}
+
+String _findProxy(Uri uri) {
+  final proxy = Platform.environment['S1_UPSTREAM_PROXY'] ??
+      Platform.environment['HTTPS_PROXY'] ??
+      Platform.environment['https_proxy'] ??
+      Platform.environment['HTTP_PROXY'] ??
+      Platform.environment['http_proxy'] ??
+      Platform.environment['ALL_PROXY'] ??
+      Platform.environment['all_proxy'];
+  if (proxy == null || proxy.isEmpty) return 'DIRECT';
+
+  final parsed = Uri.tryParse(proxy);
+  if (parsed == null || parsed.host.isEmpty) return 'DIRECT';
+  final port = parsed.hasPort ? parsed.port : 7890;
+  return 'PROXY ${parsed.host}:$port';
 }
 
 String _resolveReferer(Uri target) {
@@ -209,10 +250,11 @@ bool _applyCors(HttpRequest req, HttpResponse res) {
   final origin = req.headers.value('Origin');
   if (origin != null && _localhostOrigin.hasMatch(origin)) {
     res.headers.set('Access-Control-Allow-Origin', origin);
-    res.headers.set('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS');
+    res.headers
+        .set('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS');
     res.headers.set(
       'Access-Control-Allow-Headers',
-      'Content-Type, Cookie, $proxyAuthHeader',
+      'Content-Type, Cookie, X-Requested-With, $proxyAuthHeader',
     );
     res.headers.set('Access-Control-Allow-Credentials', 'true');
     return true;

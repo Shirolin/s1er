@@ -11,6 +11,11 @@ String friendlyError(Object error, [String? context, StackTrace? stackTrace]) {
   final label = context != null ? '[$context] ' : '';
   talker.handle(error, stackTrace, '$label 原始错误');
 
+  return userFacingError(error);
+}
+
+/// 将异常转换为可直接展示给用户的文案，不记录日志。
+String userFacingError(Object error) {
   if (error is DioException) {
     return _mapDioError(error);
   }

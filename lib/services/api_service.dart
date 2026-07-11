@@ -380,7 +380,7 @@ class ApiService {
 
   static ReplySubmitResult parseReplyResponse(String xml) {
     final successMatch = RegExp(
-      r"succeedhandle_reply\('([^']*)',\s*'([^']*)',\s*\{([^}]*)\}\)",
+      r"succeedhandle_(?:reply|postform)\('([^']*)',\s*'([^']*)',\s*\{([^}]*)\}\)",
     ).firstMatch(xml);
     if (successMatch != null) {
       final meta = successMatch.group(3) ?? '';
@@ -424,7 +424,7 @@ class ApiService {
   }
 
   static String? _extractReplyField(String meta, String key) {
-    final match = RegExp("$key:'([^']*)'").firstMatch(meta);
+    final match = RegExp("'?$key'?\\s*:\\s*'([^']*)'").firstMatch(meta);
     final value = match?.group(1);
     return value != null && value.isNotEmpty ? value : null;
   }

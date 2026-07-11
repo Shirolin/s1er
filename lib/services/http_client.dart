@@ -267,19 +267,21 @@ class S1HttpClient {
     if (uri.queryParameters['mod'] != 'post') return;
 
     final action = uri.queryParameters['action'];
-    if (action == 'reply') {
-      final fid = uri.queryParameters['fid'] ?? '';
-      final tid = uri.queryParameters['tid'] ?? '';
-      final reppost = uri.queryParameters['reppost'] ?? '0';
-      if (fid.isNotEmpty && tid.isNotEmpty) {
-        options.headers['Referer'] = ApiConfig.forumReplyReferer(
-          fid: fid,
-          tid: tid,
-          reppost: reppost,
-        );
+    if (!_isWeb) {
+      if (action == 'reply') {
+        final fid = uri.queryParameters['fid'] ?? '';
+        final tid = uri.queryParameters['tid'] ?? '';
+        final reppost = uri.queryParameters['reppost'] ?? '0';
+        if (fid.isNotEmpty && tid.isNotEmpty) {
+          options.headers['Referer'] = ApiConfig.forumReplyReferer(
+            fid: fid,
+            tid: tid,
+            reppost: reppost,
+          );
+        }
+      } else {
+        options.headers['Referer'] = ResourceDomains.defaultReferer;
       }
-    } else {
-      options.headers['Referer'] = ResourceDomains.defaultReferer;
     }
     options.headers['X-Requested-With'] = 'XMLHttpRequest';
   }

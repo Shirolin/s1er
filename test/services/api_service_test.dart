@@ -448,6 +448,23 @@ void main() {
         expect(result.error, isNull);
       });
 
+      test('returns success result from Discuz postform handler', () {
+        const xml = '''<?xml version="1.0" encoding="utf-8"?>
+<root><![CDATA[<div class="tip">
+<dt id="messagetext">
+<p>非常感谢，回复发布成功，现在将转入主题页，请稍候……<br /><a href="forum-4-1.html">[ 点击这里转入主题列表 ]</a><script type="text/javascript" reload="1">if(typeof succeedhandle_postform=='function') {succeedhandle_postform('forum.php?mod=viewthread&tid=2042115&pid=69904041&page=187&extra=&mobile=2#pid69904041', '非常感谢，回复发布成功，现在将转入主题页，请稍候……[ 点击这里转入主题列表 ]', {'fid':'4','tid':'2042115','pid':'69904041','from':'','sechash':''});}</script></p>
+</dt>
+</div>
+]]></root>''';
+
+        final result = ApiService.parseReplyResponse(xml);
+
+        expect(result.isSuccess, isTrue);
+        expect(result.pid, '69904041');
+        expect(result.tid, '2042115');
+        expect(result.error, isNull);
+      });
+
       test('returns error message from errorhandle_reply', () {
         const xml = "<root><![CDATA[<script>errorhandle_reply('内容过长', 'error');</script>]]></root>";
         final result = ApiService.parseReplyResponse(xml);

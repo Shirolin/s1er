@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import '../services/api_service.dart';
+import '../utils/error_handler.dart';
 
 class S1ErrorView extends StatelessWidget {
   const S1ErrorView({
@@ -50,7 +51,7 @@ class S1ErrorView extends StatelessWidget {
             ),
             const SizedBox(height: 8),
             Text(
-              isLogin ? '当前 S1 需要登录后查看论坛内容' : error.toString(),
+              isLogin ? '当前 S1 需要登录后查看论坛内容' : _message,
               textAlign: TextAlign.center,
               style: textTheme.bodyMedium?.copyWith(
                 color: scheme.onSurfaceVariant,
@@ -82,5 +83,12 @@ class S1ErrorView extends StatelessWidget {
         ),
       ),
     );
+  }
+
+  String get _message {
+    if (error is ServerMaintenanceException) {
+      return (error as ServerMaintenanceException).message;
+    }
+    return userFacingError(error);
   }
 }

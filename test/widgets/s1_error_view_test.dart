@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:dio/dio.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:s1_app/theme/app_theme.dart';
 import 'package:s1_app/services/api_service.dart';
@@ -64,6 +65,23 @@ void main() {
 
       await tester.tap(find.text('重试'));
       expect(retried, isTrue);
+    });
+
+    testWidgets('网络超时显示友好文案而非 DioException 原文', (tester) async {
+      await tester.pumpWidget(
+        wrap(
+          S1ErrorView(
+            error: DioException.connectionTimeout(
+              timeout: const Duration(seconds: 20),
+              requestOptions: RequestOptions(path: '/api/mobile/index.php'),
+            ),
+          ),
+        ),
+      );
+
+      expect(find.text('加载失败'), findsOneWidget);
+      expect(find.text('连接超时，请检查网络后重试'), findsOneWidget);
+      expect(find.textContaining('DioException'), findsNothing);
     });
   });
 }

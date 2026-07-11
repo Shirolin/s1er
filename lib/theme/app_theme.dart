@@ -136,17 +136,10 @@ class AppTheme {
     );
   }
 
-  static bool _isTooClose(Color a, Color b) {
-    return (a.red - b.red).abs() <= 2 &&
-        (a.green - b.green).abs() <= 2 &&
-        (a.blue - b.blue).abs() <= 2;
-  }
-
-  static ThemeData fromColorScheme(ColorScheme rawColorScheme) {
-    // 仅当检测到系统动态取色异常（即 surfaceContainerLow 与 surface 极其接近，偏差在 2 个 RGB 单位内）时，
-    // 才使用 primary 种子色重新生成标准的 M3 容器色进行覆盖。对于正常的手动预设颜色则保持原样，避免卡片过亮。
-    final isLowContrast = _isTooClose(rawColorScheme.surfaceContainerLow, rawColorScheme.surface);
-    final colorScheme = isLowContrast
+  static ThemeData fromColorScheme(ColorScheme rawColorScheme, {bool isDynamic = false}) {
+    // 仅当开启了自动取色（isDynamic = true）时，由于系统/插件的桥接问题，提取的 surfaceContainer* 与 surface 对比度过低，
+    // 我们强制使用 primary 种子重新生成标准的 M3 容器色进行覆盖。预设配色（isDynamic = false）则保持原装，避免影响精心调试的色阶。
+    final colorScheme = isDynamic
         ? rawColorScheme.copyWith(
             surfaceContainerLow: ColorScheme.fromSeed(
               seedColor: rawColorScheme.primary,

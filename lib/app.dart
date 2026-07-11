@@ -162,10 +162,10 @@ class S1App extends ConsumerWidget {
         });
 
         final lightTheme = useDynamic && hasDynamic
-            ? AppTheme.fromColorScheme(lightDynamic)
+            ? AppTheme.fromColorScheme(lightDynamic, isDynamic: true)
             : AppTheme.lightTheme(settings.themeColor);
         final darkTheme = useDynamic && hasDynamic
-            ? AppTheme.fromColorScheme(darkDynamic)
+            ? AppTheme.fromColorScheme(darkDynamic, isDynamic: true)
             : AppTheme.darkTheme(settings.themeColor);
 
         return TalkerWrapper(

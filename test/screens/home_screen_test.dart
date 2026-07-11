@@ -5,10 +5,12 @@ import 'package:s1_app/models/forum_category.dart';
 import 'package:s1_app/models/user.dart';
 import 'package:s1_app/providers/auth_provider.dart';
 import 'package:s1_app/providers/forum_list_provider.dart';
+import 'package:s1_app/providers/messages_segment_provider.dart';
 import 'package:s1_app/providers/settings_provider.dart';
 import 'package:s1_app/screens/home_screen.dart';
 import 'package:s1_app/services/auth_service.dart';
 import 'package:s1_app/theme/app_theme.dart';
+import '../helpers/messages_test_helpers.dart';
 
 void main() {
   testWidgets('guest can view forum list on home forum tab', (tester) async {
@@ -20,6 +22,7 @@ void main() {
           settingsProvider.overrideWith(
             (ref) => SettingsNotifier(const AppSettings()),
           ),
+          ...messagesProviderOverrides(),
         ],
         child: MaterialApp(
           theme: AppTheme.lightTheme('purple'),
@@ -47,6 +50,7 @@ void main() {
           settingsProvider.overrideWith(
             (ref) => SettingsNotifier(const AppSettings()),
           ),
+          ...messagesProviderOverrides(),
         ],
         child: MaterialApp(
           theme: AppTheme.lightTheme('purple'),
@@ -72,6 +76,13 @@ void main() {
     await tester.pumpAndSettle();
     expect(find.text('消息'), findsNWidgets(2));
     expect(find.text('Messages'), findsNothing);
+    expect(find.text('我的消息'), findsOneWidget);
+    expect(find.text('我对 Kiyohara_Yasuke 说'), findsOneWidget);
+
+    await tester.tap(find.text('我的提醒'));
+    await tester.pumpAndSettle();
+    expect(find.text('JOJOROY'), findsOneWidget);
+    expect(messagesBrowserUrl(1), contains('do=notice'));
   });
 }
 

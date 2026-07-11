@@ -15,6 +15,7 @@ S1 论坛使用的 Discuz! Mobile API (version=4)。所有请求走 `ApiConfig.m
 | `profile` | 用户资料 | `getUserProfile()` / `getUserProfileByUid()` | ✅ 已完成 | ✅ 已通过 |
 | `newthread` | 发表新主题 | 待实现 | 📄 仅文档 | ✅ 已通过 |
 | `sendpm` | 发私信 | 未使用 | ❌ 未实现 | — |
+| `mypm` | 私信会话列表 | `getPmList()` | ✅ 已完成 | ✅ 已通过（未登录探测） |
 | `sendpost` | ⚠️ **S1 已禁用此模块** | — | ❌ 不存在 |
 | `editpost` | ⚠️ **S1 已禁用** | — | ❌ 不存在 |
 | `uploadattach` / `postattach` | ⚠️ **S1 已禁用** | — | ❌ 不存在 |
@@ -665,6 +666,68 @@ S1 实际配置：
 
 ---
 
+## module=mypm（私信会话列表）
+
+获取当前登录用户的私信会话列表。未登录时 `Message.messageval` 为 `login_before_enter_home`。
+
+### 请求参数
+
+| 参数 | 必填 | 说明 |
+|------|------|------|
+| `page` | ❌ | 页码，从 1 开始 |
+
+### 响应 `Variables` 字段
+
+| 字段 | 类型 | 说明 |
+|------|------|------|
+| `list` | array | 会话列表 |
+| `count` | string? | 总会话数（可能为 null） |
+| `perpage` | string? | 每页条数（可能为 null，默认按 20 处理） |
+| `page` | string | 当前页 |
+
+### `list[]` 每项字段（Discuz 标准 + S1 实测结构）
+
+| 字段 | 类型 | 说明 |
+|------|------|------|
+| `touid` | string | 对话对象 UID（兜底：`msgtoid`、`uid`） |
+| `msgfrom` | string | 最后一条消息发送者用户名 |
+| `msgfromid` | string | 最后一条消息发送者 UID（兜底：`authorid`） |
+| `tousername` | string? | 对话对象用户名（兜底：`touuser`、`msgto`、`toname`） |
+| `message` | string | 最后一条消息摘要（兜底：`lastmessage`、`lastsummary`、`summary`） |
+| `dateline` | string | Unix 时间戳（兜底：`dbdateline`；或 `date` / `pmdate` / `postdatetime` 日期串） |
+| `avatar` | string? | 头像 URL（兜底：`member_avatar`、`msgfromavatar`） |
+
+> 判断方向：`msgfromid == touid` 为对方发来；否则为自己发出。
+
+### HTML 兜底
+
+当 API 返回空列表或解析失败时，客户端回退到：
+
+`home.php?mod=space&do=pm&filter=privatepm&page={page}`
+
+解析 `#pmlist ul li`：`touid`、头像、`.mtime`、`.mtit`、`.mtxt`。
+
+---
+
+## HTML 解析：我的提醒
+
+Mobile API 无可用 `notice` / `mynotelist`（version=4）列表模块，需解析 HTML。
+
+### URL
+
+`home.php?mod=space&do=notice&view=all&type=&isread=1&page={page}`
+
+### 列表项
+
+- `li[notice]` → 提醒 ID
+- `.mimg a[href*=uid=]` → 作者 UID；链接文本为头像 URL
+- `.mtit span`（非「屏蔽」链接）→ 时间
+- `.mbody` → 正文 HTML；从 `goto=findpost&ptid=&pid=` 提取跳转目标
+
+### 分页
+
+`.pg` 中 `page=N` 链接的最大 N 为总页数；`class="last"` 含末页页码。
+
 ---
 
 ## module=mythread（用户空间：我的主题 / 回复）
@@ -759,6 +822,8 @@ S1 实际配置：
 | `profile` | 正常返回 JSON | ✅ 可用 |
 | `newthread` | 返回 JSON，缺参数时提示 `forum_nonexistence` | ✅ 可用（发新帖） |
 | `sendpm` | 返回 JSON，未登录时提示 `to_login` | ✅ 可用（发私信） |
+| `mypm` | 返回 JSON，`list` 字段；未登录 `login_before_enter_home` | ✅ 可用（私信列表） |
+| `mynotelist` | 返回 JSON（version=3 探测）；S1 客户端用 HTML 解析提醒 | ⚠️ 存在但未采用 |
 | `sendpost` | `{"error":"module_not_exists"}` | ❌ S1 已禁用 |
 | `editpost` | `{"error":"module_not_exists"}` | ❌ S1 已禁用 |
 | `uploadattach` | `{"error":"module_not_exists"}` | ❌ S1 已禁用 |

@@ -8,6 +8,9 @@ import '../models/poll.dart';
 import '../models/reply_submit_result.dart';
 import '../models/forum_category.dart';
 import '../models/user.dart';
+import '../models/private_message_item.dart';
+import '../models/notice_item.dart';
+import '../models/message_list_result.dart';
 import '../utils/error_handler.dart';
 import 'http_client.dart';
 
@@ -963,6 +966,248 @@ class ApiService {
       }
     } catch (_) {}
     return 1;
+  }
+
+  /// 获取私信会话列表（优先 Mobile API，失败时 HTML 兜底）。
+  Future<PmListResult> getPmList({int page = 1}) async {
+    try {
+      final url = buildApiUrl(
+        module: ApiConfig.moduleMyPm,
+        params: {'page': page.toString()},
+      );
+      final response = await _httpClient.get(url);
+      final json = ensureJson(response.data);
+      checkAuthError(json);
+      final result = parsePmListJson(json, page: page);
+      if (result.items.isNotEmpty) return result;
+    } catch (e) {
+      if (e is LoginRequiredException) rethrow;
+    }
+    return getPmListHtml(page: page);
+  }
+
+  /// HTML 兜底：私信会话列表。
+  Future<PmListResult> getPmListHtml({int page = 1}) async {
+    final url = '${ApiConfig.baseUrl}/home.php'
+        '?mod=space&do=pm&filter=privatepm&page=$page';
+    final response = await _httpClient.get(
+      url,
+      options: Options(responseType: ResponseType.plain),
+    );
+    final html = response.data as String;
+    if (html.contains('id="loginform_') || html.contains('name="login"')) {
+      throw LoginRequiredException();
+    }
+    return parsePmListHtml(html, page: page);
+  }
+
+  /// 获取提醒列表（HTML 解析）。
+  Future<NoticeListResult> getNoticeList({int page = 1}) async {
+    final url = '${ApiConfig.baseUrl}/home.php'
+        '?mod=space&do=notice&view=all&type=&isread=1&page=$page';
+    final response = await _httpClient.get(
+      url,
+      options: Options(responseType: ResponseType.plain),
+    );
+    final html = response.data as String;
+    if (html.contains('id="loginform_') || html.contains('name="login"')) {
+      throw LoginRequiredException();
+    }
+    return parseNoticeListHtml(html, page: page);
+  }
+
+  static PmListResult parsePmListJson(
+    Map<String, dynamic> json, {
+    int page = 1,
+  }) {
+    final variables = json['Variables'] as Map<String, dynamic>?;
+    if (variables == null) return PmListResult.empty;
+
+    final message = json['Message'] as Map<String, dynamic>?;
+    final messageval = message?['messageval']?.toString() ?? '';
+    if (messageval.contains('login_before_enter_home') ||
+        messageval.contains('to_login')) {
+      throw LoginRequiredException();
+    }
+
+    final list = variables['list'] as List? ?? [];
+    final items = list
+        .map((e) => PrivateMessageItem.fromApiJson(e as Map<String, dynamic>))
+        .where((item) => item.touid.isNotEmpty)
+        .toList();
+
+    final perpage =
+        int.tryParse(variables['perpage']?.toString() ?? '') ?? 20;
+    final count = int.tryParse(variables['count']?.toString() ?? '');
+    final totalPages = count != null && count > 0 && perpage > 0
+        ? (count / perpage).ceil()
+        : (items.length >= perpage ? page + 1 : page);
+
+    return PmListResult(
+      items: items,
+      currentPage: page,
+      totalPages: totalPages.clamp(1, totalPages),
+    );
+  }
+
+  static final _pmListItemRe = RegExp(
+    r'<li>\s*<span class="mimg">.*?subop=view&(?:amp;)?touid=(\d+).*?'
+    r'<img src="([^"]+)".*?'
+    r'<span class="mtime">([^<]+)</span>\s*(.*?)\s*</p>\s*'
+    r'<p class="mtxt">\s*(.*?)</p>',
+    caseSensitive: false,
+    dotAll: true,
+  );
+
+  static PmListResult parsePmListHtml(String html, {int page = 1}) {
+    final items = <PrivateMessageItem>[];
+    for (final match in _pmListItemRe.allMatches(html)) {
+      final touid = match.group(1) ?? '';
+      final avatarUrl = match.group(2);
+      final timeStr = match.group(3)?.trim() ?? '';
+      final titleRaw = _stripHtml(match.group(4) ?? '');
+      final preview = _stripHtml(match.group(5) ?? '');
+      final isOutgoing = titleRaw.contains('我对');
+      final partnerName = _extractPmPartnerName(titleRaw);
+
+      items.add(
+        PrivateMessageItem(
+          touid: touid,
+          partnerName: partnerName.isNotEmpty ? partnerName : '用户$touid',
+          preview: preview,
+          dateline: _parseLooseDateString(timeStr),
+          isOutgoing: isOutgoing,
+          avatarUrl: avatarUrl,
+        ),
+      );
+    }
+
+    final totalPages = _extractMaxPage(html, fallback: page);
+    return PmListResult(
+      items: items,
+      currentPage: page,
+      totalPages: totalPages,
+    );
+  }
+
+  static String _extractPmPartnerName(String title) {
+    final outgoing = RegExp(r'我对\s+(.+?)\s+说').firstMatch(title);
+    if (outgoing != null) {
+      return outgoing.group(1)?.trim() ?? '';
+    }
+    final incoming = RegExp(r'(.+?)\s+对我\s+说').firstMatch(title);
+    if (incoming != null) {
+      return incoming.group(1)?.trim() ?? '';
+    }
+    return title.replaceAll(RegExp(r'说:?$'), '').trim();
+  }
+
+  static final _noticeItemRe = RegExp(
+    r'<li class="cl"\s+notice="(\d+)"[^>]*>.*?'
+    r'<span class="mimg"><a href="[^"]*uid=(\d+)[^"]*">([^<]*)</a></span>.*?'
+    r'<p class="mtit">.*?<span>([^<]+)</span>.*?'
+    r'<p class="mbody"[^>]*>(.*?)</p>',
+    caseSensitive: false,
+    dotAll: true,
+  );
+
+  static final _findPostLinkRe = RegExp(
+    r'goto=findpost&(?:amp;)?(?:ptid=(\d+)&(?:amp;)?pid=(\d+)|pid=(\d+)&(?:amp;)?ptid=(\d+))',
+    caseSensitive: false,
+  );
+
+  static NoticeListResult parseNoticeListHtml(String html, {int page = 1}) {
+    final items = <NoticeItem>[];
+    for (final match in _noticeItemRe.allMatches(html)) {
+      final id = match.group(1) ?? '';
+      final authorUid = match.group(2) ?? '';
+      final avatarRaw = match.group(3)?.trim() ?? '';
+      final timeStr = match.group(4)?.trim() ?? '';
+      final bodyHtml = match.group(5) ?? '';
+
+      final linkMatch = _findPostLinkRe.firstMatch(bodyHtml);
+      final tid = linkMatch?.group(1) ?? linkMatch?.group(4) ?? '';
+      final pid = linkMatch?.group(2) ?? linkMatch?.group(3);
+
+      final authorName = _extractNoticeAuthorName(bodyHtml);
+      final summary = _stripHtml(bodyHtml);
+      final type = _classifyNotice(summary);
+
+      final avatarUrl = avatarRaw.startsWith('http')
+          ? avatarRaw
+          : PrivateMessageItem.avatarUrlForUid(authorUid);
+
+      items.add(
+        NoticeItem(
+          id: id,
+          authorUid: authorUid,
+          authorName: authorName.isNotEmpty ? authorName : '用户$authorUid',
+          summary: summary,
+          dateline: _parseLooseDateString(timeStr),
+          tid: tid,
+          pid: pid,
+          avatarUrl: avatarUrl,
+          type: type,
+        ),
+      );
+    }
+
+    final totalPages = _extractMaxPage(html, fallback: page);
+    return NoticeListResult(
+      items: items,
+      currentPage: page,
+      totalPages: totalPages,
+    );
+  }
+
+  static String _extractNoticeAuthorName(String bodyHtml) {
+    final match = RegExp(
+      r'<a href="[^"]*uid=\d+[^"]*">([^<]+)</a>',
+      caseSensitive: false,
+    ).firstMatch(bodyHtml);
+    return _stripHtml(match?.group(1) ?? '');
+  }
+
+  static NoticeType _classifyNotice(String summary) {
+    if (summary.contains('回复了您的帖子')) return NoticeType.reply;
+    if (summary.contains('评分')) return NoticeType.rate;
+    return NoticeType.other;
+  }
+
+  static int _extractMaxPage(String html, {required int fallback}) {
+    var maxPage = fallback;
+    for (final match in RegExp(r'page=(\d+)').allMatches(html)) {
+      final pageNum = int.tryParse(match.group(1) ?? '');
+      if (pageNum != null && pageNum > maxPage) maxPage = pageNum;
+    }
+    return maxPage.clamp(1, maxPage);
+  }
+
+  static int _parseLooseDateString(String s) {
+    final normalized = s.trim().replaceAll('/', '-');
+    if (normalized.isEmpty) return 0;
+    try {
+      final parts = normalized.split(RegExp(r'\s+'));
+      final dateParts = parts.first.split('-');
+      if (dateParts.length == 3) {
+        final year = int.parse(dateParts[0]);
+        final month = int.parse(dateParts[1]);
+        final day = int.parse(dateParts[2]);
+        var hour = 0;
+        var minute = 0;
+        if (parts.length > 1) {
+          final timeParts = parts[1].split(':');
+          if (timeParts.length >= 2) {
+            hour = int.parse(timeParts[0]);
+            minute = int.parse(timeParts[1]);
+          }
+        }
+        return DateTime(year, month, day, hour, minute)
+                .millisecondsSinceEpoch ~/
+            1000;
+      }
+    } catch (_) {}
+    return _parseDateString(normalized);
   }
 
   Future<User?> getUserProfileByUid(String uid) async {

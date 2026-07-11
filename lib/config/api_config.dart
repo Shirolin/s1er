@@ -19,5 +19,6 @@ class ApiConfig {
   static const String moduleViewThread = 'viewthread';
   static const String moduleLogin = 'login';
   static const String moduleSendMessage = 'sendpm';
+  static const String moduleMyPm = 'mypm';
   static const String moduleProfile = 'profile';
 }

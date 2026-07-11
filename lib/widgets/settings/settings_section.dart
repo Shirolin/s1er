@@ -1,10 +1,12 @@
 import 'package:flutter/material.dart';
 
-import 'display_settings_section.dart';
+import 'about_settings_section.dart';
+import 'browsing_settings_section.dart';
+import 'data_management_section.dart';
 import 'font_size_section.dart';
 import 'theme_settings_section.dart';
 
-/// 设置页内容：主题 + 文字 + 显示。
+/// 设置页内容：主题、文字、浏览、数据管理与关于。
 class SettingsSection extends StatelessWidget {
   const SettingsSection({super.key});
 
@@ -16,7 +18,11 @@ class SettingsSection extends StatelessWidget {
         SizedBox(height: 16),
         FontSizeSection(),
         SizedBox(height: 16),
-        DisplaySettingsSection(),
+        BrowsingSettingsSection(),
+        SizedBox(height: 16),
+        DataManagementSection(),
+        SizedBox(height: 16),
+        AboutSettingsSection(),
       ],
     );
   }

@@ -2,42 +2,31 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:talker_flutter/talker_flutter.dart';
 
-import '../../providers/settings_provider.dart';
 import '../../providers/talker_provider.dart';
 import '../../services/talker.dart' as t;
 import '../../theme/app_theme.dart';
 import 'settings_section_header.dart';
 
-class DisplaySettingsSection extends ConsumerWidget {
-  const DisplaySettingsSection({super.key});
+class AboutSettingsSection extends StatelessWidget {
+  const AboutSettingsSection({super.key});
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
-    final showImages = ref.watch(settingsProvider.select((s) => s.showImages));
+  Widget build(BuildContext context) {
     final scheme = Theme.of(context).colorScheme;
 
     return Card(
       elevation: 0,
       shape: S1Shape.cardShape,
-      color: scheme.surfaceContainerHighest.withValues(alpha: S1Alpha.cardOverlay),
-      child: Padding(
-        padding: const EdgeInsets.all(20),
+      color:
+          scheme.surfaceContainerHighest.withValues(alpha: S1Alpha.cardOverlay),
+      child: const Padding(
+        padding: EdgeInsets.all(20),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            const SettingsSectionHeader(title: '显示设置'),
-            const SizedBox(height: 8),
-            SwitchListTile(
-              secondary: Icon(Icons.image_outlined, color: scheme.onSurfaceVariant),
-              title: const Text('显示图片'),
-              value: showImages,
-              onChanged: ref.read(settingsProvider.notifier).setShowImages,
-              contentPadding: const EdgeInsets.symmetric(horizontal: 8),
-              shape: const RoundedRectangleBorder(
-                borderRadius: S1Shape.small,
-              ),
-            ),
-            const _VersionTile(),
+            SettingsSectionHeader(title: '关于'),
+            SizedBox(height: 8),
+            _VersionTile(),
           ],
         ),
       ),

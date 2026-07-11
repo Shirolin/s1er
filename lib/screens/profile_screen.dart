@@ -76,22 +76,24 @@ class _ProfileBodyState extends ConsumerState<ProfileBody> {
     });
 
     // 显示加载中遮罩
-    unawaited(showDialog<void>(
-      context: context,
-      barrierDismissible: false,
-      builder: (context) => const PopScope(
-        canPop: false,
-        child: AlertDialog(
-          content: Row(
-            children: [
-              CircularProgressIndicator(),
-              SizedBox(width: 24),
-              Text('正在退出登录…'),
-            ],
+    unawaited(
+      showDialog<void>(
+        context: context,
+        barrierDismissible: false,
+        builder: (context) => const PopScope(
+          canPop: false,
+          child: AlertDialog(
+            content: Row(
+              children: [
+                CircularProgressIndicator(),
+                SizedBox(width: 24),
+                Text('正在退出登录…'),
+              ],
+            ),
           ),
         ),
       ),
-    ),);
+    );
 
     try {
       await ref.read(authStateProvider.notifier).logout();
@@ -164,7 +166,6 @@ class _ProfileBodyState extends ConsumerState<ProfileBody> {
 }
 
 class _HeaderCard extends StatelessWidget {
-
   const _HeaderCard({
     required this.avatarUrl,
     required this.letter,
@@ -251,7 +252,6 @@ class _HeaderCard extends StatelessWidget {
 }
 
 class _StatsCard extends StatelessWidget {
-
   const _StatsCard({required this.user});
   final User user;
 
@@ -262,7 +262,8 @@ class _StatsCard extends StatelessWidget {
     return Card(
       elevation: 0,
       shape: S1Shape.cardShape,
-      color: colorScheme.surfaceContainerHighest.withValues(alpha: S1Alpha.cardOverlay),
+      color: colorScheme.surfaceContainerHighest
+          .withValues(alpha: S1Alpha.cardOverlay),
       child: Padding(
         padding: const EdgeInsets.symmetric(vertical: 16),
         child: Row(
@@ -295,7 +296,6 @@ class _StatsCard extends StatelessWidget {
 }
 
 class _S1StatsCard extends StatelessWidget {
-
   const _S1StatsCard({required this.user});
   final User user;
 
@@ -307,7 +307,8 @@ class _S1StatsCard extends StatelessWidget {
     return Card(
       elevation: 0,
       shape: S1Shape.cardShape,
-      color: colorScheme.surfaceContainerHighest.withValues(alpha: S1Alpha.cardOverlay),
+      color: colorScheme.surfaceContainerHighest
+          .withValues(alpha: S1Alpha.cardOverlay),
       child: Padding(
         padding: const EdgeInsets.symmetric(vertical: 20, horizontal: 16),
         child: Row(
@@ -378,7 +379,6 @@ class _VerticalDivider extends StatelessWidget {
 }
 
 class _StatItem extends StatelessWidget {
-
   const _StatItem({required this.label, required this.value, this.onTap});
   final String label;
   final int value;
@@ -422,7 +422,6 @@ class _StatItem extends StatelessWidget {
 }
 
 class _InfoCard extends StatelessWidget {
-
   const _InfoCard({required this.user});
   final User user;
 
@@ -433,7 +432,8 @@ class _InfoCard extends StatelessWidget {
     return Card(
       elevation: 0,
       shape: S1Shape.cardShape,
-      color: colorScheme.surfaceContainerHighest.withValues(alpha: S1Alpha.cardOverlay),
+      color: colorScheme.surfaceContainerHighest
+          .withValues(alpha: S1Alpha.cardOverlay),
       child: Column(
         children: [
           _InfoTile(label: 'UID', value: user.uid),
@@ -454,7 +454,6 @@ class _InfoCard extends StatelessWidget {
 }
 
 class _InfoTile extends StatelessWidget {
-
   const _InfoTile({required this.label, required this.value});
   final String label;
   final String value;
@@ -499,7 +498,8 @@ class _SystemGroupCard extends ConsumerWidget {
     return Card(
       elevation: 0,
       shape: S1Shape.cardShape,
-      color: colorScheme.surfaceContainerHighest.withValues(alpha: S1Alpha.cardOverlay),
+      color: colorScheme.surfaceContainerHighest
+          .withValues(alpha: S1Alpha.cardOverlay),
       clipBehavior: Clip.antiAlias,
       child: Padding(
         padding: const EdgeInsets.symmetric(vertical: 4),
@@ -526,25 +526,37 @@ class _SystemGroupCard extends ConsumerWidget {
                       ),
                     ),
                   const SizedBox(width: 4),
-                  Icon(Icons.chevron_right, color: colorScheme.onSurfaceVariant),
+                  Icon(
+                    Icons.chevron_right,
+                    color: colorScheme.onSurfaceVariant,
+                  ),
                 ],
               ),
               onTap: () => context.push('/reading-history'),
             ),
             Padding(
               padding: const EdgeInsets.symmetric(horizontal: 16),
-              child: Divider(height: 1, color: colorScheme.outlineVariant.withValues(alpha: S1Alpha.half)),
+              child: Divider(
+                height: 1,
+                color: colorScheme.outlineVariant.withValues(
+                  alpha: S1Alpha.half,
+                ),
+              ),
             ),
             ListTile(
-              leading: Icon(Icons.settings_outlined, color: colorScheme.primary),
+              leading:
+                  Icon(Icons.settings_outlined, color: colorScheme.primary),
               title: const Text('设置'),
               subtitle: Text(
-                '主题、文字大小与显示',
+                '主题、浏览、数据管理与关于',
                 style: textTheme.bodySmall?.copyWith(
                   color: colorScheme.onSurfaceVariant,
                 ),
               ),
-              trailing: Icon(Icons.chevron_right, color: colorScheme.onSurfaceVariant),
+              trailing: Icon(
+                Icons.chevron_right,
+                color: colorScheme.onSurfaceVariant,
+              ),
               onTap: () => context.push('/settings'),
             ),
           ],
@@ -555,7 +567,6 @@ class _SystemGroupCard extends ConsumerWidget {
 }
 
 class _ActionTile extends StatelessWidget {
-
   const _ActionTile({
     required this.icon,
     required this.label,
@@ -578,9 +589,9 @@ class _ActionTile extends StatelessWidget {
         title: Text(
           label,
           style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-            color: color,
-            fontWeight: FontWeight.w500,
-          ),
+                color: color,
+                fontWeight: FontWeight.w500,
+              ),
         ),
         shape: const RoundedRectangleBorder(
           borderRadius: S1Shape.large,

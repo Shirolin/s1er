@@ -13,7 +13,7 @@ void main() {
       ProviderScope(
         overrides: [
           settingsProvider.overrideWith(
-            (ref) => SettingsNotifier(AppSettings()),
+            (ref) => SettingsNotifier(const AppSettings()),
           ),
           packageInfoProvider.overrideWith(
             (_) async => PackageInfo(
@@ -34,7 +34,9 @@ void main() {
 
     expect(find.text('主题设置'), findsOneWidget);
     expect(find.text('文字大小'), findsOneWidget);
-    expect(find.text('显示设置'), findsOneWidget);
+    expect(find.text('浏览行为'), findsOneWidget);
+    expect(find.text('数据管理'), findsOneWidget);
+    expect(find.text('关于'), findsOneWidget);
     expect(find.text('Material You 动态取色'), findsOneWidget);
     expect(find.text('标准'), findsOneWidget);
     expect(find.text('版本'), findsOneWidget);

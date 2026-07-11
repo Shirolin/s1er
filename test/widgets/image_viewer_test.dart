@@ -12,7 +12,7 @@ void main() {
       ProviderScope(
         overrides: [
           settingsProvider.overrideWith(
-            (ref) => SettingsNotifier(AppSettings(showImages: false)),
+            (ref) => SettingsNotifier(const AppSettings(showImages: false)),
           ),
         ],
         child: MaterialApp(
@@ -38,7 +38,7 @@ void main() {
       ProviderScope(
         overrides: [
           settingsProvider.overrideWith(
-            (ref) => SettingsNotifier(AppSettings(showImages: false)),
+            (ref) => SettingsNotifier(const AppSettings(showImages: false)),
           ),
         ],
         child: MaterialApp(

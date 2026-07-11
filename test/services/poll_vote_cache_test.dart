@@ -41,4 +41,18 @@ void main() {
     expect(cacheA.getVotes('100'), ['11']);
     expect(cacheB.getVotes('100'), ['22']);
   });
+
+  test('clearAll only clears current uid cache entries', () async {
+    final cacheA = PollVoteCache(cacheBox, '1');
+    final cacheB = PollVoteCache(cacheBox, '2');
+    await cacheA.saveVotes('100', ['11']);
+    await cacheA.saveVotes('101', ['12']);
+    await cacheB.saveVotes('100', ['22']);
+
+    await cacheA.clearAll();
+
+    expect(cacheA.getVotes('100'), isEmpty);
+    expect(cacheA.getVotes('101'), isEmpty);
+    expect(cacheB.getVotes('100'), ['22']);
+  });
 }

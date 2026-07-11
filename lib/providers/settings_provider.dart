@@ -4,10 +4,11 @@ import 'package:hive/hive.dart';
 import '../theme/app_theme.dart';
 
 class AppSettings {
-  AppSettings({
+  const AppSettings({
     this.themeMode = 'system',
     this.themeColor = 'purple',
     this.showImages = true,
+    this.recordReadingHistory = true,
     this.fontSize = S1Typography.defaultBodySize,
     this.useDynamicColor = false,
     this.collapsedForums = const {},
@@ -16,6 +17,7 @@ class AppSettings {
   final String themeMode;
   final String themeColor;
   final bool showImages;
+  final bool recordReadingHistory;
   final int fontSize;
   final bool useDynamicColor;
   final Set<String> collapsedForums;
@@ -26,6 +28,7 @@ class AppSettings {
     String? themeMode,
     String? themeColor,
     bool? showImages,
+    bool? recordReadingHistory,
     int? fontSize,
     bool? useDynamicColor,
     Set<String>? collapsedForums,
@@ -34,6 +37,7 @@ class AppSettings {
       themeMode: themeMode ?? this.themeMode,
       themeColor: themeColor ?? this.themeColor,
       showImages: showImages ?? this.showImages,
+      recordReadingHistory: recordReadingHistory ?? this.recordReadingHistory,
       fontSize: fontSize ?? this.fontSize,
       useDynamicColor: useDynamicColor ?? this.useDynamicColor,
       collapsedForums: collapsedForums ?? this.collapsedForums,
@@ -42,7 +46,8 @@ class AppSettings {
 }
 
 class SettingsNotifier extends StateNotifier<AppSettings> {
-  SettingsNotifier([AppSettings? initial]) : super(initial ?? AppSettings()) {
+  SettingsNotifier([AppSettings? initial])
+      : super(initial ?? const AppSettings()) {
     if (initial == null) {
       _loadSettings();
     }
@@ -62,6 +67,7 @@ class SettingsNotifier extends StateNotifier<AppSettings> {
       themeMode: themeMode,
       themeColor: box.get('themeColor', defaultValue: 'purple') as String,
       showImages: box.get('showImages', defaultValue: true),
+      recordReadingHistory: box.get('recordReadingHistory', defaultValue: true),
       fontSize: box.get('fontSize', defaultValue: S1Typography.defaultBodySize),
       useDynamicColor: box.get('useDynamicColor', defaultValue: false),
       collapsedForums: Set<String>.from(
@@ -85,6 +91,11 @@ class SettingsNotifier extends StateNotifier<AppSettings> {
     Hive.box('settings').put('showImages', value);
   }
 
+  void setRecordReadingHistory(bool value) {
+    state = state.copyWith(recordReadingHistory: value);
+    Hive.box('settings').put('recordReadingHistory', value);
+  }
+
   void setFontSize(int value) {
     state = state.copyWith(fontSize: value);
     Hive.box('settings').put('fontSize', value);
@@ -104,6 +115,25 @@ class SettingsNotifier extends StateNotifier<AppSettings> {
     }
     state = state.copyWith(collapsedForums: collapsed);
     Hive.box('settings').put('collapsedForums', collapsed.toList());
+  }
+
+  void resetAppearanceSettings() {
+    const defaults = AppSettings();
+    state = state.copyWith(
+      themeMode: defaults.themeMode,
+      themeColor: defaults.themeColor,
+      showImages: defaults.showImages,
+      recordReadingHistory: defaults.recordReadingHistory,
+      fontSize: defaults.fontSize,
+      useDynamicColor: defaults.useDynamicColor,
+    );
+    final box = Hive.box('settings');
+    box.put('themeMode', defaults.themeMode);
+    box.put('themeColor', defaults.themeColor);
+    box.put('showImages', defaults.showImages);
+    box.put('recordReadingHistory', defaults.recordReadingHistory);
+    box.put('fontSize', defaults.fontSize);
+    box.put('useDynamicColor', defaults.useDynamicColor);
   }
 }
 

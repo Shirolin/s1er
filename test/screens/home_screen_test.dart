@@ -18,7 +18,7 @@ void main() {
           authStateProvider.overrideWith(_LoggedOutAuthNotifier.new),
           forumListProvider.overrideWith(_GuestForumListNotifier.new),
           settingsProvider.overrideWith(
-            (ref) => SettingsNotifier(AppSettings()),
+            (ref) => SettingsNotifier(const AppSettings()),
           ),
         ],
         child: MaterialApp(
@@ -45,7 +45,7 @@ void main() {
           authStateProvider.overrideWith(_LoggedInAuthNotifier.new),
           forumListProvider.overrideWith(_GuestForumListNotifier.new),
           settingsProvider.overrideWith(
-            (ref) => SettingsNotifier(AppSettings()),
+            (ref) => SettingsNotifier(const AppSettings()),
           ),
         ],
         child: MaterialApp(

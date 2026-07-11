@@ -46,23 +46,6 @@ class FontSizeSection extends ConsumerWidget {
                 selected: {fontSize},
                 onSelectionChanged: (v) => notifier.setFontSize(v.first),
                 showSelectedIcon: false,
-                style: ButtonStyle(
-                  backgroundColor: WidgetStateProperty.resolveWith((states) {
-                    if (states.contains(WidgetState.selected)) {
-                      return scheme.secondaryContainer;
-                    }
-                    return Colors.transparent;
-                  }),
-                  foregroundColor: WidgetStateProperty.resolveWith((states) {
-                    if (states.contains(WidgetState.selected)) {
-                      return scheme.onSecondaryContainer;
-                    }
-                    return scheme.onSurfaceVariant;
-                  }),
-                  shape: WidgetStateProperty.all(
-                    const RoundedRectangleBorder(borderRadius: S1Shape.medium),
-                  ),
-                ),
               ),
             ),
           ],

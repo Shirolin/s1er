@@ -346,7 +346,9 @@ class _ThreadDetailScreenState extends ConsumerState<ThreadDetailScreen> {
                       icon: Icon(Icons.close, size: 18, color: scheme.onPrimaryContainer),
                       label: Text(
                         '取消',
-                        style: TextStyle(color: scheme.onPrimaryContainer),
+                        style: Theme.of(context).textTheme.labelLarge?.copyWith(
+                              color: scheme.onPrimaryContainer,
+                            ),
                       ),
                     ),
                   ],

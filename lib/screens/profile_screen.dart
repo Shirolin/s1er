@@ -10,6 +10,7 @@ import '../providers/reading_history_provider.dart';
 import '../models/user.dart';
 import '../widgets/app_bar_more_menu.dart';
 import '../widgets/web_avatar.dart';
+import '../utils/s1_snack_bar.dart';
 
 class ProfileScreen extends ConsumerWidget {
   const ProfileScreen({super.key});
@@ -96,17 +97,13 @@ class _ProfileBodyState extends ConsumerState<ProfileBody> {
       if (mounted) {
         // 关闭加载遮罩
         Navigator.of(context).pop();
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('已退出登录')),
-        );
+        S1SnackBar.show(context, message: '已退出登录');
       }
     } catch (e) {
       if (mounted) {
         // 关闭加载遮罩
         Navigator.of(context).pop();
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('退出失败: $e')),
-        );
+        S1SnackBar.show(context, message: '退出失败: $e');
       }
     } finally {
       if (mounted) {

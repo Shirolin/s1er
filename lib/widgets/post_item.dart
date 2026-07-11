@@ -116,7 +116,7 @@ class _FloorBadge extends StatelessWidget {
     final scheme = Theme.of(context).colorScheme;
     final textTheme = Theme.of(context).textTheme;
 
-    return Chip(
+    return Badge(
       label: CompactLabel.text(
         '#$floor',
         style: CompactLabel.style(
@@ -127,11 +127,7 @@ class _FloorBadge extends StatelessWidget {
         ),
       ),
       backgroundColor: scheme.secondaryContainer,
-      side: BorderSide.none,
-      labelPadding: const EdgeInsets.symmetric(horizontal: 6),
-      visualDensity: VisualDensity.compact,
-      materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
-      padding: EdgeInsets.zero,
+      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
     );
   }
 }

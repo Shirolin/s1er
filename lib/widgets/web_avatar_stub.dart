@@ -1,8 +1,12 @@
 import 'package:flutter/material.dart';
 
-Widget buildHtmlAvatar(String url, double radius, String fallback) {
-  return CircleAvatar(
-    radius: radius,
-    child: Text(fallback, style: TextStyle(fontSize: radius * 0.8)),
-  );
+import 'avatar_fallback.dart';
+
+Widget buildHtmlAvatar(
+  BuildContext context,
+  String url,
+  double radius,
+  String fallback,
+) {
+  return AvatarFallbackLetter(radius: radius, letter: fallback);
 }

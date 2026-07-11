@@ -121,7 +121,6 @@ class _ProfileBodyState extends ConsumerState<ProfileBody> {
   Widget build(BuildContext context) {
     final authState = ref.watch(authStateProvider);
     final user = authState.user;
-    final colorScheme = Theme.of(context).colorScheme;
 
     final avatarUrl = User.resolveAvatarUrl(user?.avatar, size: 'middle');
     final letter = (authState.username?.isNotEmpty == true)
@@ -153,10 +152,7 @@ class _ProfileBodyState extends ConsumerState<ProfileBody> {
         const _SystemGroupCard(),
         const SizedBox(height: 16),
         if (authState.isLoggedIn)
-          _ActionTile(
-            icon: Icons.logout,
-            label: '退出登录',
-            color: colorScheme.error,
+          _LogoutTile(
             onTap: _isLoggingOut ? null : () => unawaited(_handleLogout()),
           ),
         const SizedBox(height: 24),
@@ -193,6 +189,7 @@ class _HeaderCard extends StatelessWidget {
       child: Padding(
         padding: const EdgeInsets.symmetric(vertical: 24, horizontal: 16),
         child: Column(
+          crossAxisAlignment: CrossAxisAlignment.center,
           children: [
             WebAvatar(url: avatarUrl, radius: 44, fallbackLetter: letter),
             const SizedBox(height: 16),
@@ -486,12 +483,158 @@ class _InfoTile extends StatelessWidget {
   }
 }
 
+/// 资料页列表行共用栅格：16 + 24 icon + 16 gap = 56 文字起始线。
+abstract class _ProfileListMetrics {
+  static const double hPadding = 16;
+  static const double iconSize = 24;
+  static const double gap = 16;
+  static const double vPadding = 12;
+  static const double textIndent = hPadding + iconSize + gap;
+}
+
 class _SystemGroupCard extends ConsumerWidget {
   const _SystemGroupCard();
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final count = ref.watch(readingHistoryProvider).length;
+    final colorScheme = Theme.of(context).colorScheme;
+
+    return Card(
+      elevation: 0,
+      shape: S1Shape.cardShape,
+      color: colorScheme.surfaceContainerHighest
+          .withValues(alpha: S1Alpha.cardOverlay),
+      clipBehavior: Clip.antiAlias,
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          _ProfileTwoLineRow(
+            icon: Icons.history_outlined,
+            title: '阅读历史',
+            subtitle: '浏览过的帖子记录',
+            trailing: count > 0
+                ? Badge(
+                    label: Text('$count'),
+                    child: Icon(
+                      Icons.chevron_right,
+                      size: _ProfileListMetrics.iconSize,
+                      color: colorScheme.onSurfaceVariant,
+                    ),
+                  )
+                : Icon(
+                    Icons.chevron_right,
+                    size: _ProfileListMetrics.iconSize,
+                    color: colorScheme.onSurfaceVariant,
+                  ),
+            onTap: () => context.push('/reading-history'),
+          ),
+          Padding(
+            padding: const EdgeInsets.symmetric(
+              horizontal: _ProfileListMetrics.hPadding,
+            ),
+            child: Divider(
+              height: 1,
+              color: colorScheme.outlineVariant.withValues(
+                alpha: S1Alpha.half,
+              ),
+            ),
+          ),
+          _ProfileTwoLineRow(
+            icon: Icons.settings_outlined,
+            title: '设置',
+            subtitle: '主题、文字大小与显示',
+            onTap: () => context.push('/settings'),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _ProfileTwoLineRow extends StatelessWidget {
+  const _ProfileTwoLineRow({
+    required this.icon,
+    required this.title,
+    required this.subtitle,
+    required this.onTap,
+    this.trailing,
+  });
+
+  final IconData icon;
+  final String title;
+  final String subtitle;
+  final VoidCallback onTap;
+  final Widget? trailing;
+
+  @override
+  Widget build(BuildContext context) {
+    final colorScheme = Theme.of(context).colorScheme;
+    final textTheme = Theme.of(context).textTheme;
+    final chevron = Icon(
+      Icons.chevron_right,
+      size: _ProfileListMetrics.iconSize,
+      color: colorScheme.onSurfaceVariant,
+    );
+
+    return Material(
+      color: Colors.transparent,
+      child: InkWell(
+        onTap: onTap,
+        child: Padding(
+          padding: const EdgeInsets.symmetric(
+            horizontal: _ProfileListMetrics.hPadding,
+            vertical: _ProfileListMetrics.vPadding,
+          ),
+          child: Row(
+            crossAxisAlignment: CrossAxisAlignment.center,
+            children: [
+              SizedBox(
+                width: _ProfileListMetrics.iconSize,
+                height: _ProfileListMetrics.iconSize,
+                child: Icon(
+                  icon,
+                  size: _ProfileListMetrics.iconSize,
+                  color: colorScheme.primary,
+                ),
+              ),
+              const SizedBox(width: _ProfileListMetrics.gap),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Text(title, style: textTheme.titleMedium),
+                    const SizedBox(height: 2),
+                    Text(
+                      subtitle,
+                      style: textTheme.bodySmall?.copyWith(
+                        color: colorScheme.onSurfaceVariant,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(width: _ProfileListMetrics.gap),
+              SizedBox(
+                width: _ProfileListMetrics.iconSize,
+                height: _ProfileListMetrics.iconSize,
+                child: Center(child: trailing ?? chevron),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _LogoutTile extends StatelessWidget {
+  const _LogoutTile({required this.onTap});
+  final VoidCallback? onTap;
+
+  @override
+  Widget build(BuildContext context) {
     final colorScheme = Theme.of(context).colorScheme;
     final textTheme = Theme.of(context).textTheme;
 
@@ -500,103 +643,38 @@ class _SystemGroupCard extends ConsumerWidget {
       shape: S1Shape.cardShape,
       color: colorScheme.surfaceContainerHighest
           .withValues(alpha: S1Alpha.cardOverlay),
-      clipBehavior: Clip.antiAlias,
-      child: Padding(
-        padding: const EdgeInsets.symmetric(vertical: 4),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            ListTile(
-              leading: Icon(Icons.history, color: colorScheme.primary),
-              title: const Text('阅读历史'),
-              subtitle: Text(
-                '浏览过的帖子记录',
-                style: textTheme.bodySmall?.copyWith(
-                  color: colorScheme.onSurfaceVariant,
-                ),
-              ),
-              trailing: Row(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  if (count > 0)
-                    Text(
-                      '$count',
-                      style: textTheme.bodyMedium?.copyWith(
-                        color: colorScheme.onSurfaceVariant,
-                      ),
-                    ),
-                  const SizedBox(width: 4),
-                  Icon(
-                    Icons.chevron_right,
-                    color: colorScheme.onSurfaceVariant,
+      child: Material(
+        color: Colors.transparent,
+        child: InkWell(
+          onTap: onTap,
+          borderRadius: S1Shape.medium,
+          child: Padding(
+            padding: const EdgeInsets.symmetric(
+              horizontal: _ProfileListMetrics.hPadding,
+              vertical: _ProfileListMetrics.vPadding,
+            ),
+            child: Row(
+              children: [
+                SizedBox(
+                  width: _ProfileListMetrics.iconSize,
+                  height: _ProfileListMetrics.iconSize,
+                  child: Icon(
+                    Icons.logout,
+                    size: _ProfileListMetrics.iconSize,
+                    color: colorScheme.primary,
                   ),
-                ],
-              ),
-              onTap: () => context.push('/reading-history'),
-            ),
-            Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 16),
-              child: Divider(
-                height: 1,
-                color: colorScheme.outlineVariant.withValues(
-                  alpha: S1Alpha.half,
                 ),
-              ),
-            ),
-            ListTile(
-              leading:
-                  Icon(Icons.settings_outlined, color: colorScheme.primary),
-              title: const Text('设置'),
-              subtitle: Text(
-                '主题、浏览、数据管理与关于',
-                style: textTheme.bodySmall?.copyWith(
-                  color: colorScheme.onSurfaceVariant,
+                const SizedBox(width: _ProfileListMetrics.gap),
+                Text(
+                  '退出登录',
+                  style: textTheme.titleMedium?.copyWith(
+                    color: colorScheme.primary,
+                  ),
                 ),
-              ),
-              trailing: Icon(
-                Icons.chevron_right,
-                color: colorScheme.onSurfaceVariant,
-              ),
-              onTap: () => context.push('/settings'),
+              ],
             ),
-          ],
+          ),
         ),
-      ),
-    );
-  }
-}
-
-class _ActionTile extends StatelessWidget {
-  const _ActionTile({
-    required this.icon,
-    required this.label,
-    required this.color,
-    required this.onTap,
-  });
-  final IconData icon;
-  final String label;
-  final Color color;
-  final VoidCallback? onTap;
-
-  @override
-  Widget build(BuildContext context) {
-    return Card(
-      elevation: 0,
-      shape: S1Shape.cardShape,
-      color: color.withValues(alpha: S1Alpha.subtle),
-      child: ListTile(
-        leading: Icon(icon, color: color),
-        title: Text(
-          label,
-          style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                color: color,
-                fontWeight: FontWeight.w500,
-              ),
-        ),
-        shape: const RoundedRectangleBorder(
-          borderRadius: S1Shape.large,
-        ),
-        onTap: onTap,
       ),
     );
   }

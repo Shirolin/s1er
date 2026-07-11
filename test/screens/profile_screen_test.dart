@@ -47,7 +47,7 @@ void main() {
       await tester.pump();
 
       expect(find.text('设置'), findsOneWidget);
-      expect(find.text('主题、浏览、数据管理与关于'), findsOneWidget);
+      expect(find.text('主题、文字大小与显示'), findsOneWidget);
       expect(find.text('主题设置'), findsNothing);
     });
 

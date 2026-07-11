@@ -14,21 +14,28 @@ class AvatarFallbackLetter extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final textTheme = Theme.of(context).textTheme;
+    final style = _fallbackStyle(textTheme, radius);
 
     return CircleAvatar(
       radius: radius,
       child: FittedBox(
-        fit: BoxFit.scaleDown,
+        fit: BoxFit.contain,
         child: Padding(
-          padding: EdgeInsets.all(radius * 0.2),
+          padding: EdgeInsets.all(radius * 0.18),
           child: Text(
             letter,
-            style: textTheme.titleMedium?.copyWith(
-              fontWeight: FontWeight.w600,
-            ),
+            style: style?.copyWith(fontWeight: FontWeight.w600),
           ),
         ),
       ),
     );
+  }
+
+  /// 按头像半径桥接 textTheme，大圆用更大字阶作 FittedBox 缩放基准。
+  static TextStyle? _fallbackStyle(TextTheme textTheme, double radius) {
+    if (radius >= 40) return textTheme.headlineLarge;
+    if (radius >= 28) return textTheme.headlineMedium;
+    if (radius >= 20) return textTheme.titleLarge;
+    return textTheme.titleMedium;
   }
 }

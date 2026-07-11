@@ -262,30 +262,35 @@ class _StatsCard extends StatelessWidget {
       color: colorScheme.surfaceContainerHighest
           .withValues(alpha: S1Alpha.cardOverlay),
       child: Padding(
-        padding: const EdgeInsets.symmetric(vertical: 16),
-        child: Row(
-          mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-          children: [
-            _StatItem(label: '积分', value: user.credits),
-            _VerticalDivider(),
-            _StatItem(
-              label: '帖子',
-              value: user.posts,
-              onTap: () => context.push(
-                '/user-space/${user.uid}?username=${Uri.encodeComponent(user.username)}&self=1&tab=1',
+        padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 8),
+        child: IntrinsicHeight(
+          child: Row(
+            children: [
+              Expanded(child: _StatItem(label: '积分', value: user.credits)),
+              _VerticalDivider(),
+              Expanded(
+                child: _StatItem(
+                  label: '帖子',
+                  value: user.posts,
+                  onTap: () => context.push(
+                    '/user-space/${user.uid}?username=${Uri.encodeComponent(user.username)}&self=1&tab=1',
+                  ),
+                ),
               ),
-            ),
-            _VerticalDivider(),
-            _StatItem(
-              label: '主题',
-              value: user.threads,
-              onTap: () => context.push(
-                '/user-space/${user.uid}?username=${Uri.encodeComponent(user.username)}&self=1',
+              _VerticalDivider(),
+              Expanded(
+                child: _StatItem(
+                  label: '主题',
+                  value: user.threads,
+                  onTap: () => context.push(
+                    '/user-space/${user.uid}?username=${Uri.encodeComponent(user.username)}&self=1',
+                  ),
+                ),
               ),
-            ),
-            _VerticalDivider(),
-            _StatItem(label: '好友', value: user.friends),
-          ],
+              _VerticalDivider(),
+              Expanded(child: _StatItem(label: '好友', value: user.friends)),
+            ],
+          ),
         ),
       ),
     );
@@ -388,6 +393,7 @@ class _StatItem extends StatelessWidget {
 
     final content = Column(
       mainAxisSize: MainAxisSize.min,
+      mainAxisAlignment: MainAxisAlignment.center,
       children: [
         Text(
           formatCount(value),
@@ -406,13 +412,25 @@ class _StatItem extends StatelessWidget {
       ],
     );
 
-    if (onTap == null) return content;
-    return InkWell(
-      onTap: onTap,
-      borderRadius: S1Shape.medium,
-      child: Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-        child: content,
+    if (onTap == null) {
+      return Center(
+        child: Padding(
+          padding: const EdgeInsets.symmetric(vertical: 8),
+          child: content,
+        ),
+      );
+    }
+    return Material(
+      color: Colors.transparent,
+      child: InkWell(
+        onTap: onTap,
+        borderRadius: S1Shape.medium,
+        child: Center(
+          child: Padding(
+            padding: const EdgeInsets.symmetric(vertical: 8),
+            child: content,
+          ),
+        ),
       ),
     );
   }
@@ -661,14 +679,14 @@ class _LogoutTile extends StatelessWidget {
                   child: Icon(
                     Icons.logout,
                     size: _ProfileListMetrics.iconSize,
-                    color: colorScheme.primary,
+                    color: colorScheme.error,
                   ),
                 ),
                 const SizedBox(width: _ProfileListMetrics.gap),
                 Text(
                   '退出登录',
                   style: textTheme.titleMedium?.copyWith(
-                    color: colorScheme.primary,
+                    color: colorScheme.error,
                   ),
                 ),
               ],

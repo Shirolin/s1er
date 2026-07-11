@@ -1,39 +1,96 @@
-# Miscellaneous
-*.class
-*.log
-*.pyc
-*.swp
-.DS_Store
-.atom/
-.build/
-.buildlog/
-.history
-.svn/
-.swiftpm/
-migrate_working_dir/
+# ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+# S1 Client — Flutter 项目 .gitignore（最佳实践）
+# ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
-# IntelliJ related
+
+# ── OS / Editor 临时文件 ──────────────────────────────
+*~
+*.swp
+*.swo
+*.swn
+*.bak
+*.orig
+.DS_Store
+.DS_Store?
+.AppleDouble
+.LSOverride
+Icon?
+._*
+Thumbs.db
+Desktop.ini
+ehthumbs.db
+*.log
+*.class
+*.pyc
+
+
+# ── IDE 配置 ──────────────────────────────────────────
+# IntelliJ / Android Studio
+.idea/
 *.iml
 *.ipr
 *.iws
-.idea/
 
-# Flutter/Dart/Pub related
-**/doc/api/
-**/ios/Flutter/.last_build_id
+# VS Code / Cursor
+.vscode/
+*.code-workspace
+
+# Atom
+.atom/
+
+# Vim / Neovim
+[._]*.s[a-v][a-z]
+[._]*.sw[a-p]
+[._]s[a-rt-v][a-z]
+[._]ss[a-gi-z]
+[._]sw[a-p~]
+
+# Sublime Text
+*.sublime-project
+*.sublime-workspace
+
+
+# ── Flutter / Dart ────────────────────────────────────
 .dart_tool/
-.flutter-plugins-dependencies
-.pub-cache/
+.packages
 .pub/
-/coverage/
+.pub-cache/
+.buildlog/
+.build/
+.flutter-plugins
+.flutter-plugins-dependencies
+**/doc/api/
 
-# Symbolication related
+# Symbolication / Obfuscation
 app.*.symbols
-
-# Obfuscation related
 app.*.map.json
 
-# Android specific
+
+# ── Generated Dart 代码 ──────────────────────────────
+# 代码生成器输出（json_serializable, freezed, mockito 等）
+*.g.dart
+*.freezed.dart
+*.mocks.dart
+
+
+# ── 构建产物 ──────────────────────────────────────────
+/build/
+/coverage/
+*.js_
+*.js.deps
+*.js.map
+
+
+# ── 依赖管理 ─────────────────────────────────────────
+# pubspec.lock 应 commit（Flutter 应用项目 — 见 Dart 官方推荐）
+# 如果你是 package/library 项目，取消下面注释：
+# pubspec.lock
+
+
+# ── OS 平台（子目录已有独立 .gitignore，此处仅兜底） ──
+# Android
+*.jks
+*.keystore
 /android/.gradle/
 /android/.kotlin/
 /android/app/debug/
@@ -42,46 +99,68 @@ app.*.map.json
 /android/build/
 /android/local.properties
 /android/key.properties
-/android/gradle/wrapper/gradle-wrapper.jar
-/android/gradlew
-/android/gradlew.bat
-*.jks
-*.keystore
 
-# iOS/macOS specific
-/ios/Flutter/Generated.xcconfig
-/ios/Flutter/flutter_export_environment.sh
-/ios/Flutter/ephemeral/
-/ios/Runner/GeneratedPluginRegistrant.h
-/ios/Runner/GeneratedPluginRegistrant.m
-/macos/Flutter/ephemeral/
+# iOS / macOS
 *.xcworkspace
-*.xcodeproj
+*.xcuserdata
+DerivedData/
+Pods/
+*.app
+*.ipa
+*.dSYM.zip
+*.dSYM
 
-# Windows specific
-/windows/flutter/ephemeral/
+# Windows
+*.exe
+*.exe.config
+*.pdb
+*.msi
+*.msp
+*.nupkg
 
-# Linux specific
-/linux/flutter/ephemeral/
+# Linux
+*.o
+*.a
 
-# Build output (CMake, Gradle, etc.)
-/build/
 
-# Database / Local cache
+# ── 测试与覆盖率 ─────────────────────────────────────
+/test/.test_runner_temp/
+*.test_log.txt
+
+
+# ── 项目特有 ──────────────────────────────────────────
+
+# AI Agent 工作目录（Cursor / Claude 等本地缓存）
+.agents/
+.claude/
+.gemini/
 .kilo/
 .vibe/
-.agents/
-.gemini/
-.claude/
 .mimocode/
-*.db
 
-# Proxy server logs
+# CORS 代理日志
 proxy_server.log
 
-# Emoticon assets (downloaded via script)
+# 表情包资源（通过 scripts/download_emoticons.dart 下载，不入库）
 assets/emoticons/
 
-# Temp scripts
+# 临时脚本（非项目正式代码）
 scripts/fix-repos.js
 scripts/maven-proxy.js
+
+# Hive 运行时数据
+*.hive
+*.hive.lock
+
+
+
+
+# ── 安全 ──────────────────────────────────────────────
+# 环境变量 / 密钥文件
+.env
+.env.local
+.env.production
+.env.development
+*.key
+*.pem
+*.crt

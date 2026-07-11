@@ -2,6 +2,7 @@ import 'dart:async';
 
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:s1_app/theme/app_theme.dart';
 import 'package:s1_app/widgets/s1_swipe_pagination.dart';
 
 void main() {
@@ -24,6 +25,7 @@ void main() {
     Key? key,
   }) {
     return MaterialApp(
+      theme: AppTheme.lightTheme('purple'),
       home: Scaffold(
         body: S1SwipePagination(
           key: key,

@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:s1_app/theme/app_theme.dart';
 import 'package:s1_app/providers/settings_provider.dart';
 import 'package:s1_app/widgets/image_viewer.dart';
 
@@ -13,7 +14,8 @@ void main() {
             (ref) => SettingsNotifier(AppSettings(showImages: false)),
           ),
         ],
-        child: const MaterialApp(
+        child: MaterialApp(
+          theme: AppTheme.lightTheme('purple'),
           home: Scaffold(
             body: ImageViewer(
               imageUrl: 'https://example.com/image.jpg',
@@ -37,7 +39,8 @@ void main() {
             (ref) => SettingsNotifier(AppSettings(showImages: false)),
           ),
         ],
-        child: const MaterialApp(
+        child: MaterialApp(
+          theme: AppTheme.lightTheme('purple'),
           home: Scaffold(
             body: ImageViewer(
               imageUrl: 'https://avatar.stage1st.com/000/00/00/01_avatar_small.jpg',

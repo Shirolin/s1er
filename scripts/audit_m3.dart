@@ -1,10 +1,10 @@
 // ignore_for_file: avoid_print
 //
-// Material Design 3 compliance audit for lib/**/*.dart.
+// Material Design 3 compliance audit.
+// Scans lib/ (P0/P1/WARN) and test/ (WARN for missing AppTheme).
 // Allowed patterns: see AGENTS.md「M3 允许模式」
-// Usage: dart run scripts/audit_m3.dart [--fail-on-error] [--output=path]
 //
-// Exit code 1 when --fail-on-error and P0 violations are found.
+// Usage: dart run scripts/audit_m3.dart [--fail-on-error] [--output=path]
 
 import 'dart:io';
 
@@ -46,11 +46,11 @@ class AuditRule {
   final bool Function(String line, String path)? lineFilter;
 }
 
-final _rules = <AuditRule>[
+final _libRules = <AuditRule>[
   AuditRule(
     id: 'hardcoded-color-hex',
     severity: AuditSeverity.p0,
-    message: 'Hardcoded Color(0x...) outside theme seeds',
+    message: 'Hardcoded Color(0x...) outside allowed files',
     pattern: RegExp(r'Color\(0x'),
     fileFilter: (path) =>
         !path.endsWith('lib/theme/app_theme.dart') &&
@@ -68,6 +68,22 @@ final _rules = <AuditRule>[
     severity: AuditSeverity.p0,
     message: 'Bare fontSize literal in TextStyle',
     pattern: RegExp(r'fontSize:\s*\d'),
+  ),
+  AuditRule(
+    id: 'fontsize-numeric-fallback',
+    severity: AuditSeverity.p1,
+    message: 'Numeric font size fallback — use S1Typography',
+    pattern: RegExp(r'\?\?\s*\d+(\.0)?'),
+    fileFilter: (path) => path.contains('lib/widgets/bbcode_renderer.dart'),
+    lineFilter: (line, _) =>
+        line.contains('fontSize') || line.contains('FontSize'),
+  ),
+  AuditRule(
+    id: 'inline-alpha-literal',
+    severity: AuditSeverity.p1,
+    message: 'Inline alpha literal — use S1Alpha token',
+    pattern: RegExp(r'withValues\(alpha:\s*0\.\d+'),
+    lineFilter: (line, _) => !line.contains('S1Alpha'),
   ),
   AuditRule(
     id: 'm2-components',
@@ -116,13 +132,6 @@ final _rules = <AuditRule>[
         !path.endsWith('lib/utils/s1_snack_bar.dart') &&
         !path.endsWith('lib/theme/app_theme.dart'),
   ),
-  AuditRule(
-    id: 'chip-display-badge',
-    severity: AuditSeverity.warn,
-    message: 'Chip( on post_item — floor badge should use Badge',
-    pattern: RegExp(r'\bChip\('),
-    fileFilter: (path) => path.contains('post_item.dart'),
-  ),
 ];
 
 List<String> _collectDartFiles(Directory root) {
@@ -130,22 +139,46 @@ List<String> _collectDartFiles(Directory root) {
   if (!root.existsSync()) return files;
   for (final entity in root.listSync(recursive: true)) {
     if (entity is! File || !entity.path.endsWith('.dart')) continue;
-    final normalized = entity.path.replaceAll(r'\', '/');
-    files.add(normalized);
+    files.add(entity.path.replaceAll(r'\', '/'));
   }
   files.sort();
   return files;
 }
 
-List<AuditFinding> _auditFile(String path) {
+void _checkMissingExplicitElevation(String path, List<String> lines, List<AuditFinding> findings) {
+  if (!path.startsWith('lib/')) return;
+
+  for (var i = 0; i < lines.length; i++) {
+    final line = lines[i];
+    if (!RegExp(r'\b(Card|AppBar)\s*\(').hasMatch(line)) continue;
+
+    final windowEnd = (i + 6).clamp(0, lines.length);
+    final window = lines.sublist(i, windowEnd).join('\n');
+    if (RegExp(r'elevation:\s*0').hasMatch(window)) continue;
+
+    findings.add(
+      AuditFinding(
+        ruleId: 'missing-explicit-elevation',
+        severity: AuditSeverity.p1,
+        file: path,
+        line: i + 1,
+        message: 'Card/AppBar should explicitly set elevation: 0',
+        snippet: line.trim(),
+      ),
+    );
+  }
+}
+
+List<AuditFinding> _auditLibFile(String path) {
   final findings = <AuditFinding>[];
   final lines = File(path).readAsLinesSync();
+
+  _checkMissingExplicitElevation(path, lines, findings);
 
   for (var i = 0; i < lines.length; i++) {
     final line = lines[i];
     final lineNo = i + 1;
 
-    // Card/AppBar non-zero elevation (multi-line heuristic within 8 lines).
     if (RegExp(r'\b(Card|AppBar)\b').hasMatch(line)) {
       final windowEnd = (i + 8).clamp(0, lines.length);
       final window = lines.sublist(i, windowEnd).join('\n');
@@ -165,7 +198,7 @@ List<AuditFinding> _auditFile(String path) {
       }
     }
 
-    for (final rule in _rules) {
+    for (final rule in _libRules) {
       if (rule.fileFilter != null && !rule.fileFilter!(path)) continue;
       if (!rule.pattern.hasMatch(line)) continue;
       if (rule.lineFilter != null && !rule.lineFilter!(line, path)) continue;
@@ -186,23 +219,56 @@ List<AuditFinding> _auditFile(String path) {
   return findings;
 }
 
+List<AuditFinding> _auditTestFile(String path) {
+  final findings = <AuditFinding>[];
+  if (path.contains('test/helpers/') || path.contains('test/tool/audit_m3_test.dart')) {
+    return findings;
+  }
+
+  final content = File(path).readAsLinesSync().join('\n');
+  if (!content.contains('MaterialApp')) return findings;
+
+  final usesAppTheme = content.contains('AppTheme.') ||
+      content.contains('wrapWithAppTheme');
+
+  if (!usesAppTheme) {
+    findings.add(
+      AuditFinding(
+        ruleId: 'test-missing-apptheme',
+        severity: AuditSeverity.warn,
+        file: path,
+        line: 1,
+        message: 'Widget test uses MaterialApp without AppTheme / wrapWithAppTheme',
+        snippet: 'MaterialApp(...)',
+      ),
+    );
+  }
+
+  return findings;
+}
+
 String _severityLabel(AuditSeverity s) => switch (s) {
       AuditSeverity.p0 => 'P0',
       AuditSeverity.p1 => 'P1',
       AuditSeverity.warn => 'WARN',
     };
 
-String _formatReport(List<AuditFinding> findings, {required DateTime at}) {
+String _formatReport(
+  List<AuditFinding> libFindings,
+  List<AuditFinding> testFindings, {
+  required DateTime at,
+}) {
+  final all = [...libFindings, ...testFindings];
   final buffer = StringBuffer()
     ..writeln('# M3 Compliance Audit Report')
     ..writeln()
     ..writeln('Generated: ${at.toIso8601String()}')
-    ..writeln('Scanned: lib/')
+    ..writeln('Scanned: lib/ + test/')
     ..writeln();
 
-  final p0 = findings.where((f) => f.severity == AuditSeverity.p0).length;
-  final p1 = findings.where((f) => f.severity == AuditSeverity.p1).length;
-  final warn = findings.where((f) => f.severity == AuditSeverity.warn).length;
+  final p0 = all.where((f) => f.severity == AuditSeverity.p0).length;
+  final p1 = all.where((f) => f.severity == AuditSeverity.p1).length;
+  final warn = all.where((f) => f.severity == AuditSeverity.warn).length;
 
   buffer
     ..writeln('## Summary')
@@ -214,14 +280,14 @@ String _formatReport(List<AuditFinding> findings, {required DateTime at}) {
     ..writeln('| WARN | $warn |')
     ..writeln();
 
-  if (findings.isEmpty) {
+  if (all.isEmpty) {
     buffer.writeln('No violations found.');
   } else {
     buffer.writeln('## Findings');
     buffer.writeln();
 
     final byFile = <String, List<AuditFinding>>{};
-    for (final f in findings) {
+    for (final f in all) {
       byFile.putIfAbsent(f.file, () => []).add(f);
     }
 
@@ -254,18 +320,26 @@ void main(List<String> args) {
   }
 
   final libDir = Directory('lib');
+  final testDir = Directory('test');
   if (!libDir.existsSync()) {
     stderr.writeln('Error: lib/ directory not found. Run from project root.');
     exit(2);
   }
 
-  final allFindings = <AuditFinding>[];
+  final libFindings = <AuditFinding>[];
   for (final file in _collectDartFiles(libDir)) {
-    allFindings.addAll(_auditFile(file));
+    libFindings.addAll(_auditLibFile(file));
+  }
+
+  final testFindings = <AuditFinding>[];
+  if (testDir.existsSync()) {
+    for (final file in _collectDartFiles(testDir)) {
+      testFindings.addAll(_auditTestFile(file));
+    }
   }
 
   final now = DateTime.now().toUtc();
-  final report = _formatReport(allFindings, at: now);
+  final report = _formatReport(libFindings, testFindings, at: now);
 
   final defaultOutput =
       'reports/m3_audit_${now.toIso8601String().split('T').first}.md';
@@ -277,7 +351,7 @@ void main(List<String> args) {
   print('Report written to: ${outFile.path}');
 
   final p0Count =
-      allFindings.where((f) => f.severity == AuditSeverity.p0).length;
+      libFindings.where((f) => f.severity == AuditSeverity.p0).length;
   if (failOnError && p0Count > 0) {
     stderr.writeln('Audit failed: $p0Count P0 violation(s).');
     exit(1);

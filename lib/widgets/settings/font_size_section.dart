@@ -8,9 +8,9 @@ import 'settings_section_header.dart';
 class FontSizeSection extends ConsumerWidget {
   const FontSizeSection({super.key});
 
-  static const _sizes = <int, String>{
+  static final _sizes = <int, String>{
     12: '小',
-    14: '标准',
+    S1Typography.defaultBodySize: '标准',
     16: '大',
     18: '超大',
   };

@@ -60,5 +60,21 @@ void main() {
       expect(theme.useMaterial3, isTrue);
       expect(theme.colorScheme.primary, scheme.primary);
     });
+
+    test('progressIndicatorTheme is configured', () {
+      final theme = AppTheme.lightTheme('purple');
+      expect(theme.progressIndicatorTheme.color, theme.colorScheme.primary);
+    });
+
+    test('badgeTheme and checkboxTheme are configured', () {
+      final theme = AppTheme.lightTheme('purple');
+      expect(theme.badgeTheme.backgroundColor, theme.colorScheme.secondaryContainer);
+      expect(theme.checkboxTheme.checkColor, isNotNull);
+    });
+
+    test('S1Typography defaults match settings', () {
+      expect(S1Typography.defaultBodySize, 14);
+      expect(S1Typography.defaultCodeSize, 12);
+    });
   });
 }

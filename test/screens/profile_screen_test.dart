@@ -5,6 +5,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:hive/hive.dart';
 import 'package:package_info_plus/package_info_plus.dart';
+import 'package:s1_app/theme/app_theme.dart';
 import 'package:s1_app/providers/talker_provider.dart';
 import 'package:s1_app/providers/auth_provider.dart';
 import 'package:s1_app/services/auth_service.dart';
@@ -37,7 +38,8 @@ void main() {
               ),
             ),
           ],
-          child: const MaterialApp(
+          child: MaterialApp(
+            theme: AppTheme.lightTheme('purple'),
             home: ProfileScreen(),
           ),
         ),
@@ -82,7 +84,8 @@ void main() {
               ),
             ),
           ],
-          child: const MaterialApp(
+          child: MaterialApp(
+            theme: AppTheme.lightTheme('purple'),
             home: ProfileScreen(),
           ),
         ),
@@ -139,7 +142,8 @@ void main() {
               ),
             ),
           ],
-          child: const MaterialApp(
+          child: MaterialApp(
+            theme: AppTheme.lightTheme('purple'),
             home: ProfileScreen(),
           ),
         ),
@@ -194,7 +198,8 @@ void main() {
               ),
             ),
           ],
-          child: const MaterialApp(
+          child: MaterialApp(
+            theme: AppTheme.lightTheme('purple'),
             home: ProfileScreen(),
           ),
         ),

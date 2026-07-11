@@ -66,6 +66,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
 
     return Scaffold(
       appBar: AppBar(
+        elevation: 0,
         title: const Text('登录 Stage1st'),
       ),
       body: Center(
@@ -74,6 +75,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
           child: ConstrainedBox(
             constraints: const BoxConstraints(maxWidth: 400),
             child: Card(
+              elevation: 0,
               color: scheme.surfaceContainerHighest,
               child: Padding(
                 padding: const EdgeInsets.all(32),

@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:s1_app/theme/app_theme.dart';
 import 'package:s1_app/widgets/page_picker_sheet.dart';
 
 void main() {
@@ -9,6 +10,7 @@ void main() {
 
     await tester.pumpWidget(
       MaterialApp(
+        theme: AppTheme.lightTheme('purple'),
         home: Builder(
           builder: (context) => Scaffold(
             body: FilledButton(

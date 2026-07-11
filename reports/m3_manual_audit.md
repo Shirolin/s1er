@@ -1,6 +1,6 @@
 # M3 人工审计矩阵
 
-> 审计日期：2026-07-10  
+> 审计日期：2026-07-11  
 > 依据：[AGENTS.md](../AGENTS.md) M3 规范 + `dart run scripts/audit_m3.dart`
 
 字段说明：色彩 / 排版 / 组件 / elevation / 形状 — `✓` 合规，`△` 有文档化例外，`—` 不适用
@@ -66,4 +66,5 @@
 - **38/38** UI 文件已逐项勾选
 - **P0** 违规已修复（theme_color_picker、thread_detail TextStyle、post_item Badge）
 - **P1** 已修复（SegmentedButton 主题化、S1SnackBar、S1Shape 统一）
-- **P2** 已拆分为 AGENTS.md「M3 允许模式」；技术债已清零（bbcode / web_avatar / poll 对比度）
+- **P2** 已拆分为 AGENTS.md「M3 允许模式」；技术债已清零
+- **边界项**（显式 elevation、S1Alpha、S1Typography、子主题、测试 AppTheme）已于 2026-07-11 全部修复

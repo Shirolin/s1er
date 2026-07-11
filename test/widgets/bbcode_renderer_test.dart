@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:s1_app/theme/app_theme.dart';
 import 'package:s1_app/utils/bbcode_parser.dart';
 import 'package:s1_app/widgets/emoticon_widget.dart';
 import 'package:s1_app/widgets/quote_block.dart';
@@ -86,7 +87,8 @@ void main() {
   group('EmoticonWidget', () {
     testWidgets('renders text fallback for unknown code', (tester) async {
       await tester.pumpWidget(
-        const MaterialApp(
+        MaterialApp(
+          theme: AppTheme.lightTheme('purple'),
           home: Scaffold(
             body: EmoticonWidget(code: 'unknown'),
           ),
@@ -98,7 +100,8 @@ void main() {
     testWidgets('renders text fallback for unmapped emoticon code',
         (tester) async {
       await tester.pumpWidget(
-        const MaterialApp(
+        MaterialApp(
+          theme: AppTheme.lightTheme('purple'),
           home: Scaffold(
             body: EmoticonWidget(code: 'random'),
           ),
@@ -109,7 +112,8 @@ void main() {
 
     testWidgets('has correct size constraints', (tester) async {
       await tester.pumpWidget(
-        const MaterialApp(
+        MaterialApp(
+          theme: AppTheme.lightTheme('purple'),
           home: Scaffold(
             body: EmoticonWidget(code: 'unknown'),
           ),
@@ -123,7 +127,8 @@ void main() {
   group('QuoteBlock', () {
     testWidgets('renders with left border decoration', (tester) async {
       await tester.pumpWidget(
-        const MaterialApp(
+        MaterialApp(
+          theme: AppTheme.lightTheme('purple'),
           home: Scaffold(
             body: QuoteBlock(content: 'quoted text'),
           ),
@@ -138,7 +143,8 @@ void main() {
 
     testWidgets('displays quoted content via BbcodeRenderer', (tester) async {
       await tester.pumpWidget(
-        const MaterialApp(
+        MaterialApp(
+          theme: AppTheme.lightTheme('purple'),
           home: Scaffold(
             body: QuoteBlock(content: 'quoted text'),
           ),
@@ -150,7 +156,8 @@ void main() {
 
     testWidgets('handles empty content', (tester) async {
       await tester.pumpWidget(
-        const MaterialApp(
+        MaterialApp(
+          theme: AppTheme.lightTheme('purple'),
           home: Scaffold(
             body: QuoteBlock(content: ''),
           ),
@@ -161,7 +168,8 @@ void main() {
 
     testWidgets('handles complex quoted content', (tester) async {
       await tester.pumpWidget(
-        const MaterialApp(
+        MaterialApp(
+          theme: AppTheme.lightTheme('purple'),
           home: Scaffold(
             body: QuoteBlock(content: '[b]bold quote[/b]'),
           ),
@@ -174,7 +182,8 @@ void main() {
   group('BbcodeRenderer', () {
     testWidgets('renders empty string as SizedBox', (tester) async {
       await tester.pumpWidget(
-        const MaterialApp(
+        MaterialApp(
+          theme: AppTheme.lightTheme('purple'),
           home: Scaffold(
             body: BbcodeRenderer(bbcode: ''),
           ),
@@ -185,7 +194,8 @@ void main() {
 
     testWidgets('renders plain text content', (tester) async {
       await tester.pumpWidget(
-        const MaterialApp(
+        MaterialApp(
+          theme: AppTheme.lightTheme('purple'),
           home: Scaffold(
             body: BbcodeRenderer(bbcode: 'Hello world'),
           ),
@@ -196,7 +206,8 @@ void main() {
 
     testWidgets('handles content with quote block', (tester) async {
       await tester.pumpWidget(
-        const MaterialApp(
+        MaterialApp(
+          theme: AppTheme.lightTheme('purple'),
           home: Scaffold(
             body: BbcodeRenderer(
                 bbcode: 'before [quote]quoted[/quote] after',),
@@ -211,7 +222,8 @@ void main() {
 
     testWidgets('handles multiple quote blocks', (tester) async {
       await tester.pumpWidget(
-        const MaterialApp(
+        MaterialApp(
+          theme: AppTheme.lightTheme('purple'),
           home: Scaffold(
             body: BbcodeRenderer(
                 bbcode: '[quote]first[/quote]middle[quote]second[/quote]',),
@@ -223,7 +235,8 @@ void main() {
 
     testWidgets('handles content without quotes', (tester) async {
       await tester.pumpWidget(
-        const MaterialApp(
+        MaterialApp(
+          theme: AppTheme.lightTheme('purple'),
           home: Scaffold(
             body: BbcodeRenderer(bbcode: '[b]bold[/b]'),
           ),
@@ -236,7 +249,8 @@ void main() {
 
     testWidgets('returns Column as root widget', (tester) async {
       await tester.pumpWidget(
-        const MaterialApp(
+        MaterialApp(
+          theme: AppTheme.lightTheme('purple'),
           home: Scaffold(
             body: BbcodeRenderer(bbcode: 'text'),
           ),

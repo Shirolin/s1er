@@ -250,7 +250,7 @@ class _PagePickerSheetState extends State<PagePickerSheet> {
                               borderRadius: S1Shape.medium,
                             ),
                             selected: isCurrent,
-                            selectedTileColor: scheme.primaryContainer.withValues(alpha: 0.5),
+                            selectedTileColor: scheme.primaryContainer.withValues(alpha: S1Alpha.half),
                             leading: Container(
                               constraints: const BoxConstraints(
                                 minWidth: 32,
@@ -290,7 +290,7 @@ class _PagePickerSheetState extends State<PagePickerSheet> {
                                 ? Icon(Icons.check_circle, color: scheme.primary, size: 22)
                                 : Icon(
                                     Icons.chevron_right,
-                                    color: scheme.onSurfaceVariant.withValues(alpha: 0.7),
+                                    color: scheme.onSurfaceVariant.withValues(alpha: S1Alpha.strong),
                                     size: 18,
                                   ),
                             onTap: isCurrent

@@ -1,11 +1,13 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:s1_app/theme/app_theme.dart';
 import 'package:s1_app/widgets/s1_fab_layout.dart';
 
 void main() {
   testWidgets('S1FabStack shows primary and secondary FABs', (tester) async {
     await tester.pumpWidget(
       MaterialApp(
+        theme: AppTheme.lightTheme('purple'),
         home: Scaffold(
           body: S1FabStack(
             secondary: S1FabItem(

@@ -57,6 +57,7 @@ class _UserSpaceScreenState extends ConsumerState<UserSpaceScreen>
 
     return Scaffold(
       appBar: AppBar(
+        elevation: 0,
         title: Text(title),
         actions: [
           AppBarMoreMenu(

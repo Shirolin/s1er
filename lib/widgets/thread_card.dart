@@ -165,7 +165,7 @@ class _ReadingProgressBar extends ConsumerWidget {
                 backgroundColor: scheme.surfaceContainerHighest,
                 valueColor: AlwaysStoppedAnimation<Color>(
                   isFinished
-                      ? scheme.onSurfaceVariant.withValues(alpha: 0.3)
+                      ? scheme.onSurfaceVariant.withValues(alpha: S1Alpha.medium)
                       : scheme.primary,
                 ),
               ),

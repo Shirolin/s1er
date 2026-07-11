@@ -58,7 +58,7 @@ abstract class S1SegmentedButtonStyle {
         if (states.contains(WidgetState.selected)) {
           return scheme.secondaryContainer;
         }
-        // M3 未选中段透明底；见 AGENTS.md「M3 已知例外」
+        // M3 未选中段透明底；见 AGENTS.md「M3 允许模式」
         return Colors.transparent;
       }),
       foregroundColor: WidgetStateProperty.resolveWith((states) {
@@ -74,6 +74,26 @@ abstract class S1SegmentedButtonStyle {
   }
 }
 
+/// M3 排版常量与桥接（HTML 渲染、设置默认值共用）。
+abstract class S1Typography {
+  /// 默认正文字号，与字号设置「标准」档一致。
+  static const int defaultBodySize = 14;
+
+  /// 代码块默认字号（bodySmall 档）。
+  static const int defaultCodeSize = 12;
+
+  static const double defaultBodyLineHeight = 1.6;
+
+  static double bodySize(TextTheme textTheme) =>
+      textTheme.bodyMedium?.fontSize ?? defaultBodySize.toDouble();
+
+  static double codeSize(TextTheme textTheme) =>
+      textTheme.bodySmall?.fontSize ?? defaultCodeSize.toDouble();
+
+  static double bodyLineHeight(TextTheme textTheme) =>
+      textTheme.bodyMedium?.height ?? defaultBodyLineHeight;
+}
+
 /// M3 Alpha tokens — 统一透明度
 abstract class S1Alpha {
   static const subtle = 0.08;
@@ -83,6 +103,12 @@ abstract class S1Alpha {
   static const half = 0.5;
   static const strong = 0.7;
   static const prominent = 0.9;
+  /// 禁用图标前景（分页栏、IconButton disabled）。
+  static const disabledIcon = 0.38;
+  /// 图片查看器遮罩文案。
+  static const viewerScrim = 0.54;
+  /// 图片查看器底部控制栏背景。
+  static const controlBar = 0.92;
 }
 
 class AppTheme {
@@ -209,6 +235,37 @@ class AppTheme {
       ),
       iconButtonTheme: IconButtonThemeData(
         style: IconButton.styleFrom(visualDensity: VisualDensity.standard),
+      ),
+      badgeTheme: BadgeThemeData(
+        backgroundColor: colorScheme.secondaryContainer,
+        textColor: colorScheme.onSecondaryContainer,
+      ),
+      checkboxTheme: CheckboxThemeData(
+        fillColor: WidgetStateProperty.resolveWith((states) {
+          if (states.contains(WidgetState.selected)) {
+            return colorScheme.primary;
+          }
+          return null;
+        }),
+        checkColor: WidgetStateProperty.all(colorScheme.onPrimary),
+      ),
+      switchTheme: SwitchThemeData(
+        thumbColor: WidgetStateProperty.resolveWith((states) {
+          if (states.contains(WidgetState.selected)) {
+            return colorScheme.onPrimary;
+          }
+          return colorScheme.outline;
+        }),
+        trackColor: WidgetStateProperty.resolveWith((states) {
+          if (states.contains(WidgetState.selected)) {
+            return colorScheme.primary;
+          }
+          return colorScheme.surfaceContainerHighest;
+        }),
+      ),
+      progressIndicatorTheme: ProgressIndicatorThemeData(
+        color: colorScheme.primary,
+        linearTrackColor: colorScheme.surfaceContainerHighest,
       ),
     );
   }

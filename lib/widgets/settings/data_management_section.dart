@@ -31,7 +31,9 @@ class _DataManagementSectionState extends ConsumerState<DataManagementSection> {
     required String content,
     required String confirmLabel,
     required Future<void> Function() onConfirm,
+    bool isDestructive = false,
   }) async {
+    final scheme = Theme.of(context).colorScheme;
     final confirmed = await showDialog<bool>(
       context: context,
       builder: (ctx) => AlertDialog(
@@ -42,10 +44,19 @@ class _DataManagementSectionState extends ConsumerState<DataManagementSection> {
             onPressed: () => Navigator.of(ctx).pop(false),
             child: const Text('取消'),
           ),
-          FilledButton(
-            onPressed: () => Navigator.of(ctx).pop(true),
-            child: Text(confirmLabel),
-          ),
+          if (isDestructive)
+            TextButton(
+              onPressed: () => Navigator.of(ctx).pop(true),
+              style: TextButton.styleFrom(
+                foregroundColor: scheme.error,
+              ),
+              child: Text(confirmLabel),
+            )
+          else
+            TextButton(
+              onPressed: () => Navigator.of(ctx).pop(true),
+              child: Text(confirmLabel),
+            ),
         ],
       ),
     );
@@ -83,6 +94,7 @@ class _DataManagementSectionState extends ConsumerState<DataManagementSection> {
       title: '清空阅读历史',
       content: '将删除当前账号的全部阅读记录，此操作不可恢复。',
       confirmLabel: '清空',
+      isDestructive: true,
       onConfirm: () => _runTask(
         current: _clearingHistory,
         setBusy: (value) => _clearingHistory = value,
@@ -101,6 +113,7 @@ class _DataManagementSectionState extends ConsumerState<DataManagementSection> {
       title: '清空本地投票状态',
       content: '将删除当前账号保存的投票选择缓存，不会影响服务器上的投票结果。',
       confirmLabel: '清空',
+      isDestructive: true,
       onConfirm: () => _runTask(
         current: _clearingVotes,
         setBusy: (value) => _clearingVotes = value,
@@ -133,6 +146,7 @@ class _DataManagementSectionState extends ConsumerState<DataManagementSection> {
       title: '退出登录',
       content: '将清除当前会话并切换到未登录状态。',
       confirmLabel: '退出登录',
+      isDestructive: true,
       onConfirm: () => _runTask(
         current: _loggingOut,
         setBusy: (value) => _loggingOut = value,

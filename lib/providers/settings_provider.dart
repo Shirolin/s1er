@@ -141,3 +141,5 @@ final settingsProvider =
     StateNotifierProvider<SettingsNotifier, AppSettings>((ref) {
   return SettingsNotifier();
 });
+
+final dynamicColorAvailableProvider = StateProvider<bool>((ref) => false);

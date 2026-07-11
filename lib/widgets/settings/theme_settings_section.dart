@@ -15,7 +15,8 @@ class ThemeSettingsSection extends ConsumerWidget {
     final settings = ref.watch(settingsProvider);
     final notifier = ref.read(settingsProvider.notifier);
     final scheme = Theme.of(context).colorScheme;
-    final dynamicEnabled = settings.useDynamicColor;
+    final isDynamicAvailable = ref.watch(dynamicColorAvailableProvider);
+    final dynamicEnabled = settings.useDynamicColor && isDynamicAvailable;
 
     return Card(
       elevation: 0,
@@ -41,15 +42,17 @@ class ThemeSettingsSection extends ConsumerWidget {
               secondary: Icon(Icons.palette_outlined, color: scheme.onSurfaceVariant),
               title: const Text('Material You 动态取色'),
               subtitle: Text(
-                dynamicEnabled
-                    ? '使用系统壁纸强调色（不支持时回退到下方配色）'
-                    : '关闭时使用下方手动配色',
+                !isDynamicAvailable
+                    ? '当前设备或平台不支持 Material You 动态取色，已回退到手动配色'
+                    : (dynamicEnabled
+                        ? '使用系统壁纸强调色（不支持时回退到下方配色）'
+                        : '关闭时使用下方手动配色'),
                 style: Theme.of(context).textTheme.bodySmall?.copyWith(
                       color: scheme.onSurfaceVariant,
                     ),
               ),
               value: dynamicEnabled,
-              onChanged: notifier.setUseDynamicColor,
+              onChanged: isDynamicAvailable ? notifier.setUseDynamicColor : null,
               contentPadding: const EdgeInsets.symmetric(horizontal: 8),
               shape: const RoundedRectangleBorder(
                 borderRadius: S1Shape.small,
@@ -66,7 +69,7 @@ class ThemeSettingsSection extends ConsumerWidget {
               opacity: dynamicEnabled ? 0.55 : 1,
               child: ThemeColorPicker(
                 selectedKey: settings.themeColor,
-                onChanged: notifier.setThemeColor,
+                onChanged: dynamicEnabled ? null : notifier.setThemeColor,
               ),
             ),
           ],

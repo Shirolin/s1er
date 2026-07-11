@@ -155,6 +155,12 @@ class S1App extends ConsumerWidget {
         final useDynamic = settings.useDynamicColor;
         final hasDynamic = lightDynamic != null && darkDynamic != null;
 
+        WidgetsBinding.instance.addPostFrameCallback((_) {
+          if (ref.read(dynamicColorAvailableProvider) != hasDynamic) {
+            ref.read(dynamicColorAvailableProvider.notifier).state = hasDynamic;
+          }
+        });
+
         final lightTheme = useDynamic && hasDynamic
             ? AppTheme.fromColorScheme(lightDynamic)
             : AppTheme.lightTheme(settings.themeColor);

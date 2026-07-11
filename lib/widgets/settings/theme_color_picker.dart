@@ -26,7 +26,7 @@ class ThemeColorPicker extends StatelessWidget {
   });
 
   final String selectedKey;
-  final ValueChanged<String> onChanged;
+  final ValueChanged<String>? onChanged;
 
   @override
   Widget build(BuildContext context) {
@@ -44,11 +44,11 @@ class ThemeColorPicker extends StatelessWidget {
         return Semantics(
           label: '${_colorLabels[key] ?? key}主题',
           selected: isSelected,
-          button: true,
+          button: onChanged != null,
           child: Tooltip(
             message: _colorLabels[key] ?? key,
             child: InkWell(
-              onTap: () => onChanged(key),
+              onTap: onChanged != null ? () => onChanged!(key) : null,
               borderRadius: S1Shape.full,
               child: Padding(
                 padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 6),

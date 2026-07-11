@@ -6,15 +6,9 @@ import '../providers/auth_provider.dart';
 import '../providers/post_provider.dart';
 import '../theme/app_theme.dart';
 import '../utils/format_utils.dart';
+import '../utils/poll_bar_color.dart';
 import '../utils/s1_snack_bar.dart';
 
-Color _pollBarColor(String hex, ColorScheme scheme) {
-  final cleaned = hex.replaceAll('#', '');
-  if (cleaned.length == 6) {
-    return Color(int.parse('FF$cleaned', radix: 16));
-  }
-  return scheme.primary;
-}
 
 class PollCard extends ConsumerStatefulWidget {
   const PollCard({
@@ -155,7 +149,7 @@ class _PollCardState extends ConsumerState<PollCard> {
                 showResults: showResults,
                 canSelect: canInteract,
                 multiple: poll.multiple,
-                barColor: _pollBarColor(option.colorHex, scheme),
+                barColor: pollBarColor(option.colorHex, scheme),
                 onTap: canInteract ? () => _toggleOption(option) : null,
               ),
             ),

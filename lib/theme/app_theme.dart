@@ -39,6 +39,41 @@ abstract class S1BottomBarStyle {
       );
 }
 
+/// 根据背景亮度选择 [ColorScheme] 语义对比色（用于色块上的前景元素）。
+abstract class S1Contrast {
+  static Color on(Color background, ColorScheme scheme) {
+    return background.computeLuminance() > 0.5
+        ? scheme.onSurface
+        : scheme.surface;
+  }
+}
+
+/// M3 SegmentedButton 共用样式（设置页主题模式 / 字号选择）。
+abstract class S1SegmentedButtonStyle {
+  static ButtonStyle forScheme(ColorScheme scheme) {
+    return ButtonStyle(
+      visualDensity: VisualDensity.standard,
+      tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+      backgroundColor: WidgetStateProperty.resolveWith((states) {
+        if (states.contains(WidgetState.selected)) {
+          return scheme.secondaryContainer;
+        }
+        // M3 未选中段透明底；见 AGENTS.md「M3 已知例外」
+        return Colors.transparent;
+      }),
+      foregroundColor: WidgetStateProperty.resolveWith((states) {
+        if (states.contains(WidgetState.selected)) {
+          return scheme.onSecondaryContainer;
+        }
+        return scheme.onSurfaceVariant;
+      }),
+      shape: WidgetStateProperty.all(
+        const RoundedRectangleBorder(borderRadius: S1Shape.medium),
+      ),
+    );
+  }
+}
+
 /// M3 Alpha tokens — 统一透明度
 abstract class S1Alpha {
   static const subtle = 0.08;
@@ -76,6 +111,8 @@ class AppTheme {
   }
 
   static ThemeData fromColorScheme(ColorScheme colorScheme) {
+    final textTheme = ThemeData(useMaterial3: true, colorScheme: colorScheme).textTheme;
+
     return ThemeData(
       useMaterial3: true,
       colorScheme: colorScheme,
@@ -131,7 +168,9 @@ class AppTheme {
         behavior: SnackBarBehavior.floating,
         shape: S1Shape.menuShape,
         backgroundColor: colorScheme.inverseSurface,
-        contentTextStyle: TextStyle(color: colorScheme.onInverseSurface),
+        contentTextStyle: textTheme.bodyMedium?.copyWith(
+          color: colorScheme.onInverseSurface,
+        ),
         actionTextColor: colorScheme.inversePrimary,
       ),
       navigationBarTheme: NavigationBarThemeData(
@@ -139,6 +178,37 @@ class AppTheme {
         backgroundColor: S1BottomBarStyle.background(colorScheme),
         indicatorColor: colorScheme.secondaryContainer,
         surfaceTintColor: colorScheme.surfaceTint,
+      ),
+      tabBarTheme: TabBarThemeData(
+        indicatorColor: colorScheme.primary,
+        labelColor: colorScheme.primary,
+        unselectedLabelColor: colorScheme.onSurfaceVariant,
+        dividerColor: colorScheme.outlineVariant,
+      ),
+      segmentedButtonTheme: SegmentedButtonThemeData(
+        style: S1SegmentedButtonStyle.forScheme(colorScheme),
+      ),
+      floatingActionButtonTheme: FloatingActionButtonThemeData(
+        backgroundColor: colorScheme.primaryContainer,
+        foregroundColor: colorScheme.onPrimaryContainer,
+        elevation: 0,
+        highlightElevation: 0,
+      ),
+      filledButtonTheme: FilledButtonThemeData(
+        style: FilledButton.styleFrom(elevation: 0),
+      ),
+      textButtonTheme: TextButtonThemeData(
+        style: TextButton.styleFrom(elevation: 0),
+      ),
+      outlinedButtonTheme: OutlinedButtonThemeData(
+        style: OutlinedButton.styleFrom(elevation: 0),
+      ),
+      listTileTheme: const ListTileThemeData(
+        shape: RoundedRectangleBorder(borderRadius: S1Shape.small),
+        contentPadding: EdgeInsets.symmetric(horizontal: 8),
+      ),
+      iconButtonTheme: IconButtonThemeData(
+        style: IconButton.styleFrom(visualDensity: VisualDensity.standard),
       ),
     );
   }

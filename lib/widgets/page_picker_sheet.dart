@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 
+import '../theme/app_theme.dart';
+
 typedef PageItemLabelBuilder = String Function(int page);
 
 /// 打开页码选择 BottomSheet。
@@ -123,7 +125,7 @@ class _PagePickerSheetState extends State<PagePickerSheet> {
                         padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
                         decoration: BoxDecoration(
                           color: scheme.secondaryContainer,
-                          borderRadius: BorderRadius.circular(12),
+                          borderRadius: S1Shape.medium,
                         ),
                         child: Text(
                           '共 ${widget.totalPages} 页',
@@ -170,23 +172,23 @@ class _PagePickerSheetState extends State<PagePickerSheet> {
                         ),
                         border: const OutlineInputBorder(
                           borderSide: BorderSide.none,
-                          borderRadius: BorderRadius.all(Radius.circular(12)),
+                          borderRadius: S1Shape.medium,
                         ),
                         enabledBorder: const OutlineInputBorder(
                           borderSide: BorderSide.none,
-                          borderRadius: BorderRadius.all(Radius.circular(12)),
+                          borderRadius: S1Shape.medium,
                         ),
                         focusedBorder: OutlineInputBorder(
                           borderSide: BorderSide(color: scheme.primary, width: 2),
-                          borderRadius: const BorderRadius.all(Radius.circular(12)),
+                          borderRadius: S1Shape.medium,
                         ),
                         errorBorder: OutlineInputBorder(
                           borderSide: BorderSide(color: scheme.error),
-                          borderRadius: const BorderRadius.all(Radius.circular(12)),
+                          borderRadius: S1Shape.medium,
                         ),
                         focusedErrorBorder: OutlineInputBorder(
                           borderSide: BorderSide(color: scheme.error, width: 2),
-                          borderRadius: const BorderRadius.all(Radius.circular(12)),
+                          borderRadius: S1Shape.medium,
                         ),
                       ),
                       onSubmitted: (_) => _submitJump(),
@@ -203,8 +205,8 @@ class _PagePickerSheetState extends State<PagePickerSheet> {
                     child: FilledButton(
                       onPressed: _submitJump,
                       style: FilledButton.styleFrom(
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(12),
+                        shape: const RoundedRectangleBorder(
+                          borderRadius: S1Shape.medium,
                         ),
                       ),
                       child: const Text('跳转'),
@@ -245,7 +247,7 @@ class _PagePickerSheetState extends State<PagePickerSheet> {
                           padding: const EdgeInsets.symmetric(vertical: 2),
                           child: ListTile(
                             shape: const RoundedRectangleBorder(
-                              borderRadius: BorderRadius.all(Radius.circular(12)),
+                              borderRadius: S1Shape.medium,
                             ),
                             selected: isCurrent,
                             selectedTileColor: scheme.primaryContainer.withValues(alpha: 0.5),
@@ -259,7 +261,7 @@ class _PagePickerSheetState extends State<PagePickerSheet> {
                                 color: isCurrent
                                     ? scheme.primary
                                     : scheme.surfaceContainerHighest,
-                                borderRadius: BorderRadius.circular(16),
+                                borderRadius: S1Shape.large,
                               ),
                               child: Center(
                                 widthFactor: 1,

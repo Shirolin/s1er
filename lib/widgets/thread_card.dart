@@ -158,7 +158,7 @@ class _ReadingProgressBar extends ConsumerWidget {
           const SizedBox(width: 4),
           Expanded(
             child: ClipRRect(
-              borderRadius: const BorderRadius.all(Radius.circular(2)),
+              borderRadius: S1Shape.extraSmall,
               child: LinearProgressIndicator(
                 value: record.progress,
                 minHeight: 3,

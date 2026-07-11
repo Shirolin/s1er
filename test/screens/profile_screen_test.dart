@@ -40,7 +40,7 @@ void main() {
           ],
           child: MaterialApp(
             theme: AppTheme.lightTheme('purple'),
-            home: ProfileScreen(),
+            home: const ProfileScreen(),
           ),
         ),
       );
@@ -51,7 +51,8 @@ void main() {
       expect(find.text('主题设置'), findsNothing);
     });
 
-    testWidgets('shows confirm dialog when clicking logout and can cancel', (tester) async {
+    testWidgets('shows confirm dialog when clicking logout and can cancel',
+        (tester) async {
       tester.view.physicalSize = const Size(1080, 1920);
       tester.view.devicePixelRatio = 1.0;
       addTearDown(() => tester.view.resetPhysicalSize());
@@ -86,7 +87,7 @@ void main() {
           ],
           child: MaterialApp(
             theme: AppTheme.lightTheme('purple'),
-            home: ProfileScreen(),
+            home: const ProfileScreen(),
           ),
         ),
       );
@@ -109,7 +110,9 @@ void main() {
       expect(mockNotifier.logoutCalled, false);
     });
 
-    testWidgets('logout successfully shows progress and changes page to logged out state', (tester) async {
+    testWidgets(
+        'logout successfully shows progress and changes page to logged out state',
+        (tester) async {
       tester.view.physicalSize = const Size(1080, 1920);
       tester.view.devicePixelRatio = 1.0;
       addTearDown(() => tester.view.resetPhysicalSize());
@@ -144,7 +147,7 @@ void main() {
           ],
           child: MaterialApp(
             theme: AppTheme.lightTheme('purple'),
-            home: ProfileScreen(),
+            home: const ProfileScreen(),
           ),
         ),
       );
@@ -165,7 +168,8 @@ void main() {
       expect(mockNotifier.logoutCalled, true);
     });
 
-    testWidgets('logout failed keeps login state and shows error SnackBar', (tester) async {
+    testWidgets('logout failed keeps login state and shows error SnackBar',
+        (tester) async {
       tester.view.physicalSize = const Size(1080, 1920);
       tester.view.devicePixelRatio = 1.0;
       addTearDown(() => tester.view.resetPhysicalSize());
@@ -200,7 +204,7 @@ void main() {
           ],
           child: MaterialApp(
             theme: AppTheme.lightTheme('purple'),
-            home: ProfileScreen(),
+            home: const ProfileScreen(),
           ),
         ),
       );
@@ -223,8 +227,7 @@ void main() {
 }
 
 class _TestAuthNotifier extends AuthNotifier {
-  _TestAuthNotifier(this.initial, this.service, Ref ref)
-      : super(service, ref) {
+  _TestAuthNotifier(this.initial, this.service, Ref ref) : super(service, ref) {
     state = initial;
   }
 
@@ -249,7 +252,7 @@ class _FakeAuthService implements AuthService {
 
   @override
   User? get currentUser => null;
-  
+
   @override
   bool get isLoggedIn => false;
 

@@ -6,7 +6,8 @@ import 'package:s1_app/providers/settings_provider.dart';
 import 'package:s1_app/widgets/image_viewer.dart';
 
 void main() {
-  testWidgets('ImageViewer shows placeholder when showImages is false', (tester) async {
+  testWidgets('ImageViewer shows placeholder when showImages is false',
+      (tester) async {
     await tester.pumpWidget(
       ProviderScope(
         overrides: [
@@ -16,7 +17,7 @@ void main() {
         ],
         child: MaterialApp(
           theme: AppTheme.lightTheme('purple'),
-          home: Scaffold(
+          home: const Scaffold(
             body: ImageViewer(
               imageUrl: 'https://example.com/image.jpg',
             ),
@@ -31,7 +32,8 @@ void main() {
     expect(find.byType(CircularProgressIndicator), findsNothing);
   });
 
-  testWidgets('ImageViewer still renders emoticon when showImages is false', (tester) async {
+  testWidgets('ImageViewer still renders emoticon when showImages is false',
+      (tester) async {
     await tester.pumpWidget(
       ProviderScope(
         overrides: [
@@ -41,9 +43,10 @@ void main() {
         ],
         child: MaterialApp(
           theme: AppTheme.lightTheme('purple'),
-          home: Scaffold(
+          home: const Scaffold(
             body: ImageViewer(
-              imageUrl: 'https://avatar.stage1st.com/000/00/00/01_avatar_small.jpg',
+              imageUrl:
+                  'https://avatar.stage1st.com/000/00/00/01_avatar_small.jpg',
               isEmoticon: true,
             ),
           ),

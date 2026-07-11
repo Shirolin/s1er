@@ -26,7 +26,7 @@ void main() {
         ],
         child: MaterialApp(
           theme: AppTheme.lightTheme('purple'),
-          home: SettingsScreen(),
+          home: const SettingsScreen(),
         ),
       ),
     );

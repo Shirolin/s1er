@@ -67,7 +67,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                 else
                   FilledButton.tonal(
                     onPressed: () => context.push('/login'),
-                    child: const Text('Login'),
+                    child: const Text('登录'),
                   ),
               ],
       ),
@@ -75,9 +75,9 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
           ? tabIndex == 0
               ? const _ForumTab()
               : tabIndex == 1
-                  ? const Center(child: Text('Search'))
+                  ? const Center(child: Text('搜索'))
                   : tabIndex == 2
-                      ? const Center(child: Text('Messages'))
+                      ? const Center(child: Text('消息'))
                       : const ProfileBody()
           : tabIndex == 0
               ? const _ForumTab()

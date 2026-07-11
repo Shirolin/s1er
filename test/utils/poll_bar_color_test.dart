@@ -13,8 +13,8 @@ void main() {
     });
 
     test('similar colors fail non-text contrast', () {
-      final a = const Color(0xFFE0E0E0);
-      final b = const Color(0xFFE8E8E8);
+      const a = Color(0xFFE0E0E0);
+      const b = Color(0xFFE8E8E8);
       expect(ColorContrast.meetsNonTextContrast(a, b), isFalse);
     });
   });

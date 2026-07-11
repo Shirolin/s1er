@@ -747,13 +747,13 @@ S1 实际配置：
 
 ## Mobile API 模块可用性总表
 
-以下为对 `api/mobile/index.php?module={name}&version=4` 的实测结果（GET，未登录）：
+以下为对 `api/mobile/index.php?module={name}&version=4` 的实测结果（GET，未登录）。注意：S1 可能随维护策略调整游客访问权限，表格记录当前验证结果。
 
 | 模块 | 响应 | 状态 |
 |------|------|------|
-| `forumindex` | 正常返回 JSON | ✅ 可用 |
-| `forumdisplay` | 正常返回 JSON | ✅ 可用 |
-| `viewthread` | 正常返回 JSON | ✅ 可用 |
+| `forumindex` | `{"error":"to_login"}` | ⚠️ 当前未登录不可读 |
+| `forumdisplay` | `{"error":"to_login"}` | ⚠️ 当前未登录不可读 |
+| `viewthread` | 历史曾可读；当前应按可能返回 `to_login` 处理 | ⚠️ 取决于 S1 当前策略 |
 | `mythread` | 返回 JSON，未登录时提示 `to_login` | ✅ 可用（仅当前用户） |
 | `login` | 正常返回 JSON | ✅ 可用 |
 | `profile` | 正常返回 JSON | ✅ 可用 |
@@ -766,7 +766,7 @@ S1 实际配置：
 | `checkpostrule` | `{"error":"module_not_exists"}` | ❌ S1 已禁用 |
 | 其余 20+ 模块 | `{"error":"module_not_exists"}` | ❌ 均不可用 |
 
-结论：S1 的 Mobile API **仅开放了读/登录/私信/发新帖**，所有回复、编辑、附件功能必须走浏览器端点。用户空间列表的回复摘要数据也需走 HTML 解析。
+结论：S1 的 Mobile API **开放能力会受当前论坛登录策略影响**。客户端应允许未登录进入只读入口，但任何读接口返回 `to_login` 时都必须降级为登录提示。所有回复、编辑、附件功能必须走浏览器端点。用户空间列表的回复摘要数据也需走 HTML 解析。
 
 ---
 

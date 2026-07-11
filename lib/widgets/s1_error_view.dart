@@ -2,7 +2,6 @@ import 'package:flutter/material.dart';
 import '../services/api_service.dart';
 
 class S1ErrorView extends StatelessWidget {
-
   const S1ErrorView({
     super.key,
     required this.error,
@@ -51,9 +50,7 @@ class S1ErrorView extends StatelessWidget {
             ),
             const SizedBox(height: 8),
             Text(
-              isLogin
-                  ? 'S1 论坛需要登录才能查看内容'
-                  : error.toString(),
+              isLogin ? '当前 S1 需要登录后查看论坛内容' : error.toString(),
               textAlign: TextAlign.center,
               style: textTheme.bodyMedium?.copyWith(
                 color: scheme.onSurfaceVariant,

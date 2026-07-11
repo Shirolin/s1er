@@ -19,8 +19,7 @@ void main() {
     });
 
     test('parses image tags', () {
-      final html =
-          BbcodeParser.parse('[img]https://example.com/pic.jpg[/img]');
+      final html = BbcodeParser.parse('[img]https://example.com/pic.jpg[/img]');
       expect(html, contains('img'));
       expect(html, contains('https://example.com/pic.jpg'));
     });
@@ -65,8 +64,7 @@ void main() {
     });
 
     test('parses URL tags', () {
-      final html =
-          BbcodeParser.parse('[url=https://example.com]link[/url]');
+      final html = BbcodeParser.parse('[url=https://example.com]link[/url]');
       expect(html, contains('href="https://example.com"'));
       expect(html, contains('link'));
     });
@@ -89,7 +87,7 @@ void main() {
       await tester.pumpWidget(
         MaterialApp(
           theme: AppTheme.lightTheme('purple'),
-          home: Scaffold(
+          home: const Scaffold(
             body: EmoticonWidget(code: 'unknown'),
           ),
         ),
@@ -102,7 +100,7 @@ void main() {
       await tester.pumpWidget(
         MaterialApp(
           theme: AppTheme.lightTheme('purple'),
-          home: Scaffold(
+          home: const Scaffold(
             body: EmoticonWidget(code: 'random'),
           ),
         ),
@@ -114,7 +112,7 @@ void main() {
       await tester.pumpWidget(
         MaterialApp(
           theme: AppTheme.lightTheme('purple'),
-          home: Scaffold(
+          home: const Scaffold(
             body: EmoticonWidget(code: 'unknown'),
           ),
         ),
@@ -129,7 +127,7 @@ void main() {
       await tester.pumpWidget(
         MaterialApp(
           theme: AppTheme.lightTheme('purple'),
-          home: Scaffold(
+          home: const Scaffold(
             body: QuoteBlock(content: 'quoted text'),
           ),
         ),
@@ -145,7 +143,7 @@ void main() {
       await tester.pumpWidget(
         MaterialApp(
           theme: AppTheme.lightTheme('purple'),
-          home: Scaffold(
+          home: const Scaffold(
             body: QuoteBlock(content: 'quoted text'),
           ),
         ),
@@ -158,7 +156,7 @@ void main() {
       await tester.pumpWidget(
         MaterialApp(
           theme: AppTheme.lightTheme('purple'),
-          home: Scaffold(
+          home: const Scaffold(
             body: QuoteBlock(content: ''),
           ),
         ),
@@ -170,7 +168,7 @@ void main() {
       await tester.pumpWidget(
         MaterialApp(
           theme: AppTheme.lightTheme('purple'),
-          home: Scaffold(
+          home: const Scaffold(
             body: QuoteBlock(content: '[b]bold quote[/b]'),
           ),
         ),
@@ -184,7 +182,7 @@ void main() {
       await tester.pumpWidget(
         MaterialApp(
           theme: AppTheme.lightTheme('purple'),
-          home: Scaffold(
+          home: const Scaffold(
             body: BbcodeRenderer(bbcode: ''),
           ),
         ),
@@ -196,7 +194,7 @@ void main() {
       await tester.pumpWidget(
         MaterialApp(
           theme: AppTheme.lightTheme('purple'),
-          home: Scaffold(
+          home: const Scaffold(
             body: BbcodeRenderer(bbcode: 'Hello world'),
           ),
         ),
@@ -208,9 +206,10 @@ void main() {
       await tester.pumpWidget(
         MaterialApp(
           theme: AppTheme.lightTheme('purple'),
-          home: Scaffold(
+          home: const Scaffold(
             body: BbcodeRenderer(
-                bbcode: 'before [quote]quoted[/quote] after',),
+              bbcode: 'before [quote]quoted[/quote] after',
+            ),
           ),
         ),
       );
@@ -224,9 +223,10 @@ void main() {
       await tester.pumpWidget(
         MaterialApp(
           theme: AppTheme.lightTheme('purple'),
-          home: Scaffold(
+          home: const Scaffold(
             body: BbcodeRenderer(
-                bbcode: '[quote]first[/quote]middle[quote]second[/quote]',),
+              bbcode: '[quote]first[/quote]middle[quote]second[/quote]',
+            ),
           ),
         ),
       );
@@ -237,7 +237,7 @@ void main() {
       await tester.pumpWidget(
         MaterialApp(
           theme: AppTheme.lightTheme('purple'),
-          home: Scaffold(
+          home: const Scaffold(
             body: BbcodeRenderer(bbcode: '[b]bold[/b]'),
           ),
         ),
@@ -251,7 +251,7 @@ void main() {
       await tester.pumpWidget(
         MaterialApp(
           theme: AppTheme.lightTheme('purple'),
-          home: Scaffold(
+          home: const Scaffold(
             body: BbcodeRenderer(bbcode: 'text'),
           ),
         ),

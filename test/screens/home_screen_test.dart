@@ -31,9 +31,47 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(find.text('请先登录'), findsNothing);
+    expect(find.text('登录'), findsOneWidget);
+    expect(find.text('Login'), findsNothing);
     expect(find.text('主论坛'), findsOneWidget);
     expect(find.text('游戏论坛'), findsOneWidget);
     expect(find.text('我的'), findsOneWidget);
+  });
+
+  testWidgets('logged in home screen uses chinese labels', (tester) async {
+    await tester.pumpWidget(
+      ProviderScope(
+        overrides: [
+          authStateProvider.overrideWith(_LoggedInAuthNotifier.new),
+          forumListProvider.overrideWith(_GuestForumListNotifier.new),
+          settingsProvider.overrideWith(
+            (ref) => SettingsNotifier(AppSettings()),
+          ),
+        ],
+        child: MaterialApp(
+          theme: AppTheme.lightTheme('purple'),
+          home: const HomeScreen(),
+        ),
+      ),
+    );
+
+    await tester.pumpAndSettle();
+
+    expect(find.text('登录'), findsNothing);
+    expect(find.text('搜索'), findsOneWidget);
+    expect(find.text('消息'), findsOneWidget);
+    expect(find.text('Search'), findsNothing);
+    expect(find.text('Messages'), findsNothing);
+
+    await tester.tap(find.text('搜索'));
+    await tester.pumpAndSettle();
+    expect(find.text('搜索'), findsNWidgets(2));
+    expect(find.text('Search'), findsNothing);
+
+    await tester.tap(find.text('消息'));
+    await tester.pumpAndSettle();
+    expect(find.text('消息'), findsNWidgets(2));
+    expect(find.text('Messages'), findsNothing);
   });
 }
 
@@ -64,6 +102,19 @@ class _GuestForumListNotifier extends ForumListNotifier {
 class _LoggedOutAuthNotifier extends AuthNotifier {
   _LoggedOutAuthNotifier(Ref ref) : super(_FakeAuthService(), ref) {
     state = AuthState();
+  }
+}
+
+class _LoggedInAuthNotifier extends AuthNotifier {
+  _LoggedInAuthNotifier(Ref ref) : super(_FakeAuthService(), ref) {
+    state = AuthState(
+      isLoggedIn: true,
+      user: User(
+        uid: '1',
+        username: 'tester',
+        avatar: '',
+      ),
+    );
   }
 }
 

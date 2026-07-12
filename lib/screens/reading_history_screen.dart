@@ -6,6 +6,7 @@ import '../providers/forum_list_provider.dart';
 import '../providers/reading_history_provider.dart';
 import '../theme/app_theme.dart';
 import '../utils/format_utils.dart';
+import '../utils/thread_navigation.dart';
 
 class ReadingHistoryScreen extends ConsumerWidget {
   const ReadingHistoryScreen({super.key});
@@ -103,12 +104,13 @@ class _HistoryTile extends ConsumerWidget {
   }
 
   void _open(BuildContext context) {
-    final targetPage = record.resolveOpenPage(record.totalPages);
-    if (targetPage <= 1) {
-      context.push('/thread/${record.tid}');
-    } else {
-      context.push('/thread/${record.tid}?page=$targetPage');
-    }
+    context.push(
+      buildThreadDetailPath(
+        record.tid,
+        record: record,
+        liveTotalPages: record.totalPages,
+      ),
+    );
   }
 
   @override

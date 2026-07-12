@@ -3,9 +3,12 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import '../config/api_config.dart';
 import '../models/user_space_item.dart';
+import '../models/reading_record.dart';
+import '../providers/reading_history_provider.dart';
 import '../providers/user_space_provider.dart';
 import '../theme/app_theme.dart';
 import '../utils/format_utils.dart';
+import '../utils/thread_navigation.dart';
 import '../widgets/app_bar_more_menu.dart';
 import '../widgets/pagination_bar.dart';
 import '../widgets/s1_error_view.dart';
@@ -216,12 +219,19 @@ class _ReplyList extends ConsumerWidget {
   }
 }
 
-class _ThreadCard extends StatelessWidget {
+class _ThreadCard extends ConsumerWidget {
   const _ThreadCard({required this.item});
   final UserSpaceItem item;
 
+  ReadingRecord? _recordFor(List<ReadingRecord> list) {
+    for (final r in list) {
+      if (r.tid == item.tid) return r;
+    }
+    return null;
+  }
+
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
     final scheme = Theme.of(context).colorScheme;
     final textTheme = Theme.of(context).textTheme;
     final metaStyle = textTheme.labelSmall?.copyWith(
@@ -234,7 +244,16 @@ class _ThreadCard extends StatelessWidget {
       color: scheme.surfaceContainerLow,
       shape: S1Shape.cardShape,
       child: InkWell(
-        onTap: () => context.push('/thread/${item.tid}'),
+        onTap: () {
+          final record = _recordFor(ref.read(readingHistoryProvider));
+          context.push(
+            buildThreadDetailPath(
+              item.tid,
+              record: record,
+              liveTotalPages: calcThreadTotalPages(item.replies),
+            ),
+          );
+        },
         borderRadius: S1Shape.medium,
         child: Padding(
           padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),

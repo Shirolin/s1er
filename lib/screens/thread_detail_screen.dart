@@ -49,27 +49,9 @@ class _ThreadDetailScreenState extends ConsumerState<ThreadDetailScreen> {
   String? _scrollOncePid;
   bool _showScrollToTop = false;
   bool _hasRecordedInitialVisit = false;
-  bool _hasResolvedInitialPage = false;
   bool _pendingInitialNavigation = false;
+  bool _b3CorrectionDone = false;
   String? _highlightPid;
-
-  @override
-  void initState() {
-    super.initState();
-
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      if (!mounted) return;
-      if (widget.targetPid != null) {
-        ref
-            .read(postProvider(widget.tid).notifier)
-            .locatePid(widget.targetPid!);
-      } else if (widget.initialPage != null && widget.initialPage! > 1) {
-        ref
-            .read(postProvider(widget.tid).notifier)
-            .goToPage(widget.initialPage!);
-      }
-    });
-  }
 
   /// 记录阅读进度：写库 + 刷新历史列表（使列表卡片/历史页/资料计数实时更新）。
   /// readCount 只在本次进入详情页首帧 +1（isNewVisit 由 _hasRecordedInitialVisit 守卫）。
@@ -96,25 +78,30 @@ class _ThreadDetailScreenState extends ConsumerState<ThreadDetailScreen> {
         );
     _hasRecordedInitialVisit = true;
     ref.invalidate(readingRecordProvider(widget.tid));
-    // 刷新列表 Notifier：ThreadCard 进度条 / 历史页 / 资料计数据此实时更新。
     ref.read(readingHistoryProvider.notifier).refresh();
   }
 
-  /// 无指定初始页时，按阅读记录自动落到续读/末页/新回复页。
-  /// 须在 [_recordProgress] 写库**之前**执行，且跳转完成前跳过进度写入。
-  void _resolveInitialPage(PostListState state) {
-    if (_hasResolvedInitialPage) return;
+  /// B3 边缘：无 URL 参数且本地 record 落后于 API 总页数时，静默跳到新回复页。
+  void _maybeCorrectNewReplyPage(PostListState state) {
+    if (_b3CorrectionDone) return;
+    _b3CorrectionDone = true;
+
     if (widget.initialPage != null || widget.targetPid != null) {
-      _hasResolvedInitialPage = true;
       return;
     }
-    _hasResolvedInitialPage = true;
 
     final record = ref.read(readingRecordProvider(widget.tid));
-    if (record == null) return;
+    if (record == null || !record.isFinished) {
+      return;
+    }
+    if (!record.hasNewPages(state.totalPages)) {
+      return;
+    }
 
-    final targetPage = record.resolveOpenPage(state.totalPages);
-    if (targetPage == state.currentPage) return;
+    final targetPage = (record.totalPages + 1).clamp(1, state.totalPages);
+    if (state.currentPage >= targetPage) {
+      return;
+    }
 
     _pendingInitialNavigation = true;
     WidgetsBinding.instance.addPostFrameCallback((_) async {
@@ -278,15 +265,21 @@ class _ThreadDetailScreenState extends ConsumerState<ThreadDetailScreen> {
     );
   }
 
+  Widget _buildLoadingBody() {
+    return const Column(
+      children: [
+        LinearProgressIndicator(),
+        Expanded(child: SizedBox()),
+      ],
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     ref.listen<AsyncValue<PostListState>>(postProvider(widget.tid),
         (previous, next) {
       next.whenData((state) {
-        // 先按「上一次」记录判断是否提示续读，再写入本次进度。
-        if (widget.initialPage == null && widget.targetPid == null) {
-          _resolveInitialPage(state);
-        }
+        _maybeCorrectNewReplyPage(state);
         _recordProgress(state);
       });
     });
@@ -318,134 +311,144 @@ class _ThreadDetailScreenState extends ConsumerState<ThreadDetailScreen> {
           ),
         ],
       ),
-      body: postsAsync.when(
-        loading: () => const Column(
-          children: [
-            LinearProgressIndicator(),
-            Expanded(child: SizedBox()),
-          ],
-        ),
-        error: (e, st) => S1ErrorView(
-          error: e,
-          onRetry: () => ref.read(postProvider(widget.tid).notifier).refresh(),
-          onLogin: () => context.push('/login'),
-        ),
-        data: (state) {
-          final fabPadding = S1FabLayout.contentBottomPadding(
-            showSecondary: _showScrollToTop,
-            showPrimary: isLoggedIn && state.allowReply,
-          );
-          final scheme = Theme.of(context).colorScheme;
+      body: _pendingInitialNavigation
+          ? _buildLoadingBody()
+          : postsAsync.when(
+              loading: _buildLoadingBody,
+              error: (e, st) => S1ErrorView(
+                error: e,
+                onRetry: () =>
+                    ref.read(postProvider(widget.tid).notifier).refresh(),
+                onLogin: () => context.push('/login'),
+              ),
+              data: (state) {
+                final fabPadding = S1FabLayout.contentBottomPadding(
+                  showSecondary: _showScrollToTop,
+                  showPrimary: isLoggedIn && state.allowReply,
+                );
+                final scheme = Theme.of(context).colorScheme;
 
-          return Column(
-            children: [
-              if (state.isFiltering)
-                Container(
-                  width: double.infinity,
-                  padding:
-                      const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
-                  color: scheme.primaryContainer,
-                  child: Row(
-                    children: [
-                      Icon(
-                        Icons.filter_alt,
-                        size: 18,
-                        color: scheme.onPrimaryContainer,
-                      ),
-                      const SizedBox(width: 8),
-                      Expanded(
-                        child: Text(
-                          '只看「${state.filterAuthorName}」的帖子',
-                          style:
-                              Theme.of(context).textTheme.bodyMedium?.copyWith(
-                                    color: scheme.onPrimaryContainer,
-                                    fontWeight: FontWeight.w500,
-                                  ),
+                return Column(
+                  children: [
+                    if (state.isFiltering)
+                      Container(
+                        width: double.infinity,
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 16,
+                          vertical: 10,
                         ),
-                      ),
-                      TextButton.icon(
-                        onPressed: () => ref
-                            .read(postProvider(widget.tid).notifier)
-                            .clearFilter(),
-                        icon: Icon(
-                          Icons.close,
-                          size: 18,
-                          color: scheme.onPrimaryContainer,
-                        ),
-                        label: Text(
-                          '取消',
-                          style:
-                              Theme.of(context).textTheme.labelLarge?.copyWith(
-                                    color: scheme.onPrimaryContainer,
-                                  ),
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-              Expanded(
-                child: S1ContentFabOverlay(
-                  fab: S1FabStack(
-                    secondary: S1FabItem(
-                      heroTag: 'scrollToTopDetail',
-                      icon: Icons.arrow_upward,
-                      tooltip: '返回顶部',
-                      onPressed: _scrollToTop,
-                      visible: _showScrollToTop,
-                      small: true,
-                    ),
-                    primary: isLoggedIn && state.allowReply
-                        ? S1FabItem(
-                            heroTag: 'replyDetail',
-                            icon: Icons.edit_outlined,
-                            tooltip: '回复',
-                            onPressed: () => _openCompose(state),
-                          )
-                        : null,
-                  ),
-                  child: S1SwipePagination(
-                    key: _swipeKey,
-                    currentPage: state.currentPage,
-                    totalPages: state.totalPages,
-                    onScrollOffsetChanged: _onScrollOffsetChanged,
-                    onPageChanged: (page) => ref
-                        .read(postProvider(widget.tid).notifier)
-                        .goToPage(page),
-                    pageBuilder: (context, scrollController) => Scrollbar(
-                      controller: scrollController,
-                      child: state.posts.isEmpty
-                          ? const Center(child: Text('暂无回复'))
-                          : SingleChildScrollView(
-                              controller: scrollController,
-                              padding: EdgeInsets.only(bottom: fabPadding),
-                              child: Column(
-                                children: List.generate(
-                                  _detailItemCount(state),
-                                  (index) =>
-                                      _buildDetailItem(context, state, index),
-                                ),
+                        color: scheme.primaryContainer,
+                        child: Row(
+                          children: [
+                            Icon(
+                              Icons.filter_alt,
+                              size: 18,
+                              color: scheme.onPrimaryContainer,
+                            ),
+                            const SizedBox(width: 8),
+                            Expanded(
+                              child: Text(
+                                '只看「${state.filterAuthorName}」的帖子',
+                                style: Theme.of(context)
+                                    .textTheme
+                                    .bodyMedium
+                                    ?.copyWith(
+                                      color: scheme.onPrimaryContainer,
+                                      fontWeight: FontWeight.w500,
+                                    ),
                               ),
                             ),
+                            TextButton.icon(
+                              onPressed: () => ref
+                                  .read(postProvider(widget.tid).notifier)
+                                  .clearFilter(),
+                              icon: Icon(
+                                Icons.close,
+                                size: 18,
+                                color: scheme.onPrimaryContainer,
+                              ),
+                              label: Text(
+                                '取消',
+                                style: Theme.of(context)
+                                    .textTheme
+                                    .labelLarge
+                                    ?.copyWith(
+                                      color: scheme.onPrimaryContainer,
+                                    ),
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    Expanded(
+                      child: S1ContentFabOverlay(
+                        fab: S1FabStack(
+                          secondary: S1FabItem(
+                            heroTag: 'scrollToTopDetail',
+                            icon: Icons.arrow_upward,
+                            tooltip: '返回顶部',
+                            onPressed: _scrollToTop,
+                            visible: _showScrollToTop,
+                            small: true,
+                          ),
+                          primary: isLoggedIn && state.allowReply
+                              ? S1FabItem(
+                                  heroTag: 'replyDetail',
+                                  icon: Icons.edit_outlined,
+                                  tooltip: '回复',
+                                  onPressed: () => _openCompose(state),
+                                )
+                              : null,
+                        ),
+                        child: S1SwipePagination(
+                          key: _swipeKey,
+                          currentPage: state.currentPage,
+                          totalPages: state.totalPages,
+                          onScrollOffsetChanged: _onScrollOffsetChanged,
+                          onPageChanged: (page) => ref
+                              .read(postProvider(widget.tid).notifier)
+                              .goToPage(page),
+                          pageBuilder: (context, scrollController) =>
+                              Scrollbar(
+                            controller: scrollController,
+                            child: state.posts.isEmpty
+                                ? const Center(child: Text('暂无回复'))
+                                : SingleChildScrollView(
+                                    controller: scrollController,
+                                    padding:
+                                        EdgeInsets.only(bottom: fabPadding),
+                                    child: Column(
+                                      children: List.generate(
+                                        _detailItemCount(state),
+                                        (index) => _buildDetailItem(
+                                          context,
+                                          state,
+                                          index,
+                                        ),
+                                      ),
+                                    ),
+                                  ),
+                          ),
+                        ),
+                      ),
                     ),
-                  ),
-                ),
-              ),
-              PaginationBar(
-                currentPage: state.currentPage,
-                totalPages: state.totalPages,
-                sheetSubtitle: state.threadSubject,
-                pageItemLabelBuilder: (page) {
-                  final start = (page - 1) * state.perPage + 1;
-                  final end = page * state.perPage;
-                  return '第 $start - $end 楼';
-                },
-                onPageChanged: (page) =>
-                    ref.read(postProvider(widget.tid).notifier).goToPage(page),
-              ),
-            ],
-          );
-        },
-      ),
+                    PaginationBar(
+                      currentPage: state.currentPage,
+                      totalPages: state.totalPages,
+                      sheetSubtitle: state.threadSubject,
+                      pageItemLabelBuilder: (page) {
+                        final start = (page - 1) * state.perPage + 1;
+                        final end = page * state.perPage;
+                        return '第 $start - $end 楼';
+                      },
+                      onPageChanged: (page) => ref
+                          .read(postProvider(widget.tid).notifier)
+                          .goToPage(page),
+                    ),
+                  ],
+                );
+              },
+            ),
     );
   }
 }

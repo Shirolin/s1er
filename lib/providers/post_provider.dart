@@ -7,7 +7,10 @@ import '../services/api_service.dart';
 import '../services/http_client.dart';
 import '../services/poll_vote_cache.dart';
 import '../services/rate_log_service.dart';
+import '../utils/thread_navigation.dart';
+import 'reading_history_provider.dart';
 import 'settings_provider.dart';
+import 'thread_open_intent_provider.dart';
 
 class PostListState {
   PostListState({
@@ -93,11 +96,27 @@ class PostNotifier extends AsyncNotifier<PostListState> {
   String? _filterAuthorId;
   String? _filterAuthorName;
 
-  ApiService get _apiService => ref.watch(apiServiceProvider);
-  RateLogService get _rateLogService => ref.watch(rateLogServiceProvider);
+  ApiService get _apiService => ref.read(apiServiceProvider);
+  RateLogService get _rateLogService => ref.read(rateLogServiceProvider);
 
   @override
-  Future<PostListState> build() => _loadPage(1);
+  Future<PostListState> build() async {
+    final intent = ref.read(threadOpenIntentProvider(tid));
+
+    if (intent?.targetPid != null && intent!.targetPid!.isNotEmpty) {
+      final page = await _apiService.locatePostPage(tid, intent.targetPid!);
+      return _loadPage(page);
+    }
+
+    final explicitPage = intent?.initialPage;
+    if (explicitPage != null && explicitPage > 1) {
+      return _loadPage(explicitPage);
+    }
+
+    final record = ref.read(readingRecordProvider(tid));
+    final page = resolveThreadInitialPage(intent: intent, record: record);
+    return _loadPage(page);
+  }
 
   ThreadPoll? _pollWithUserVotes(
     Map<String, dynamic> variables,

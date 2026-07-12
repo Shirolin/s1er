@@ -8,6 +8,7 @@ import '../providers/reading_history_provider.dart';
 import '../theme/app_theme.dart';
 import '../utils/compact_label.dart';
 import '../utils/format_utils.dart';
+import '../utils/thread_navigation.dart';
 import 'page_picker_sheet.dart';
 
 /// 从当前用户的阅读历史列表中查出指定 tid 的记录（无则 null）。
@@ -25,20 +26,20 @@ class ThreadCard extends ConsumerWidget {
 
   int _calcTotalPages(int replies,
       {int perPage = S1Constants.postsPerPageFallback,}) {
-    final totalPosts = replies + 1;
-    return (totalPosts / perPage).ceil().clamp(1, 9999);
+    return calcThreadTotalPages(replies, perPage: perPage);
   }
 
   /// 点击：按阅读记录解析目标页（续读 / 已读落末页 / 有新回复落新页）。
   void _handleTap(BuildContext context, WidgetRef ref) {
     final record = _recordFor(ref.read(readingHistoryProvider), thread.tid);
     final liveTotalPages = _calcTotalPages(thread.replies);
-    final targetPage = record?.resolveOpenPage(liveTotalPages) ?? 1;
-    if (targetPage <= 1) {
-      context.push('/thread/${thread.tid}');
-    } else {
-      context.push('/thread/${thread.tid}?page=$targetPage');
-    }
+    context.push(
+      buildThreadDetailPath(
+        thread.tid,
+        record: record,
+        liveTotalPages: liveTotalPages,
+      ),
+    );
   }
 
   void _showPageSheet(BuildContext context) {

@@ -17,6 +17,8 @@ import 'screens/settings_screen.dart';
 import 'screens/reading_history_screen.dart';
 import 'screens/image_viewer_screen.dart';
 import 'screens/user_space_screen.dart';
+import 'models/thread_open_intent.dart';
+import 'providers/thread_open_intent_provider.dart';
 import 'services/talker.dart';
 import 'theme/app_theme.dart';
 
@@ -65,13 +67,23 @@ final _router = GoRouter(
     GoRoute(
       path: '/thread/:tid',
       builder: (context, state) {
+        final tid = state.pathParameters['tid']!;
         final pageStr = state.uri.queryParameters['page'];
         final page = pageStr != null ? int.tryParse(pageStr) : null;
         final pid = state.uri.queryParameters['pid'];
-        return ThreadDetailScreen(
-          tid: state.pathParameters['tid']!,
-          initialPage: page,
-          targetPid: pid,
+        final intent = (page != null || pid != null)
+            ? ThreadOpenIntent(initialPage: page, targetPid: pid)
+            : null;
+        return ProviderScope(
+          overrides: [
+            if (intent != null)
+              threadOpenIntentProvider(tid).overrideWithValue(intent),
+          ],
+          child: ThreadDetailScreen(
+            tid: tid,
+            initialPage: page,
+            targetPid: pid,
+          ),
         );
       },
     ),

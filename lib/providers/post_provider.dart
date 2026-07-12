@@ -1,5 +1,4 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:hive/hive.dart';
 import '../config/constants.dart';
 import '../models/post.dart';
 import '../models/poll.dart';
@@ -8,6 +7,7 @@ import '../services/api_service.dart';
 import '../services/http_client.dart';
 import '../services/poll_vote_cache.dart';
 import '../services/rate_log_service.dart';
+import 'settings_provider.dart';
 class PostListState {
 
   PostListState({
@@ -95,7 +95,7 @@ final rateLogServiceProvider = Provider<RateLogService>((ref) {
 });
 
 final pollVoteCacheProvider = Provider.family<PollVoteCache, String>((ref, uid) {
-  return PollVoteCache(Hive.box('cache'), uid);
+  return PollVoteCache(ref.watch(localDataProvider), uid);
 });
 
 final postProvider = StateNotifierProvider.autoDispose.family<

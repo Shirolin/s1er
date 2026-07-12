@@ -1,34 +1,49 @@
-import 'dart:io';
-
+import 'package:drift/native.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:hive/hive.dart';
 import 'package:package_info_plus/package_info_plus.dart';
 import 'package:s1_app/theme/app_theme.dart';
 import 'package:s1_app/providers/talker_provider.dart';
 import 'package:s1_app/providers/auth_provider.dart';
+import 'package:s1_app/providers/settings_provider.dart';
+import 'package:s1_app/services/app_database.dart';
+import 'package:s1_app/services/app_local_data.dart';
 import 'package:s1_app/services/auth_service.dart';
 import 'package:s1_app/models/user.dart';
 import 'package:s1_app/screens/profile_screen.dart';
 
 void main() {
-  setUpAll(() async {
+  late AppDatabase db;
+  late AppLocalData local;
+
+  setUp(() async {
     TestWidgetsFlutterBinding.ensureInitialized();
-    Hive.init(Directory.systemTemp.path);
-    await Hive.openBox('settings');
-    await Hive.openBox<Map>('reading_history');
+    db = AppDatabase.forTesting(NativeDatabase.memory());
+    local = AppLocalData(db);
+    await local.load();
   });
 
-  tearDownAll(() async {
-    await Hive.close();
+  tearDown(() async {
+    await db.close();
   });
+
+  List<Override> localOverrides() => [
+        localDataProvider.overrideWithValue(local),
+        settingsProvider.overrideWith(
+          (ref) => SettingsNotifier(
+            store: local.settings,
+            initial: const AppSettings(),
+          ),
+        ),
+      ];
 
   group('ProfileScreen', () {
     testWidgets('shows settings entry tile', (tester) async {
       await tester.pumpWidget(
         ProviderScope(
           overrides: [
+            ...localOverrides(),
             packageInfoProvider.overrideWith(
               (_) async => PackageInfo(
                 appName: 'S1',
@@ -64,6 +79,7 @@ void main() {
       await tester.pumpWidget(
         ProviderScope(
           overrides: [
+            ...localOverrides(),
             authStateProvider.overrideWith((ref) {
               mockNotifier = _TestAuthNotifier(
                 AuthState(
@@ -124,6 +140,7 @@ void main() {
       await tester.pumpWidget(
         ProviderScope(
           overrides: [
+            ...localOverrides(),
             authStateProvider.overrideWith((ref) {
               mockNotifier = _TestAuthNotifier(
                 AuthState(
@@ -181,6 +198,7 @@ void main() {
       await tester.pumpWidget(
         ProviderScope(
           overrides: [
+            ...localOverrides(),
             authStateProvider.overrideWith((ref) {
               mockNotifier = _TestAuthNotifier(
                 AuthState(

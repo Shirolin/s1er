@@ -20,7 +20,7 @@ void main() {
           authStateProvider.overrideWith(_LoggedOutAuthNotifier.new),
           forumListProvider.overrideWith(_GuestForumListNotifier.new),
           settingsProvider.overrideWith(
-            (ref) => SettingsNotifier(const AppSettings()),
+            (ref) => SettingsNotifier(initial: const AppSettings()),
           ),
           ...messagesProviderOverrides(),
         ],
@@ -48,7 +48,7 @@ void main() {
           authStateProvider.overrideWith(_LoggedInAuthNotifier.new),
           forumListProvider.overrideWith(_GuestForumListNotifier.new),
           settingsProvider.overrideWith(
-            (ref) => SettingsNotifier(const AppSettings()),
+            (ref) => SettingsNotifier(initial: const AppSettings()),
           ),
           ...messagesProviderOverrides(),
         ],

@@ -3,7 +3,6 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../models/user.dart';
 import '../services/auth_service.dart';
 import '../services/http_client.dart';
-import '../services/reading_history_service.dart';
 import 'forum_list_provider.dart';
 import 'reading_history_provider.dart';
 
@@ -54,8 +53,7 @@ class AuthNotifier extends StateNotifier<AuthState> {
   void _maybeMigrateGuestHistory() {
     final uid = _authService.currentUser?.uid;
     if (uid == null || uid.isEmpty) return;
-    final box = _ref.read(readingBoxProvider);
-    ReadingHistoryService(box, uid).migrateGuestRecords(uid);
+    _ref.read(readingHistoryServiceProvider).migrateGuestRecords(uid);
     _ref.read(readingHistoryProvider.notifier).refresh();
   }
 

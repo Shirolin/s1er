@@ -2,12 +2,10 @@ import 'dart:async';
 
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:hive/hive.dart';
-
+import '../../providers/post_provider.dart';
 import '../../providers/auth_provider.dart';
 import '../../providers/reading_history_provider.dart';
 import '../../providers/settings_provider.dart';
-import '../../services/poll_vote_cache.dart';
 import '../../theme/app_theme.dart';
 import '../../utils/s1_snack_bar.dart';
 import 'settings_section_header.dart';
@@ -118,7 +116,7 @@ class _DataManagementSectionState extends ConsumerState<DataManagementSection> {
         current: _clearingVotes,
         setBusy: (value) => _clearingVotes = value,
         successMessage: '已清空本地投票状态',
-        action: () => PollVoteCache(Hive.box('cache'), uid).clearAll(),
+        action: () => ref.read(pollVoteCacheProvider(uid)).clearAll(),
       ),
     );
   }

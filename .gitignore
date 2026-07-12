@@ -69,6 +69,7 @@ app.*.map.json
 # ── Generated Dart 代码 ──────────────────────────────
 # 代码生成器输出（json_serializable, freezed, mockito 等）
 *.g.dart
+!lib/services/app_database.g.dart
 *.freezed.dart
 *.mocks.dart
 

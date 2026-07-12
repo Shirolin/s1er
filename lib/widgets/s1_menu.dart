@@ -9,7 +9,15 @@ abstract class S1MenuSpec {
   static const double dividerVerticalGap = 8;
   static const double minWidth = 168;
   static const double maxWidth = 280;
-  static const Offset underAnchorOffset = Offset(0, 4);
+  static const double underAnchorGap = 4;
+
+  /// [MenuAnchor] 在 LTR + [AlignmentDirectional.topEnd] 下默认向右展开；
+  /// 左移一整屏菜单宽度，使菜单右缘与 ⋮ 按钮右缘对齐。
+  static Offset underAnchorOffset(BuildContext context) {
+    final textDirection = Directionality.of(context);
+    final dx = textDirection == TextDirection.rtl ? minWidth : -minWidth;
+    return Offset(dx, underAnchorGap);
+  }
 
   static MenuStyle anchoredMenuStyle(BuildContext context) {
     final base = MenuTheme.of(context).style ?? const MenuStyle();
@@ -89,7 +97,7 @@ class S1IconMenuAnchor extends StatelessWidget {
     required this.menuChildren,
     this.tooltip = '更多操作',
     this.icon = Icons.more_vert,
-    this.alignmentOffset = S1MenuSpec.underAnchorOffset,
+    this.alignmentOffset,
     this.iconButtonPadding = EdgeInsets.zero,
     this.iconButtonConstraints = const BoxConstraints(minWidth: 40, minHeight: 40),
   });
@@ -97,16 +105,17 @@ class S1IconMenuAnchor extends StatelessWidget {
   final List<Widget> menuChildren;
   final String tooltip;
   final IconData icon;
-  final Offset alignmentOffset;
+  final Offset? alignmentOffset;
   final EdgeInsetsGeometry iconButtonPadding;
   final BoxConstraints iconButtonConstraints;
 
   @override
   Widget build(BuildContext context) {
+    final offset = alignmentOffset ?? S1MenuSpec.underAnchorOffset(context);
     return MenuAnchor(
       style: S1MenuSpec.anchoredMenuStyle(context),
-      alignmentOffset: alignmentOffset,
-      reservedPadding: const EdgeInsets.all(8),
+      alignmentOffset: offset,
+      reservedPadding: const EdgeInsets.fromLTRB(8, 8, 16, 8),
       crossAxisUnconstrained: false,
       menuChildren: menuChildren,
       builder: (context, controller, child) {

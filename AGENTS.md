@@ -32,7 +32,7 @@
 | Lint | flutter_lints | ^6.0.0 |
 | 运行环境 | Flutter SDK >=3.4 | 支持 Web / Android / iOS / Windows / macOS / Linux |
 
-> 一次性 Hive→Drift 迁移窗口内可保留过渡依赖 `hive`（无 `hive_flutter`）；迁移窗口结束后应移除。Cookie 继续走 `PersistCookieJar` + 加密存储，不进 Drift、不进 `s1-backup`。
+> Cookie 走 `PersistCookieJar` + 加密存储，不进 Drift、不进 `s1-backup`。不使用 Hive。
 
 ---
 
@@ -187,7 +187,7 @@ flutter run -d chrome --dart-define=TALKER_LOG_LEVEL=all --dart-define=TALKER_MA
 - flutter_html 已对齐稳定 `^3.0.0`；大版本升级时仍需回归帖子 HTML/BBCode 渲染
 - Web 端受 CORS 限制，开发时需启动 `scripts/proxy_server.dart` 代理服务器
 - 登录流程：全平台统一走 API 表单登录（`ApiService.login()`）；Web 端需配合 CORS 代理
-- 本地结构化数据（settings / reading_history / poll_votes / blacklist 表）走 Drift；Cookie 走加密 `PersistCookieJar`。过渡期可保留 `hive` 仅用于一次性迁移脚本
+- 本地结构化数据（settings / reading_history / poll_votes / blacklist 表）走 Drift；Cookie 走加密 `PersistCookieJar`。无 Hive。
 - Native 图片使用 `flutter_cache_manager` 磁盘缓存；Web 主要依赖浏览器缓存。备份**禁止**包含图片缓存
 - 跨客户端备份格式：`docs/backup-format-v1.md`（默认仅 L1 JSON ZIP；`native/` L2 可选且未作为默认导出）
 - 黑名单：仅 Drift 表 + 备份字段预留，产品 UI 尚未实现

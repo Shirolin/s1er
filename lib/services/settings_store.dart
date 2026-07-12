@@ -3,7 +3,7 @@ import 'dart:convert';
 
 import 'app_database.dart';
 
-/// In-memory settings with async Drift persistence (Hive-like sync reads).
+/// In-memory settings with async Drift persistence (sync reads).
 class SettingsStore {
   SettingsStore(this._db);
 

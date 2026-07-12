@@ -8,7 +8,6 @@ import 'models/emoticon.dart';
 import 'providers/settings_provider.dart';
 import 'services/app_database.dart';
 import 'services/app_local_data.dart';
-import 'services/hive_to_drift_migrator.dart';
 import 'services/http_client.dart';
 import 'services/talker.dart';
 
@@ -41,8 +40,6 @@ void main() async {
 
   final db = AppDatabase();
   final localData = AppLocalData(db);
-  await localData.load();
-  await HiveToDriftMigrator(localData).run();
   await localData.load();
 
   final container = ProviderContainer(

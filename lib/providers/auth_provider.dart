@@ -5,7 +5,6 @@ import '../models/user.dart';
 import '../services/auth_service.dart';
 import '../services/http_client.dart';
 import 'forum_list_provider.dart';
-import 'reading_history_provider.dart';
 
 final authServiceProvider = Provider<AuthService>((ref) {
   return AuthService(httpClient: ref.watch(httpClientProvider));
@@ -49,18 +48,6 @@ class AuthNotifier extends Notifier<AuthState> {
       username: _authService.currentUser?.username,
       user: _authService.currentUser,
     );
-    _maybeMigrateGuestHistory();
-  }
-
-  void _maybeMigrateGuestHistory() {
-    final uid = _authService.currentUser?.uid;
-    if (uid == null || uid.isEmpty) return;
-    // readingHistoryServiceProvider 依赖 authStateProvider，须延后读取以免循环依赖。
-    Future.delayed(Duration.zero, () {
-      if (!ref.mounted) return;
-      ref.read(readingHistoryServiceProvider).migrateGuestRecords(uid);
-      ref.read(readingHistoryProvider.notifier).refresh();
-    });
   }
 
   void setLoggedIn(String username) {
@@ -83,7 +70,6 @@ class AuthNotifier extends Notifier<AuthState> {
       final user = _authService.currentUser;
       if (user != null && user.uid.isNotEmpty) {
         state = state.copyWith(user: user, username: user.username);
-        _maybeMigrateGuestHistory();
         return;
       }
       await Future<void>.delayed(const Duration(milliseconds: 100));
@@ -95,7 +81,6 @@ class AuthNotifier extends Notifier<AuthState> {
     if (user != null) {
       try {
         state = state.copyWith(user: user, username: user.username);
-        _maybeMigrateGuestHistory();
       } catch (_) {}
     }
   }

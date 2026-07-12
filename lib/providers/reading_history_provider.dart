@@ -8,7 +8,11 @@ final readingHistoryServiceProvider = Provider<ReadingHistoryService>((ref) {
   final local = ref.watch(localDataProvider);
   final rawUid = ref.watch(authStateProvider).user?.uid;
   final uid = (rawUid == null || rawUid.isEmpty) ? 'guest' : rawUid;
-  return ReadingHistoryService(local, uid);
+  final service = ReadingHistoryService(local, uid);
+  if (uid != 'guest') {
+    service.migrateGuestRecords(uid);
+  }
+  return service;
 });
 
 final readingRecordProvider =

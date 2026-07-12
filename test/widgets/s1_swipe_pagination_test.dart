@@ -17,6 +17,17 @@ void main() {
     await tester.pump(const Duration(milliseconds: 400));
   }
 
+  Future<void> swipeToPreviousPage(WidgetTester tester) async {
+    final size = tester.view.physicalSize / tester.view.devicePixelRatio;
+    await tester.fling(
+      find.byType(PageView),
+      Offset(size.width, 0),
+      2500,
+    );
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 400));
+  }
+
   Widget buildHarness({
     required int currentPage,
     required int totalPages,
@@ -71,6 +82,68 @@ void main() {
 
     expect(find.byType(PageView), findsOneWidget);
     expect(find.text('Page 2'), findsOneWidget);
+  });
+
+  testWidgets('S1SwipePagination right swipe requests previous page', (tester) async {
+    int? requestedPage;
+
+    await tester.pumpWidget(
+      buildHarness(
+        currentPage: 3,
+        totalPages: 5,
+        onPageChanged: (page) async {
+          requestedPage = page;
+        },
+      ),
+    );
+    await tester.pump();
+
+    await swipeToPreviousPage(tester);
+
+    expect(requestedPage, 2);
+  });
+
+  testWidgets('S1SwipePagination drag right requests previous page with nested ListView', (tester) async {
+    int? requestedPage;
+
+    await tester.pumpWidget(
+      MaterialApp(
+        theme: AppTheme.lightTheme('purple'),
+        home: Scaffold(
+          body: S1SwipePagination(
+            currentPage: 3,
+            totalPages: 5,
+            onPageChanged: (page) async {
+              requestedPage = page;
+            },
+            pageBuilder: (context, scrollController) => RefreshIndicator(
+              onRefresh: () async {},
+              child: ListView.builder(
+                controller: scrollController,
+                itemCount: 30,
+                itemBuilder: (context, index) => ListTile(title: Text('Item $index')),
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+    await tester.pump();
+
+    // Scroll list down first (common real-world state)
+    await tester.drag(find.byType(ListView), const Offset(0, -400));
+    await tester.pump();
+
+    final size = tester.view.physicalSize / tester.view.devicePixelRatio;
+    await tester.fling(
+      find.byType(PageView),
+      Offset(size.width, 0),
+      2500,
+    );
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 400));
+
+    expect(requestedPage, 2);
   });
 
   testWidgets('S1SwipePagination left swipe requests next page', (tester) async {

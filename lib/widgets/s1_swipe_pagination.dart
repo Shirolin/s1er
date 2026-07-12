@@ -113,8 +113,12 @@ class S1SwipePaginationState extends State<S1SwipePagination> {
 
   bool get _canSwipeToNext => widget.currentPage < widget.totalPages;
 
-  bool get _usePageView =>
-      widget.enabled && widget.totalPages > 1;
+  bool get _usePageView => widget.enabled && widget.totalPages > 1;
+
+  ScrollPhysics get _pagePhysics => _BoundedSwipePaginationPhysics(
+        canSwipeToPrevious: _canSwipeToPrevious,
+        canSwipeToNext: _canSwipeToNext,
+      );
 
   Future<void> _requestPage(int page) async {
     if (_isPaging || page == widget.currentPage) {
@@ -161,6 +165,22 @@ class S1SwipePaginationState extends State<S1SwipePagination> {
     _requestPage(targetPage);
   }
 
+  void _snapToNearestSlot() {
+    if (!_pageController.hasClients || _isPaging) return;
+
+    final page = _pageController.page;
+    if (page == null) return;
+
+    final nearest = page.round();
+    if (nearest != page) {
+      _pageController.animateToPage(
+        nearest,
+        duration: const Duration(milliseconds: 200),
+        curve: Curves.easeOutCubic,
+      );
+    }
+  }
+
   Widget _buildSlotContent(BuildContext context, int slot) {
     if (slot == _centerSlot) {
       return widget.pageBuilder(context, _scrollController);
@@ -188,16 +208,26 @@ class S1SwipePaginationState extends State<S1SwipePagination> {
         Expanded(
           child: Semantics(
             label: '左右滑动可翻页',
-            child: PageView(
-              controller: _pageController,
-              onPageChanged: _onSlotChanged,
-              physics: _BoundedSwipePaginationPhysics(
-                canSwipeToPrevious: _canSwipeToPrevious,
-                canSwipeToNext: _canSwipeToNext,
-              ),
-              children: List.generate(
-                3,
-                (index) => _buildSlotContent(context, index),
+            child: NotificationListener<ScrollEndNotification>(
+              onNotification: (notification) {
+                if (notification.depth == 0) {
+                  _snapToNearestSlot();
+                }
+                return false;
+              },
+              child: PageView(
+                controller: _pageController,
+                onPageChanged: _onSlotChanged,
+                // 使用自定义 PageScrollPhysics 处理吸附，避免默认 round(0.5)==1
+                // 导致中心页向右甩动无法翻上一页。
+                pageSnapping: false,
+                physics: _isPaging
+                    ? const NeverScrollableScrollPhysics()
+                    : _pagePhysics,
+                children: List.generate(
+                  3,
+                  (index) => _buildSlotContent(context, index),
+                ),
               ),
             ),
           ),
@@ -219,8 +249,8 @@ class S1SwipePaginationState extends State<S1SwipePagination> {
   }
 }
 
-/// 限制首尾页越界滑动的 [PageScrollPhysics]。
-class _BoundedSwipePaginationPhysics extends ScrollPhysics {
+/// 限制首尾页越界滑动，并修正中心页双向甩动吸附不对称的问题。
+class _BoundedSwipePaginationPhysics extends PageScrollPhysics {
   const _BoundedSwipePaginationPhysics({
     required this.canSwipeToPrevious,
     required this.canSwipeToNext,
@@ -245,7 +275,7 @@ class _BoundedSwipePaginationPhysics extends ScrollPhysics {
       return super.applyBoundaryConditions(position, value);
     }
 
-    final currentIndex = position.pixels / position.viewportDimension;
+    final currentIndex = _pageIndex(position);
 
     if (!canSwipeToPrevious && value < position.pixels && currentIndex <= 1) {
       return value - position.pixels;
@@ -255,5 +285,78 @@ class _BoundedSwipePaginationPhysics extends ScrollPhysics {
     }
 
     return super.applyBoundaryConditions(position, value);
+  }
+
+  double _pageIndex(ScrollMetrics position) {
+    if (position is PageMetrics && position.page != null) {
+      return position.page!;
+    }
+    return position.pixels / position.viewportDimension;
+  }
+
+  double _pagePixels(ScrollMetrics position, double page) {
+    return page * position.viewportDimension;
+  }
+
+  @override
+  Simulation? createBallisticSimulation(
+    ScrollMetrics position,
+    double velocity,
+  ) {
+    if ((velocity <= 0.0 && position.pixels <= position.minScrollExtent) ||
+        (velocity >= 0.0 && position.pixels >= position.maxScrollExtent)) {
+      return super.createBallisticSimulation(position, velocity);
+    }
+
+    final tolerance = toleranceFor(position);
+    var page = _pageIndex(position);
+
+    if (velocity < -tolerance.velocity) {
+      if (!canSwipeToPrevious) {
+        return null;
+      }
+      page -= 0.5;
+      final target = _pagePixels(position, page.floorToDouble());
+      if (target != position.pixels) {
+        return ScrollSpringSimulation(
+          spring,
+          position.pixels,
+          target,
+          velocity,
+          tolerance: tolerance,
+        );
+      }
+      return null;
+    }
+
+    if (velocity > tolerance.velocity) {
+      if (!canSwipeToNext) {
+        return null;
+      }
+      page += 0.5;
+      final target = _pagePixels(position, page.ceilToDouble());
+      if (target != position.pixels) {
+        return ScrollSpringSimulation(
+          spring,
+          position.pixels,
+          target,
+          velocity,
+          tolerance: tolerance,
+        );
+      }
+      return null;
+    }
+
+    final target = _pagePixels(position, page.roundToDouble());
+    if (target != position.pixels) {
+      return ScrollSpringSimulation(
+        spring,
+        position.pixels,
+        target,
+        velocity,
+        tolerance: tolerance,
+      );
+    }
+    return null;
   }
 }

@@ -70,9 +70,116 @@ class ThemeSettingsSection extends ConsumerWidget {
                 onChanged: dynamicEnabled ? null : notifier.setThemeColor,
               ),
             ),
+            if (!dynamicEnabled) const _CustomColorDebugger(),
           ],
         ),
       ),
+    );
+  }
+}
+
+class _CustomColorDebugger extends ConsumerStatefulWidget {
+  const _CustomColorDebugger();
+
+  @override
+  ConsumerState<_CustomColorDebugger> createState() => _CustomColorDebuggerState();
+}
+
+class _CustomColorDebuggerState extends ConsumerState<_CustomColorDebugger> {
+  late final TextEditingController _controller;
+  String? _errorText;
+
+  @override
+  void initState() {
+    super.initState();
+    final themeColor = ref.read(settingsProvider).themeColor;
+    final isPreset = const ['blue', 'purple', 'sage', 'indigo', 'orange'].contains(themeColor);
+    _controller = TextEditingController(text: isPreset ? '' : themeColor);
+  }
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  void _applyColor(String val) {
+    if (val.trim().isEmpty) {
+      setState(() => _errorText = null);
+      return;
+    }
+    final cleanHex = val.replaceAll('#', '').trim();
+    if (cleanHex.length != 6 && cleanHex.length != 8) {
+      setState(() => _errorText = '请输入 6 位或 8 位十六进制颜色，如 #2B2930');
+      return;
+    }
+    try {
+      int.parse(cleanHex, radix: 16);
+      setState(() => _errorText = null);
+      ref.read(settingsProvider.notifier).setThemeColor(val.trim());
+    } catch (_) {
+      setState(() => _errorText = '格式错误');
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final settings = ref.watch(settingsProvider);
+    final scheme = Theme.of(context).colorScheme;
+
+    ref.listen(settingsProvider.select((s) => s.themeColor), (_, next) {
+      final isNextPreset = const ['blue', 'purple', 'sage', 'indigo', 'orange'].contains(next);
+      if (isNextPreset) {
+        _controller.text = '';
+      } else {
+        if (_controller.text != next) {
+          _controller.text = next;
+        }
+      }
+    });
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        const SizedBox(height: 16),
+        Row(
+          children: [
+            Expanded(
+              child: TextFormField(
+                controller: _controller,
+                decoration: InputDecoration(
+                  labelText: '自定义调试种子色 (Hex)',
+                  hintText: '如 #2B2930 或 #141218',
+                  errorText: _errorText,
+                  prefixIcon: const Icon(Icons.colorize_outlined),
+                  isDense: true,
+                  border: const OutlineInputBorder(),
+                ),
+                onFieldSubmitted: _applyColor,
+              ),
+            ),
+            const SizedBox(width: 12),
+            FilledButton(
+              onPressed: () => _applyColor(_controller.text),
+              child: const Text('应用'),
+            ),
+          ],
+        ),
+        const SizedBox(height: 12),
+        SwitchListTile(
+          secondary: Icon(Icons.bug_report_outlined, color: scheme.onSurfaceVariant),
+          title: const Text('模拟系统动态取色校正'),
+          subtitle: Text(
+            '开启时，该种子色将强行通过 `isDynamic = true` 色阶校正管线（模拟真机壁纸取色后的容器色拉伸），让您能在 Web 端调试实际对比度效果。',
+            style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                  color: scheme.onSurfaceVariant,
+                ),
+          ),
+          value: settings.simulateDynamic,
+          onChanged: ref.read(settingsProvider.notifier).setSimulateDynamic,
+          contentPadding: EdgeInsets.zero,
+        ),
+      ],
     );
   }
 }

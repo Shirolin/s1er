@@ -120,19 +120,35 @@ class AppTheme {
     'orange': Color(0xFFF57C00),
   };
 
+  static Color? _parseHexColor(String hexStr) {
+    try {
+      final cleanHex = hexStr.replaceAll('#', '').trim();
+      if (cleanHex.length == 6) {
+        return Color(int.parse('0xFF$cleanHex'));
+      } else if (cleanHex.length == 8) {
+        return Color(int.parse('0x$cleanHex'));
+      }
+    } catch (_) {}
+    return null;
+  }
 
-
-  static ThemeData lightTheme(String themeColorKey) {
-    final seedColor = themeSeeds[themeColorKey] ?? themeSeeds['purple']!;
+  static ThemeData lightTheme(String themeColorKey, {bool isDynamic = false}) {
+    final seedColor = _parseHexColor(themeColorKey) ??
+        themeSeeds[themeColorKey] ??
+        themeSeeds['purple']!;
     return fromColorScheme(
       ColorScheme.fromSeed(seedColor: seedColor, brightness: Brightness.light),
+      isDynamic: isDynamic,
     );
   }
 
-  static ThemeData darkTheme(String themeColorKey) {
-    final seedColor = themeSeeds[themeColorKey] ?? themeSeeds['purple']!;
+  static ThemeData darkTheme(String themeColorKey, {bool isDynamic = false}) {
+    final seedColor = _parseHexColor(themeColorKey) ??
+        themeSeeds[themeColorKey] ??
+        themeSeeds['purple']!;
     return fromColorScheme(
       ColorScheme.fromSeed(seedColor: seedColor, brightness: Brightness.dark),
+      isDynamic: isDynamic,
     );
   }
 

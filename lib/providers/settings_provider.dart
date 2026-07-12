@@ -12,6 +12,7 @@ class AppSettings {
     this.fontSize = S1Typography.defaultBodySize,
     this.useDynamicColor = false,
     this.collapsedForums = const {},
+    this.simulateDynamic = false,
   });
 
   final String themeMode;
@@ -21,6 +22,7 @@ class AppSettings {
   final int fontSize;
   final bool useDynamicColor;
   final Set<String> collapsedForums;
+  final bool simulateDynamic;
 
   double get textScaleFactor => fontSize / S1Typography.defaultBodySize;
 
@@ -32,6 +34,7 @@ class AppSettings {
     int? fontSize,
     bool? useDynamicColor,
     Set<String>? collapsedForums,
+    bool? simulateDynamic,
   }) {
     return AppSettings(
       themeMode: themeMode ?? this.themeMode,
@@ -41,6 +44,7 @@ class AppSettings {
       fontSize: fontSize ?? this.fontSize,
       useDynamicColor: useDynamicColor ?? this.useDynamicColor,
       collapsedForums: collapsedForums ?? this.collapsedForums,
+      simulateDynamic: simulateDynamic ?? this.simulateDynamic,
     );
   }
 }
@@ -73,6 +77,7 @@ class SettingsNotifier extends StateNotifier<AppSettings> {
       collapsedForums: Set<String>.from(
         (box.get('collapsedForums') as List?)?.cast<String>() ?? [],
       ),
+      simulateDynamic: box.get('simulateDynamic', defaultValue: false) as bool,
     );
   }
 
@@ -106,6 +111,11 @@ class SettingsNotifier extends StateNotifier<AppSettings> {
     Hive.box('settings').put('useDynamicColor', value);
   }
 
+  void setSimulateDynamic(bool value) {
+    state = state.copyWith(simulateDynamic: value);
+    Hive.box('settings').put('simulateDynamic', value);
+  }
+
   void toggleForumCollapse(String fid) {
     final collapsed = Set<String>.from(state.collapsedForums);
     if (collapsed.contains(fid)) {
@@ -126,6 +136,7 @@ class SettingsNotifier extends StateNotifier<AppSettings> {
       recordReadingHistory: defaults.recordReadingHistory,
       fontSize: defaults.fontSize,
       useDynamicColor: defaults.useDynamicColor,
+      simulateDynamic: defaults.simulateDynamic,
     );
     final box = Hive.box('settings');
     box.put('themeMode', defaults.themeMode);
@@ -134,6 +145,7 @@ class SettingsNotifier extends StateNotifier<AppSettings> {
     box.put('recordReadingHistory', defaults.recordReadingHistory);
     box.put('fontSize', defaults.fontSize);
     box.put('useDynamicColor', defaults.useDynamicColor);
+    box.put('simulateDynamic', defaults.simulateDynamic);
   }
 }
 

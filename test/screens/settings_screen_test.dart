@@ -13,7 +13,7 @@ void main() {
       ProviderScope(
         overrides: [
           settingsProvider.overrideWith(
-            (ref) => SettingsNotifier(initial: const AppSettings()),
+            () => SettingsNotifier(initial: const AppSettings()),
           ),
           packageInfoProvider.overrideWith(
             (_) async => PackageInfo(

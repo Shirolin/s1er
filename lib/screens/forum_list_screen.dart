@@ -32,7 +32,7 @@ class _ForumListScreenState extends ConsumerState<ForumListScreen> {
   }
 
   String _forumName() {
-    final categories = ref.watch(forumListProvider).valueOrNull;
+    final categories = ref.watch(forumListProvider).asData?.value;
     if (categories == null) return '';
     for (final cat in categories) {
       if (cat.fid == widget.fid) return cat.name;

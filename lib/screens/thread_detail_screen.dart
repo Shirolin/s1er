@@ -92,7 +92,7 @@ class _ThreadDetailScreenState extends ConsumerState<ThreadDetailScreen> {
         );
     _hasRecordedInitialVisit = true;
     ref.invalidate(readingRecordProvider(widget.tid));
-    // 刷新列表 StateNotifier：ThreadCard 进度条 / 历史页 / 资料计数据此实时更新。
+    // 刷新列表 Notifier：ThreadCard 进度条 / 历史页 / 资料计数据此实时更新。
     ref.read(readingHistoryProvider.notifier).refresh();
   }
 

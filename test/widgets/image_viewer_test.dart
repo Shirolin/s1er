@@ -12,7 +12,7 @@ void main() {
       ProviderScope(
         overrides: [
           settingsProvider.overrideWith(
-            (ref) => SettingsNotifier(
+            () => SettingsNotifier(
               initial: const AppSettings(showImages: false),
             ),
           ),
@@ -40,7 +40,7 @@ void main() {
       ProviderScope(
         overrides: [
           settingsProvider.overrideWith(
-            (ref) => SettingsNotifier(
+            () => SettingsNotifier(
               initial: const AppSettings(showImages: false),
             ),
           ),

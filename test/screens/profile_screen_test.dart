@@ -1,6 +1,7 @@
 import 'package:drift/native.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:flutter_riverpod/misc.dart' show Override;
 import 'package:flutter_test/flutter_test.dart';
 import 'package:package_info_plus/package_info_plus.dart';
 import 'package:s1_app/theme/app_theme.dart';
@@ -9,7 +10,6 @@ import 'package:s1_app/providers/auth_provider.dart';
 import 'package:s1_app/providers/settings_provider.dart';
 import 'package:s1_app/services/app_database.dart';
 import 'package:s1_app/services/app_local_data.dart';
-import 'package:s1_app/services/auth_service.dart';
 import 'package:s1_app/models/user.dart';
 import 'package:s1_app/screens/profile_screen.dart';
 
@@ -31,12 +31,21 @@ void main() {
   List<Override> localOverrides() => [
         localDataProvider.overrideWithValue(local),
         settingsProvider.overrideWith(
-          (ref) => SettingsNotifier(
+          () => SettingsNotifier(
             store: local.settings,
             initial: const AppSettings(),
           ),
         ),
       ];
+
+  Override packageInfoOverride() => packageInfoProvider.overrideWith(
+        (_) async => PackageInfo(
+          appName: 'S1',
+          packageName: 'com.example.s1',
+          version: '1.0.0',
+          buildNumber: '1',
+        ),
+      );
 
   group('ProfileScreen', () {
     testWidgets('shows settings entry tile', (tester) async {
@@ -44,14 +53,7 @@ void main() {
         ProviderScope(
           overrides: [
             ...localOverrides(),
-            packageInfoProvider.overrideWith(
-              (_) async => PackageInfo(
-                appName: 'S1',
-                packageName: 'com.example.s1',
-                version: '1.0.0',
-                buildNumber: '1',
-              ),
-            ),
+            packageInfoOverride(),
           ],
           child: MaterialApp(
             theme: AppTheme.lightTheme('purple'),
@@ -73,33 +75,24 @@ void main() {
       addTearDown(() => tester.view.resetPhysicalSize());
 
       final testUser = User(uid: '123', username: 'TestUser');
-      final mockService = _FakeAuthService();
       late _TestAuthNotifier mockNotifier;
 
       await tester.pumpWidget(
         ProviderScope(
           overrides: [
             ...localOverrides(),
-            authStateProvider.overrideWith((ref) {
+            authStateProvider.overrideWith(() {
               mockNotifier = _TestAuthNotifier(
                 AuthState(
                   isLoggedIn: true,
                   username: 'TestUser',
                   user: testUser,
                 ),
-                mockService,
-                ref,
+                shouldFail: false,
               );
               return mockNotifier;
             }),
-            packageInfoProvider.overrideWith(
-              (_) async => PackageInfo(
-                appName: 'S1',
-                packageName: 'com.example.s1',
-                version: '1.0.0',
-                buildNumber: '1',
-              ),
-            ),
+            packageInfoOverride(),
           ],
           child: MaterialApp(
             theme: AppTheme.lightTheme('purple'),
@@ -134,33 +127,24 @@ void main() {
       addTearDown(() => tester.view.resetPhysicalSize());
 
       final testUser = User(uid: '123', username: 'TestUser');
-      final mockService = _FakeAuthService();
       late _TestAuthNotifier mockNotifier;
 
       await tester.pumpWidget(
         ProviderScope(
           overrides: [
             ...localOverrides(),
-            authStateProvider.overrideWith((ref) {
+            authStateProvider.overrideWith(() {
               mockNotifier = _TestAuthNotifier(
                 AuthState(
                   isLoggedIn: true,
                   username: 'TestUser',
                   user: testUser,
                 ),
-                mockService,
-                ref,
+                shouldFail: false,
               );
               return mockNotifier;
             }),
-            packageInfoProvider.overrideWith(
-              (_) async => PackageInfo(
-                appName: 'S1',
-                packageName: 'com.example.s1',
-                version: '1.0.0',
-                buildNumber: '1',
-              ),
-            ),
+            packageInfoOverride(),
           ],
           child: MaterialApp(
             theme: AppTheme.lightTheme('purple'),
@@ -192,33 +176,24 @@ void main() {
       addTearDown(() => tester.view.resetPhysicalSize());
 
       final testUser = User(uid: '123', username: 'TestUser');
-      final mockService = _FakeAuthService(shouldFail: true);
       late _TestAuthNotifier mockNotifier;
 
       await tester.pumpWidget(
         ProviderScope(
           overrides: [
             ...localOverrides(),
-            authStateProvider.overrideWith((ref) {
+            authStateProvider.overrideWith(() {
               mockNotifier = _TestAuthNotifier(
                 AuthState(
                   isLoggedIn: true,
                   username: 'TestUser',
                   user: testUser,
                 ),
-                mockService,
-                ref,
+                shouldFail: true,
               );
               return mockNotifier;
             }),
-            packageInfoProvider.overrideWith(
-              (_) async => PackageInfo(
-                appName: 'S1',
-                packageName: 'com.example.s1',
-                version: '1.0.0',
-                buildNumber: '1',
-              ),
-            ),
+            packageInfoOverride(),
           ],
           child: MaterialApp(
             theme: AppTheme.lightTheme('purple'),
@@ -245,52 +220,22 @@ void main() {
 }
 
 class _TestAuthNotifier extends AuthNotifier {
-  _TestAuthNotifier(this.initial, this.service, Ref ref) : super(service, ref) {
-    state = initial;
-  }
+  _TestAuthNotifier(this.initial, {required this.shouldFail});
 
   final AuthState initial;
-  final _FakeAuthService service;
+  final bool shouldFail;
   bool logoutCalled = false;
+
+  @override
+  AuthState build() => initial;
 
   @override
   Future<void> logout() async {
     logoutCalled = true;
     await Future<void>.delayed(const Duration(milliseconds: 50));
-    if (service.shouldFail) {
+    if (shouldFail) {
       throw Exception('Network Error');
     }
     state = AuthState(isLoggedIn: false);
   }
-}
-
-class _FakeAuthService implements AuthService {
-  _FakeAuthService({this.shouldFail = false});
-  final bool shouldFail;
-
-  @override
-  User? get currentUser => null;
-
-  @override
-  bool get isLoggedIn => false;
-
-  @override
-  void setLoggedIn(String username) {}
-
-  @override
-  Future<String?> login(String username, String password) async => null;
-
-  @override
-  Future<User?> fetchProfile() async => null;
-
-  @override
-  Future<void> logout() async {}
-
-  @override
-  Future<bool> checkSession() {
-    return Future.value(false);
-  }
-
-  @override
-  dynamic noSuchMethod(Invocation invocation) => super.noSuchMethod(invocation);
 }

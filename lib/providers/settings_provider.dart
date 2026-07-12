@@ -59,50 +59,72 @@ final settingsStoreProvider = Provider<SettingsStore>((ref) {
   return ref.watch(localDataProvider).settings;
 });
 
-class SettingsNotifier extends StateNotifier<AppSettings> {
-  SettingsNotifier({SettingsStore? store, AppSettings? initial})
-      : _store = store,
-        super(initial ?? const AppSettings()) {
-    if (initial == null) {
-      _loadSettings();
+class SettingsNotifier extends Notifier<AppSettings> {
+  SettingsNotifier({this.initial, this.store});
+
+  final AppSettings? initial;
+  final SettingsStore? store;
+
+  @override
+  AppSettings build() {
+    if (initial != null) return initial!;
+    return _loadSettings();
+  }
+
+  SettingsStore? get _effectiveStore {
+    if (store != null) return store;
+    try {
+      return ref.read(settingsStoreProvider);
+    } catch (_) {
+      return null;
     }
   }
 
-  final SettingsStore? _store;
+  void _persist(String key, Object? value) => _effectiveStore?.put(key, value);
 
-  void _persist(String key, Object? value) => _store?.put(key, value);
+  AppSettings _loadSettings() {
+    final settingsStore = _effectiveStore;
+    if (settingsStore == null) return const AppSettings();
 
-  void _loadSettings() {
-    final store = _store;
-    if (store == null) return;
-
-    String themeMode = store.get<String>('themeMode', defaultValue: '') ?? '';
+    String themeMode =
+        settingsStore.get<String>('themeMode', defaultValue: '') ?? '';
     if (themeMode.isEmpty) {
       final oldDarkMode =
-          store.get<bool>('darkMode', defaultValue: false) ?? false;
+          settingsStore.get<bool>('darkMode', defaultValue: false) ?? false;
       themeMode = oldDarkMode ? 'dark' : 'system';
-      store.put('themeMode', themeMode);
+      settingsStore.put('themeMode', themeMode);
     }
 
-    state = AppSettings(
+    return AppSettings(
       themeMode: themeMode,
-      themeColor:
-          store.get<String>('themeColor', defaultValue: 'purple') ?? 'purple',
-      showImages: store.get<bool>('showImages', defaultValue: true) ?? true,
-      recordReadingHistory:
-          store.get<bool>('recordReadingHistory', defaultValue: true) ?? true,
-      fontSize: store.get<int>(
+      themeColor: settingsStore.get<String>('themeColor', defaultValue: 'purple') ??
+          'purple',
+      showImages:
+          settingsStore.get<bool>('showImages', defaultValue: true) ?? true,
+      recordReadingHistory: settingsStore.get<bool>(
+            'recordReadingHistory',
+            defaultValue: true,
+          ) ??
+          true,
+      fontSize: settingsStore.get<int>(
             'fontSize',
             defaultValue: S1Typography.defaultBodySize,
           ) ??
           S1Typography.defaultBodySize,
-      useDynamicColor:
-          store.get<bool>('useDynamicColor', defaultValue: false) ?? false,
+      useDynamicColor: settingsStore.get<bool>(
+            'useDynamicColor',
+            defaultValue: false,
+          ) ??
+          false,
       collapsedForums: Set<String>.from(
-        (store.get<List<dynamic>>('collapsedForums'))?.cast<String>() ?? [],
+        (settingsStore.get<List<dynamic>>('collapsedForums'))?.cast<String>() ??
+            [],
       ),
-      simulateDynamic:
-          store.get<bool>('simulateDynamic', defaultValue: false) ?? false,
+      simulateDynamic: settingsStore.get<bool>(
+            'simulateDynamic',
+            defaultValue: false,
+          ) ??
+          false,
     );
   }
 
@@ -174,8 +196,14 @@ class SettingsNotifier extends StateNotifier<AppSettings> {
 }
 
 final settingsProvider =
-    StateNotifierProvider<SettingsNotifier, AppSettings>((ref) {
-  return SettingsNotifier(store: ref.watch(settingsStoreProvider));
-});
+    NotifierProvider<SettingsNotifier, AppSettings>(SettingsNotifier.new);
 
-final dynamicColorAvailableProvider = StateProvider<bool>((ref) => false);
+class DynamicColorAvailable extends Notifier<bool> {
+  @override
+  bool build() => false;
+
+  void setAvailable(bool value) => state = value;
+}
+
+final dynamicColorAvailableProvider =
+    NotifierProvider<DynamicColorAvailable, bool>(DynamicColorAvailable.new);

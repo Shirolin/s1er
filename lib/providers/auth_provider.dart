@@ -1,4 +1,5 @@
 import 'dart:async';
+
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../models/user.dart';
 import '../services/auth_service.dart';
@@ -11,8 +12,8 @@ final authServiceProvider = Provider<AuthService>((ref) {
 });
 
 class AuthState {
-
   AuthState({this.isLoggedIn = false, this.username, this.user});
+
   final bool isLoggedIn;
   final String? username;
   final User? user;
@@ -26,13 +27,14 @@ class AuthState {
   }
 }
 
-class AuthNotifier extends StateNotifier<AuthState> {
-
-  AuthNotifier(this._authService, this._ref) : super(AuthState()) {
-    _init();
+class AuthNotifier extends Notifier<AuthState> {
+  @override
+  AuthState build() {
+    unawaited(_init());
+    return AuthState();
   }
-  final AuthService _authService;
-  final Ref _ref;
+
+  AuthService get _authService => ref.read(authServiceProvider);
 
   Future<void> _init() async {
     final ok = await _authService.checkSession();
@@ -53,8 +55,8 @@ class AuthNotifier extends StateNotifier<AuthState> {
   void _maybeMigrateGuestHistory() {
     final uid = _authService.currentUser?.uid;
     if (uid == null || uid.isEmpty) return;
-    _ref.read(readingHistoryServiceProvider).migrateGuestRecords(uid);
-    _ref.read(readingHistoryProvider.notifier).refresh();
+    ref.read(readingHistoryServiceProvider).migrateGuestRecords(uid);
+    ref.read(readingHistoryProvider.notifier).refresh();
   }
 
   void setLoggedIn(String username) {
@@ -67,7 +69,7 @@ class AuthNotifier extends StateNotifier<AuthState> {
     if (error == null) {
       _syncStateFromService();
       await _waitForProfile();
-      _ref.invalidate(forumListProvider);
+      ref.invalidate(forumListProvider);
     }
     return error;
   }
@@ -95,16 +97,14 @@ class AuthNotifier extends StateNotifier<AuthState> {
   }
 
   Future<void> logout() async {
-    try {
-      await _authService.logout();
-      state = AuthState();
-      _ref.invalidate(forumListProvider);
-    } catch (e) {
-      rethrow;
-    }
+    await _authService.logout();
+    state = AuthState();
+    ref.invalidate(forumListProvider);
   }
+
+  /// Test helper: seed auth state without calling the network.
+  void debugSetState(AuthState next) => state = next;
 }
 
-final authStateProvider = StateNotifierProvider<AuthNotifier, AuthState>((ref) {
-  return AuthNotifier(ref.watch(authServiceProvider), ref);
-});
+final authStateProvider =
+    NotifierProvider<AuthNotifier, AuthState>(AuthNotifier.new);

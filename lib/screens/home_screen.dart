@@ -112,7 +112,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
         selectedIndex: tabIndex,
         onDestinationSelected: (index) {
           if (_currentTab == 2 && index != 2) {
-            ref.read(messagesSegmentProvider.notifier).state = 0;
+            ref.read(messagesSegmentProvider.notifier).select(0);
           }
           setState(() => _currentTab = index);
         },

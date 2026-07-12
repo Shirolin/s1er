@@ -13,6 +13,7 @@ class UserSpaceState {
     this.threadTotalPages = 1,
     this.replyTotalPages = 1,
   });
+
   final List<UserSpaceItem> threads;
   final List<UserSpaceItem> replies;
   final int threadPage;
@@ -39,93 +40,91 @@ class UserSpaceState {
   }
 }
 
-final userSpaceProvider = StateNotifierProvider.autoDispose.family<
-    UserSpaceNotifier, AsyncValue<UserSpaceState>, (String, bool)>(
-  (ref, params) => UserSpaceNotifier(
-    uid: params.$1,
-    apiService: ApiService(ref.watch(httpClientProvider)),
-    isSelf: params.$2,
-  ),
-);
+typedef UserSpaceParams = (String uid, bool isSelf);
 
-class UserSpaceNotifier extends StateNotifier<AsyncValue<UserSpaceState>> {
-  UserSpaceNotifier({
-    required this.uid,
-    required ApiService apiService,
-    required this.isSelf,
-  })  : _apiService = apiService,
-        super(const AsyncValue.loading()) {
-    _loadAll();
-  }
-  final String uid;
-  final bool isSelf;
-  final ApiService _apiService;
+class UserSpaceNotifier extends AsyncNotifier<UserSpaceState> {
+  UserSpaceNotifier(this.params);
 
-  Future<void> _loadAll() async {
-    try {
-      final threadFuture = isSelf
-          ? _apiService.getMySpaceList(type: 'thread', page: 1)
-          : _apiService.getUserSpaceList(uid: uid, type: 'thread', page: 1);
-      final replyFuture = _apiService.getUserSpaceList(uid: uid, type: 'reply', page: 1);
+  final UserSpaceParams params;
 
-      final results = await Future.wait<UserSpaceListResult>([
-        threadFuture,
-        replyFuture,
-      ]);
-      final threads = results[0];
-      final replies = results[1];
+  String get uid => params.$1;
+  bool get isSelf => params.$2;
 
-      state = AsyncValue.data(
-        UserSpaceState(
-          threads: threads.items,
-          threadTotalPages: threads.totalPages,
-          replies: replies.items,
-          replyTotalPages: replies.totalPages,
-        ),
-      );
-    } catch (e, st) {
-      state = AsyncValue.error(e, st);
-    }
+  @override
+  Future<UserSpaceState> build() => _loadAll();
+
+  ApiService get _apiService => ApiService(ref.watch(httpClientProvider));
+
+  Future<UserSpaceState> _loadAll() async {
+    final threadFuture = isSelf
+        ? _apiService.getMySpaceList(type: 'thread', page: 1)
+        : _apiService.getUserSpaceList(uid: uid, type: 'thread', page: 1);
+    final replyFuture =
+        _apiService.getUserSpaceList(uid: uid, type: 'reply', page: 1);
+
+    final results = await Future.wait<UserSpaceListResult>([
+      threadFuture,
+      replyFuture,
+    ]);
+    final threads = results[0];
+    final replies = results[1];
+
+    return UserSpaceState(
+      threads: threads.items,
+      threadTotalPages: threads.totalPages,
+      replies: replies.items,
+      replyTotalPages: replies.totalPages,
+    );
   }
 
   Future<void> goToThreadPage(int page) async {
-    try {
+    state = await AsyncValue.guard(() async {
       final result = isSelf
           ? await _apiService.getMySpaceList(type: 'thread', page: page)
-          : await _apiService.getUserSpaceList(uid: uid, type: 'thread', page: page);
-      final cur = state.valueOrNull ?? UserSpaceState();
-      state = AsyncValue.data(
-        cur.copyWith(
-          threads: result.items,
-          threadPage: page,
-          threadTotalPages: result.totalPages,
-        ),
+          : await _apiService.getUserSpaceList(
+              uid: uid,
+              type: 'thread',
+              page: page,
+            );
+      final cur = state.asData?.value ?? UserSpaceState();
+      return cur.copyWith(
+        threads: result.items,
+        threadPage: page,
+        threadTotalPages: result.totalPages,
       );
-    } catch (e, st) {
-      talker.handle(e, st, 'Load user thread page failed');
-      state = AsyncValue.error(e, st);
-    }
+    });
   }
 
   Future<void> goToReplyPage(int page) async {
-    try {
-      final result = await _apiService.getUserSpaceList(uid: uid, type: 'reply', page: page);
-      final cur = state.valueOrNull ?? UserSpaceState();
-      state = AsyncValue.data(
-        cur.copyWith(
-          replies: result.items,
-          replyPage: page,
-          replyTotalPages: result.totalPages,
-        ),
+    state = await AsyncValue.guard(() async {
+      final result = await _apiService.getUserSpaceList(
+        uid: uid,
+        type: 'reply',
+        page: page,
       );
-    } catch (e, st) {
-      talker.handle(e, st, 'Load user reply page failed');
-      state = AsyncValue.error(e, st);
+      final cur = state.asData?.value ?? UserSpaceState();
+      return cur.copyWith(
+        replies: result.items,
+        replyPage: page,
+        replyTotalPages: result.totalPages,
+      );
+    });
+    if (state.hasError) {
+      final error = state.error;
+      final stack = state.stackTrace;
+      if (error != null && stack != null) {
+        talker.handle(error, stack, 'Load user reply page failed');
+      }
     }
   }
 
   Future<void> refresh() async {
     state = const AsyncValue.loading();
-    await _loadAll();
+    state = await AsyncValue.guard(_loadAll);
   }
 }
+
+final userSpaceProvider = AsyncNotifierProvider.autoDispose
+    .family<UserSpaceNotifier, UserSpaceState, UserSpaceParams>(
+  UserSpaceNotifier.new,
+);

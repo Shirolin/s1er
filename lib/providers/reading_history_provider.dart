@@ -4,7 +4,6 @@ import '../services/reading_history_service.dart';
 import 'auth_provider.dart';
 import 'settings_provider.dart';
 
-/// 依赖登录态获取当前 uid，实现按用户隔离。
 final readingHistoryServiceProvider = Provider<ReadingHistoryService>((ref) {
   final local = ref.watch(localDataProvider);
   final rawUid = ref.watch(authStateProvider).user?.uid;
@@ -12,30 +11,32 @@ final readingHistoryServiceProvider = Provider<ReadingHistoryService>((ref) {
   return ReadingHistoryService(local, uid);
 });
 
-/// 单条帖子的阅读记录（供 ThreadCard / ThreadDetailScreen 使用）。
-final readingRecordProvider = Provider.family<ReadingRecord?, String>((ref, tid) {
+final readingRecordProvider =
+    Provider.family<ReadingRecord?, String>((ref, tid) {
   return ref.watch(readingHistoryServiceProvider).getRecord(tid);
 });
 
-final readingHistoryProvider =
-    StateNotifierProvider<ReadingHistoryNotifier, List<ReadingRecord>>((ref) {
-  return ReadingHistoryNotifier(ref.watch(readingHistoryServiceProvider));
-});
+class ReadingHistoryNotifier extends Notifier<List<ReadingRecord>> {
+  @override
+  List<ReadingRecord> build() {
+    return ref.watch(readingHistoryServiceProvider).getAllRecords();
+  }
 
-class ReadingHistoryNotifier extends StateNotifier<List<ReadingRecord>> {
-  ReadingHistoryNotifier(this._service) : super(_service.getAllRecords());
-
-  final ReadingHistoryService _service;
-
-  void refresh() => state = _service.getAllRecords();
+  void refresh() =>
+      state = ref.read(readingHistoryServiceProvider).getAllRecords();
 
   void delete(String tid) {
-    _service.deleteRecord(tid);
-    state = _service.getAllRecords();
+    ref.read(readingHistoryServiceProvider).deleteRecord(tid);
+    state = ref.read(readingHistoryServiceProvider).getAllRecords();
   }
 
   Future<void> clearAll() async {
-    await _service.clearAll();
+    await ref.read(readingHistoryServiceProvider).clearAll();
     state = [];
   }
 }
+
+final readingHistoryProvider =
+    NotifierProvider<ReadingHistoryNotifier, List<ReadingRecord>>(
+  ReadingHistoryNotifier.new,
+);

@@ -1,3 +1,4 @@
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:s1_app/providers/settings_provider.dart';
 import 'package:s1_app/services/settings_store.dart';
@@ -20,36 +21,51 @@ void main() {
 
   test('resetAppearanceSettings restores defaults only for appearance prefs',
       () {
-    final notifier = SettingsNotifier(
-      store: store,
-      initial: const AppSettings(
-        themeMode: 'dark',
-        themeColor: 'green',
-        showImages: false,
-        recordReadingHistory: false,
-        fontSize: 18,
-        useDynamicColor: true,
-        collapsedForums: {'42'},
-      ),
+    final container = ProviderContainer(
+      overrides: [
+        settingsProvider.overrideWith(
+          () => SettingsNotifier(
+            store: store,
+            initial: const AppSettings(
+              themeMode: 'dark',
+              themeColor: 'green',
+              showImages: false,
+              recordReadingHistory: false,
+              fontSize: 18,
+              useDynamicColor: true,
+              collapsedForums: {'42'},
+            ),
+          ),
+        ),
+      ],
     );
+    addTearDown(container.dispose);
 
-    notifier.resetAppearanceSettings();
+    container.read(settingsProvider.notifier).resetAppearanceSettings();
+    final state = container.read(settingsProvider);
 
-    expect(notifier.state.themeMode, 'system');
-    expect(notifier.state.themeColor, 'purple');
-    expect(notifier.state.showImages, isTrue);
-    expect(notifier.state.recordReadingHistory, isTrue);
-    expect(notifier.state.fontSize, S1Typography.defaultBodySize);
-    expect(notifier.state.useDynamicColor, isFalse);
-    expect(notifier.state.collapsedForums, const {'42'});
+    expect(state.themeMode, 'system');
+    expect(state.themeColor, 'purple');
+    expect(state.showImages, isTrue);
+    expect(state.recordReadingHistory, isTrue);
+    expect(state.fontSize, S1Typography.defaultBodySize);
+    expect(state.useDynamicColor, isFalse);
+    expect(state.collapsedForums, const {'42'});
   });
 
   test('setRecordReadingHistory persists to settings store', () async {
-    final notifier = SettingsNotifier(store: store, initial: const AppSettings());
+    final container = ProviderContainer(
+      overrides: [
+        settingsProvider.overrideWith(
+          () => SettingsNotifier(store: store, initial: const AppSettings()),
+        ),
+      ],
+    );
+    addTearDown(container.dispose);
 
-    notifier.setRecordReadingHistory(false);
+    container.read(settingsProvider.notifier).setRecordReadingHistory(false);
 
-    expect(notifier.state.recordReadingHistory, isFalse);
+    expect(container.read(settingsProvider).recordReadingHistory, isFalse);
     await Future<void>.delayed(const Duration(milliseconds: 50));
     expect(store.get<bool>('recordReadingHistory'), isFalse);
   });

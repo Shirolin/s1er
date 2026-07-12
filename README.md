@@ -26,7 +26,7 @@
 | 路由 | go_router |
 | HTTP 请求 | dio + dio_cookie_manager |
 | Cookie 管理 | cookie_jar (PersistCookieJar) |
-| 本地存储 | hive / hive_flutter |
+| 本地存储 | drift / drift_flutter |
 | WebView | webview_flutter |
 | 图片加载 | cached_network_image |
 | BBCode 渲染 | flutter_html + 自定义解析器 |
@@ -84,7 +84,7 @@ lib/
 │   ├── thread_card.dart        # 主题卡片
 │   └── web_avatar.dart         # 跨平台头像组件
 ├── app.dart             # 应用入口与路由
-└── main.dart            # 主入口（Hive 初始化、HTTP 客户端初始化）
+└── main.dart            # 主入口（Drift / AppLocalData、HTTP 客户端初始化）
 ```
 
 ## 快速开始

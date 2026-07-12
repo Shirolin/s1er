@@ -21,6 +21,7 @@ class PostItem extends ConsumerWidget {
     this.tid,
     this.onFilterByAuthor,
     this.onReply,
+    this.onRate,
     this.rateLog,
     this.isHighlighted = false,
   });
@@ -29,6 +30,7 @@ class PostItem extends ConsumerWidget {
   final String? tid;
   final VoidCallback? onFilterByAuthor;
   final VoidCallback? onReply;
+  final VoidCallback? onRate;
   final PostRateLog? rateLog;
   final bool isHighlighted;
 
@@ -91,6 +93,7 @@ class PostItem extends ConsumerWidget {
                 PostActionMenu(
                   onFilterByAuthor: onFilterByAuthor,
                   onReply: onReply,
+                  onRate: onRate,
                 ),
               ],
             ),

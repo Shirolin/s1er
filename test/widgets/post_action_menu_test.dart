@@ -60,6 +60,30 @@ void main() {
     expect(replyTapped, isTrue);
   });
 
+  testWidgets('PostActionMenu shows enabled rate when callback provided', (tester) async {
+    var rateTapped = false;
+
+    await tester.pumpWidget(
+      MaterialApp(
+        theme: AppTheme.lightTheme('purple'),
+        home: Scaffold(
+          body: PostActionMenu(
+            onFilterByAuthor: () {},
+            onRate: () => rateTapped = true,
+          ),
+        ),
+      ),
+    );
+
+    await tester.tap(find.byIcon(Icons.more_vert));
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.text('评分'));
+    await tester.pumpAndSettle();
+
+    expect(rateTapped, isTrue);
+  });
+
   testWidgets('PostActionMenu shows disabled labels for unimplemented actions', (tester) async {
     await tester.pumpWidget(
       MaterialApp(

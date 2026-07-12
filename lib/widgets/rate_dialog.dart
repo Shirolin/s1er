@@ -34,7 +34,7 @@ class _RateDialogState extends ConsumerState<_RateDialog> {
   RateFormOptions? _options;
 
   late final TextEditingController _reasonController;
-  String _score = '0';
+  String? _score;
   bool _notifyAuthor = false;
   bool _submitting = false;
 
@@ -67,14 +67,11 @@ class _RateDialogState extends ConsumerState<_RateDialog> {
       return;
     }
 
-    setState(() {
-      _options = options;
-      _score = options.scoreOptions.first;
-    });
+    setState(() => _options = options);
   }
 
   Future<void> _submit() async {
-    if (_score == '0') {
+    if (_score == null || _score == '0') {
       S1SnackBar.show(context, message: '请选择评分分值');
       return;
     }
@@ -84,7 +81,7 @@ class _RateDialogState extends ConsumerState<_RateDialog> {
       final error = await ref.read(apiServiceProvider).submitRate(
             tid: widget.tid,
             pid: widget.pid,
-            score1: _score,
+            score1: _score!,
             reason: _reasonController.text.trim(),
             notifyAuthor: _notifyAuthor,
           );
@@ -153,8 +150,9 @@ class _RateDialogState extends ConsumerState<_RateDialog> {
     }
 
     final options = _options!;
-    final scheme = Theme.of(context).colorScheme;
     final textTheme = Theme.of(context).textTheme;
+    final selectableScores =
+        options.scoreOptions.where((score) => score != '0').toList();
     final reasonPresets =
         options.reasonPresets.where((preset) => preset.isNotEmpty).toList();
 
@@ -166,34 +164,25 @@ class _RateDialogState extends ConsumerState<_RateDialog> {
         children: [
           _FormFieldSection(
             label: '战斗力',
-            child: InputDecorator(
-              decoration: const InputDecoration(
-                contentPadding: EdgeInsets.symmetric(horizontal: 12, vertical: 4),
-              ),
-              child: DropdownButtonHideUnderline(
-                child: DropdownButton<String>(
-                  isExpanded: true,
-                  value: _score,
-                  style: textTheme.bodyLarge,
-                  icon: Icon(Icons.expand_more, color: scheme.onSurfaceVariant),
-                  items: options.scoreOptions
-                      .map(
-                        (score) => DropdownMenuItem(
-                          value: score,
-                          child: Text(score),
-                        ),
-                      )
-                      .toList(),
-                  onChanged: _submitting
+            child: Wrap(
+              spacing: 8,
+              runSpacing: 8,
+              children: selectableScores.map((score) {
+                return FilterChip(
+                  label: Text(score),
+                  selected: _score == score,
+                  visualDensity: VisualDensity.compact,
+                  showCheckmark: false,
+                  onSelected: _submitting
                       ? null
-                      : (value) {
-                          if (value != null) setState(() => _score = value);
+                      : (selected) {
+                          setState(() => _score = selected ? score : null);
                         },
-                ),
-              ),
+                );
+              }).toList(),
             ),
           ),
-          const SizedBox(height: 20),
+          const SizedBox(height: 16),
           _FormFieldSection(
             label: '理由',
             child: TextField(
@@ -214,28 +203,25 @@ class _RateDialogState extends ConsumerState<_RateDialog> {
               runSpacing: 8,
               children: reasonPresets.map((preset) {
                 final selected = _reasonController.text == preset;
-                return ActionChip(
+                return FilterChip(
                   label: Text(preset),
+                  selected: selected,
                   visualDensity: VisualDensity.compact,
-                  backgroundColor: selected
-                      ? scheme.secondaryContainer
-                      : scheme.surfaceContainerHighest,
-                  labelStyle: textTheme.labelLarge?.copyWith(
-                    color: selected
-                        ? scheme.onSecondaryContainer
-                        : scheme.onSurfaceVariant,
-                  ),
-                  side: BorderSide.none,
-                  onPressed: _submitting
+                  showCheckmark: false,
+                  onSelected: _submitting
                       ? null
-                      : () => setState(() => _reasonController.text = preset),
+                      : (value) {
+                          setState(() {
+                            _reasonController.text = value ? preset : '';
+                          });
+                        },
                 );
               }).toList(),
             ),
           ],
-          const SizedBox(height: 12),
+          const SizedBox(height: 16),
           Material(
-            color: scheme.surfaceContainerLow,
+            color: Theme.of(context).colorScheme.surfaceContainerLow,
             borderRadius: S1Shape.medium,
             child: CheckboxListTile(
               contentPadding: const EdgeInsets.symmetric(horizontal: 8),

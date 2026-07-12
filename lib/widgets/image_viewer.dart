@@ -1,5 +1,6 @@
 import 'dart:collection';
 import 'dart:typed_data';
+import 'package:cached_network_image/cached_network_image.dart';
 import 'package:dio/dio.dart';
 import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart';
@@ -8,6 +9,7 @@ import 'package:go_router/go_router.dart';
 import '../config/resource_domains.dart';
 import '../providers/settings_provider.dart';
 import '../services/http_client.dart';
+import '../services/s1_image_cache.dart';
 import '../theme/app_theme.dart';
 import 'web_image_stub.dart'
     if (dart.library.html) 'web_image_html.dart';
@@ -27,12 +29,19 @@ class ImageViewer extends ConsumerStatefulWidget {
   final bool showBorder;
   final EdgeInsetsGeometry? margin;
 
+  /// Flush process-local byte LRU (called when clearing disk cache in settings).
+  static void clearMemoryCache() {
+    _ImageViewerState._cache.clear();
+    _ImageViewerState._providerCache.clear();
+    _ImageViewerState._cacheBytes = 0;
+  }
+
   @override
   ConsumerState<ImageViewer> createState() => _ImageViewerState();
 }
 
 class _ImageViewerState extends ConsumerState<ImageViewer> {
-  /// 图片字节缓存（LRU），独立于 widget 生命周期
+  /// 图片字节缓存（LRU），独立于 widget 生命周期；磁盘层见 [S1ImageCache]
   static final LinkedHashMap<String, Uint8List> _cache = LinkedHashMap();
   static final Map<String, MemoryImage> _providerCache = {};
   static const int _maxCacheEntries = 200;
@@ -86,17 +95,17 @@ class _ImageViewerState extends ConsumerState<ImageViewer> {
       return;
     }
 
-    // 公开资源：Web 端用原生 <img>，Native 端用 NetworkImage，都不需要 Dio
+    // 公开资源：Web 端用原生 <img>，Native 端走磁盘缓存 ImageProvider
     if (_resourceType == ResourceType.publicAsset) {
       _loading = false;
       if (kIsWeb) _detectAspectRatio();
       return;
     }
 
-    _loadViaDio();
+    _loadAuthOrProxied();
   }
 
-  void _putInCache(String url, Uint8List data) {
+  void _putInMemoryCache(String url, Uint8List data) {
     if (_cache.containsKey(url)) {
       _cacheBytes -= _cache[url]!.length;
       _cache.remove(url);
@@ -114,13 +123,32 @@ class _ImageViewerState extends ConsumerState<ImageViewer> {
     }
   }
 
-  Future<void> _loadViaDio() async {
+  ImageProvider _publicNetworkProvider() {
+    return CachedNetworkImageProvider(
+      widget.imageUrl,
+      cacheManager: S1ImageCache.manager,
+    );
+  }
+
+  Future<void> _loadAuthOrProxied() async {
     if (!mounted) return;
     setState(() {
       _loading = true;
     });
 
     try {
+      final disk = await S1ImageCache.getBytes(widget.imageUrl);
+      if (!mounted) return;
+      if (disk != null) {
+        _putInMemoryCache(widget.imageUrl, disk);
+        setState(() {
+          _bytes = disk;
+          _imageProvider = _providerCache[widget.imageUrl];
+          _loading = false;
+        });
+        return;
+      }
+
       final httpClient = ref.read(httpClientProvider);
       final response = await httpClient.get(
         widget.imageUrl,
@@ -129,9 +157,10 @@ class _ImageViewerState extends ConsumerState<ImageViewer> {
       if (!mounted) return;
       final data = response.data as Uint8List;
 
-      // 写入 LRU 缓存
-      _putInCache(widget.imageUrl, data);
+      _putInMemoryCache(widget.imageUrl, data);
+      await S1ImageCache.putBytes(widget.imageUrl, data);
 
+      if (!mounted) return;
       setState(() {
         _bytes = data;
         _imageProvider = _providerCache[widget.imageUrl];
@@ -225,9 +254,9 @@ class _ImageViewerState extends ConsumerState<ImageViewer> {
       return _buildImage(_imageProvider!);
     }
 
-    // Native 公开资源：NetworkImage
+    // Native 公开资源：磁盘缓存 ImageProvider
     if (_resourceType == ResourceType.publicAsset) {
-      return _buildImage(NetworkImage(widget.imageUrl));
+      return _buildImage(_publicNetworkProvider());
     }
 
     // 加载中
@@ -321,7 +350,7 @@ class _ImageViewerState extends ConsumerState<ImageViewer> {
       button: true,
       label: '重试加载图片',
       child: GestureDetector(
-        onTap: _loadViaDio,
+        onTap: _loadAuthOrProxied,
         child: Container(
           height: 80,
           decoration: BoxDecoration(
@@ -348,7 +377,7 @@ class _ImageViewerState extends ConsumerState<ImageViewer> {
     } else {
       child = Image(
         key: ValueKey(widget.imageUrl),
-        image: _imageProvider ?? NetworkImage(widget.imageUrl),
+        image: _imageProvider ?? _publicNetworkProvider(),
         width: size,
         height: size,
         fit: BoxFit.contain,

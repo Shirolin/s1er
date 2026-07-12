@@ -1,11 +1,14 @@
 import 'dart:async';
 
+import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../providers/post_provider.dart';
 import '../../providers/auth_provider.dart';
+import '../../providers/image_cache_provider.dart';
 import '../../providers/reading_history_provider.dart';
 import '../../providers/settings_provider.dart';
+import '../../services/s1_image_cache.dart';
 import '../../theme/app_theme.dart';
 import '../../utils/s1_snack_bar.dart';
 import 'settings_section_header.dart';
@@ -21,6 +24,7 @@ class DataManagementSection extends ConsumerStatefulWidget {
 class _DataManagementSectionState extends ConsumerState<DataManagementSection> {
   bool _clearingHistory = false;
   bool _clearingVotes = false;
+  bool _clearingImageCache = false;
   bool _resettingSettings = false;
   bool _loggingOut = false;
 
@@ -121,6 +125,26 @@ class _DataManagementSectionState extends ConsumerState<DataManagementSection> {
     );
   }
 
+  Future<void> _clearImageCache() async {
+    await _confirmAction(
+      title: '清除图片缓存',
+      content: kIsWeb
+          ? '将清除应用内图片内存缓存。浏览器磁盘缓存由系统管理，可能无法完全清空。'
+          : '将删除本地下载的图片缓存，下次浏览时会重新下载。',
+      confirmLabel: '清除',
+      isDestructive: true,
+      onConfirm: () => _runTask(
+        current: _clearingImageCache,
+        setBusy: (value) => _clearingImageCache = value,
+        successMessage: '已清除图片缓存',
+        action: () async {
+          await clearS1ImageCaches();
+          ref.invalidate(imageCacheSizeProvider);
+        },
+      ),
+    );
+  }
+
   Future<void> _resetAppearanceSettings() async {
     await _confirmAction(
       title: '重置显示与主题设置',
@@ -160,6 +184,17 @@ class _DataManagementSectionState extends ConsumerState<DataManagementSection> {
     final hasVoteCache =
         authState.isLoggedIn && (authState.user?.uid.isNotEmpty ?? false);
     final scheme = Theme.of(context).colorScheme;
+    final cacheSizeAsync = ref.watch(imageCacheSizeProvider);
+    final cacheSubtitle = cacheSizeAsync.when(
+      data: (bytes) {
+        if (kIsWeb || bytes <= 0) {
+          return '清除已下载的图片，释放本地空间';
+        }
+        return '当前约占用 ${S1ImageCache.formatSize(bytes)}';
+      },
+      loading: () => '清除已下载的图片，释放本地空间',
+      error: (_, __) => '清除已下载的图片，释放本地空间',
+    );
 
     return Card(
       elevation: 0,
@@ -208,6 +243,28 @@ class _DataManagementSectionState extends ConsumerState<DataManagementSection> {
               onTap: !hasVoteCache || _clearingVotes
                   ? null
                   : () => unawaited(_clearPollVotes()),
+              contentPadding: const EdgeInsets.symmetric(horizontal: 8),
+              shape: const RoundedRectangleBorder(
+                borderRadius: S1Shape.small,
+              ),
+            ),
+            const SizedBox(height: 8),
+            ListTile(
+              leading: Icon(
+                Icons.image_not_supported_outlined,
+                color: scheme.onSurfaceVariant,
+              ),
+              title: const Text('清除图片缓存'),
+              subtitle: Text(
+                cacheSubtitle,
+                style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                      color: scheme.onSurfaceVariant,
+                    ),
+              ),
+              trailing: _buildTrailingSpinner(_clearingImageCache),
+              onTap: _clearingImageCache
+                  ? null
+                  : () => unawaited(_clearImageCache()),
               contentPadding: const EdgeInsets.symmetric(horizontal: 8),
               shape: const RoundedRectangleBorder(
                 borderRadius: S1Shape.small,

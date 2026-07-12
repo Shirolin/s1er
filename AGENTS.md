@@ -179,12 +179,21 @@ flutter run -d chrome --dart-define=TALKER_LOG_LEVEL=all --dart-define=TALKER_MA
 
 > 记录项目中已知的技术债或暂时妥协，避免 AI 重复提出或错误优化。
 
-- flutter_html 使用 beta 版本（^3.0.0-beta.2），API 可能不稳定，升级时需谨慎
+- flutter_html 约束仍写 `^3.0.0-beta.2`，实际已解析到稳定 3.0.0；现代化方案中改为 `^3.0.0`（见下方「计划中的技术栈现代化」）
 - Web 端受 CORS 限制，开发时需启动 `scripts/proxy_server.dart` 代理服务器
 - 登录流程：全平台统一走 API 表单登录（`ApiService.login()`）；Web 端需配合 CORS 代理
-- Hive 用于本地存储（cookies / settings / cache），未做加密，生产环境可考虑迁移到 hive 加密 box 或 flutter_secure_storage
+- Hive 用于本地存储（settings / cache / reading_history）；`cookies` box 为遗留死代码（Cookie 已走 PersistCookieJar）。**计划以 Drift/SQLite 替换**，见现代化方案，实施前勿再扩大 Hive 依赖面
+- 图片加载无 App 级磁盘缓存（Dio 路径仅有进程内内存 LRU），重复打开易重新下载；计划增加磁盘缓存与清理入口
 - 表情包资源通过脚本从 GitHub 下载（`scripts/download_emoticons.dart`），未内置到仓库
 - test 目录已有基础测试，但覆盖率不足，尤其是 screens 和 widgets 层
+
+### 计划中的技术栈现代化
+
+> 定案文档（待实施，勿与当前技术栈锁定表混淆）：
+
+- 方案：`docs/plans/2026-07-12-tech-stack-modernization.md`
+- 备份格式：`docs/backup-format-v1.md`
+- 摘要：Riverpod 3 全量迁移、Hive → Drift、图片磁盘缓存、开放 `s1-backup` JSON ZIP；落地后更新上方「技术栈锁定」表
 
 ### M3 允许模式
 

@@ -103,10 +103,11 @@ class _HistoryTile extends ConsumerWidget {
   }
 
   void _open(BuildContext context) {
-    if (!record.isFinished && record.lastReadPage > 1) {
-      context.push('/thread/${record.tid}?page=${record.lastReadPage}');
-    } else {
+    final targetPage = record.resolveOpenPage(record.totalPages);
+    if (targetPage <= 1) {
       context.push('/thread/${record.tid}');
+    } else {
+      context.push('/thread/${record.tid}?page=$targetPage');
     }
   }
 

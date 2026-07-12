@@ -49,7 +49,8 @@ class _ThreadDetailScreenState extends ConsumerState<ThreadDetailScreen> {
   String? _scrollOncePid;
   bool _showScrollToTop = false;
   bool _hasRecordedInitialVisit = false;
-  bool _hasCheckedResume = false;
+  bool _hasResolvedInitialPage = false;
+  bool _pendingInitialNavigation = false;
   String? _highlightPid;
 
   @override
@@ -73,6 +74,9 @@ class _ThreadDetailScreenState extends ConsumerState<ThreadDetailScreen> {
   /// 记录阅读进度：写库 + 刷新历史列表（使列表卡片/历史页/资料计数实时更新）。
   /// readCount 只在本次进入详情页首帧 +1（isNewVisit 由 _hasRecordedInitialVisit 守卫）。
   void _recordProgress(PostListState state) {
+    if (_pendingInitialNavigation) {
+      return;
+    }
     final settings = ref.read(settingsProvider);
     final auth = ref.read(authStateProvider);
     if (!shouldRecordReadingProgress(settings, auth)) {
@@ -96,29 +100,29 @@ class _ThreadDetailScreenState extends ConsumerState<ThreadDetailScreen> {
     ref.read(readingHistoryProvider.notifier).refresh();
   }
 
-  /// 无指定初始页时，若存在未读完的历史记录，提示续读。
-  /// 必须在 [_recordProgress] 写库**之前**读取，否则读到的就是本次刚写入的当前页。
-  void _checkResumeReading(PostListState state) {
-    if (_hasCheckedResume) return;
-    _hasCheckedResume = true;
-    final record = ref.read(readingRecordProvider(widget.tid));
-    if (record == null ||
-        record.isFinished ||
-        record.lastReadPage <= 1 ||
-        record.lastReadPage == state.currentPage) {
+  /// 无指定初始页时，按阅读记录自动落到续读/末页/新回复页。
+  /// 须在 [_recordProgress] 写库**之前**执行，且跳转完成前跳过进度写入。
+  void _resolveInitialPage(PostListState state) {
+    if (_hasResolvedInitialPage) return;
+    if (widget.initialPage != null || widget.targetPid != null) {
+      _hasResolvedInitialPage = true;
       return;
     }
-    final targetPage = record.lastReadPage;
-    WidgetsBinding.instance.addPostFrameCallback((_) {
+    _hasResolvedInitialPage = true;
+
+    final record = ref.read(readingRecordProvider(widget.tid));
+    if (record == null) return;
+
+    final targetPage = record.resolveOpenPage(state.totalPages);
+    if (targetPage == state.currentPage) return;
+
+    _pendingInitialNavigation = true;
+    WidgetsBinding.instance.addPostFrameCallback((_) async {
       if (!mounted) return;
-      S1SnackBar.show(
-        context,
-        message: '上次阅读到第 $targetPage 页',
-        actionLabel: '续读',
-        onAction: () =>
-            ref.read(postProvider(widget.tid).notifier).goToPage(targetPage),
-        duration: const Duration(seconds: 5),
-      );
+      await ref.read(postProvider(widget.tid).notifier).goToPage(targetPage);
+      if (mounted) {
+        setState(() => _pendingInitialNavigation = false);
+      }
     });
   }
 
@@ -281,7 +285,7 @@ class _ThreadDetailScreenState extends ConsumerState<ThreadDetailScreen> {
       next.whenData((state) {
         // 先按「上一次」记录判断是否提示续读，再写入本次进度。
         if (widget.initialPage == null && widget.targetPid == null) {
-          _checkResumeReading(state);
+          _resolveInitialPage(state);
         }
         _recordProgress(state);
       });

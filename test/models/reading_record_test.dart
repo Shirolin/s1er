@@ -53,6 +53,39 @@ void main() {
     });
   });
 
+  group('ReadingRecord 相对实时页数', () {
+    test('已读且无新页时 isFinishedAt 为 true', () {
+      final r = _make(lastReadPage: 5, totalPages: 5);
+      expect(r.isFinishedAt(5), isTrue);
+      expect(r.hasNewPages(5), isFalse);
+    });
+
+    test('已读但页数增加后 hasNewPages 为 true', () {
+      final r = _make(lastReadPage: 5, totalPages: 5);
+      expect(r.isFinishedAt(7), isFalse);
+      expect(r.hasNewPages(7), isTrue);
+      expect(r.progressAt(7), closeTo(5 / 7, 0.001));
+    });
+  });
+
+  group('ReadingRecord.resolveOpenPage', () {
+    test('未读完续读到上次页', () {
+      expect(_make(lastReadPage: 3, totalPages: 8).resolveOpenPage(8), 3);
+    });
+
+    test('已读无新回复落最后一页', () {
+      expect(_make(lastReadPage: 5, totalPages: 5).resolveOpenPage(5), 5);
+    });
+
+    test('已读有新回复落原末页下一页', () {
+      expect(_make(lastReadPage: 5, totalPages: 5).resolveOpenPage(7), 6);
+    });
+
+    test('仅读到第一页且未读完仍从第一页打开', () {
+      expect(_make(lastReadPage: 1, totalPages: 4).resolveOpenPage(4), 1);
+    });
+  });
+
   group('ReadingRecord 序列化', () {
     test('toJson/fromJson 往返保持字段', () {
       final r = _make(lastReadPage: 3, totalPages: 5, readCount: 7);

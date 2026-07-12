@@ -30,7 +30,8 @@ ImageViewerScreen? _parseImageViewerRoute(GoRouterState state) {
   }
 
   final urlFromQuery = state.uri.queryParameters['url'];
-  final imageUrl = args?['imageUrl'] as String? ?? urlFromQuery;
+  final fullFromQuery = state.uri.queryParameters['fullUrl'];
+  final imageUrl = args?['imageUrl'] as String? ?? fullFromQuery ?? urlFromQuery;
   if (imageUrl == null || imageUrl.isEmpty) return null;
 
   final typeStr = state.uri.queryParameters['type'] ??

@@ -20,7 +20,7 @@ void main() {
 
     test('parses image tags', () {
       final html = BbcodeParser.parse('[img]https://example.com/pic.jpg[/img]');
-      expect(html, contains('img'));
+      expect(html, contains('post-image'));
       expect(html, contains('https://example.com/pic.jpg'));
     });
 
@@ -56,7 +56,8 @@ void main() {
 
     test('extracts image URLs from HTML', () {
       const html =
-          '<p><img src="https://example.com/1.jpg" /> <img src="https://example.com/2.jpg" /></p>';
+          '<span class="post-image" data-preview="https://example.com/1.jpg" data-full="https://example.com/1.jpg"></span> '
+          '<span class="post-image" data-preview="https://example.com/2.jpg" data-full="https://example.com/2.jpg"></span>';
       final images = BbcodeParser.extractImages(html);
       expect(images.length, 2);
       expect(images[0], 'https://example.com/1.jpg');

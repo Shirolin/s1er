@@ -62,4 +62,27 @@ void main() {
 
     expect(find.text('[图片]'), findsNothing);
   });
+
+  testWidgets('ImageViewer accepts distinct preview and full URLs', (tester) async {
+    const preview = 'https://img.stage1st.com/forum/a.png.thumb.jpg';
+    const full = 'https://img.stage1st.com/forum/a.png';
+
+    await tester.pumpWidget(
+      ProviderScope(
+        child: MaterialApp(
+          theme: AppTheme.lightTheme('purple'),
+          home: const Scaffold(
+            body: ImageViewer(
+              imageUrl: preview,
+              fullImageUrl: full,
+            ),
+          ),
+        ),
+      ),
+    );
+
+    final viewer = tester.widget<ImageViewer>(find.byType(ImageViewer));
+    expect(viewer.imageUrl, preview);
+    expect(viewer.fullImageUrl, full);
+  });
 }

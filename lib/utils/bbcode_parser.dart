@@ -1,5 +1,7 @@
+import 'package:html/dom.dart';
 import 'package:html/parser.dart' show parseFragment;
 import '../config/constants.dart';
+import 'post_image_urls.dart';
 
 class BbcodeParser {
   static String parse(String input) {
@@ -95,60 +97,92 @@ class BbcodeParser {
   static String _normalizeHtml(String html) {
     var output = html;
 
-    // 1. 移除 S1 API 自动生成的 <div class="img"> 等外层包裹
     final fragment = parseFragment(output);
+
+    // 1. div.img → post-image / emoticon span（保留 a[href] + img[src]）
     fragment.querySelectorAll('div.img').forEach((div) {
-      final img = div.querySelector('img');
-      if (img != null) {
-        div.replaceWith(img);
+      final replacement = _replacementForImageBlock(div);
+      if (replacement != null) {
+        div.replaceWith(replacement);
       }
     });
     output = fragment.outerHtml;
-    
-    // 规范化：统一 html 处理后的换行标签，以便测试匹配 (html parser 可能会输出 <br> 而非 <br/>)
+
     output = output.replaceAll('<br>', '<br/>');
 
-    // 2. 用正则把表情包 <img> 标签转为 <span>，确保 flutter_html 永远看不到这些 URL
-    //    （flutter_html 会对 <img> 做 XHR 预加载，触发 CORS 错误）
+    // 2. 剩余 <img>：表情包 → emoticon span；帖子图 → post-image span
+    output = _replaceImgTags(output);
+
+    return output;
+  }
+
+  static Element? _replacementForImageBlock(Element div) {
+    final img = div.querySelector('img');
+    if (img == null) return null;
+
+    final src = img.attributes['src'] ?? '';
+    if (src.isEmpty) return null;
+
+    if (S1Constants.isEmoticon(src)) {
+      return _emoticonSpan(src);
+    }
+
+    final anchor = div.querySelector('a');
+    final href = anchor?.attributes['href'];
+    return _postImageSpan(PostImageUrls.resolve(src: src, linkHref: href));
+  }
+
+  static String _replaceImgTags(String html) {
+    var output = html;
+
     output = output.replaceAllMapped(
       RegExp(r'<img\s[^>]*src="([^"]*)"[^>]*/?>', caseSensitive: false),
       (m) {
         final src = m.group(1) ?? '';
-        if (src.isNotEmpty && S1Constants.isEmoticon(src)) {
-          return '<span class="emoticon" data-src="$src">[emoticon]</span>';
+        if (src.isEmpty) return m.group(0)!;
+        if (S1Constants.isEmoticon(src)) {
+          return _emoticonSpan(src).outerHtml;
         }
-        return m.group(0)!;
+        return _postImageSpan(PostImageUrls.resolve(src: src)).outerHtml;
       },
     );
 
-    // 3. 同样处理单引号 src="..." 的情况
     output = output.replaceAllMapped(
       RegExp(r"<img\s[^>]*src='([^']*)'[^>]*/?>", caseSensitive: false),
       (m) {
         final src = m.group(1) ?? '';
-        if (src.isNotEmpty && S1Constants.isEmoticon(src)) {
-          return '<span class="emoticon" data-src="$src">[emoticon]</span>';
+        if (src.isEmpty) return m.group(0)!;
+        if (S1Constants.isEmoticon(src)) {
+          return _emoticonSpan(src).outerHtml;
         }
-        return m.group(0)!;
-      },
-    );
-
-    // 3. 同样处理单引号 src="..." 的情况
-    output = output.replaceAllMapped(
-      RegExp(r"<img\s[^>]*src='([^']*)'[^>]*/?>", caseSensitive: false),
-      (m) {
-        final src = m.group(1) ?? '';
-        if (src.isNotEmpty && S1Constants.isEmoticon(src)) {
-          return '<span class="emoticon" data-src="$src">[emoticon]</span>';
-        }
-        return m.group(0)!;
+        return _postImageSpan(PostImageUrls.resolve(src: src)).outerHtml;
       },
     );
 
     return output;
   }
 
+  static Element _emoticonSpan(String src) {
+    final span = Element.tag('span');
+    span.classes.add('emoticon');
+    span.attributes['data-src'] = src;
+    span.text = '[emoticon]';
+    return span;
+  }
+
+  static Element _postImageSpan(PostImageUrls urls) {
+    final span = Element.tag('span');
+    span.classes.add('post-image');
+    span.attributes['data-preview'] = urls.previewUrl;
+    span.attributes['data-full'] = urls.fullUrl;
+    return span;
+  }
+
   static List<String> extractImages(String html) {
+    final previewRegex = RegExp(r'data-preview="([^"]+)"');
+    final previews = previewRegex.allMatches(html).map((m) => m.group(1)!).toList();
+    if (previews.isNotEmpty) return previews;
+
     final regex = RegExp(r'<img[^>]+src="([^"]+)"');
     return regex.allMatches(html).map((m) => m.group(1)!).toList();
   }

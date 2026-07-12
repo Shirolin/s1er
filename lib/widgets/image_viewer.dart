@@ -19,12 +19,17 @@ class ImageViewer extends ConsumerStatefulWidget {
   const ImageViewer({
     super.key,
     required this.imageUrl,
+    this.fullImageUrl,
     this.isEmoticon = false,
     this.showBorder = false,
     this.margin,
   });
 
+  /// Inline preview URL.
   final String imageUrl;
+
+  /// Full-size URL for the viewer screen; defaults to [imageUrl].
+  final String? fullImageUrl;
   final bool isEmoticon;
   final bool showBorder;
   final EdgeInsetsGeometry? margin;
@@ -49,15 +54,24 @@ class _ImageViewerState extends ConsumerState<ImageViewer> {
   static int _cacheBytes = 0;
 
   bool _loading = false;
+  bool _previewFailed = false;
   Uint8List? _bytes;
   ImageProvider? _imageProvider;
   late ResourceType _resourceType;
+  late String _displayUrl;
   double _webAspectRatio = 16 / 9;
+
+  String get _previewUrl => widget.imageUrl;
+
+  String get _fullUrl => widget.fullImageUrl ?? widget.imageUrl;
+
+  bool get _hasDistinctFull => _previewUrl != _fullUrl;
 
   @override
   void initState() {
     super.initState();
-    _resourceType = _resolveType();
+    _resourceType = _resolveType(_previewUrl);
+    _displayUrl = _previewUrl;
     _load();
     _initDone = true;
   }
@@ -65,14 +79,19 @@ class _ImageViewerState extends ConsumerState<ImageViewer> {
   @override
   void didUpdateWidget(ImageViewer oldWidget) {
     super.didUpdateWidget(oldWidget);
-    if (oldWidget.imageUrl != widget.imageUrl) {
-      _resourceType = _resolveType();
+    if (oldWidget.imageUrl != widget.imageUrl ||
+        oldWidget.fullImageUrl != widget.fullImageUrl) {
+      _resourceType = _resolveType(_previewUrl);
+      _previewFailed = false;
+      _displayUrl = _previewUrl;
+      _bytes = null;
+      _imageProvider = null;
       _load();
     }
   }
 
-  ResourceType _resolveType() {
-    final host = Uri.parse(widget.imageUrl).host;
+  ResourceType _resolveType(String url) {
+    final host = Uri.parse(url).host;
     return ResourceDomains.match(host)?.type ?? ResourceType.publicAsset;
   }
 
@@ -83,26 +102,25 @@ class _ImageViewerState extends ConsumerState<ImageViewer> {
       return;
     }
 
-    final cached = _cache[widget.imageUrl];
+    final url = _displayUrl;
+    final cached = _cache[url];
     if (cached != null) {
-      _cache.remove(widget.imageUrl);
-      _cache[widget.imageUrl] = cached;
+      _cache.remove(url);
+      _cache[url] = cached;
       _bytes = cached;
-      _imageProvider = _providerCache[widget.imageUrl];
+      _imageProvider = _providerCache[url];
       _loading = false;
-      // initState 中不需要 setState（build 还没调用），didUpdateWidget 中需要
       if (_initDone) setState(() {});
       return;
     }
 
-    // 公开资源：Web 端用原生 <img>，Native 端走磁盘缓存 ImageProvider
     if (_resourceType == ResourceType.publicAsset) {
       _loading = false;
-      if (kIsWeb) _detectAspectRatio();
+      if (kIsWeb) _detectAspectRatio(url);
       return;
     }
 
-    _loadAuthOrProxied();
+    _loadAuthOrProxied(url);
   }
 
   void _putInMemoryCache(String url, Uint8List data) {
@@ -123,27 +141,27 @@ class _ImageViewerState extends ConsumerState<ImageViewer> {
     }
   }
 
-  ImageProvider _publicNetworkProvider() {
+  ImageProvider _publicNetworkProvider(String url) {
     return CachedNetworkImageProvider(
-      widget.imageUrl,
+      url,
       cacheManager: S1ImageCache.manager,
     );
   }
 
-  Future<void> _loadAuthOrProxied() async {
+  Future<void> _loadAuthOrProxied(String url) async {
     if (!mounted) return;
     setState(() {
       _loading = true;
     });
 
     try {
-      final disk = await S1ImageCache.getBytes(widget.imageUrl);
+      final disk = await S1ImageCache.getBytes(url);
       if (!mounted) return;
       if (disk != null) {
-        _putInMemoryCache(widget.imageUrl, disk);
+        _putInMemoryCache(url, disk);
         setState(() {
           _bytes = disk;
-          _imageProvider = _providerCache[widget.imageUrl];
+          _imageProvider = _providerCache[url];
           _loading = false;
         });
         return;
@@ -151,19 +169,28 @@ class _ImageViewerState extends ConsumerState<ImageViewer> {
 
       final httpClient = ref.read(httpClientProvider);
       final response = await httpClient.get(
-        widget.imageUrl,
+        url,
         options: Options(responseType: ResponseType.bytes),
       );
       if (!mounted) return;
       final data = response.data as Uint8List;
 
-      _putInMemoryCache(widget.imageUrl, data);
-      await S1ImageCache.putBytes(widget.imageUrl, data);
+      _putInMemoryCache(url, data);
+      await S1ImageCache.putBytes(url, data);
 
       if (!mounted) return;
       setState(() {
         _bytes = data;
-        _imageProvider = _providerCache[widget.imageUrl];
+        _imageProvider = _providerCache[url];
+        _loading = false;
+      });
+    } on DioException catch (e) {
+      if (!mounted) return;
+      if (_shouldFallbackToFull(url, e)) {
+        _fallbackToFullInline();
+        return;
+      }
+      setState(() {
         _loading = false;
       });
     } catch (e) {
@@ -174,8 +201,35 @@ class _ImageViewerState extends ConsumerState<ImageViewer> {
     }
   }
 
-  Future<void> _detectAspectRatio() async {
-    final ratio = await detectImageAspectRatio(widget.imageUrl);
+  bool _shouldFallbackToFull(String url, DioException error) {
+    if (_previewFailed || url != _previewUrl || !_hasDistinctFull) {
+      return false;
+    }
+    final status = error.response?.statusCode;
+    return status == null || status == 404;
+  }
+
+  void _fallbackToFullInline() {
+    if (_previewFailed || !_hasDistinctFull || _displayUrl != _previewUrl) {
+      return;
+    }
+    _previewFailed = true;
+    setState(() {
+      _displayUrl = _fullUrl;
+      _resourceType = _resolveType(_fullUrl);
+      _bytes = null;
+      _imageProvider = null;
+      _loading = false;
+    });
+    _load();
+  }
+
+  void _handlePublicImageError() {
+    _fallbackToFullInline();
+  }
+
+  Future<void> _detectAspectRatio(String url) async {
+    final ratio = await detectImageAspectRatio(url);
     if (!mounted) return;
     if (ratio != _webAspectRatio) {
       setState(() {
@@ -202,11 +256,8 @@ class _ImageViewerState extends ConsumerState<ImageViewer> {
 
     if (widget.isEmoticon) return _buildEmoticon(context);
 
-    // Web 公开资源：原生 <img>，无 CORS
     if (_resourceType == ResourceType.publicAsset && kIsWeb) {
       final scheme = Theme.of(context).colorScheme;
-      // HtmlElementView 是平台视图，浏览器 <img> 会消费点击事件，
-      // GestureDetector 包在外面收不到。改用 Stack 叠加透明点击层。
       Widget child = Semantics(
         button: true,
         label: '查看大图',
@@ -216,7 +267,7 @@ class _ImageViewerState extends ConsumerState<ImageViewer> {
             final h = w / _webAspectRatio;
             return Stack(
               children: [
-                buildWebImage(widget.imageUrl, width: w, height: h),
+                buildWebImage(_displayUrl, width: w, height: h),
                 Positioned.fill(
                   child: GestureDetector(
                     onTap: () => _showFullScreen(context),
@@ -249,17 +300,14 @@ class _ImageViewerState extends ConsumerState<ImageViewer> {
       return child;
     }
 
-    // 有缓存字节 → 直接渲染（复用 ImageProvider，避免重复解码/释放 Picture）
     if (_imageProvider != null) {
       return _buildImage(_imageProvider!);
     }
 
-    // Native 公开资源：磁盘缓存 ImageProvider
     if (_resourceType == ResourceType.publicAsset) {
-      return _buildImage(_publicNetworkProvider());
+      return _buildImage(_publicNetworkProvider(_displayUrl));
     }
 
-    // 加载中
     if (_loading) {
       return const SizedBox(
         height: 96,
@@ -267,7 +315,6 @@ class _ImageViewerState extends ConsumerState<ImageViewer> {
       );
     }
 
-    // 错误
     return _buildError();
   }
 
@@ -280,11 +327,14 @@ class _ImageViewerState extends ConsumerState<ImageViewer> {
       child: GestureDetector(
         onTap: () => _showFullScreen(context),
         child: Image(
-          key: ValueKey(widget.imageUrl),
+          key: ValueKey(_displayUrl),
           image: provider,
           fit: BoxFit.contain,
           gaplessPlayback: true,
           frameBuilder: (context, child, frame, wasSynchronouslyLoaded) {
+            if (frame != null) {
+              S1ImageCache.evictIfNeeded();
+            }
             if (wasSynchronouslyLoaded) return child;
             return Stack(
               alignment: Alignment.center,
@@ -302,7 +352,12 @@ class _ImageViewerState extends ConsumerState<ImageViewer> {
               ],
             );
           },
-          errorBuilder: (_, __, ___) => _buildError(),
+          errorBuilder: (_, __, ___) {
+            WidgetsBinding.instance.addPostFrameCallback((_) {
+              if (mounted) _handlePublicImageError();
+            });
+            return _buildError();
+          },
         ),
       ),
     );
@@ -350,7 +405,7 @@ class _ImageViewerState extends ConsumerState<ImageViewer> {
       button: true,
       label: '重试加载图片',
       child: GestureDetector(
-        onTap: _loadAuthOrProxied,
+        onTap: () => _loadAuthOrProxied(_displayUrl),
         child: Container(
           height: 80,
           decoration: BoxDecoration(
@@ -377,7 +432,7 @@ class _ImageViewerState extends ConsumerState<ImageViewer> {
     } else {
       child = Image(
         key: ValueKey(widget.imageUrl),
-        image: _imageProvider ?? _publicNetworkProvider(),
+        image: _imageProvider ?? _publicNetworkProvider(widget.imageUrl),
         width: size,
         height: size,
         fit: BoxFit.contain,
@@ -394,13 +449,20 @@ class _ImageViewerState extends ConsumerState<ImageViewer> {
   }
 
   void _showFullScreen(BuildContext context) {
-    final encodedUrl = Uri.encodeComponent(widget.imageUrl);
+    final previewBytes =
+        !_hasDistinctFull || _displayUrl == _previewUrl ? _bytes : null;
+    final fullType = _resolveType(_fullUrl);
+    final query = StringBuffer(
+      '/image-viewer?url=${Uri.encodeComponent(_previewUrl)}'
+      '&fullUrl=${Uri.encodeComponent(_fullUrl)}'
+      '&type=${fullType.name}',
+    );
     context.push(
-      '/image-viewer?url=$encodedUrl&type=${_resourceType.name}',
+      query.toString(),
       extra: {
-        'imageUrl': widget.imageUrl,
-        'imageBytes': _bytes,
-        'resourceType': _resourceType,
+        'imageUrl': _fullUrl,
+        'imageBytes': previewBytes,
+        'resourceType': fullType,
       },
     );
   }

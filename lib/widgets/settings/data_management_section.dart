@@ -210,7 +210,7 @@ class _DataManagementSectionState extends ConsumerState<DataManagementSection> {
         if (kIsWeb) {
           return '浏览器管理磁盘缓存；可清除应用内图片内存缓存';
         }
-        return '当前约占用 ${S1ImageCache.formatSize(bytes)}';
+        return '当前约占用 ${S1ImageCache.formatSize(bytes)}，上限 ${S1ImageCache.formatLimit()}';
       },
       loading: () => '正在统计缓存占用…',
       error: (_, __) => '清除已下载的图片，释放本地空间',

@@ -145,6 +145,8 @@ S1 论坛使用的 Discuz! Mobile API (version=4)。所有请求走 `ApiConfig.m
 | `height` | string | 图片高度 |
 | `thumb` | string | 缩略图标记 |
 
+> **客户端图片策略**：帖子正文图片以 `viewthread` → `postlist[].message` 内嵌 HTML 为准。客户端从 `<div class="img">` 内的 `<a href>`（原图）与 `<img src>`（缩略图）提取 preview/full URL；`attachmentImagePreviewList` 主要用于 **forumdisplay 列表封面**，详情页暂不依赖该字段。
+
 ### `threadtypes` — 主题分类映射（不同版块不同）
 
 动漫论坛（fid=6）的分类：

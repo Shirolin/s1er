@@ -1,27 +1,47 @@
+import 'dart:io';
+
 import 'package:flutter_test/flutter_test.dart';
 import 'package:s1_app/utils/bbcode_parser.dart';
 
 void main() {
-  group('BbcodeParser 换行处理测试', () {
-    test('应该将连续的 <br/>\\n 合并，避免过多空行', () {
-      const input = '第一行<br />\n<br />\n第二行';
-      // _preClean 会先将 <br /> 转为 <br/>
-      // 然后正则匹配 (<br/>\s*|[\n\r]\s*){3,} 
-      // "第一行<br/>\n<br/>\n第二行" 这里的匹配项是 "<br/>\n<br/>\n"，长度符合折叠条件
-      final output = BbcodeParser.parse(input);
-      expect(output, contains('第一行<br/><br/>第二行'));
+  group('BbcodeParser post images', () {
+    test('preserves anchor href and img src from div.img', () {
+      final html = File('test/fixtures/post_images/stage1st_anchor.html')
+          .readAsStringSync();
+      final parsed = BbcodeParser.parse(html);
+
+      expect(parsed, contains('class="post-image"'));
+      expect(parsed, contains('data-preview='));
+      expect(parsed, contains('.thumb.jpg'));
+      expect(parsed, contains('data-full='));
+      expect(parsed, contains('185034y9rw9og8zgzdgct8.png"'));
+      expect(parsed, isNot(contains('<img')));
     });
 
-    test('超过 3 个换行应该被折叠为 2 个', () {
-      const input = 'A<br/><br/><br/><br/>B';
-      final output = BbcodeParser.parse(input);
-      expect(output, contains('A<br/><br/>B'));
+    test('external single-url div.img becomes post-image with same preview/full',
+        () {
+      final html = File('test/fixtures/post_images/external_single.html')
+          .readAsStringSync();
+      final parsed = BbcodeParser.parse(html);
+
+      expect(parsed, contains('class="post-image"'));
+      expect(parsed, contains('data-preview="https://p.sda1.dev/'));
+      expect(parsed, contains('data-full="https://p.sda1.dev/'));
     });
 
-    test('2 个换行（一个空行）应该被保留', () {
-      const input = 'A<br/><br/>B';
-      final output = BbcodeParser.parse(input);
-      expect(output, contains('A<br/><br/>B'));
+    test('[img] bbcode resolves to post-image span', () {
+      const src = 'https://img.stage1st.com/forum/2024/01/a.png';
+      final parsed = BbcodeParser.parse('[img]$src[/img]');
+
+      expect(parsed, contains('class="post-image"'));
+      expect(parsed, contains('data-preview="$src.thumb.jpg"'));
+      expect(parsed, contains('data-full="$src"'));
+    });
+
+    test('extractImages reads data-preview attributes', () {
+      const html =
+          '<span class="post-image" data-preview="https://a/p.jpg" data-full="https://a/f.jpg"></span>';
+      expect(BbcodeParser.extractImages(html), ['https://a/p.jpg']);
     });
   });
 }

@@ -14,6 +14,9 @@ class S1Constants {
   /// 注意：勿与 forumdisplay 的 `tpp`(=50，主题列表每页数) 混用。
   static const int postsPerPageFallback = 40;
 
+  /// 图片磁盘缓存总字节上限（与 [S1ImageCache.maxNrOfCacheObjects] 并存）。
+  static const int maxImageCacheBytes = 100 * 1024 * 1024;
+
   /// 识别表情包路径的特征
   static bool isEmoticon(String url) {
     final lowerUrl = url.toLowerCase();

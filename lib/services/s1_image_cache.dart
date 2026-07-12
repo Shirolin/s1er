@@ -7,6 +7,8 @@ import 'package:flutter_cache_manager/flutter_cache_manager.dart';
 import 'package:path/path.dart' as p;
 import 'package:path_provider/path_provider.dart';
 
+import '../config/constants.dart';
+
 /// App-level image disk cache (Native).
 ///
 /// Web keeps relying on the browser cache; this manager is still safe to call
@@ -17,6 +19,7 @@ class S1ImageCache {
   static const String cacheKey = 's1ImageCache';
   static const Duration stalePeriod = Duration(days: 14);
   static const int maxNrOfCacheObjects = 500;
+  static const int maxCacheBytes = S1Constants.maxImageCacheBytes;
 
   static CacheManager? _manager;
 
@@ -56,6 +59,7 @@ class S1ImageCache {
         maxAge: stalePeriod,
         fileExtension: extensionFromUrl(url) ?? 'bin',
       );
+      await _evictToBudget();
     } catch (_) {
       // Disk cache is best-effort; callers still keep memory LRU.
     }
@@ -79,16 +83,9 @@ class S1ImageCache {
   static Future<int> approximateSizeBytes() async {
     if (kIsWeb) return 0;
     try {
-      final root = await getTemporaryDirectory();
-      final cacheDir = Directory(p.join(root.path, cacheKey));
-      if (!await cacheDir.exists()) return 0;
-      var total = 0;
-      await for (final entity in cacheDir.list(recursive: true, followLinks: false)) {
-        if (entity is File) {
-          total += await entity.length();
-        }
-      }
-      return total;
+      final cacheDir = await _cacheDirectory();
+      if (cacheDir == null || !await cacheDir.exists()) return 0;
+      return _directorySize(cacheDir);
     } catch (_) {
       return 0;
     }
@@ -102,6 +99,8 @@ class S1ImageCache {
     return '${(bytes / (1024 * 1024)).toStringAsFixed(1)} MB';
   }
 
+  static String formatLimit() => formatSize(maxCacheBytes);
+
   @visibleForTesting
   static String? extensionFromUrl(String url) {
     final path = Uri.tryParse(url)?.path ?? '';
@@ -110,5 +109,60 @@ class S1ImageCache {
     final ext = path.substring(dot + 1).toLowerCase();
     if (ext.isEmpty || ext.length > 5 || ext.contains('/')) return null;
     return ext;
+  }
+
+  static Future<Directory?> _cacheDirectory() async {
+    if (kIsWeb) return null;
+    try {
+      final root = await getTemporaryDirectory();
+      return Directory(p.join(root.path, cacheKey));
+    } catch (_) {
+      return null;
+    }
+  }
+
+  static Future<int> _directorySize(Directory dir) async {
+    var total = 0;
+    await for (final entity in dir.list(recursive: true, followLinks: false)) {
+      if (entity is File) {
+        total += await entity.length();
+      }
+    }
+    return total;
+  }
+
+  static Future<void> evictIfNeeded() => _evictToBudget();
+
+  static Future<void> _evictToBudget() async {
+    if (kIsWeb) return;
+    final cacheDir = await _cacheDirectory();
+    if (cacheDir == null || !await cacheDir.exists()) return;
+
+    final files = <File>[];
+    await for (final entity in cacheDir.list(recursive: true, followLinks: false)) {
+      if (entity is File) {
+        files.add(entity);
+      }
+    }
+
+    var total = 0;
+    for (final file in files) {
+      total += await file.length();
+    }
+    if (total <= maxCacheBytes) return;
+
+    files.sort(
+      (a, b) => a.lastModifiedSync().compareTo(b.lastModifiedSync()),
+    );
+
+    for (final file in files) {
+      if (total <= maxCacheBytes) break;
+      try {
+        total -= await file.length();
+        await file.delete();
+      } catch (_) {
+        // Best-effort eviction.
+      }
+    }
   }
 }

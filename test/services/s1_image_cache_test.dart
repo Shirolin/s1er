@@ -90,6 +90,10 @@ void main() {
       expect(S1ImageCache.formatSize(2048), '2.0 KB');
       expect(S1ImageCache.formatSize(3 * 1024 * 1024), '3.0 MB');
     });
+
+    test('formatLimit reflects configured cap', () {
+      expect(S1ImageCache.formatLimit(), '100.0 MB');
+    });
   });
 
   group('S1ImageCache.extensionFromUrl', () {

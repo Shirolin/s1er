@@ -31,7 +31,8 @@ void main() {
 
       expect(html, contains('<b>Bold</b>'));
       expect(html, contains('<i>Italic</i>'));
-      expect(html, contains('<img'));
+      expect(html, contains('post-image'));
+      expect(html, contains('http://test.com/pic.jpg'));
     });
 
     test('API URL construction', () {

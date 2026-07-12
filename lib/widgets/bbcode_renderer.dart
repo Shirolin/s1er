@@ -4,6 +4,7 @@ import 'package:url_launcher/url_launcher.dart';
 import '../config/constants.dart';
 import '../theme/app_theme.dart';
 import '../utils/bbcode_parser.dart';
+import '../utils/post_image_urls.dart';
 import 'emoticon_widget.dart';
 import 'quote_block.dart';
 import 'image_viewer.dart';
@@ -150,8 +151,24 @@ class BbcodeRenderer extends StatelessWidget {
           tagsToExtend: {'span'},
           builder: (context) {
             final element = context.element;
-            if (element != null && element.classes.contains('emoticon')) {
-              // data-src: 来自 _normalizeHtml 转换的网络表情包 URL
+            if (element == null) return const SizedBox.shrink();
+
+            if (element.classes.contains('post-image')) {
+              final preview =
+                  _unescapeHtml(element.attributes['data-preview'] ?? '');
+              final full =
+                  _unescapeHtml(element.attributes['data-full'] ?? preview);
+              if (preview.isEmpty) return const SizedBox.shrink();
+
+              return ImageViewer(
+                imageUrl: preview,
+                fullImageUrl: full,
+                showBorder: true,
+                margin: const EdgeInsets.symmetric(vertical: 8),
+              );
+            }
+
+            if (element.classes.contains('emoticon')) {
               final src = _unescapeHtml(element.attributes['data-src'] ?? '');
               if (src.isNotEmpty) {
                 return ImageViewer(
@@ -160,10 +177,10 @@ class BbcodeRenderer extends StatelessWidget {
                   margin: const EdgeInsets.symmetric(horizontal: 2),
                 );
               }
-              // data-code: 来自 BBCode [f:xxx] 的本地表情包
               final code = element.attributes['data-code'] ?? '';
               return EmoticonWidget(code: code);
             }
+
             return const SizedBox.shrink();
           },
         ),
@@ -173,7 +190,6 @@ class BbcodeRenderer extends StatelessWidget {
             final src = _unescapeHtml(context.element?.attributes['src'] ?? '');
             if (src.isEmpty) return const SizedBox.shrink();
 
-            // 如果识别为表情包
             if (S1Constants.isEmoticon(src)) {
               return ImageViewer(
                 imageUrl: src,
@@ -182,9 +198,10 @@ class BbcodeRenderer extends StatelessWidget {
               );
             }
 
-            // 如果是大图
+            final urls = PostImageUrls.resolve(src: src);
             return ImageViewer(
-              imageUrl: src,
+              imageUrl: urls.previewUrl,
+              fullImageUrl: urls.fullUrl,
               showBorder: true,
               margin: const EdgeInsets.symmetric(vertical: 8),
             );

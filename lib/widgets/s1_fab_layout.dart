@@ -133,14 +133,12 @@ class S1ContentFabOverlay extends StatelessWidget {
   Widget build(BuildContext context) {
     return Stack(
       clipBehavior: Clip.none,
-      alignment: Alignment.bottomRight,
+      fit: StackFit.expand,
       children: [
         child,
-        Padding(
-          padding: EdgeInsets.only(
-            right: S1FabLayout.edgeMargin,
-            bottom: fabBottomPadding,
-          ),
+        Positioned(
+          right: S1FabLayout.edgeMargin,
+          bottom: fabBottomPadding,
           child: fab,
         ),
       ],

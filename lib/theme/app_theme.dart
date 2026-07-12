@@ -157,6 +157,10 @@ class AppTheme {
     // 我们强制使用 primary 种子重新生成标准的 M3 容器色进行覆盖。预设配色（isDynamic = false）则保持原装，避免影响精心调试的色阶。
     final colorScheme = isDynamic
         ? rawColorScheme.copyWith(
+            surface: ColorScheme.fromSeed(
+              seedColor: rawColorScheme.primary,
+              brightness: rawColorScheme.brightness,
+            ).surface,
             surfaceContainerLow: ColorScheme.fromSeed(
               seedColor: rawColorScheme.primary,
               brightness: rawColorScheme.brightness,

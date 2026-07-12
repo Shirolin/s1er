@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
@@ -70,7 +71,7 @@ class ThemeSettingsSection extends ConsumerWidget {
                 onChanged: dynamicEnabled ? null : notifier.setThemeColor,
               ),
             ),
-            if (!dynamicEnabled) const _CustomColorDebugger(),
+            if (kDebugMode && !dynamicEnabled) const _CustomColorDebugger(),
           ],
         ),
       ),

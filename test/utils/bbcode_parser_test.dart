@@ -29,12 +29,12 @@ void main() {
       expect(parsed, contains('data-full="https://p.sda1.dev/'));
     });
 
-    test('[img] bbcode resolves to post-image span', () {
+    test('[img] bbcode keeps single URL for stage1st attachment', () {
       const src = 'https://img.stage1st.com/forum/2024/01/a.png';
       final parsed = BbcodeParser.parse('[img]$src[/img]');
 
       expect(parsed, contains('class="post-image"'));
-      expect(parsed, contains('data-preview="$src.thumb.jpg"'));
+      expect(parsed, contains('data-preview="$src"'));
       expect(parsed, contains('data-full="$src"'));
     });
 

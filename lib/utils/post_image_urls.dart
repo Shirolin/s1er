@@ -38,14 +38,7 @@ class PostImageUrls {
       );
     }
 
-    final previewFromFull = _previewFromFullUrl(normalizedSrc);
-    if (previewFromFull != null) {
-      return PostImageUrls(
-        previewUrl: previewFromFull,
-        fullUrl: normalizedSrc,
-      );
-    }
-
+    // 单 URL（无 anchor、非 thumb）不猜测 .thumb.jpg，避免大量 404。
     return PostImageUrls(
       previewUrl: normalizedSrc,
       fullUrl: normalizedSrc,
@@ -135,47 +128,5 @@ class PostImageUrls {
     }
 
     return null;
-  }
-
-  static String? _previewFromFullUrl(String url) {
-    if (_looksLikeThumbUrl(url)) return null;
-
-    final uri = Uri.tryParse(url);
-    if (uri == null) return null;
-
-    if (uri.host == 'img.stage1st.com' && uri.path.contains('/forum/')) {
-      return _appendThumbSuffix(url);
-    }
-
-    if (uri.path.contains('forum.php') &&
-        uri.queryParameters['mod'] == 'image' &&
-        uri.queryParameters.containsKey('aid')) {
-      final size = uri.queryParameters['size']?.toLowerCase() ?? '';
-      if (size.contains('source') || size.isEmpty) {
-        final params = Map<String, String>.from(uri.queryParameters);
-        params['size'] = 'fixwidth(400)';
-        return uri.replace(queryParameters: params).toString();
-      }
-    }
-
-    return null;
-  }
-
-  static String _appendThumbSuffix(String url) {
-    final uri = Uri.tryParse(url);
-    if (uri == null) return '$url.thumb.jpg';
-
-    final path = uri.path;
-    final lower = path.toLowerCase();
-    if (lower.endsWith('.gif')) {
-      return url;
-    }
-    if (lower.endsWith('.png')) {
-      return '$url.thumb.jpg';
-    }
-    if (RegExp(r'\.(jpe?g|webp)$', caseSensitive: false).hasMatch(lower)) {
-      return '$url.thumb.jpg';
-    }
-    return '$url.thumb.jpg';
   }
 }

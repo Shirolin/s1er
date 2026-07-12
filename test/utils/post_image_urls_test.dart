@@ -39,13 +39,13 @@ void main() {
       );
     });
 
-    test('derives preview from img.stage1st.com forum attachment', () {
-      const src = 'https://img.stage1st.com/forum/202411/12/foo.png';
+    test('single img.stage1st.com URL does not guess thumb preview', () {
+      const src = 'https://img.stage1st.com/forum/202604/10/foo.png';
       final urls = PostImageUrls.resolve(src: src);
 
-      expect(urls.previewUrl, '$src.thumb.jpg');
+      expect(urls.previewUrl, src);
       expect(urls.fullUrl, src);
-      expect(urls.hasDistinctFull, isTrue);
+      expect(urls.hasDistinctFull, isFalse);
     });
 
     test('single external URL falls back to same preview and full', () {

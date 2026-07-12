@@ -10,8 +10,10 @@ import '../models/forum_category.dart';
 import '../models/user.dart';
 import '../models/private_message_item.dart';
 import '../models/notice_item.dart';
+import '../models/favorite_item.dart';
 import '../models/message_list_result.dart';
 import '../utils/error_handler.dart';
+import 'formhash_service.dart';
 import 'http_client.dart';
 
 class LoginRequiredException implements Exception {
@@ -1172,6 +1174,549 @@ class ApiService {
     if (summary.contains('回复了您的帖子')) return NoticeType.reply;
     if (summary.contains('评分')) return NoticeType.rate;
     return NoticeType.other;
+  }
+
+  // ── 收藏：列表 / 添加 / 删除 ──────────────────────────────
+
+  /// 获取收藏列表。三 Tab 均走 `home.php?do=favorite` HTML；JSON API 作兜底。
+  Future<FavoriteListResult> getFavoriteList({
+    required String uid,
+    String? type,
+    int page = 1,
+  }) async {
+    final htmlResult = await _getFavoriteListHtml(
+      uid: uid,
+      type: type,
+      page: page,
+    );
+    if (htmlResult.items.isNotEmpty) return htmlResult;
+
+    if (type == 'thread') {
+      return _getFavoriteThreadListJson(page: page);
+    }
+    if (type == 'forum') {
+      return _getFavoriteForumListJson(page: page);
+    }
+    return htmlResult;
+  }
+
+  Future<FavoriteListResult> _getFavoriteThreadListJson({int page = 1}) async {
+    final url = buildApiUrl(
+      module: ApiConfig.moduleMyFavThread,
+      params: {'page': page.toString()},
+    );
+    final response = await _httpClient.get(url);
+    final json = ensureJson(response.data);
+    checkAuthError(json);
+      return parseFavoriteThreadListJson(json, page: page);
+  }
+
+  Future<FavoriteListResult> _getFavoriteForumListJson({int page = 1}) async {
+    final url = buildApiUrl(
+      module: ApiConfig.moduleMyFavForum,
+      params: {'page': page.toString()},
+    );
+    final response = await _httpClient.get(url);
+    final json = ensureJson(response.data);
+    checkAuthError(json);
+    return _parseFavoriteForumListJson(json, page: page);
+  }
+
+  Future<FavoriteListResult> _getFavoriteListHtml({
+    required String uid,
+    String? type,
+    int page = 1,
+  }) async {
+    final typeParam = (type != null && type.isNotEmpty) ? '&type=$type' : '';
+    final url = '${ApiConfig.baseUrl}/home.php'
+        '?mod=space&uid=$uid&do=favorite&view=me$typeParam&page=$page&mobile=2';
+    final response = await _httpClient.get(
+      url,
+      options: Options(responseType: ResponseType.plain),
+    );
+    final html = response.data as String;
+    if (html.contains('id="loginform_') || html.contains('name="login"')) {
+      throw LoginRequiredException();
+    }
+    return parseFavoriteListHtml(html, page: page);
+  }
+
+  static List<dynamic> _favoriteJsonList(Map<String, dynamic>? variables) {
+    if (variables == null) return [];
+    for (final key in ['list', 'data', 'favlist']) {
+      final value = variables[key];
+      if (value is List && value.isNotEmpty) return value;
+    }
+    return [];
+  }
+
+  static FavoriteItem? _favoriteItemFromJson(Map<String, dynamic> json) {
+    final idtype = json['idtype']?.toString() ?? '';
+    if (idtype == 'fid' || idtype == 'forum') {
+      return FavoriteItem.fromForumJson(json);
+    }
+    if (idtype == 'tid' || idtype == 'thread' || json.containsKey('tid')) {
+      return FavoriteItem.fromThreadJson(json);
+    }
+    if (json.containsKey('fid') && !json.containsKey('tid')) {
+      return FavoriteItem.fromForumJson(json);
+    }
+    return FavoriteItem.fromThreadJson(json);
+  }
+
+  static FavoriteListResult parseFavoriteThreadListJson(
+    Map<String, dynamic> json, {
+    int page = 1,
+  }) {
+    final variables = json['Variables'] as Map<String, dynamic>?;
+    if (variables == null) return FavoriteListResult.empty;
+
+    final list = _favoriteJsonList(variables);
+    final items = list
+        .map((e) => _favoriteItemFromJson(e as Map<String, dynamic>))
+        .whereType<FavoriteItem>()
+        .where((item) => item.id.isNotEmpty)
+        .toList();
+
+    final perpage =
+        int.tryParse(variables['perpage']?.toString() ?? '') ?? 20;
+    final count = int.tryParse(variables['count']?.toString() ?? '');
+    final totalPages = count != null && count > 0 && perpage > 0
+        ? (count / perpage).ceil()
+        : (items.length >= perpage ? page + 1 : page);
+
+    return FavoriteListResult(
+      items: items,
+      currentPage: page,
+      totalPages: totalPages.clamp(1, totalPages),
+    );
+  }
+
+  static FavoriteListResult _parseFavoriteForumListJson(
+    Map<String, dynamic> json, {
+    int page = 1,
+  }) {
+    final variables = json['Variables'] as Map<String, dynamic>?;
+    if (variables == null) return FavoriteListResult.empty;
+
+    final list = _favoriteJsonList(variables);
+    final items = list
+        .map((e) => _favoriteItemFromJson(e as Map<String, dynamic>))
+        .whereType<FavoriteItem>()
+        .where((item) => item.type == FavoriteType.forum && item.id.isNotEmpty)
+        .toList();
+
+    final perpage =
+        int.tryParse(variables['perpage']?.toString() ?? '') ?? 20;
+    final count = int.tryParse(variables['count']?.toString() ?? '');
+    final totalPages = count != null && count > 0 && perpage > 0
+        ? (count / perpage).ceil()
+        : (items.length >= perpage ? page + 1 : page);
+
+    return FavoriteListResult(
+      items: items,
+      currentPage: page,
+      totalPages: totalPages.clamp(1, totalPages),
+    );
+  }
+
+  static final _favDeleteLinkRe = RegExp(
+    r'op=delete&(?:amp;)?favid=(\d+)',
+    caseSensitive: false,
+  );
+
+  static FavoriteListResult parseFavoriteListHtml(
+    String html, {
+    int page = 1,
+  }) {
+    final hasEntries = html.contains('viewthread') ||
+        html.contains('forumdisplay') ||
+        html.contains('op=delete&favid=');
+    if (html.contains('您还没有添加任何收藏') && !hasEntries) {
+      return const FavoriteListResult(items: []);
+    }
+
+    final items = <FavoriteItem>[];
+    final listRegion = _extractFavoriteListRegion(html);
+
+    final blocks = listRegion.split(RegExp(r'<li\b', caseSensitive: false));
+    for (var i = 1; i < blocks.length; i++) {
+      final item = _parseFavoriteMobileBlock(blocks[i]);
+      if (item != null) items.add(item);
+    }
+
+    if (items.isEmpty) {
+      for (final match in _favDeleteLinkRe.allMatches(listRegion)) {
+        final blockStart = match.start > 400 ? match.start - 400 : 0;
+        final block = listRegion.substring(blockStart, match.end + 200);
+        final item = _parseFavoriteMobileBlock(block);
+        if (item != null) items.add(item);
+      }
+    }
+
+    final totalPages = _extractFavoriteMaxPage(html, fallback: page);
+    return FavoriteListResult(
+      items: items,
+      currentPage: page,
+      totalPages: totalPages,
+    );
+  }
+
+  static String _extractFavoriteListRegion(String html) {
+    for (final pattern in [
+      RegExp(
+        r'<div class="findbox[^"]*"[^>]*>\s*<ul>(.*?)</ul>',
+        caseSensitive: false,
+        dotAll: true,
+      ),
+      RegExp(
+        r'<div class="threadlist_box[^"]*"[^>]*>(.*)',
+        caseSensitive: false,
+        dotAll: true,
+      ),
+      RegExp(
+        r'<div class="threadlist[^"]*"[^>]*>(.*)',
+        caseSensitive: false,
+        dotAll: true,
+      ),
+    ]) {
+      final match = pattern.firstMatch(html);
+      if (match != null) {
+        return match.group(1) ?? html;
+      }
+    }
+    return html;
+  }
+
+  static String _extractFavoriteTitle(String block) {
+    final emMatch = RegExp(
+      r'<em[^>]*>(.*?)</em>',
+      dotAll: true,
+    ).firstMatch(block);
+    if (emMatch != null) {
+      final title = _stripHtml(emMatch.group(1) ?? '');
+      if (title.isNotEmpty) return title;
+    }
+
+    final linkMatch = RegExp(
+      r'<a href="[^"]*(?:viewthread|forumdisplay)[^"]*"[^>]*>(.*?)</a>',
+      caseSensitive: false,
+      dotAll: true,
+    ).firstMatch(block);
+    if (linkMatch != null) {
+      return _stripHtml(linkMatch.group(1) ?? '');
+    }
+    return '';
+  }
+
+  static FavoriteItem? _parseFavoriteMobileBlock(String block) {
+    final favidMatch = _favDeleteLinkRe.firstMatch(block);
+    final favid = favidMatch?.group(1) ?? '';
+
+    final forumMatch = RegExp(
+      r'forumdisplay&(?:amp;)?fid=(\d+)',
+      caseSensitive: false,
+    ).firstMatch(block);
+
+    final threadMatch = RegExp(
+      r'viewthread&(?:amp;)?tid=(\d+)',
+      caseSensitive: false,
+    ).firstMatch(block);
+
+    final title = _extractFavoriteTitle(block);
+
+    final timeMatch = RegExp(
+      r'<span class="mtime">(\d{4}-\d{1,2}-\d{1,2})</span>',
+    ).firstMatch(block);
+    final dateline = timeMatch != null
+        ? _parseDateString(timeMatch.group(1) ?? '')
+        : 0;
+
+    if (threadMatch != null &&
+        (forumMatch == null ||
+            block.indexOf('viewthread') < block.indexOf('forumdisplay'))) {
+      final tid = threadMatch.group(1) ?? '';
+      if (tid.isEmpty) return null;
+
+      String? forumName;
+      final forumNameMatch = RegExp(
+        r'forumdisplay&(?:amp;)?fid=\d+[^>]*>\s*(?:#)?(.*?)</a>',
+        caseSensitive: false,
+        dotAll: true,
+      ).firstMatch(block);
+      if (forumNameMatch != null) {
+        forumName = _stripHtml(forumNameMatch.group(1) ?? '');
+      }
+
+      final eyeMatch = RegExp(
+        r'dm-eye-fill"></i>\s*(\d[\d,]*)',
+      ).firstMatch(block);
+      final views = eyeMatch != null
+          ? int.tryParse(eyeMatch.group(1)!.replaceAll(',', ''))
+          : null;
+
+      final chatMatch = RegExp(
+        r'dm-chat-s-fill"></i>\s*(\d[\d,]*)',
+      ).firstMatch(block);
+      final replies = chatMatch != null
+          ? int.tryParse(chatMatch.group(1)!.replaceAll(',', ''))
+          : null;
+
+      return FavoriteItem(
+        favid: favid,
+        type: FavoriteType.thread,
+        id: tid,
+        title: title,
+        dateline: dateline,
+        forumName: forumName,
+        views: views,
+        replies: replies,
+      );
+    }
+
+    if (forumMatch != null) {
+      final fid = forumMatch.group(1) ?? '';
+      if (fid.isEmpty) return null;
+      final forumTitle = title.isNotEmpty ? title : '版块 #$fid';
+      return FavoriteItem(
+        favid: favid,
+        type: FavoriteType.forum,
+        id: fid,
+        title: forumTitle,
+        dateline: dateline,
+      );
+    }
+
+    return null;
+  }
+
+  static int _extractFavoriteMaxPage(String html, {required int fallback}) {
+    final spanMatch = RegExp(
+      r'title="共\s*(\d+)\s*页"',
+      caseSensitive: false,
+    ).firstMatch(html);
+    if (spanMatch != null) {
+      final pages = int.tryParse(spanMatch.group(1) ?? '');
+      if (pages != null && pages > 0) return pages;
+    }
+    return _extractMaxPage(html, fallback: fallback);
+  }
+
+  /// 添加收藏（帖子或版块）。走 `spacecp` 表单 POST，与 S1 手机版一致。
+  Future<FavoriteMutationResult> addFavorite({
+    required FavoriteType type,
+    required String id,
+  }) async {
+    final hasFormhash = await _httpClient.ensureFormhash(force: true);
+    if (!hasFormhash) {
+      return const FavoriteMutationResult(error: '无法获取表单验证串，请刷新后重试');
+    }
+
+    final typeParam = type == FavoriteType.thread ? 'thread' : 'forum';
+    final prefetchUrl = '${ApiConfig.baseUrl}/home.php'
+        '?mod=spacecp&ac=favorite&type=$typeParam&id=$id&mobile=2&inajax=1';
+
+    try {
+      final prefetch = await _httpClient.get(
+        prefetchUrl,
+        options: Options(responseType: ResponseType.plain),
+      );
+      final prefetchFormhash =
+          FormhashExtractor.fromHtml(prefetch.data?.toString() ?? '');
+      if (prefetchFormhash != null) {
+        _httpClient.updateFormhash(prefetchFormhash);
+      }
+    } catch (_) {
+      // 预取失败不阻断提交，沿用已有 formhash。
+    }
+
+    final referer = type == FavoriteType.thread
+        ? ApiConfig.favoriteThreadReferer(id)
+        : ApiConfig.favoriteForumReferer(id);
+    final url = '${ApiConfig.baseUrl}/home.php'
+        '?mod=spacecp&ac=favorite&type=$typeParam&id=$id'
+        '&spaceuid=0&mobile=2&handlekey=favoriteform_$id&inajax=1';
+
+    try {
+      final response = await _httpClient.post(
+        url,
+        data: <String, String>{
+          'favoritesubmit': 'true',
+          'referer': referer,
+          'description': '手机收藏',
+        },
+        options: Options(
+          contentType: Headers.formUrlEncodedContentType,
+          responseType: ResponseType.plain,
+        ),
+      );
+      final body = response.data?.toString() ?? '';
+      return parseFavoriteMutationResponse(body);
+    } catch (e) {
+      if (e is LoginRequiredException) {
+        return const FavoriteMutationResult(error: '请先登录');
+      }
+      return FavoriteMutationResult(error: friendlyError(e, '收藏'));
+    }
+  }
+
+  /// 取消收藏。
+  Future<FavoriteMutationResult> removeFavorite({
+    required String favid,
+  }) async {
+    final url = '${ApiConfig.baseUrl}/home.php'
+        '?mod=spacecp&ac=favorite&op=delete&favid=$favid'
+        '&mobile=2&inajax=1&handlekey=favorite';
+
+    try {
+      final response = await _httpClient.get(
+        url,
+        options: Options(responseType: ResponseType.plain),
+      );
+      final body = response.data?.toString() ?? '';
+      final result = parseFavoriteMutationResponse(body);
+      if (result.isSuccess) return result;
+
+      final hasFormhash = await _httpClient.ensureFormhash(force: true);
+      if (!hasFormhash) {
+        return result.error != null
+            ? result
+            : const FavoriteMutationResult(error: '无法获取表单验证串，请刷新后重试');
+      }
+
+      final postUrl = '$url&deletesubmit=yes';
+      final postResponse = await _httpClient.post(
+        postUrl,
+        data: <String, String>{'deletesubmit': 'yes'},
+        options: Options(
+          contentType: Headers.formUrlEncodedContentType,
+          responseType: ResponseType.plain,
+        ),
+      );
+      return parseFavoriteMutationResponse(postResponse.data?.toString() ?? '');
+    } catch (e) {
+      if (e is LoginRequiredException) {
+        return const FavoriteMutationResult(error: '请先登录');
+      }
+      return FavoriteMutationResult(error: friendlyError(e, '取消收藏'));
+    }
+  }
+
+  static FavoriteMutationResult parseFavoriteAddJson(
+    Map<String, dynamic> json,
+  ) {
+    final message = json['Message'] as Map<String, dynamic>?;
+    final messageval = message?['messageval']?.toString() ?? '';
+    final messagestr = message?['messagestr']?.toString() ?? '';
+
+    if (messageval.contains('to_login') ||
+        messageval.contains('login_before_enter_home')) {
+      return const FavoriteMutationResult(error: '请先登录');
+    }
+
+    if (messageval.contains('succeed') ||
+        messagestr.contains('成功') ||
+        messageval.contains('favorite_succeed')) {
+      final variables = json['Variables'] as Map<String, dynamic>?;
+      final favid = variables?['favid']?.toString();
+      return FavoriteMutationResult(favid: favid);
+    }
+
+    if (messagestr.isNotEmpty) {
+      return FavoriteMutationResult(error: _friendlyFavoriteError(messagestr));
+    }
+    if (messageval.isNotEmpty) {
+      return FavoriteMutationResult(error: _friendlyFavoriteError(messageval));
+    }
+    return const FavoriteMutationResult(error: '收藏失败');
+  }
+
+  static FavoriteMutationResult parseFavoriteMutationResponse(String body) {
+    if (body.contains('to_login') ||
+        body.contains('login_before_enter_home') ||
+        body.contains('id="loginform_')) {
+      return const FavoriteMutationResult(error: '请先登录');
+    }
+
+    if (body.contains('favorite_delete_succeed') ||
+        body.contains('favorite_succeed') ||
+        body.contains('删除成功') ||
+        body.contains('收藏成功') ||
+        RegExp(r"succeedhandle_favorite\('").hasMatch(body)) {
+      final favid = _extractFavoriteFavidFromResponse(body);
+      return FavoriteMutationResult(favid: favid);
+    }
+
+    final errorMatch = RegExp(
+      r"errorhandle_favorite\('([^']*)'",
+    ).firstMatch(body);
+    if (errorMatch != null) {
+      return FavoriteMutationResult(
+        error: _friendlyFavoriteError(errorMatch.group(1) ?? ''),
+      );
+    }
+
+    final alertMatch = RegExp(r"alert\('([^']*)'\)").firstMatch(body);
+    if (alertMatch != null) {
+      return FavoriteMutationResult(
+        error: _friendlyFavoriteError(alertMatch.group(1) ?? ''),
+      );
+    }
+
+    final messageText = RegExp(
+      r'id="messagetext"[^>]*>\s*<p>([^<]+)',
+    ).firstMatch(body);
+    if (messageText != null) {
+      final msg = messageText.group(1)?.trim() ?? '';
+      if (msg.contains('成功')) {
+        final favid = _extractFavoriteFavidFromResponse(body);
+        return FavoriteMutationResult(favid: favid);
+      }
+      if (msg.isNotEmpty) {
+        return FavoriteMutationResult(error: _friendlyFavoriteError(msg));
+      }
+    }
+
+    if (body.contains('favorite_cannot_favorite')) {
+      return const FavoriteMutationResult(error: '无法收藏该内容');
+    }
+    if (body.contains('favorite_duplicate')) {
+      return const FavoriteMutationResult(error: '已经收藏过了');
+    }
+
+    return const FavoriteMutationResult(error: '操作失败，请稍后重试');
+  }
+
+  static String? _extractFavoriteFavidFromResponse(String body) {
+    final patterns = [
+      RegExp(r"'favid'\s*:\s*'(\d+)'"),
+      RegExp(r'"favid"\s*:\s*"(\d+)"'),
+      RegExp(r'favid=(\d+)'),
+    ];
+    for (final pattern in patterns) {
+      final match = pattern.firstMatch(body);
+      if (match != null) return match.group(1);
+    }
+    return null;
+  }
+
+  static String _friendlyFavoriteError(String raw) {
+    final text = raw.trim();
+    if (text.isEmpty) return '操作失败，请稍后重试';
+    if (text.startsWith('mobile:')) {
+      switch (text) {
+        case 'mobile:favorite_cannot_favorite':
+          return '无法收藏该内容';
+        case 'mobile:favorite_duplicate':
+          return '已经收藏过了';
+        case 'mobile:to_login':
+        case 'mobile:login_before_enter_home':
+          return '请先登录';
+        default:
+          return text.replaceFirst('mobile:', '');
+      }
+    }
+    return text;
   }
 
   static int _extractMaxPage(String html, {required int fallback}) {

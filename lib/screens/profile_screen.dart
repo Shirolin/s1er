@@ -6,10 +6,12 @@ import '../config/api_config.dart';
 import '../theme/app_theme.dart';
 import '../utils/format_utils.dart';
 import '../providers/auth_provider.dart';
+import '../providers/favorite_list_provider.dart';
 import '../providers/reading_history_provider.dart';
 import '../models/user.dart';
 import '../widgets/app_bar_more_menu.dart';
 import '../widgets/web_avatar.dart';
+import '../widgets/s1_confirm_dialog.dart';
 import '../utils/s1_snack_bar.dart';
 
 class ProfileScreen extends ConsumerWidget {
@@ -48,28 +50,15 @@ class _ProfileBodyState extends ConsumerState<ProfileBody> {
   bool _isLoggingOut = false;
 
   Future<void> _handleLogout() async {
-    final confirmed = await showAdaptiveDialog<bool>(
-      context: context,
-      builder: (context) => AlertDialog(
-        title: const Text('确认退出'),
-        content: const Text('确定要退出登录吗？'),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.of(context).pop(false),
-            child: const Text('取消'),
-          ),
-          TextButton(
-            onPressed: () => Navigator.of(context).pop(true),
-            style: TextButton.styleFrom(
-              foregroundColor: Theme.of(context).colorScheme.error,
-            ),
-            child: const Text('退出登录'),
-          ),
-        ],
-      ),
+    final confirmed = await showS1ConfirmDialog(
+      context,
+      title: '确认退出',
+      content: '确定要退出登录吗？',
+      confirmLabel: '退出登录',
+      destructive: true,
     );
 
-    if (confirmed != true || !mounted) return;
+    if (!confirmed || !mounted) return;
 
     setState(() {
       _isLoggingOut = true;
@@ -149,6 +138,10 @@ class _ProfileBodyState extends ConsumerState<ProfileBody> {
           _InfoCard(user: user),
         ],
         const SizedBox(height: 20),
+        if (authState.isLoggedIn) ...[
+          const _FavoritesEntryCard(),
+          const SizedBox(height: 16),
+        ],
         const _SystemGroupCard(),
         const SizedBox(height: 16),
         if (authState.isLoggedIn)
@@ -493,6 +486,42 @@ abstract class _ProfileListMetrics {
   static const double iconSize = 24;
   static const double gap = 16;
   static const double vPadding = 12;
+}
+
+class _FavoritesEntryCard extends ConsumerWidget {
+  const _FavoritesEntryCard();
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final count =
+        ref.watch(favoriteListProvider(FavoriteSegment.all)).asData?.value.items.length ?? 0;
+    final colorScheme = Theme.of(context).colorScheme;
+
+    return Card(
+      elevation: 0,
+      clipBehavior: Clip.antiAlias,
+      child: _ProfileTwoLineRow(
+        icon: Icons.bookmarks_outlined,
+        title: '我的收藏',
+        subtitle: '收藏的帖子与版块',
+        trailing: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            if (count > 0) ...[
+              Badge(label: Text('$count')),
+              const SizedBox(width: 8),
+            ],
+            Icon(
+              Icons.chevron_right,
+              size: _ProfileListMetrics.iconSize,
+              color: colorScheme.onSurfaceVariant,
+            ),
+          ],
+        ),
+        onTap: () => context.push('/favorites'),
+      ),
+    );
+  }
 }
 
 class _SystemGroupCard extends ConsumerWidget {

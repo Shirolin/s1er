@@ -15,6 +15,7 @@ import 'screens/compose_screen.dart';
 import 'screens/profile_screen.dart';
 import 'screens/settings_screen.dart';
 import 'screens/reading_history_screen.dart';
+import 'screens/favorites_screen.dart';
 import 'screens/image_viewer_screen.dart';
 import 'screens/user_space_screen.dart';
 import 'models/thread_open_intent.dart';
@@ -111,6 +112,10 @@ final _router = GoRouter(
     GoRoute(
       path: '/reading-history',
       builder: (context, state) => const ReadingHistoryScreen(),
+    ),
+    GoRoute(
+      path: '/favorites',
+      builder: (context, state) => const FavoritesScreen(),
     ),
     GoRoute(
       path: '/user-space/:uid',

@@ -10,6 +10,8 @@ import '../providers/reading_history_provider.dart';
 import '../providers/settings_provider.dart';
 import '../utils/compose_draft_store.dart';
 import '../widgets/app_bar_more_menu.dart';
+import '../widgets/favorite_bookmark_button.dart';
+import '../models/favorite_item.dart';
 import '../widgets/pagination_bar.dart';
 import '../widgets/post_item.dart';
 import '../widgets/poll_card.dart';
@@ -304,6 +306,10 @@ class _ThreadDetailScreenState extends ConsumerState<ThreadDetailScreen> {
             ) ??
             const Text('Thread'),
         actions: [
+          FavoriteBookmarkButton(
+            type: FavoriteType.thread,
+            id: widget.tid,
+          ),
           AppBarMoreMenu(
             onRefresh: () =>
                 ref.read(postProvider(widget.tid).notifier).refresh(),

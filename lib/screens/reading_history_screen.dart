@@ -7,6 +7,7 @@ import '../providers/reading_history_provider.dart';
 import '../theme/app_theme.dart';
 import '../utils/format_utils.dart';
 import '../utils/thread_navigation.dart';
+import '../widgets/s1_confirm_dialog.dart';
 
 class ReadingHistoryScreen extends ConsumerWidget {
   const ReadingHistoryScreen({super.key});
@@ -40,24 +41,14 @@ class ReadingHistoryScreen extends ConsumerWidget {
   }
 
   Future<void> _confirmClearAll(BuildContext context, WidgetRef ref) async {
-    final confirmed = await showDialog<bool>(
-      context: context,
-      builder: (ctx) => AlertDialog(
-        title: const Text('清空阅读历史'),
-        content: const Text('将删除全部阅读记录，此操作不可恢复。'),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(ctx, false),
-            child: const Text('取消'),
-          ),
-          FilledButton(
-            onPressed: () => Navigator.pop(ctx, true),
-            child: const Text('清空'),
-          ),
-        ],
-      ),
+    final confirmed = await showS1ConfirmDialog(
+      context,
+      title: '清空阅读历史',
+      content: '将删除全部阅读记录，此操作不可恢复。',
+      confirmLabel: '清空',
+      destructive: true,
     );
-    if (confirmed == true) {
+    if (confirmed) {
       await ref.read(readingHistoryProvider.notifier).clearAll();
     }
   }

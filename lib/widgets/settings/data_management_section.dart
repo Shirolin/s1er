@@ -13,6 +13,7 @@ import '../../services/backup/s1_backup_codec.dart';
 import '../../services/s1_image_cache.dart';
 import '../../theme/app_theme.dart';
 import '../../utils/s1_snack_bar.dart';
+import '../s1_confirm_dialog.dart';
 import 'settings_section_header.dart';
 
 class DataManagementSection extends ConsumerStatefulWidget {
@@ -39,34 +40,14 @@ class _DataManagementSectionState extends ConsumerState<DataManagementSection> {
     required Future<void> Function() onConfirm,
     bool isDestructive = false,
   }) async {
-    final scheme = Theme.of(context).colorScheme;
-    final confirmed = await showDialog<bool>(
-      context: context,
-      builder: (ctx) => AlertDialog(
-        title: Text(title),
-        content: Text(content),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.of(ctx).pop(false),
-            child: const Text('取消'),
-          ),
-          if (isDestructive)
-            TextButton(
-              onPressed: () => Navigator.of(ctx).pop(true),
-              style: TextButton.styleFrom(
-                foregroundColor: scheme.error,
-              ),
-              child: Text(confirmLabel),
-            )
-          else
-            TextButton(
-              onPressed: () => Navigator.of(ctx).pop(true),
-              child: Text(confirmLabel),
-            ),
-        ],
-      ),
+    final confirmed = await showS1ConfirmDialog(
+      context,
+      title: title,
+      content: content,
+      confirmLabel: confirmLabel,
+      destructive: isDestructive,
     );
-    if (confirmed == true) {
+    if (confirmed) {
       await onConfirm();
     }
   }

@@ -5,6 +5,8 @@ import '../config/api_config.dart';
 import '../providers/forum_list_provider.dart';
 import '../providers/thread_list_provider.dart';
 import '../widgets/app_bar_more_menu.dart';
+import '../widgets/favorite_bookmark_button.dart';
+import '../models/favorite_item.dart';
 import '../widgets/pagination_bar.dart';
 import '../widgets/s1_error_view.dart';
 import '../widgets/s1_fab_layout.dart';
@@ -53,6 +55,10 @@ class _ForumListScreenState extends ConsumerState<ForumListScreen> {
         elevation: 0,
         title: Text(forum.isNotEmpty ? forum : '版块 #${widget.fid}'),
         actions: [
+          FavoriteBookmarkButton(
+            type: FavoriteType.forum,
+            id: widget.fid,
+          ),
           AppBarMoreMenu(
             onRefresh: () =>
                 ref.read(threadListProvider(widget.fid).notifier).refresh(),

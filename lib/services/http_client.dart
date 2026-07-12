@@ -167,6 +167,11 @@ class S1HttpClient {
     return _dio.post(url, data: data, options: options);
   }
 
+  void updateFormhash(String formhash) {
+    if (formhash.isEmpty) return;
+    _read(formhashProvider.notifier).update(formhash);
+  }
+
   /// 发帖前确保 formhash 已从 Mobile API 或回复页 HTML 中缓存。
   ///
   /// [force] 为 true 时丢弃缓存并重新拉取（回复 POST 前必须使用，避免登录等

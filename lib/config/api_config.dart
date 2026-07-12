@@ -13,6 +13,13 @@ class ApiConfig {
       '$forumPostUrl?mod=post&action=reply&fid=$fid&tid=$tid'
       '&reppost=$reppost&extra=&replysubmit=yes&mobile=2&handlekey=postform';
 
+  /// Discuz 收藏 POST 所需的 Referer（来路校验）
+  static String favoriteThreadReferer(String tid) =>
+      '$forumPostUrl?mod=viewthread&tid=$tid&extra=page%3D1&mobile=2';
+
+  static String favoriteForumReferer(String fid) =>
+      '$forumPostUrl?mod=forumdisplay&fid=$fid&mobile=2';
+
   // API module names
   static const String moduleForumIndex = 'forumindex';
   static const String moduleForumDisplay = 'forumdisplay';
@@ -21,4 +28,8 @@ class ApiConfig {
   static const String moduleSendMessage = 'sendpm';
   static const String moduleMyPm = 'mypm';
   static const String moduleProfile = 'profile';
+  static const String moduleMyFavThread = 'myfavthread';
+  static const String moduleMyFavForum = 'myfavforum';
+  static const String moduleFavThread = 'favthread';
+  static const String moduleFavForum = 'favforum';
 }

@@ -55,8 +55,12 @@ class AuthNotifier extends Notifier<AuthState> {
   void _maybeMigrateGuestHistory() {
     final uid = _authService.currentUser?.uid;
     if (uid == null || uid.isEmpty) return;
-    ref.read(readingHistoryServiceProvider).migrateGuestRecords(uid);
-    ref.read(readingHistoryProvider.notifier).refresh();
+    // readingHistoryServiceProvider 依赖 authStateProvider，须延后读取以免循环依赖。
+    Future.microtask(() {
+      if (!ref.mounted) return;
+      ref.read(readingHistoryServiceProvider).migrateGuestRecords(uid);
+      ref.read(readingHistoryProvider.notifier).refresh();
+    });
   }
 
   void setLoggedIn(String username) {

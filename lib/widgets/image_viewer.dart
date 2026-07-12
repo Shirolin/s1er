@@ -7,10 +7,13 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import '../config/resource_domains.dart';
+import '../providers/connectivity_provider.dart';
 import '../providers/settings_provider.dart';
 import '../services/http_client.dart';
 import '../services/s1_image_cache.dart';
 import '../theme/app_theme.dart';
+import '../utils/image_load_policy.dart';
+import '../utils/inline_image_decode.dart';
 import 'web_image_stub.dart'
     if (dart.library.html) 'web_image_html.dart';
 
@@ -55,6 +58,9 @@ class _ImageViewerState extends ConsumerState<ImageViewer> {
 
   bool _loading = false;
   bool _previewFailed = false;
+  bool _userRequestedLoad = false;
+  bool _deferredLoad = false;
+  bool _networkLoadAllowed = false;
   Uint8List? _bytes;
   ImageProvider? _imageProvider;
   late ResourceType _resourceType;
@@ -66,6 +72,10 @@ class _ImageViewerState extends ConsumerState<ImageViewer> {
   String get _fullUrl => widget.fullImageUrl ?? widget.imageUrl;
 
   bool get _hasDistinctFull => _previewUrl != _fullUrl;
+
+  bool get _hasDisplayableImage =>
+      _imageProvider != null ||
+      (_resourceType == ResourceType.publicAsset && _networkLoadAllowed);
 
   @override
   void initState() {
@@ -83,6 +93,9 @@ class _ImageViewerState extends ConsumerState<ImageViewer> {
         oldWidget.fullImageUrl != widget.fullImageUrl) {
       _resourceType = _resolveType(_previewUrl);
       _previewFailed = false;
+      _userRequestedLoad = false;
+      _deferredLoad = false;
+      _networkLoadAllowed = false;
       _displayUrl = _previewUrl;
       _bytes = null;
       _imageProvider = null;
@@ -97,6 +110,18 @@ class _ImageViewerState extends ConsumerState<ImageViewer> {
 
   bool _initDone = false;
 
+  bool _shouldAutoLoad() {
+    if (widget.isEmoticon) return true;
+    final settings = ref.read(settingsProvider);
+    final wifiConnected = ref.read(wifiConnectedProvider).value ?? true;
+    return shouldAutoLoadInlineImages(
+      showImages: settings.showImages,
+      policy: settings.imageLoadPolicy,
+      wifiConnected: wifiConnected,
+      userRequested: _userRequestedLoad,
+    );
+  }
+
   void _load() {
     if (!widget.isEmoticon && !ref.read(settingsProvider).showImages) {
       return;
@@ -110,17 +135,66 @@ class _ImageViewerState extends ConsumerState<ImageViewer> {
       _bytes = cached;
       _imageProvider = _providerCache[url];
       _loading = false;
+      _deferredLoad = false;
+      _networkLoadAllowed = true;
       if (_initDone) setState(() {});
       return;
     }
 
-    if (_resourceType == ResourceType.publicAsset) {
-      _loading = false;
-      if (kIsWeb) _detectAspectRatio(url);
+    _loadFromDiskOrNetwork(url);
+  }
+
+  Future<void> _loadFromDiskOrNetwork(String url) async {
+    try {
+      final disk = await S1ImageCache.getBytes(url);
+      if (!mounted) return;
+      if (disk != null) {
+        _putInMemoryCache(url, disk);
+        setState(() {
+          _bytes = disk;
+          _imageProvider = _providerCache[url];
+          _loading = false;
+          _deferredLoad = false;
+          _networkLoadAllowed = true;
+        });
+        return;
+      }
+    } catch (_) {
+      // Disk cache miss; continue to policy / network.
+    }
+
+    if (!mounted) return;
+    if (!_shouldAutoLoad()) {
+      setState(() {
+        _loading = false;
+        _deferredLoad = true;
+        _networkLoadAllowed = false;
+        _imageProvider = null;
+      });
       return;
     }
 
-    _loadAuthOrProxied(url);
+    _deferredLoad = false;
+    _networkLoadAllowed = true;
+    if (_resourceType == ResourceType.publicAsset) {
+      setState(() {
+        _loading = false;
+      });
+      if (kIsWeb) {
+        await _detectAspectRatio(url);
+      }
+      return;
+    }
+
+    await _loadAuthOrProxied(url);
+  }
+
+  void _requestManualLoad() {
+    setState(() {
+      _userRequestedLoad = true;
+      _deferredLoad = false;
+    });
+    _load();
   }
 
   void _putInMemoryCache(String url, Uint8List data) {
@@ -152,21 +226,10 @@ class _ImageViewerState extends ConsumerState<ImageViewer> {
     if (!mounted) return;
     setState(() {
       _loading = true;
+      _deferredLoad = false;
     });
 
     try {
-      final disk = await S1ImageCache.getBytes(url);
-      if (!mounted) return;
-      if (disk != null) {
-        _putInMemoryCache(url, disk);
-        setState(() {
-          _bytes = disk;
-          _imageProvider = _providerCache[url];
-          _loading = false;
-        });
-        return;
-      }
-
       final httpClient = ref.read(httpClientProvider);
       final response = await httpClient.get(
         url,
@@ -220,6 +283,8 @@ class _ImageViewerState extends ConsumerState<ImageViewer> {
       _bytes = null;
       _imageProvider = null;
       _loading = false;
+      _deferredLoad = false;
+      _networkLoadAllowed = true;
     });
     _load();
   }
@@ -238,10 +303,35 @@ class _ImageViewerState extends ConsumerState<ImageViewer> {
     }
   }
 
+  void _listenForPolicyChanges() {
+    ref.listen(
+      settingsProvider.select(
+        (s) => (s.showImages, s.imageLoadPolicy),
+      ),
+      (previous, next) {
+        if (widget.isEmoticon) return;
+        if (!_deferredLoad && _hasDisplayableImage) return;
+        if (_shouldAutoLoad()) {
+          _load();
+        }
+      },
+    );
+
+    ref.listen(wifiConnectedProvider, (previous, next) {
+      if (widget.isEmoticon) return;
+      if (!_deferredLoad && _hasDisplayableImage) return;
+      if (_shouldAutoLoad()) {
+        _load();
+      }
+    });
+  }
+
   @override
   Widget build(BuildContext context) {
     final showImages = widget.isEmoticon ||
         ref.watch(settingsProvider.select((s) => s.showImages));
+
+    _listenForPolicyChanges();
 
     ref.listen<bool>(
       settingsProvider.select((s) => s.showImages),
@@ -256,48 +346,19 @@ class _ImageViewerState extends ConsumerState<ImageViewer> {
 
     if (widget.isEmoticon) return _buildEmoticon(context);
 
-    if (_resourceType == ResourceType.publicAsset && kIsWeb) {
-      final scheme = Theme.of(context).colorScheme;
-      Widget child = Semantics(
-        button: true,
-        label: '查看大图',
-        child: LayoutBuilder(
-          builder: (context, constraints) {
-            final w = constraints.hasBoundedWidth ? constraints.maxWidth : 300.0;
-            final h = w / _webAspectRatio;
-            return Stack(
-              children: [
-                buildWebImage(_displayUrl, width: w, height: h),
-                Positioned.fill(
-                  child: GestureDetector(
-                    onTap: () => _showFullScreen(context),
-                    behavior: HitTestBehavior.translucent,
-                  ),
-                ),
-              ],
-            );
-          },
-        ),
+    if (_deferredLoad) {
+      return _buildTapToLoadPlaceholder();
+    }
+
+    if (_loading) {
+      return const SizedBox(
+        height: 96,
+        child: Center(child: CircularProgressIndicator(strokeWidth: 2)),
       );
+    }
 
-      if (widget.showBorder) {
-        child = ClipRRect(
-          borderRadius: S1Shape.small,
-          child: Container(
-            decoration: BoxDecoration(
-              border: Border.all(color: scheme.outlineVariant),
-              borderRadius: S1Shape.small,
-            ),
-            child: child,
-          ),
-        );
-      }
-
-      if (widget.margin != null) {
-        child = Padding(padding: widget.margin!, child: child);
-      }
-
-      return child;
+    if (_resourceType == ResourceType.publicAsset && kIsWeb) {
+      return _buildWebPublicImage(context);
     }
 
     if (_imageProvider != null) {
@@ -308,55 +369,104 @@ class _ImageViewerState extends ConsumerState<ImageViewer> {
       return _buildImage(_publicNetworkProvider(_displayUrl));
     }
 
-    if (_loading) {
-      return const SizedBox(
-        height: 96,
-        child: Center(child: CircularProgressIndicator(strokeWidth: 2)),
+    return _buildError();
+  }
+
+  Widget _buildWebPublicImage(BuildContext context) {
+    final scheme = Theme.of(context).colorScheme;
+    Widget child = Semantics(
+      button: true,
+      label: '查看大图',
+      child: LayoutBuilder(
+        builder: (context, constraints) {
+          final w = constraints.hasBoundedWidth ? constraints.maxWidth : 300.0;
+          final h = w / _webAspectRatio;
+          return Stack(
+            children: [
+              buildWebImage(_displayUrl, width: w, height: h),
+              Positioned.fill(
+                child: GestureDetector(
+                  onTap: () => _showFullScreen(context),
+                  behavior: HitTestBehavior.translucent,
+                ),
+              ),
+            ],
+          );
+        },
+      ),
+    );
+
+    if (widget.showBorder) {
+      child = ClipRRect(
+        borderRadius: S1Shape.small,
+        child: Container(
+          decoration: BoxDecoration(
+            border: Border.all(color: scheme.outlineVariant),
+            borderRadius: S1Shape.small,
+          ),
+          child: child,
+        ),
       );
     }
 
-    return _buildError();
+    if (widget.margin != null) {
+      child = Padding(padding: widget.margin!, child: child);
+    }
+
+    return child;
   }
 
   Widget _buildImage(ImageProvider provider) {
     final scheme = Theme.of(context).colorScheme;
+    final dpr = MediaQuery.devicePixelRatioOf(context);
 
     Widget child = Semantics(
       button: true,
       label: '查看大图',
       child: GestureDetector(
         onTap: () => _showFullScreen(context),
-        child: Image(
-          key: ValueKey(_displayUrl),
-          image: provider,
-          fit: BoxFit.contain,
-          gaplessPlayback: true,
-          frameBuilder: (context, child, frame, wasSynchronouslyLoaded) {
-            if (frame != null) {
-              S1ImageCache.evictIfNeeded();
-            }
-            if (wasSynchronouslyLoaded) return child;
-            return Stack(
-              alignment: Alignment.center,
-              children: [
-                if (frame == null)
-                  const SizedBox(
-                    height: 96,
-                    child: Center(child: CircularProgressIndicator(strokeWidth: 2)),
-                  ),
-                AnimatedOpacity(
-                  opacity: frame != null ? 1.0 : 0.0,
-                  duration: const Duration(milliseconds: 150),
-                  child: child,
-                ),
-              ],
+        child: LayoutBuilder(
+          builder: (context, constraints) {
+            final layoutWidth =
+                constraints.hasBoundedWidth ? constraints.maxWidth : 300.0;
+            final decodeWidth = inlineDecodeWidthPx(layoutWidth, dpr);
+            final imageProvider = inlineImageProvider(provider, decodeWidth);
+
+            return Image(
+              key: ValueKey('$_displayUrl-$decodeWidth'),
+              image: imageProvider,
+              fit: BoxFit.contain,
+              gaplessPlayback: true,
+              frameBuilder: (context, child, frame, wasSynchronouslyLoaded) {
+                if (frame != null) {
+                  S1ImageCache.evictIfNeeded();
+                }
+                if (wasSynchronouslyLoaded) return child;
+                return Stack(
+                  alignment: Alignment.center,
+                  children: [
+                    if (frame == null)
+                      const SizedBox(
+                        height: 96,
+                        child: Center(
+                          child: CircularProgressIndicator(strokeWidth: 2),
+                        ),
+                      ),
+                    AnimatedOpacity(
+                      opacity: frame != null ? 1.0 : 0.0,
+                      duration: const Duration(milliseconds: 150),
+                      child: child,
+                    ),
+                  ],
+                );
+              },
+              errorBuilder: (_, __, ___) {
+                WidgetsBinding.instance.addPostFrameCallback((_) {
+                  if (mounted) _handlePublicImageError();
+                });
+                return _buildError();
+              },
             );
-          },
-          errorBuilder: (_, __, ___) {
-            WidgetsBinding.instance.addPostFrameCallback((_) {
-              if (mounted) _handlePublicImageError();
-            });
-            return _buildError();
           },
         ),
       ),
@@ -400,12 +510,60 @@ class _ImageViewerState extends ConsumerState<ImageViewer> {
     );
   }
 
+  Widget _buildTapToLoadPlaceholder() {
+    final scheme = Theme.of(context).colorScheme;
+    final textTheme = Theme.of(context).textTheme;
+
+    Widget child = Semantics(
+      button: true,
+      label: '点击加载图片',
+      child: GestureDetector(
+        onTap: _requestManualLoad,
+        child: Container(
+          height: 96,
+          alignment: Alignment.center,
+          decoration: BoxDecoration(
+            color: scheme.surfaceContainerHighest,
+            borderRadius: S1Shape.small,
+          ),
+          child: Row(
+            mainAxisAlignment: MainAxisAlignment.center,
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Icon(
+                Icons.image_outlined,
+                size: 20,
+                color: scheme.onSurfaceVariant,
+              ),
+              const SizedBox(width: 8),
+              Text(
+                '点击加载图片',
+                style: textTheme.bodySmall?.copyWith(
+                  color: scheme.onSurfaceVariant,
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+
+    if (widget.margin != null) {
+      child = Padding(padding: widget.margin!, child: child);
+    }
+
+    return child;
+  }
+
   Widget _buildError() {
     return Semantics(
       button: true,
       label: '重试加载图片',
       child: GestureDetector(
-        onTap: () => _loadAuthOrProxied(_displayUrl),
+        onTap: () {
+          _userRequestedLoad = true;
+          _loadAuthOrProxied(_displayUrl);
+        },
         child: Container(
           height: 80,
           decoration: BoxDecoration(

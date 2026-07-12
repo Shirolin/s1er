@@ -57,6 +57,7 @@ class S1BackupService {
     appSettings.putIfAbsent('themeMode', () => 'system');
     appSettings.putIfAbsent('themeColor', () => 'purple');
     appSettings.putIfAbsent('showImages', () => true);
+    appSettings.putIfAbsent('imageLoadPolicy', () => 'always');
     appSettings.putIfAbsent('recordReadingHistory', () => true);
     appSettings.putIfAbsent('fontSize', () => 14);
     appSettings.putIfAbsent('useDynamicColor', () => false);

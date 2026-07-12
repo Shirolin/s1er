@@ -70,10 +70,12 @@ void main() {
         'themeMode': 'dark',
         'collapsedForums': {'4', '6'},
         'fontSize': 16,
+        'imageLoadPolicy': 'wifiOnly',
       });
       expect(backup['theme_mode'], 'dark');
       expect(backup['collapsed_forums'], isA<List>());
       expect(backup['font_size'], 16);
+      expect(backup['image_load_policy'], 'wifi_only');
 
       final app = S1BackupSettingsMapper.toApp({
         ...backup,
@@ -81,6 +83,7 @@ void main() {
       });
       expect(app['themeMode'], 'dark');
       expect(app['fontSize'], 16);
+      expect(app['imageLoadPolicy'], 'wifiOnly');
       expect(app.containsKey('unknown_field'), isFalse);
     });
   });

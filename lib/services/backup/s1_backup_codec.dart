@@ -3,6 +3,8 @@ import 'dart:typed_data';
 
 import 'package:archive/archive.dart';
 
+import '../../models/image_load_policy.dart';
+
 /// Highest `format_version` this client can import.
 const int s1BackupFormatVersion = 1;
 
@@ -141,6 +143,7 @@ class S1BackupSettingsMapper {
     'themeMode': 'theme_mode',
     'themeColor': 'theme_color',
     'showImages': 'show_images',
+    'imageLoadPolicy': 'image_load_policy',
     'recordReadingHistory': 'record_reading_history',
     'fontSize': 'font_size',
     'useDynamicColor': 'use_dynamic_color',
@@ -156,6 +159,8 @@ class S1BackupSettingsMapper {
       if (value == null) continue;
       if (value is Set) {
         out[entry.value] = value.toList();
+      } else if (entry.key == 'imageLoadPolicy' && value is String) {
+        out[entry.value] = ImageLoadPolicy.fromStored(value).backupKey;
       } else {
         out[entry.value] = value;
       }
@@ -174,6 +179,8 @@ class S1BackupSettingsMapper {
       final value = entry.value;
       if (appKey == 'collapsedForums' && value is List) {
         out[appKey] = value.map((e) => e.toString()).toList();
+      } else if (appKey == 'imageLoadPolicy' && value is String) {
+        out[appKey] = ImageLoadPolicy.fromBackup(value).storageKey;
       } else {
         out[appKey] = value;
       }

@@ -1,5 +1,6 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../models/image_load_policy.dart';
 import '../services/app_local_data.dart';
 import '../services/settings_store.dart';
 import '../theme/app_theme.dart';
@@ -9,6 +10,7 @@ class AppSettings {
     this.themeMode = 'system',
     this.themeColor = 'purple',
     this.showImages = true,
+    this.imageLoadPolicy = ImageLoadPolicy.always,
     this.recordReadingHistory = true,
     this.fontSize = S1Typography.defaultBodySize,
     this.useDynamicColor = false,
@@ -19,6 +21,7 @@ class AppSettings {
   final String themeMode;
   final String themeColor;
   final bool showImages;
+  final ImageLoadPolicy imageLoadPolicy;
   final bool recordReadingHistory;
   final int fontSize;
   final bool useDynamicColor;
@@ -31,6 +34,7 @@ class AppSettings {
     String? themeMode,
     String? themeColor,
     bool? showImages,
+    ImageLoadPolicy? imageLoadPolicy,
     bool? recordReadingHistory,
     int? fontSize,
     bool? useDynamicColor,
@@ -41,6 +45,7 @@ class AppSettings {
       themeMode: themeMode ?? this.themeMode,
       themeColor: themeColor ?? this.themeColor,
       showImages: showImages ?? this.showImages,
+      imageLoadPolicy: imageLoadPolicy ?? this.imageLoadPolicy,
       recordReadingHistory:
           recordReadingHistory ?? this.recordReadingHistory,
       fontSize: fontSize ?? this.fontSize,
@@ -101,6 +106,9 @@ class SettingsNotifier extends Notifier<AppSettings> {
           'purple',
       showImages:
           settingsStore.get<bool>('showImages', defaultValue: true) ?? true,
+      imageLoadPolicy: ImageLoadPolicy.fromStored(
+        settingsStore.get<String>('imageLoadPolicy'),
+      ),
       recordReadingHistory: settingsStore.get<bool>(
             'recordReadingHistory',
             defaultValue: true,
@@ -143,6 +151,11 @@ class SettingsNotifier extends Notifier<AppSettings> {
     _persist('showImages', value);
   }
 
+  void setImageLoadPolicy(ImageLoadPolicy value) {
+    state = state.copyWith(imageLoadPolicy: value);
+    _persist('imageLoadPolicy', value.storageKey);
+  }
+
   void setRecordReadingHistory(bool value) {
     state = state.copyWith(recordReadingHistory: value);
     _persist('recordReadingHistory', value);
@@ -180,6 +193,7 @@ class SettingsNotifier extends Notifier<AppSettings> {
       themeMode: defaults.themeMode,
       themeColor: defaults.themeColor,
       showImages: defaults.showImages,
+      imageLoadPolicy: defaults.imageLoadPolicy,
       recordReadingHistory: defaults.recordReadingHistory,
       fontSize: defaults.fontSize,
       useDynamicColor: defaults.useDynamicColor,
@@ -188,6 +202,7 @@ class SettingsNotifier extends Notifier<AppSettings> {
     _persist('themeMode', defaults.themeMode);
     _persist('themeColor', defaults.themeColor);
     _persist('showImages', defaults.showImages);
+    _persist('imageLoadPolicy', defaults.imageLoadPolicy.storageKey);
     _persist('recordReadingHistory', defaults.recordReadingHistory);
     _persist('fontSize', defaults.fontSize);
     _persist('useDynamicColor', defaults.useDynamicColor);

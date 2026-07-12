@@ -17,6 +17,10 @@ class S1Constants {
   /// 图片磁盘缓存总字节上限（与 [S1ImageCache.maxNrOfCacheObjects] 并存）。
   static const int maxImageCacheBytes = 100 * 1024 * 1024;
 
+  /// Inline 图片解码宽度 clamp（物理像素）。
+  static const int inlineImageDecodeMinPx = 200;
+  static const int inlineImageDecodeMaxPx = 1600;
+
   /// 识别表情包路径的特征
   static bool isEmoticon(String url) {
     final lowerUrl = url.toLowerCase();

@@ -88,6 +88,7 @@ v1 **不使用** JSONL；列表一律为 JSON 数组。
 | `theme_mode` | string | `system` / `light` / `dark` |
 | `theme_color` | string | 种子色名 |
 | `show_images` | bool | |
+| `image_load_policy` | string | `always` / `wifi_only` / `manual` |
 | `record_reading_history` | bool | |
 | `font_size` | int | |
 | `use_dynamic_color` | bool | |

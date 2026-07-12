@@ -1,5 +1,6 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:s1_app/models/image_load_policy.dart';
 import 'package:s1_app/providers/settings_provider.dart';
 import 'package:s1_app/services/settings_store.dart';
 import 'package:s1_app/theme/app_theme.dart';
@@ -47,6 +48,7 @@ void main() {
     expect(state.themeMode, 'system');
     expect(state.themeColor, 'purple');
     expect(state.showImages, isTrue);
+    expect(state.imageLoadPolicy, ImageLoadPolicy.always);
     expect(state.recordReadingHistory, isTrue);
     expect(state.fontSize, S1Typography.defaultBodySize);
     expect(state.useDynamicColor, isFalse);
@@ -68,5 +70,25 @@ void main() {
     expect(container.read(settingsProvider).recordReadingHistory, isFalse);
     await Future<void>.delayed(const Duration(milliseconds: 50));
     expect(store.get<bool>('recordReadingHistory'), isFalse);
+  });
+
+  test('setImageLoadPolicy persists to settings store', () async {
+    final container = ProviderContainer(
+      overrides: [
+        settingsProvider.overrideWith(
+          () => SettingsNotifier(store: store, initial: const AppSettings()),
+        ),
+      ],
+    );
+    addTearDown(container.dispose);
+
+    container
+        .read(settingsProvider.notifier)
+        .setImageLoadPolicy(ImageLoadPolicy.manual);
+
+    expect(container.read(settingsProvider).imageLoadPolicy,
+        ImageLoadPolicy.manual,);
+    await Future<void>.delayed(const Duration(milliseconds: 50));
+    expect(store.get<String>('imageLoadPolicy'), 'manual');
   });
 }

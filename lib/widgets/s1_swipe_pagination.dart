@@ -59,6 +59,10 @@ class S1SwipePaginationState extends State<S1SwipePagination> {
     super.initState();
     _pageController = PageController(initialPage: _centerSlot);
     _scrollController = _createScrollController();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) return;
+      _notifyScrollMetrics();
+    });
   }
 
   @override
@@ -109,7 +113,11 @@ class S1SwipePaginationState extends State<S1SwipePagination> {
   void _notifyScrollMetrics() {
     if (!_scrollController.hasClients) {
       widget.onScrollMetricsChanged?.call(
-        const S1ScrollMetrics(offset: 0, viewportDimension: 0),
+        const S1ScrollMetrics(
+          offset: 0,
+          viewportDimension: 0,
+          maxScrollExtent: 0,
+        ),
       );
       return;
     }
@@ -118,6 +126,7 @@ class S1SwipePaginationState extends State<S1SwipePagination> {
       S1ScrollMetrics(
         offset: position.pixels,
         viewportDimension: position.viewportDimension,
+        maxScrollExtent: position.maxScrollExtent,
       ),
     );
   }
@@ -129,6 +138,16 @@ class S1SwipePaginationState extends State<S1SwipePagination> {
     if (!_scrollController.hasClients) return;
     await _scrollController.animateTo(
       0,
+      duration: const Duration(milliseconds: 300),
+      curve: Curves.easeOutCubic,
+    );
+  }
+
+  /// 将当前页滚动到底部（供「下一楼」双击等外部调用）。
+  Future<void> scrollToBottom() async {
+    if (!_scrollController.hasClients) return;
+    await _scrollController.animateTo(
+      _scrollController.position.maxScrollExtent,
       duration: const Duration(milliseconds: 300),
       curve: Curves.easeOutCubic,
     );

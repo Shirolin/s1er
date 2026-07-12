@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/rendering.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import '../config/api_config.dart';
@@ -48,15 +49,18 @@ class ThreadDetailScreen extends ConsumerStatefulWidget {
 
 class _ThreadDetailScreenState extends ConsumerState<ThreadDetailScreen> {
   final _swipeKey = GlobalKey<S1SwipePaginationState>();
-  final _targetKey = GlobalKey();
   String? _scrollOncePid;
   bool _showScrollToTop = false;
+  bool _showScrollDown = false;
   bool _hasRecordedInitialVisit = false;
   bool _pendingInitialNavigation = false;
   bool _b3CorrectionDone = false;
   String? _highlightPid;
   /// 用户手动翻页后为 true，此时不再对 targetPid / highlight 做 ensureVisible。
   bool _manualPageChange = false;
+
+  /// 当前页各楼 PostItem 的 key（不含 PollCard），翻页时重建。
+  List<GlobalKey> _postKeys = [];
 
   /// 记录阅读进度：写库 + 刷新历史列表（使列表卡片/历史页/资料计数实时更新）。
   /// readCount 只在本次进入详情页首帧 +1（isNewVisit 由 _hasRecordedInitialVisit 守卫）。
@@ -119,12 +123,19 @@ class _ThreadDetailScreenState extends ConsumerState<ThreadDetailScreen> {
   }
 
   void _onScrollMetricsChanged(S1ScrollMetrics metrics) {
-    final show = S1FabLayout.shouldShowScrollToTop(
+    final showTop = S1FabLayout.shouldShowScrollToTop(
       metrics: metrics,
       currentlyShowing: _showScrollToTop,
     );
-    if (show != _showScrollToTop) {
-      setState(() => _showScrollToTop = show);
+    final showDown = S1FabLayout.shouldShowScrollDown(
+      metrics: metrics,
+      currentlyShowing: _showScrollDown,
+    );
+    if (showTop != _showScrollToTop || showDown != _showScrollDown) {
+      setState(() {
+        _showScrollToTop = showTop;
+        _showScrollDown = showDown;
+      });
     }
   }
 
@@ -132,10 +143,83 @@ class _ThreadDetailScreenState extends ConsumerState<ThreadDetailScreen> {
     _swipeKey.currentState?.scrollToTop();
   }
 
+  void _scrollToBottom() {
+    _swipeKey.currentState?.scrollToBottom();
+  }
+
+  /// 保证 [_postKeys] 长度与当前页楼层数一致。
+  void _ensurePostKeys(int count) {
+    if (_postKeys.length == count) return;
+    _postKeys = List.generate(count, (_) => GlobalKey());
+  }
+
+  /// 单击「下一楼」：滚动到当前视口下一楼；已是末楼则滚到页底。
+  void _scrollToNextFloor() {
+    if (_postKeys.isEmpty) {
+      _scrollToBottom();
+      return;
+    }
+
+    BuildContext? anchorContext;
+    for (final key in _postKeys) {
+      if (key.currentContext != null) {
+        anchorContext = key.currentContext;
+        break;
+      }
+    }
+    if (anchorContext == null) {
+      _scrollToBottom();
+      return;
+    }
+
+    final scrollable = Scrollable.maybeOf(anchorContext);
+    if (scrollable == null) {
+      _scrollToBottom();
+      return;
+    }
+    final scrollOffset = scrollable.position.pixels;
+    const currentFloorSlop = 48.0;
+
+    var currentIndex = -1;
+    for (var i = 0; i < _postKeys.length; i++) {
+      final ctx = _postKeys[i].currentContext;
+      if (ctx == null) continue;
+      final renderObject = ctx.findRenderObject();
+      if (renderObject == null) continue;
+      final viewport = RenderAbstractViewport.maybeOf(renderObject);
+      if (viewport == null) continue;
+      final itemTop = viewport.getOffsetToReveal(renderObject, 0).offset;
+      if (itemTop <= scrollOffset + currentFloorSlop) {
+        currentIndex = i;
+      }
+    }
+
+    final nextIndex = currentIndex + 1;
+    if (nextIndex >= _postKeys.length) {
+      _scrollToBottom();
+      return;
+    }
+
+    final nextContext = _postKeys[nextIndex].currentContext;
+    if (nextContext == null) {
+      _scrollToBottom();
+      return;
+    }
+
+    Scrollable.ensureVisible(
+      nextContext,
+      alignment: 0.08,
+      duration: const Duration(milliseconds: 300),
+      curve: Curves.easeOutCubic,
+    );
+  }
+
   Future<void> _goToPage(int page) async {
     setState(() {
       _manualPageChange = true;
       _showScrollToTop = false;
+      _showScrollDown = false;
+      _postKeys = [];
     });
     await ref.read(postProvider(widget.tid).notifier).goToPage(page);
   }
@@ -232,13 +316,15 @@ class _ThreadDetailScreenState extends ConsumerState<ThreadDetailScreen> {
     final highlightPid = widget.targetPid ?? _highlightPid;
     final isTarget = highlightPid != null && post.pid == highlightPid;
 
+    final postKey = postIndex < _postKeys.length ? _postKeys[postIndex] : null;
+
     if (isTarget &&
         !_manualPageChange &&
         _scrollOncePid != post.pid) {
       _scrollOncePid = post.pid;
       WidgetsBinding.instance.addPostFrameCallback((_) {
         if (!mounted) return;
-        final ctx = _targetKey.currentContext;
+        final ctx = postKey?.currentContext;
         if (ctx != null) {
           Scrollable.ensureVisible(
             ctx,
@@ -252,7 +338,7 @@ class _ThreadDetailScreenState extends ConsumerState<ThreadDetailScreen> {
     final floorOffset = (state.currentPage - 1) * state.perPage;
     final displayFloor = floorOffset + postIndex + 1;
     return PostItem(
-      key: isTarget ? _targetKey : null,
+      key: postKey,
       post: post,
       displayFloor: displayFloor,
       tid: widget.tid,
@@ -366,8 +452,10 @@ class _ThreadDetailScreenState extends ConsumerState<ThreadDetailScreen> {
                 onLogin: () => context.push('/login'),
               ),
               data: (state) {
+                _ensurePostKeys(state.posts.length);
                 final fabPadding = S1FabLayout.contentBottomPadding(
-                  showSecondary: _showScrollToTop,
+                  showScrollNavTop: _showScrollToTop,
+                  showScrollNavDown: _showScrollDown,
                   showPrimary: isLoggedIn && state.allowReply,
                 );
                 final scheme = Theme.of(context).colorScheme;
@@ -427,13 +515,12 @@ class _ThreadDetailScreenState extends ConsumerState<ThreadDetailScreen> {
                     Expanded(
                       child: S1ContentFabOverlay(
                         fab: S1FabStack(
-                          secondary: S1FabItem(
-                            heroTag: 'scrollToTopDetail',
-                            icon: Icons.arrow_upward,
-                            tooltip: '返回顶部',
-                            onPressed: _scrollToTop,
-                            visible: _showScrollToTop,
-                            small: true,
+                          scrollNav: S1ScrollNavConfig(
+                            showScrollToTop: _showScrollToTop,
+                            showScrollDown: _showScrollDown,
+                            onScrollToTop: _scrollToTop,
+                            onScrollToNextFloor: _scrollToNextFloor,
+                            onScrollToBottom: _scrollToBottom,
                           ),
                           primary: isLoggedIn && state.allowReply
                               ? S1FabItem(

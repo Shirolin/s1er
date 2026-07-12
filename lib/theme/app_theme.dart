@@ -210,29 +210,28 @@ class AppTheme {
       ),
       menuTheme: MenuThemeData(
         style: MenuStyle(
-          backgroundColor: WidgetStatePropertyAll(colorScheme.surfaceContainerHigh),
+          backgroundColor: WidgetStatePropertyAll(colorScheme.surfaceContainer),
           elevation: const WidgetStatePropertyAll(3),
           shadowColor: WidgetStatePropertyAll(colorScheme.shadow),
-          surfaceTintColor: WidgetStatePropertyAll(colorScheme.surfaceTint),
-          shape: const WidgetStatePropertyAll(S1Shape.menuShape),
-          padding: const WidgetStatePropertyAll(EdgeInsets.symmetric(vertical: 4)),
+          surfaceTintColor: const WidgetStatePropertyAll(Colors.transparent),
+          shape: WidgetStatePropertyAll(
+            RoundedRectangleBorder(
+              borderRadius: S1Shape.small,
+              side: BorderSide(color: colorScheme.outlineVariant),
+            ),
+          ),
+          padding: const WidgetStatePropertyAll(EdgeInsets.symmetric(vertical: 8)),
         ),
       ),
       menuButtonTheme: const MenuButtonThemeData(
         style: ButtonStyle(
-          minimumSize: WidgetStatePropertyAll(Size(112, 48)),
+          minimumSize: WidgetStatePropertyAll(Size(168, 48)),
           maximumSize: WidgetStatePropertyAll(Size(280, double.infinity)),
           padding: WidgetStatePropertyAll(EdgeInsetsDirectional.fromSTEB(12, 0, 16, 0)),
           alignment: AlignmentDirectional.centerStart,
           iconSize: WidgetStatePropertyAll(24),
           tapTargetSize: MaterialTapTargetSize.shrinkWrap,
         ),
-      ),
-      popupMenuTheme: PopupMenuThemeData(
-        color: colorScheme.surfaceContainerHigh,
-        elevation: 3,
-        shape: S1Shape.menuShape,
-        surfaceTintColor: colorScheme.surfaceTint,
       ),
       snackBarTheme: SnackBarThemeData(
         behavior: SnackBarBehavior.floating,

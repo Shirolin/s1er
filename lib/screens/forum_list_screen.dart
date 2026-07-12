@@ -84,7 +84,7 @@ class _ForumListScreenState extends ConsumerState<ForumListScreen> {
         ),
         data: (state) {
           final fabPadding = S1FabLayout.contentBottomPadding(
-            showSecondary: _showScrollToTop,
+            showScrollNavTop: _showScrollToTop,
           );
 
           return Column(
@@ -92,13 +92,11 @@ class _ForumListScreenState extends ConsumerState<ForumListScreen> {
             Expanded(
               child: S1ContentFabOverlay(
                 fab: S1FabStack(
-                  secondary: S1FabItem(
-                    heroTag: 'scrollToTopForum',
-                    icon: Icons.arrow_upward,
-                    tooltip: '返回顶部',
-                    onPressed: () => _swipeKey.currentState?.scrollToTop(),
-                    visible: _showScrollToTop,
-                    small: true,
+                  scrollNav: S1ScrollNavConfig(
+                    showScrollToTop: _showScrollToTop,
+                    showScrollDown: false,
+                    onScrollToTop: () =>
+                        _swipeKey.currentState?.scrollToTop(),
                   ),
                 ),
                 child: S1SwipePagination(

@@ -3,6 +3,7 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:s1_app/theme/app_theme.dart';
+import 'package:s1_app/widgets/s1_fab_layout.dart';
 import 'package:s1_app/widgets/s1_swipe_pagination.dart';
 
 void main() {
@@ -34,6 +35,8 @@ void main() {
     required Future<void> Function(int page) onPageChanged,
     bool enabled = true,
     Key? key,
+    ValueChanged<S1ScrollMetrics>? onScrollMetricsChanged,
+    double contentHeight = 800,
   }) {
     return MaterialApp(
       theme: AppTheme.lightTheme('purple'),
@@ -44,11 +47,12 @@ void main() {
           totalPages: totalPages,
           enabled: enabled,
           onPageChanged: onPageChanged,
+          onScrollMetricsChanged: onScrollMetricsChanged,
           pageBuilder: (context, scrollController) => ListView(
             controller: scrollController,
             children: [
               SizedBox(
-                height: 800,
+                height: contentHeight,
                 child: Center(child: Text('Page $currentPage')),
               ),
             ],
@@ -311,5 +315,60 @@ void main() {
     }
 
     expect(controller.offset, 0);
+  });
+
+  testWidgets('S1SwipePagination exposes scrollToBottom', (tester) async {
+    final key = GlobalKey<S1SwipePaginationState>();
+
+    await tester.pumpWidget(
+      buildHarness(
+        key: key,
+        currentPage: 2,
+        totalPages: 5,
+        onPageChanged: (_) async {},
+      ),
+    );
+    await tester.pump();
+
+    final state = key.currentState!;
+    final controller = tester
+        .widget<ListView>(find.byType(ListView))
+        .controller!;
+    expect(controller.offset, 0);
+
+    unawaited(state.scrollToBottom());
+    for (var i = 0; i < 8; i++) {
+      await tester.pump(const Duration(milliseconds: 50));
+    }
+
+    expect(controller.offset, controller.position.maxScrollExtent);
+  });
+
+  testWidgets('S1SwipePagination reports maxScrollExtent in metrics',
+      (tester) async {
+    S1ScrollMetrics? lastMetrics;
+
+    await tester.pumpWidget(
+      buildHarness(
+        currentPage: 1,
+        totalPages: 1,
+        contentHeight: 2000,
+        onPageChanged: (_) async {},
+        onScrollMetricsChanged: (m) => lastMetrics = m,
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    expect(lastMetrics, isNotNull);
+    expect(lastMetrics!.maxScrollExtent, greaterThan(0));
+
+    final controller = tester
+        .widget<ListView>(find.byType(ListView))
+        .controller!;
+    controller.jumpTo(200);
+    await tester.pump();
+
+    expect(lastMetrics!.offset, 200);
+    expect(lastMetrics!.maxScrollExtent, controller.position.maxScrollExtent);
   });
 }

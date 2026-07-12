@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:s1_app/theme/app_theme.dart';
 import 'package:s1_app/widgets/post_action_menu.dart';
+import 'package:s1_app/widgets/s1_menu.dart';
 
 void main() {
   testWidgets('PostActionMenu opens below trigger with all S1 actions', (tester) async {
@@ -27,7 +28,8 @@ void main() {
     expect(find.text('回复'), findsOneWidget);
     expect(find.text('评分'), findsOneWidget);
     expect(find.text('举报'), findsOneWidget);
-    expect(find.byType(PopupMenuDivider), findsOneWidget);
+    expect(find.byType(S1MenuDivider), findsOneWidget);
+    expect(find.byType(MenuItemButton), findsNWidgets(4));
 
     await tester.tap(find.text('只看该作者'));
     await tester.pumpAndSettle();

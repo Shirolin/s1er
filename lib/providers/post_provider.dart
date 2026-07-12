@@ -131,19 +131,16 @@ class PostNotifier extends AsyncNotifier<PostListState> {
   }
 
   Future<PostListState> _loadPage(int page) async {
-    final apiService = _apiService;
-    final rateLogService = _rateLogService;
-    final result = await apiService.getThreadDetail(
+    final detailFuture = _apiService.getThreadDetail(
       tid,
       page: page,
       authorId: _filterAuthorId,
     );
-    final commentCount = ApiService.parseCommentCount(result);
-    final shouldFetchRateLogs =
-        commentCount.isEmpty || commentCount.values.any((count) => count > 0);
-    final rateLogs = shouldFetchRateLogs
-        ? await rateLogService.fetchRateLogs(tid, page: page)
-        : const <String, PostRateLog>{};
+    final rateLogFuture = _rateLogService.fetchRateLogs(tid, page: page);
+
+    final results = await Future.wait<Object>([detailFuture, rateLogFuture]);
+    final result = results[0] as Map<String, dynamic>;
+    final rateLogs = results[1] as Map<String, PostRateLog>;
 
     final posts = ApiService.parsePostList(result);
     final variables = result['Variables'] as Map<String, dynamic>? ?? {};

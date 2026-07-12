@@ -19,7 +19,6 @@ class FontSizeSection extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final fontSize = ref.watch(settingsProvider.select((s) => s.fontSize));
     final notifier = ref.read(settingsProvider.notifier);
-    final scheme = Theme.of(context).colorScheme;
 
     return Card(
       elevation: 0,

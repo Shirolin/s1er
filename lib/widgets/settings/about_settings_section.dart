@@ -12,8 +12,6 @@ class AboutSettingsSection extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final scheme = Theme.of(context).colorScheme;
-
     return const Card(
       elevation: 0,
       child: Padding(

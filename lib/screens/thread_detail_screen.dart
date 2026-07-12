@@ -55,6 +55,8 @@ class _ThreadDetailScreenState extends ConsumerState<ThreadDetailScreen> {
   bool _pendingInitialNavigation = false;
   bool _b3CorrectionDone = false;
   String? _highlightPid;
+  /// 用户手动翻页后为 true，此时不再对 targetPid / highlight 做 ensureVisible。
+  bool _manualPageChange = false;
 
   /// 记录阅读进度：写库 + 刷新历史列表（使列表卡片/历史页/资料计数实时更新）。
   /// readCount 只在本次进入详情页首帧 +1（isNewVisit 由 _hasRecordedInitialVisit 守卫）。
@@ -125,6 +127,14 @@ class _ThreadDetailScreenState extends ConsumerState<ThreadDetailScreen> {
 
   void _scrollToTop() {
     _swipeKey.currentState?.scrollToTop();
+  }
+
+  Future<void> _goToPage(int page) async {
+    setState(() {
+      _manualPageChange = true;
+      _showScrollToTop = false;
+    });
+    await ref.read(postProvider(widget.tid).notifier).goToPage(page);
   }
 
   bool _showsPollOnPage(PostListState state) =>
@@ -219,7 +229,9 @@ class _ThreadDetailScreenState extends ConsumerState<ThreadDetailScreen> {
     final highlightPid = widget.targetPid ?? _highlightPid;
     final isTarget = highlightPid != null && post.pid == highlightPid;
 
-    if (isTarget && _scrollOncePid != post.pid) {
+    if (isTarget &&
+        !_manualPageChange &&
+        _scrollOncePid != post.pid) {
       _scrollOncePid = post.pid;
       WidgetsBinding.instance.addPostFrameCallback((_) {
         if (!mounted) return;
@@ -434,9 +446,7 @@ class _ThreadDetailScreenState extends ConsumerState<ThreadDetailScreen> {
                           currentPage: state.currentPage,
                           totalPages: state.totalPages,
                           onScrollOffsetChanged: _onScrollOffsetChanged,
-                          onPageChanged: (page) => ref
-                              .read(postProvider(widget.tid).notifier)
-                              .goToPage(page),
+                          onPageChanged: _goToPage,
                           pageBuilder: (context, scrollController) =>
                               Scrollbar(
                             controller: scrollController,
@@ -470,9 +480,7 @@ class _ThreadDetailScreenState extends ConsumerState<ThreadDetailScreen> {
                         final end = page * state.perPage;
                         return '第 $start - $end 楼';
                       },
-                      onPageChanged: (page) => ref
-                          .read(postProvider(widget.tid).notifier)
-                          .goToPage(page),
+                      onPageChanged: _goToPage,
                     ),
                   ],
                 );

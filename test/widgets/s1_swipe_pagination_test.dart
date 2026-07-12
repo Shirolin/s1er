@@ -236,6 +236,55 @@ void main() {
     await tester.pump();
   });
 
+  testWidgets('S1SwipePagination resets scroll when currentPage changes externally',
+      (tester) async {
+    final key = GlobalKey<S1SwipePaginationState>();
+    var currentPage = 1;
+
+    Widget build() {
+      return MaterialApp(
+        theme: AppTheme.lightTheme('purple'),
+        home: Scaffold(
+          body: Column(
+            children: [
+              Expanded(
+                child: S1SwipePagination(
+                  key: key,
+                  currentPage: currentPage,
+                  totalPages: 5,
+                  onPageChanged: (_) async {},
+                  pageBuilder: (context, scrollController) => ListView.builder(
+                    controller: scrollController,
+                    itemCount: 30,
+                    itemBuilder: (context, index) => SizedBox(
+                      height: 50,
+                      child: Text('P$currentPage-$index'),
+                    ),
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ),
+      );
+    }
+
+    await tester.pumpWidget(build());
+    await tester.pumpAndSettle();
+
+    tester.widget<ListView>(find.byType(ListView)).controller!.jumpTo(400);
+    await tester.pump();
+
+    currentPage = 2;
+    await tester.pumpWidget(build());
+    await tester.pumpAndSettle();
+
+    expect(
+      tester.widget<ListView>(find.byType(ListView)).controller!.offset,
+      0,
+    );
+  });
+
   testWidgets('S1SwipePagination exposes scrollToTop', (tester) async {
     final key = GlobalKey<S1SwipePaginationState>();
 

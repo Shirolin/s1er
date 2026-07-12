@@ -64,13 +64,7 @@ class S1SwipePaginationState extends State<S1SwipePagination> {
     super.didUpdateWidget(oldWidget);
     if (oldWidget.currentPage != widget.currentPage &&
         widget.currentPage != _pendingPage) {
-      _replaceScrollController();
-      WidgetsBinding.instance.addPostFrameCallback((_) {
-        if (!mounted || !_pageController.hasClients) return;
-        if (_pageController.page?.round() != _centerSlot) {
-          _pageController.jumpToPage(_centerSlot);
-        }
-      });
+      _resetScrollForPageChange();
     }
   }
 
@@ -92,6 +86,22 @@ class S1SwipePaginationState extends State<S1SwipePagination> {
     _scrollController.removeListener(_onScroll);
     _scrollController.dispose();
     _scrollController = _createScrollController();
+  }
+
+  /// 翻页后回到新页顶部（底栏翻页不经 [_requestPage]，也须重置）。
+  void _resetScrollForPageChange() {
+    _replaceScrollController();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) return;
+      if (_scrollController.hasClients) {
+        _scrollController.jumpTo(0);
+      }
+      widget.onScrollOffsetChanged?.call(0);
+      if (_pageController.hasClients &&
+          _pageController.page?.round() != _centerSlot) {
+        _pageController.jumpToPage(_centerSlot);
+      }
+    });
   }
 
   void _onScroll() {
@@ -137,10 +147,7 @@ class S1SwipePaginationState extends State<S1SwipePagination> {
       await widget.onPageChanged(page);
     } finally {
       if (mounted) {
-        _replaceScrollController();
-        if (_pageController.hasClients) {
-          _pageController.jumpToPage(_centerSlot);
-        }
+        _resetScrollForPageChange();
         setState(() {
           _isPaging = false;
           _pendingPage = null;
@@ -183,7 +190,10 @@ class S1SwipePaginationState extends State<S1SwipePagination> {
 
   Widget _buildSlotContent(BuildContext context, int slot) {
     if (slot == _centerSlot) {
-      return widget.pageBuilder(context, _scrollController);
+      return KeyedSubtree(
+        key: ValueKey(widget.currentPage),
+        child: widget.pageBuilder(context, _scrollController),
+      );
     }
 
     final scheme = Theme.of(context).colorScheme;

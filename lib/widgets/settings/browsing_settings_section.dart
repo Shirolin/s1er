@@ -63,7 +63,7 @@ class BrowsingSettingsSection extends ConsumerWidget {
               leading: Icon(Icons.info_outline, color: scheme.onSurfaceVariant),
               title: const Text('图片缓存'),
               subtitle: Text(
-                '当前图片缓存由系统或浏览器管理，应用不提供离线图片缓存清理',
+                '离线图片缓存在「数据管理」中查看占用并清理',
                 style: Theme.of(context).textTheme.bodySmall?.copyWith(
                       color: scheme.onSurfaceVariant,
                     ),

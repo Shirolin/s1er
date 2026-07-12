@@ -85,6 +85,7 @@ void main() {
 
   group('S1ImageCache.formatSize', () {
     test('formats bytes / KB / MB', () {
+      expect(S1ImageCache.formatSize(0), '0 B');
       expect(S1ImageCache.formatSize(512), '512 B');
       expect(S1ImageCache.formatSize(2048), '2.0 KB');
       expect(S1ImageCache.formatSize(3 * 1024 * 1024), '3.0 MB');

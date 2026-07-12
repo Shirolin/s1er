@@ -226,12 +226,12 @@ class _DataManagementSectionState extends ConsumerState<DataManagementSection> {
     final cacheSizeAsync = ref.watch(imageCacheSizeProvider);
     final cacheSubtitle = cacheSizeAsync.when(
       data: (bytes) {
-        if (kIsWeb || bytes <= 0) {
-          return '清除已下载的图片，释放本地空间';
+        if (kIsWeb) {
+          return '浏览器管理磁盘缓存；可清除应用内图片内存缓存';
         }
         return '当前约占用 ${S1ImageCache.formatSize(bytes)}';
       },
-      loading: () => '清除已下载的图片，释放本地空间',
+      loading: () => '正在统计缓存占用…',
       error: (_, __) => '清除已下载的图片，释放本地空间',
     );
 

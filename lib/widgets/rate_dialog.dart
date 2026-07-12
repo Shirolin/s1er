@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../models/rate_form.dart';
 import '../providers/post_provider.dart';
+import '../theme/app_theme.dart';
 import '../utils/s1_snack_bar.dart';
 
 /// 打开评分弹窗：预取表单 → 填写 → 提交 → 刷新评分历史。
@@ -14,7 +15,7 @@ Future<void> showRateDialog(
 }) {
   return showDialog<void>(
     context: context,
-    barrierDismissible: false,
+    barrierDismissible: true,
     builder: (ctx) => _RateDialog(tid: tid, pid: pid),
   );
 }
@@ -31,7 +32,6 @@ class _RateDialog extends ConsumerStatefulWidget {
 
 class _RateDialogState extends ConsumerState<_RateDialog> {
   RateFormOptions? _options;
-  String? _loadError;
 
   late final TextEditingController _reasonController;
   String _score = '0';
@@ -41,7 +41,10 @@ class _RateDialogState extends ConsumerState<_RateDialog> {
   @override
   void initState() {
     super.initState();
-    _reasonController = TextEditingController();
+    _reasonController = TextEditingController()
+      ..addListener(() {
+        if (mounted) setState(() {});
+      });
     _fetchForm();
   }
 
@@ -110,13 +113,14 @@ class _RateDialogState extends ConsumerState<_RateDialog> {
   @override
   Widget build(BuildContext context) {
     final textTheme = Theme.of(context).textTheme;
+    final ready = _options != null;
 
     return AlertDialog(
       title: Text('评分', style: textTheme.titleLarge),
       content: _buildContent(context),
-      actions: _options == null
-          ? null
-          : [
+      actionsPadding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
+      actions: ready
+          ? [
               TextButton(
                 onPressed: _submitting ? null : () => Navigator.of(context).pop(),
                 child: const Text('取消'),
@@ -124,25 +128,26 @@ class _RateDialogState extends ConsumerState<_RateDialog> {
               FilledButton(
                 onPressed: _submitting ? null : _submit,
                 child: _submitting
-                    ? const SizedBox(
+                    ? SizedBox(
                         width: 18,
                         height: 18,
-                        child: CircularProgressIndicator(strokeWidth: 2),
+                        child: CircularProgressIndicator(
+                          strokeWidth: 2,
+                          color: Theme.of(context).colorScheme.onPrimary,
+                        ),
                       )
                     : const Text('确定'),
               ),
-            ],
+            ]
+          : null,
     );
   }
 
   Widget _buildContent(BuildContext context) {
-    if (_loadError != null) {
-      return Text(_loadError!);
-    }
     if (_options == null) {
       return const SizedBox(
-        width: 200,
-        height: 80,
+        width: 280,
+        height: 120,
         child: Center(child: CircularProgressIndicator()),
       );
     }
@@ -150,6 +155,8 @@ class _RateDialogState extends ConsumerState<_RateDialog> {
     final options = _options!;
     final scheme = Theme.of(context).colorScheme;
     final textTheme = Theme.of(context).textTheme;
+    final reasonPresets =
+        options.reasonPresets.where((preset) => preset.isNotEmpty).toList();
 
     return SizedBox(
       width: double.maxFinite,
@@ -157,75 +164,88 @@ class _RateDialogState extends ConsumerState<_RateDialog> {
         mainAxisSize: MainAxisSize.min,
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          _LabeledRow(
+          _FormFieldSection(
             label: '战斗力',
-            child: DropdownButton<String>(
-              isExpanded: true,
-              value: _score,
-              items: options.scoreOptions
-                  .map(
-                    (score) => DropdownMenuItem(
-                      value: score,
-                      child: Text(score),
-                    ),
-                  )
-                  .toList(),
-              onChanged: _submitting
-                  ? null
-                  : (value) {
-                      if (value != null) setState(() => _score = value);
-                    },
-            ),
-          ),
-          const SizedBox(height: 12),
-          _LabeledRow(
-            label: '理由',
-            child: Row(
-              children: [
-                Expanded(
-                  child: TextField(
-                    controller: _reasonController,
-                    enabled: !_submitting,
-                    decoration: const InputDecoration(
-                      hintText: '可选评分理由',
-                      isDense: true,
-                      contentPadding:
-                          EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-                    ),
-                  ),
-                ),
-                const SizedBox(width: 8),
-                DropdownButton<String>(
-                  value: null,
-                  hint: Icon(Icons.arrow_drop_down, color: scheme.onSurfaceVariant),
-                  underline: const SizedBox.shrink(),
-                  items: options.reasonPresets
+            child: InputDecorator(
+              decoration: const InputDecoration(
+                contentPadding: EdgeInsets.symmetric(horizontal: 12, vertical: 4),
+              ),
+              child: DropdownButtonHideUnderline(
+                child: DropdownButton<String>(
+                  isExpanded: true,
+                  value: _score,
+                  style: textTheme.bodyLarge,
+                  icon: Icon(Icons.expand_more, color: scheme.onSurfaceVariant),
+                  items: options.scoreOptions
                       .map(
-                        (preset) => DropdownMenuItem(
-                          value: preset,
-                          child: Text(preset.isEmpty ? '（无）' : preset),
+                        (score) => DropdownMenuItem(
+                          value: score,
+                          child: Text(score),
                         ),
                       )
                       .toList(),
                   onChanged: _submitting
                       ? null
                       : (value) {
-                          if (value != null) {
-                            _reasonController.text = value;
-                          }
+                          if (value != null) setState(() => _score = value);
                         },
                 ),
-              ],
+              ),
             ),
           ),
-          CheckboxListTile(
-            contentPadding: EdgeInsets.zero,
-            title: Text('通知作者', style: textTheme.bodyMedium),
-            value: _notifyAuthor,
-            onChanged: _submitting
-                ? null
-                : (value) => setState(() => _notifyAuthor = value ?? false),
-            controlAffinity: ListTileControlAffinity.leading,
+          const SizedBox(height: 20),
+          _FormFieldSection(
+            label: '理由',
+            child: TextField(
+              controller: _reasonController,
+              enabled: !_submitting,
+              maxLines: 1,
+              textInputAction: TextInputAction.done,
+              decoration: const InputDecoration(
+                hintText: '可选评分理由',
+                contentPadding: EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+              ),
+            ),
+          ),
+          if (reasonPresets.isNotEmpty) ...[
+            const SizedBox(height: 8),
+            Wrap(
+              spacing: 8,
+              runSpacing: 8,
+              children: reasonPresets.map((preset) {
+                final selected = _reasonController.text == preset;
+                return ActionChip(
+                  label: Text(preset),
+                  visualDensity: VisualDensity.compact,
+                  backgroundColor: selected
+                      ? scheme.secondaryContainer
+                      : scheme.surfaceContainerHighest,
+                  labelStyle: textTheme.labelLarge?.copyWith(
+                    color: selected
+                        ? scheme.onSecondaryContainer
+                        : scheme.onSurfaceVariant,
+                  ),
+                  side: BorderSide.none,
+                  onPressed: _submitting
+                      ? null
+                      : () => setState(() => _reasonController.text = preset),
+                );
+              }).toList(),
+            ),
+          ],
+          const SizedBox(height: 12),
+          Material(
+            color: scheme.surfaceContainerLow,
+            borderRadius: S1Shape.medium,
+            child: CheckboxListTile(
+              contentPadding: const EdgeInsets.symmetric(horizontal: 8),
+              controlAffinity: ListTileControlAffinity.leading,
+              title: Text('通知作者', style: textTheme.bodyLarge),
+              value: _notifyAuthor,
+              onChanged: _submitting
+                  ? null
+                  : (value) => setState(() => _notifyAuthor = value ?? false),
+            ),
           ),
         ],
       ),
@@ -233,24 +253,26 @@ class _RateDialogState extends ConsumerState<_RateDialog> {
   }
 }
 
-class _LabeledRow extends StatelessWidget {
-  const _LabeledRow({required this.label, required this.child});
+class _FormFieldSection extends StatelessWidget {
+  const _FormFieldSection({required this.label, required this.child});
 
   final String label;
   final Widget child;
 
   @override
   Widget build(BuildContext context) {
+    final scheme = Theme.of(context).colorScheme;
     final textTheme = Theme.of(context).textTheme;
 
-    return Row(
-      crossAxisAlignment: CrossAxisAlignment.center,
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        SizedBox(
-          width: 64,
-          child: Text(label, style: textTheme.bodyMedium),
+        Text(
+          label,
+          style: textTheme.titleSmall?.copyWith(color: scheme.onSurfaceVariant),
         ),
-        Expanded(child: child),
+        const SizedBox(height: 8),
+        child,
       ],
     );
   }

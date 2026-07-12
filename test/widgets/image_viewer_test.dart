@@ -1,4 +1,7 @@
+import 'dart:io';
+import 'dart:typed_data';
 import 'package:flutter/material.dart';
+import 'package:flutter_cache_manager/flutter_cache_manager.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:s1_app/models/image_load_policy.dart';
@@ -14,9 +17,7 @@ void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
 
   setUp(() {
-    S1ImageCache.debugSetManager(
-      createMemoryImageCacheManager('s1ImageCacheWidgetTest'),
-    );
+    S1ImageCache.debugSetManager(_FakeCacheManager());
   });
 
   tearDown(() {
@@ -26,7 +27,7 @@ void main() {
 
   Future<void> pumpPolicyState(WidgetTester tester) async {
     await tester.pump();
-    await tester.pump(const Duration(milliseconds: 50));
+    await tester.pump();
   }
 
   testWidgets('ImageViewer shows placeholder when showImages is false',
@@ -158,14 +159,23 @@ void main() {
         ],
         child: MaterialApp(
           theme: AppTheme.lightTheme('purple'),
-          home: const Scaffold(
-            body: ImageViewer(
-              imageUrl: 'https://example.com/image.jpg',
+          home: Scaffold(
+            body: _TestWrapper(
+              builder: (context, showReal) {
+                if (!showReal) return const SizedBox();
+                return const ImageViewer(
+                  imageUrl: 'https://example.com/image.jpg',
+                );
+              },
             ),
           ),
         ),
       ),
     );
+
+    await tester.pump(const Duration(seconds: 1));
+    tester.state<_TestWrapperState>(find.byType(_TestWrapper)).toggle();
+    await tester.pump();
 
     await pumpPolicyState(tester);
 
@@ -191,17 +201,60 @@ void main() {
         ],
         child: MaterialApp(
           theme: AppTheme.lightTheme('purple'),
-          home: const Scaffold(
-            body: ImageViewer(
-              imageUrl: 'https://example.com/image.jpg',
+          home: Scaffold(
+            body: _TestWrapper(
+              builder: (context, showReal) {
+                if (!showReal) return const SizedBox();
+                return const ImageViewer(
+                  imageUrl: 'https://example.com/image.jpg',
+                );
+              },
             ),
           ),
         ),
       ),
     );
 
+    await tester.pump(const Duration(seconds: 1));
+    tester.state<_TestWrapperState>(find.byType(_TestWrapper)).toggle();
+    await tester.pump();
+
     await pumpPolicyState(tester);
 
     expect(find.text('点击加载图片'), findsOneWidget);
   });
+}
+
+class _FakeCacheManager implements CacheManager {
+  @override
+  dynamic noSuchMethod(Invocation invocation) {
+    if (invocation.memberName == #getFileFromCache) {
+      return Future<FileInfo?>.value(null);
+    }
+    if (invocation.memberName == #getFileStream) {
+      return const Stream<FileResponse>.empty();
+    }
+    return null;
+  }
+}
+
+class _TestWrapper extends ConsumerStatefulWidget {
+  const _TestWrapper({required this.builder});
+  final Widget Function(BuildContext context, bool showReal) builder;
+
+  @override
+  ConsumerState<_TestWrapper> createState() => _TestWrapperState();
+}
+
+class _TestWrapperState extends ConsumerState<_TestWrapper> {
+  bool _showReal = false;
+
+  void toggle() => setState(() => _showReal = true);
+
+  @override
+  Widget build(BuildContext context) {
+    // Eagerly watch to ensure the stream starts emitting immediately
+    ref.watch(wifiConnectedProvider);
+    return widget.builder(context, _showReal);
+  }
 }

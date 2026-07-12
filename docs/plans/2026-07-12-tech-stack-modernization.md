@@ -150,27 +150,45 @@ Cookie → 继续 PersistCookieJar（废弃 Hive `cookies` 死 box）
 
 ---
 
-## 8. 实施阶段
+## 8. 实施计划（短 PR 拆分）
 
-| 阶段 | 内容 | 风险 |
-|:---|:---|:---|
-| **0** | `flutter_html` 约束 + 安全补丁升级 | 低 |
-| **1** | Hive → Drift；Repository；表结构（含 blacklist 预留）；删 hive_* | 高 |
-| **2** | Riverpod 3 全量迁移 + 测试改造 | 高 |
-| **3** | 图片磁盘缓存 + 设置清理 | 中 |
-| **4** | 备份 L1（+ 可选 L2）+ 保证与 `backup-format-v1.md` 一致 | 中 |
-| **5** | go_router 17 + flutter_lints 6 | 中 |
-| **6** | 更新 `AGENTS.md` | 文档 |
+> 2026-07-12 目标对齐：基本同意总目标；**主动砍范围**；黑名单**仅表 + 备份字段**，功能后做；**按 PR 拆分**。
 
-建议 **1 与 2 不要和无关键大改混在同一 PR**；0 可并入 1。阶段可拆多 PR，但须保持主干可测。
+### 8.1 本轮做 / 砍
+
+| 做 | 砍 / 后置 |
+|:---|:---|
+| Drift 替换现有 Hive 用量（settings / history / poll） | 黑名单 **UI、过滤、拉黑入口**（后置） |
+| `blacklist` **空表 + migration + 备份 JSON 字段预留** | 备份 L2 默认打包（仍仅高级选项；可不做 UI 开关首版） |
+| Riverpod 3 全量 | 无关依赖追 latest |
+| 图片磁盘缓存 + 清理 | Web 与 Native 完全对等的磁盘策略 |
+| 备份 L1 导出/导入 | Cookie/图片进备份；复杂合并策略 |
+| go_router 17、lints 6、AGENTS 更新 | 业务新功能搭车 |
+
+### 8.2 PR 序列（每个 PR 短、可测、可合）
+
+| PR | 标题意向 | 范围 | 验收 |
+|:---|:---|:---|:---|
+| **P0** | deps: html 约束 + 补丁 | `flutter_html ^3.0.0`、`pub upgrade` 补丁 | analyze + test |
+| **P1** | feat(storage): Drift 替换 Hive | schema（含 **blacklist 空表**）、Repo、迁移、删 hive_*；行为对齐现有 settings/history/poll | 既有相关测试改绿 + 读写冒烟 |
+| **P2** | refactor(state): Riverpod 3 | 全量 Notifier；测例 override | analyze + test |
+| **P3** | feat(image): 磁盘缓存 | 统一组件、上限、设置「清除缓存」 | Native 同图二次打开不重下；可清理 |
+| **P4** | feat(backup): s1-backup L1 | 导出/导入按 `backup-format-v1.md`；**blacklist 文件可空数组** | 往返导入；无 Cookie/图片 |
+| **P5** | chore: go_router 17 + lints 6 | 路由与 lint 修复 | analyze + test |
+| **P6** | docs: AGENTS 技术栈锁定 | 锁定表与已知约束与实现一致 | 文档审阅 |
+
+约束：**P1 与 P2 不合在同一 PR**；P0 可并入 P1 若希望少一次合并。
+
+### 8.3 黑名单边界（本轮）
+
+- **做**：Drift `blacklist` 表；备份规范已有 `blacklist.json`；导入导出可读写空/预留数据  
+- **不做**：屏蔽列表页、发帖/读帖过滤、拉黑按钮——**另开需求后做**
 
 ### Definition of Done（本现代化）
 
-- `flutter analyze` 无 error/warning  
-- `flutter test` 通过；核心存储/备份/缓存有测试  
-- M3 审计无 CRITICAL  
-- Web + 至少一移动/桌面路径验证：登录会话、读帖、图片二次打开不重复狂下（Native）、备份导出导入  
-- `AGENTS.md` 与备份文档已更新  
+- 各 PR：`flutter analyze` / `flutter test` 绿  
+- P1 后无 Hive 运行时依赖；P3 Native 缓存可感知；P4 L1 往返可用  
+- P6 后 `AGENTS.md` 与实现一致；M3 无 CRITICAL  
 
 ---
 
@@ -181,6 +199,7 @@ Cookie → 继续 PersistCookieJar（废弃 Hive `cookies` 死 box）
 3. 备份包包含 Cookie、密码、图片缓存  
 4. Riverpod 3 长期停留在 `legacy.dart`  
 5. 为「全部依赖 latest」而无目的大版本乱升  
+6. **本轮实现黑名单产品功能**（仅表与备份预留）  
 
 ---
 
@@ -190,3 +209,4 @@ Cookie → 继续 PersistCookieJar（废弃 Hive `cookies` 死 box）
 |:---|:---|
 | 2026-07-12 | 本地存储选 Drift；Riverpod 全量 3.x；备份 L1 JSON ZIP 默认、L2 DB 可选；图片磁盘缓存；列表 JSON 数组；导入同键覆盖 |
 | 2026-07-12 | 基线主干 `faf435d`；本方案文档落入仓库后再开实施 |
+| 2026-07-12 | 目标对齐：基本同意；主动砍范围；黑名单仅表+备份字段；节奏拆短 PR（§8） |

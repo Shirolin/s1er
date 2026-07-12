@@ -15,6 +15,7 @@ import '../models/favorite_item.dart';
 import '../widgets/pagination_bar.dart';
 import '../widgets/post_item.dart';
 import '../widgets/poll_card.dart';
+import '../widgets/rate_dialog.dart';
 import '../widgets/s1_error_view.dart';
 import '../widgets/s1_fab_layout.dart';
 import '../widgets/s1_swipe_pagination.dart';
@@ -170,6 +171,27 @@ class _ThreadDetailScreenState extends ConsumerState<ThreadDetailScreen> {
     await _afterReplySubmitted(result, state);
   }
 
+  bool _canRatePost(Post post) {
+    final auth = ref.read(authStateProvider);
+    if (!auth.isLoggedIn) return false;
+    final currentUid = auth.user?.uid;
+    if (currentUid == null || currentUid.isEmpty) return false;
+    return post.authorId != currentUid;
+  }
+
+  Future<void> _openRateDialog(Post post) async {
+    if (!ref.read(authStateProvider).isLoggedIn) {
+      await context.push('/login');
+      return;
+    }
+    await showRateDialog(
+      context,
+      ref,
+      tid: widget.tid,
+      pid: post.pid,
+    );
+  }
+
   Future<void> _afterReplySubmitted(
     ReplySubmitResult result,
     PostListState state,
@@ -235,6 +257,7 @@ class _ThreadDetailScreenState extends ConsumerState<ThreadDetailScreen> {
                 displayFloor: displayFloor,
               )
           : null,
+      onRate: _canRatePost(post) ? () => _openRateDialog(post) : null,
     );
   }
 

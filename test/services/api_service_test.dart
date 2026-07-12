@@ -1,4 +1,5 @@
 import 'package:flutter_test/flutter_test.dart';
+import 'package:s1_app/models/rate_form.dart';
 import 'package:s1_app/services/api_service.dart';
 
 void main() {
@@ -287,6 +288,89 @@ void main() {
       test('returns error message on empty body', () {
         expect(
           ApiService.parsePollVoteResponse(''),
+          contains('无响应'),
+        );
+      });
+    });
+
+    group('parseRateFormResponse', () {
+      const formHtml = '''
+<?xml version="1.0" encoding="utf-8"?>
+<root><![CDATA[<form id="rateform">
+<input type="hidden" name="formhash" value="2867b07a" />
+<select id="rate1"><option>0</option><option>+2</option><option>+1</option><option>-1</option><option>-2</option></select>
+<select id="reason"><option value=""></option><option value="好评加鹅">好评加鹅</option><option value="欢乐多">欢乐多</option><option value="思路广">思路广</option></select>
+</form>]]></root>''';
+
+      test('parses score and reason presets from rate form', () {
+        final options = ApiService.parseRateFormResponse(formHtml);
+
+        expect(options.hasError, isFalse);
+        expect(options.scoreOptions, ['0', '+2', '+1', '-1', '-2']);
+        expect(options.reasonPresets, ['', '好评加鹅', '欢乐多', '思路广']);
+      });
+
+      test('returns error for self-rate message', () {
+        const errorHtml = '''
+<root><![CDATA[<div class="tip"><dt id="messagetext">
+<p>抱歉，您不能给自己发表的帖子评分</p>
+</dt></div>]]></root>''';
+
+        final options = ApiService.parseRateFormResponse(errorHtml);
+
+        expect(options.hasError, isTrue);
+        expect(options.error, contains('不能给自己'));
+      });
+
+      test('falls back to defaults on empty body', () {
+        final options = ApiService.parseRateFormResponse('');
+
+        expect(options.hasError, isFalse);
+        expect(options.scoreOptions, RateFormOptions.defaultScoreOptions);
+        expect(options.reasonPresets, RateFormOptions.defaultReasonPresets);
+      });
+    });
+
+    group('parseRateSubmitResponse', () {
+      test('returns null on redirect success XML', () {
+        expect(
+          ApiService.parseRateSubmitResponse(
+            "<?xml version=\"1.0\"?><root><![CDATA[<script>window.location.href='forum.php?mod=viewthread&tid=2285380';</script>]]></root>",
+          ),
+          isNull,
+        );
+      });
+
+      test('returns null on success handler', () {
+        expect(
+          ApiService.parseRateSubmitResponse(
+            "succeedhandle_rate('pid_1', '评分成功');",
+          ),
+          isNull,
+        );
+      });
+
+      test('returns error message on error handler', () {
+        expect(
+          ApiService.parseRateSubmitResponse(
+            "errorhandle_rate('已经评过分了', '');",
+          ),
+          '已经评过分了',
+        );
+      });
+
+      test('returns error message on messagetext', () {
+        expect(
+          ApiService.parseRateSubmitResponse(
+            '<dt id="messagetext"><p>抱歉，您不能给自己发表的帖子评分</p></dt>',
+          ),
+          contains('不能给自己'),
+        );
+      });
+
+      test('returns error message on empty body', () {
+        expect(
+          ApiService.parseRateSubmitResponse(''),
           contains('无响应'),
         );
       });

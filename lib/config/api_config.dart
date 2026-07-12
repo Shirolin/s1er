@@ -20,6 +20,10 @@ class ApiConfig {
   static String favoriteForumReferer(String fid) =>
       '$forumPostUrl?mod=forumdisplay&fid=$fid&mobile=2';
 
+  /// Discuz 评分 POST 所需的 Referer（来路校验）
+  static String forumRateReferer(String tid, String pid) =>
+      '$forumPostUrl?mod=viewthread&tid=$tid&page=0#pid$pid';
+
   // API module names
   static const String moduleForumIndex = 'forumindex';
   static const String moduleForumDisplay = 'forumdisplay';

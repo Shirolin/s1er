@@ -1,5 +1,6 @@
 import 'dart:convert';
 import 'package:dio/dio.dart';
+import 'package:html/parser.dart' show parse;
 import '../config/api_config.dart';
 import '../models/thread.dart';
 import '../models/post.dart';
@@ -12,6 +13,7 @@ import '../models/private_message_item.dart';
 import '../models/notice_item.dart';
 import '../models/favorite_item.dart';
 import '../models/message_list_result.dart';
+import '../models/rate_form.dart';
 import '../utils/error_handler.dart';
 import 'formhash_service.dart';
 import 'http_client.dart';
@@ -557,6 +559,175 @@ class ApiService {
     final data = response.data;
     if (data is! String) return '服务器返回异常';
     return parsePollVoteResponse(data);
+  }
+
+  // ── 评分（战斗力）──────────────────────────────────────────
+
+  static String? _extractMessagetextError(String body) {
+    final messagetextMatch = RegExp(
+      r'''id=["']messagetext["'][^>]*>.*?<p>([^<]+)''',
+      dotAll: true,
+    ).firstMatch(body);
+    if (messagetextMatch != null) {
+      final text = messagetextMatch.group(1)?.trim();
+      if (text != null && text.isNotEmpty) return text;
+    }
+
+    final errorhandleMatch = RegExp(
+      r"errorhandle_rate\('([^']*)',\s*'([^']*)'\)",
+    ).firstMatch(body);
+    if (errorhandleMatch != null) {
+      return errorhandleMatch.group(1)?.isNotEmpty == true
+          ? errorhandleMatch.group(1)
+          : errorhandleMatch.group(2);
+    }
+
+    return null;
+  }
+
+  static List<String> _parseSelectOptions(String html, String selectId) {
+    try {
+      final doc = parse(html);
+      final select = doc.querySelector('select#$selectId');
+      if (select == null) return [];
+
+      return select.querySelectorAll('option').map((option) {
+        final value = option.attributes['value'];
+        if (value != null) return value;
+        return option.text.trim();
+      }).where((v) => v.isNotEmpty || selectId == 'reason').toList();
+    } catch (_) {
+      return [];
+    }
+  }
+
+  /// 从 Discuz rate 弹窗响应中解析表单选项与错误。
+  static RateFormOptions parseRateFormResponse(String body) {
+    final error = _extractMessagetextError(body);
+    if (error != null) {
+      return RateFormOptions.withDefaults(error: error);
+    }
+
+    var scoreOptions = _parseSelectOptions(body, 'rate1');
+    var reasonPresets = _parseSelectOptions(body, 'reason');
+
+    if (scoreOptions.isEmpty) {
+      scoreOptions = RateFormOptions.defaultScoreOptions;
+    }
+    if (reasonPresets.isEmpty) {
+      reasonPresets = RateFormOptions.defaultReasonPresets;
+    }
+
+    return RateFormOptions(
+      scoreOptions: scoreOptions,
+      reasonPresets: reasonPresets,
+    );
+  }
+
+  /// 预取评分表单（GET）。同时更新 formhash。
+  Future<RateFormOptions> fetchRateForm({
+    required String tid,
+    required String pid,
+  }) async {
+    await _httpClient.ensureFormhash(tid: tid);
+
+    final url = '${ApiConfig.forumPostUrl}'
+        '?mod=misc&action=rate&tid=$tid&pid=$pid&mobile=2&inajax=1';
+
+    try {
+      final response = await _httpClient.get(
+        url,
+        options: Options(responseType: ResponseType.plain),
+      );
+      final body = response.data?.toString() ?? '';
+
+      final formhash = FormhashExtractor.fromHtml(body);
+      if (formhash != null) {
+        _httpClient.updateFormhash(formhash);
+      }
+
+      return parseRateFormResponse(body);
+    } catch (e) {
+      if (e is LoginRequiredException) {
+        return RateFormOptions.withDefaults(error: '请先登录');
+      }
+      return RateFormOptions.withDefaults(
+        error: friendlyError(e, '获取评分表单'),
+      );
+    }
+  }
+
+  static String? parseRateSubmitResponse(String body) {
+    if (body.contains('rate_succeed') ||
+        body.contains('评分成功') ||
+        (body.contains('window.location.href') && body.contains('viewthread'))) {
+      return null;
+    }
+
+    final successMatch = RegExp(
+      r"succeedhandle_rate\('([^']*)'",
+    ).firstMatch(body);
+    if (successMatch != null) return null;
+
+    final error = _extractMessagetextError(body);
+    if (error != null) return error;
+
+    final showMessageMatch = RegExp(
+      r"showmessage\('([^']*)'",
+    ).firstMatch(body);
+    if (showMessageMatch != null) {
+      return showMessageMatch.group(1);
+    }
+
+    final alertMatch = RegExp(r"alert\('([^']*)'\)").firstMatch(body);
+    if (alertMatch != null) return alertMatch.group(1);
+
+    if (body.trim().isEmpty) {
+      return '评分请求无响应，请检查是否已登录';
+    }
+
+    return '服务器返回未知响应';
+  }
+
+  /// 提交评分。成功返回 null，失败返回错误信息。
+  Future<String?> submitRate({
+    required String tid,
+    required String pid,
+    required String score1,
+    String reason = '',
+    bool notifyAuthor = false,
+  }) async {
+    const url = '${ApiConfig.forumPostUrl}'
+        '?mod=misc&action=rate&ratesubmit=yes&infloat=yes&inajax=1';
+
+    final data = <String, String>{
+      'tid': tid,
+      'pid': pid,
+      'referer': ApiConfig.forumRateReferer(tid, pid),
+      'handlekey': 'rate',
+      'score1': score1,
+      'reason': reason,
+      'ratesubmit': 'true',
+    };
+    if (notifyAuthor) {
+      data['sendreasonpm'] = '1';
+    }
+
+    try {
+      final response = await _httpClient.post(
+        url,
+        data: data,
+        options: Options(
+          contentType: Headers.formUrlEncodedContentType,
+          responseType: ResponseType.plain,
+        ),
+      );
+      final body = response.data?.toString() ?? '';
+      return parseRateSubmitResponse(body);
+    } catch (e) {
+      if (e is LoginRequiredException) return '请先登录';
+      return friendlyError(e, '评分');
+    }
   }
 
   Future<User?> getUserProfile() async {

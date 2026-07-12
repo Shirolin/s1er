@@ -5,9 +5,11 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../providers/post_provider.dart';
 import '../../providers/auth_provider.dart';
+import '../../providers/backup_provider.dart';
 import '../../providers/image_cache_provider.dart';
 import '../../providers/reading_history_provider.dart';
 import '../../providers/settings_provider.dart';
+import '../../services/backup/s1_backup_codec.dart';
 import '../../services/s1_image_cache.dart';
 import '../../theme/app_theme.dart';
 import '../../utils/s1_snack_bar.dart';
@@ -25,6 +27,8 @@ class _DataManagementSectionState extends ConsumerState<DataManagementSection> {
   bool _clearingHistory = false;
   bool _clearingVotes = false;
   bool _clearingImageCache = false;
+  bool _exportingBackup = false;
+  bool _importingBackup = false;
   bool _resettingSettings = false;
   bool _loggingOut = false;
 
@@ -80,6 +84,8 @@ class _DataManagementSectionState extends ConsumerState<DataManagementSection> {
       if (mounted) {
         S1SnackBar.show(context, message: successMessage);
       }
+    } on _BackupCancelled {
+      // User dismissed the file picker; no snackbar.
     } catch (e) {
       if (mounted) {
         S1SnackBar.show(context, message: '操作失败: $e');
@@ -140,6 +146,39 @@ class _DataManagementSectionState extends ConsumerState<DataManagementSection> {
         action: () async {
           await clearS1ImageCaches();
           ref.invalidate(imageCacheSizeProvider);
+        },
+      ),
+    );
+  }
+
+  Future<void> _exportBackup() async {
+    await _runTask(
+      current: _exportingBackup,
+      setBusy: (value) => _exportingBackup = value,
+      successMessage: kIsWeb ? '备份已开始下载' : '已打开分享面板',
+      action: () => exportS1Backup(ref),
+    );
+  }
+
+  Future<void> _importBackup() async {
+    await _confirmAction(
+      title: '导入备份',
+      content: '将以备份内容覆盖本地同名设置与同键记录（阅读历史、投票、黑名单）。'
+          '不会导入 Cookie、密码或图片缓存。',
+      confirmLabel: '选择文件',
+      onConfirm: () => _runTask(
+        current: _importingBackup,
+        setBusy: (value) => _importingBackup = value,
+        successMessage: '导入完成',
+        action: () async {
+          try {
+            final result = await importS1Backup(ref);
+            if (result == null) {
+              throw _BackupCancelled();
+            }
+          } on S1BackupException catch (e) {
+            throw Exception(e.message);
+          }
         },
       ),
     );
@@ -273,6 +312,46 @@ class _DataManagementSectionState extends ConsumerState<DataManagementSection> {
             const SizedBox(height: 8),
             ListTile(
               leading: Icon(
+                Icons.upload_file_outlined,
+                color: scheme.onSurfaceVariant,
+              ),
+              title: const Text('导出备份'),
+              subtitle: Text(
+                '导出设置、阅读历史、投票与黑名单（不含 Cookie / 图片）',
+                style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                      color: scheme.onSurfaceVariant,
+                    ),
+              ),
+              trailing: _buildTrailingSpinner(_exportingBackup),
+              onTap: _exportingBackup ? null : () => unawaited(_exportBackup()),
+              contentPadding: const EdgeInsets.symmetric(horizontal: 8),
+              shape: const RoundedRectangleBorder(
+                borderRadius: S1Shape.small,
+              ),
+            ),
+            const SizedBox(height: 8),
+            ListTile(
+              leading: Icon(
+                Icons.download_outlined,
+                color: scheme.onSurfaceVariant,
+              ),
+              title: const Text('导入备份'),
+              subtitle: Text(
+                '从 .s1backup.zip / .zip 恢复；同键以备份为准覆盖',
+                style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                      color: scheme.onSurfaceVariant,
+                    ),
+              ),
+              trailing: _buildTrailingSpinner(_importingBackup),
+              onTap: _importingBackup ? null : () => unawaited(_importBackup()),
+              contentPadding: const EdgeInsets.symmetric(horizontal: 8),
+              shape: const RoundedRectangleBorder(
+                borderRadius: S1Shape.small,
+              ),
+            ),
+            const SizedBox(height: 8),
+            ListTile(
+              leading: Icon(
                 Icons.restart_alt_outlined,
                 color: scheme.onSurfaceVariant,
               ),
@@ -331,3 +410,5 @@ class _DataManagementSectionState extends ConsumerState<DataManagementSection> {
     );
   }
 }
+
+class _BackupCancelled implements Exception {}

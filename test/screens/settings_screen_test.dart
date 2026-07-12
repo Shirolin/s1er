@@ -37,6 +37,8 @@ void main() {
     expect(find.text('浏览行为'), findsOneWidget);
     expect(find.text('数据管理'), findsOneWidget);
     expect(find.text('清除图片缓存'), findsOneWidget);
+    expect(find.text('导出备份'), findsOneWidget);
+    expect(find.text('导入备份'), findsOneWidget);
     expect(find.text('关于'), findsOneWidget);
     expect(find.text('Material You 动态取色'), findsOneWidget);
     expect(find.text('标准'), findsOneWidget);

@@ -80,6 +80,7 @@ class _PmListBody extends ConsumerWidget {
                 ],
               )
             : ListView.builder(
+                padding: const EdgeInsets.symmetric(vertical: 8),
                 itemCount: state.items.length,
                 itemBuilder: (context, index) {
                   final item = state.items[index];
@@ -140,6 +141,7 @@ class _NoticeListBody extends ConsumerWidget {
                       )
                     : ListView.builder(
                         controller: scrollController,
+                        padding: const EdgeInsets.symmetric(vertical: 8),
                         itemCount: state.items.length,
                         itemBuilder: (context, index) {
                           final item = state.items[index];

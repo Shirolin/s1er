@@ -20,7 +20,7 @@ dependencies:
   go_router: ^14.0.0
   html: ^0.15.4
   url_launcher: ^6.2.5
-  flutter_html: ^3.0.0-beta.2
+  flutter_html: ^3.0.0
   package_info_plus: ^10.2.0
   talker_flutter: ^5.1.17
   talker_dio_logger: ^5.1.17

@@ -17,17 +17,22 @@
 |:---|:---|:---|
 | 语言 | Dart | >=3.4 <4.0 |
 | 框架 | Flutter | >=3.4 |
-| 状态管理 | flutter_riverpod | ^2.5.0 |
+| 状态管理 | flutter_riverpod | ^3.3.2（Notifier / AsyncNotifier；禁长期依赖 `legacy.dart`） |
 | HTTP 客户端 | dio | ^5.4.0 |
-| 路由 | go_router | ^14.0.0 |
-| 本地存储 | hive / hive_flutter | ^2.2.3 / ^1.1.0 |
+| 路由 | go_router | ^17.0.0 |
+| 本地结构化存储 | drift / drift_flutter | ^2.34.1 / ^0.3.1 |
+| 图片磁盘缓存 | flutter_cache_manager / cached_network_image | ^3.4.1 / ^3.4.1 |
+| 备份（L1 ZIP） | archive / file_selector / share_plus | ^4.0.9 / ^1.1.0 / ^13.2.0 |
 | WebView | webview_flutter | ^4.7.0 |
-| HTML 渲染 | flutter_html | ^3.0.0-beta.2 |
+| HTML 渲染 | flutter_html | ^3.0.0 |
 | Cookie 管理 | dio_cookie_manager / cookie_jar | ^3.1.1 / ^4.0.8 |
 | 安全存储 | flutter_secure_storage | ^10.x |
 | 加密 | cryptography | ^2.x |
 | 包管理 | flutter pub | — |
+| Lint | flutter_lints | ^6.0.0 |
 | 运行环境 | Flutter SDK >=3.4 | 支持 Web / Android / iOS / Windows / macOS / Linux |
+
+> 一次性 Hive→Drift 迁移窗口内可保留过渡依赖 `hive`（无 `hive_flutter`）；迁移窗口结束后应移除。Cookie 继续走 `PersistCookieJar` + 加密存储，不进 Drift、不进 `s1-backup`。
 
 ---
 
@@ -84,13 +89,13 @@ lib/
 │   ├── s1_error_view.dart    # 统一错误视图（维护/登录/通用）
 │   └── ...
 ├── app.dart      # 应用入口与路由配置
-└── main.dart     # 主入口（初始化 Hive、HTTP 客户端）
+└── main.dart     # 主入口（初始化 Drift / AppLocalData、HTTP 客户端）
 ```
 
 - **模块职责**：
   - `config/`：只放静态配置，不含逻辑
   - `models/`：纯数据类，包含 `fromJson` 工厂方法，不依赖 Flutter
-  - `services/`：封装所有外部交互（HTTP、Cookie、认证），不依赖 UI 层
+  - `services/`：封装所有外部交互（HTTP、Cookie、认证、本地 Drift、备份编解码），不依赖 UI 层
   - `providers/`：桥接 services 与 UI，管理状态生命周期，不含直接 HTTP 调用
   - `screens/`：页面组合层，调用 providers 获取数据，不直接调用 services
   - `widgets/`：可复用的 UI 片段，通过参数接收数据，不持有状态逻辑
@@ -179,12 +184,16 @@ flutter run -d chrome --dart-define=TALKER_LOG_LEVEL=all --dart-define=TALKER_MA
 
 > 记录项目中已知的技术债或暂时妥协，避免 AI 重复提出或错误优化。
 
-- flutter_html 使用 beta 版本（^3.0.0-beta.2），API 可能不稳定，升级时需谨慎
+- flutter_html 已对齐稳定 `^3.0.0`；大版本升级时仍需回归帖子 HTML/BBCode 渲染
 - Web 端受 CORS 限制，开发时需启动 `scripts/proxy_server.dart` 代理服务器
 - 登录流程：全平台统一走 API 表单登录（`ApiService.login()`）；Web 端需配合 CORS 代理
-- Hive 用于本地存储（cookies / settings / cache），未做加密，生产环境可考虑迁移到 hive 加密 box 或 flutter_secure_storage
+- 本地结构化数据（settings / reading_history / poll_votes / blacklist 表）走 Drift；Cookie 走加密 `PersistCookieJar`。过渡期可保留 `hive` 仅用于一次性迁移脚本
+- Native 图片使用 `flutter_cache_manager` 磁盘缓存；Web 主要依赖浏览器缓存。备份**禁止**包含图片缓存
+- 跨客户端备份格式：`docs/backup-format-v1.md`（默认仅 L1 JSON ZIP；`native/` L2 可选且未作为默认导出）
+- 黑名单：仅 Drift 表 + 备份字段预留，产品 UI 尚未实现
 - 表情包资源通过脚本从 GitHub 下载（`scripts/download_emoticons.dart`），未内置到仓库
-- test 目录已有基础测试，但覆盖率不足，尤其是 screens 和 widgets 层
+- test 目录覆盖率仍不足，尤其是 screens 和 widgets 层
+- 技术栈现代化定案与拆分：`docs/plans/2026-07-12-tech-stack-modernization.md`（P0–P6 已落地后以本文件锁定表为准）
 
 ### M3 允许模式
 
@@ -210,13 +219,13 @@ flutter run -d chrome --dart-define=TALKER_LOG_LEVEL=all --dart-define=TALKER_MA
 > 面向后续 Cloud Agent 的持久化环境说明（依赖已由 update script `flutter pub get` 自动刷新，此处只记录非显而易见的启动/运行注意事项）。
 
 - **Flutter SDK**：预装在 `/home/ubuntu/flutter`（stable，Dart 3.12+），已通过 `~/.bashrc` 加入交互式 shell 的 PATH。非交互式脚本请用全路径 `/home/ubuntu/flutter/bin/flutter`。
-- **Lint / Test**：`flutter analyze`（当前 0 issue）与 `flutter test`（80 个测试全绿）。注意：**首次** `flutter test` 会一次性编译引擎测试产物，可能数分钟无输出（输出被 shell 缓冲），属正常；产物缓存后整套测试约 6s。用 `--reporter expanded` 可看到实时进度。
-- **M3 审计**：`dart run scripts/audit_m3.dart --fail-on-error` 扫描 `lib/`（P0/P1）与 `test/`（WARN：缺 AppTheme），报告输出至 `reports/m3_audit_<date>.md`。
+- **Lint / Test**：`flutter analyze`（当前 0 issue）与 `flutter test`（250+ 测试）。注意：**首次** `flutter test` 会一次性编译引擎测试产物，可能数分钟无输出（输出被 shell 缓冲），属正常；产物缓存后整套测试约数秒到十几秒。用 `--reporter expanded` 可看到实时进度。
+- **M3 审计**：`dart run scripts/audit_m3.dart --fail-on-error` 扫描 `lib/`（P0/P1）与 `test/`，报告输出至 `reports/m3_audit_<date>.md`。
 - **运行 Web 开发环境（推荐的可测试目标）**：需要同时启动两个进程（标准命令见 `README.md`）：
   1. CORS 代理：`dart run scripts/proxy_server.dart`，监听 `http://localhost:19080`，转发到 `https://stage1st.com/2b/...` 并处理 CORS/Cookie。
   2. Flutter Web：`flutter run -d web-server --web-port 8080 --web-hostname 0.0.0.0`（无头 VM 用 `web-server` 设备，避免依赖 Chrome 调试扩展；桌面 Chrome 可直接访问 `http://localhost:8080`）。
   Web 端 API 请求由 `S1HttpClient` 在 `kIsWeb` 时重写到代理端口，**代理必须先启动**，否则论坛数据加载失败。
-- **登录后才能浏览**：`home_screen.dart` 将论坛 Tab 用 `isLoggedIn` 门控，未登录仅显示"登录后即可浏览"提示；Web 端登录走 API 表单（用户名+密码 → formhash → POST）。要端到端演示浏览版块/主题需要**有效的 S1 论坛账号**。完整登录管线（formhash/CSRF + 代理 + 实时 `stage1st.com`）已验证可用：用无效凭据会正确返回 `mobile:login_invalid`。
+- **登录门控**：论坛浏览相关 Tab 需登录；未登录显示登录引导。Web 端登录走 API 表单；游客 API 仍可用于服务层/代理验证。完整登录管线已验证：无效凭据返回 `mobile:login_invalid`。
 - **网络**：`stage1st.com` 在本环境可直连（游客 API 可读取版块数据）。
 - **⚠️ 测试账号是用户多年的真实账号，务必谨慎**：`S1_TEST_USERNAME` / `S1_TEST_PASSWORD` 对应的是用户长期使用的真实 S1 账号。**严禁频繁登录、暴力重试或高频请求**，否则可能触发风控导致账号被封，造成用户重大损失。原则：
   - 优先用**游客 API**（`module=forumindex` / `forumdisplay` / `viewthread` 无需登录即可读取）做验证，尽量不登录。

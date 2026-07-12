@@ -2,11 +2,28 @@ import 'package:flutter/material.dart';
 
 import '../theme/app_theme.dart';
 
+/// 可滚动区域的偏移与视口尺寸，供「返回顶部」等 FAB 判定使用。
+class S1ScrollMetrics {
+  const S1ScrollMetrics({
+    required this.offset,
+    required this.viewportDimension,
+  });
+
+  final double offset;
+  final double viewportDimension;
+}
+
 /// 内容区 FAB 布局常量。
 ///
 /// FAB 叠在 [Expanded] 内容区右下角，物理上位于分页栏上方，
 /// 不使用 Scaffold.floatingActionButton，因此 SnackBar 不会顶起按钮。
 abstract class S1FabLayout {
+  /// 滚动超过视口高度的该比例后显示「返回顶部」。
+  static const double scrollToTopShowFraction = 0.15;
+
+  /// 已显示时，低于该比例才隐藏（滞回，避免边界抖动）。
+  static const double scrollToTopHideFraction = 0.05;
+
   static const double edgeMargin = 16;
   static const double stackGap = 12;
   static const double smallFabSize = 40;
@@ -40,6 +57,22 @@ abstract class S1FabLayout {
     );
     if (stack == 0) return edgeMargin;
     return edgeMargin + stack + edgeMargin;
+  }
+
+  /// 是否应显示「返回顶部」FAB（视口比例 + 滞回）。
+  static bool shouldShowScrollToTop({
+    required S1ScrollMetrics metrics,
+    required bool currentlyShowing,
+  }) {
+    final viewport = metrics.viewportDimension;
+    if (viewport <= 0) return false;
+
+    final showThreshold = viewport * scrollToTopShowFraction;
+    final hideThreshold = viewport * scrollToTopHideFraction;
+    if (currentlyShowing) {
+      return metrics.offset > hideThreshold;
+    }
+    return metrics.offset > showThreshold;
   }
 }
 

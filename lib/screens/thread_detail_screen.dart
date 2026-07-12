@@ -118,8 +118,11 @@ class _ThreadDetailScreenState extends ConsumerState<ThreadDetailScreen> {
     });
   }
 
-  void _onScrollOffsetChanged(double offset) {
-    final show = offset > 400;
+  void _onScrollMetricsChanged(S1ScrollMetrics metrics) {
+    final show = S1FabLayout.shouldShowScrollToTop(
+      metrics: metrics,
+      currentlyShowing: _showScrollToTop,
+    );
     if (show != _showScrollToTop) {
       setState(() => _showScrollToTop = show);
     }
@@ -445,7 +448,7 @@ class _ThreadDetailScreenState extends ConsumerState<ThreadDetailScreen> {
                           key: _swipeKey,
                           currentPage: state.currentPage,
                           totalPages: state.totalPages,
-                          onScrollOffsetChanged: _onScrollOffsetChanged,
+                          onScrollMetricsChanged: _onScrollMetricsChanged,
                           onPageChanged: _goToPage,
                           pageBuilder: (context, scrollController) =>
                               Scrollbar(

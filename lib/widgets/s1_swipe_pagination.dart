@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 
+import 's1_fab_layout.dart';
+
 typedef S1PageBuilder = Widget Function(
   BuildContext context,
   ScrollController scrollController,
@@ -18,7 +20,7 @@ class S1SwipePagination extends StatefulWidget {
     required this.totalPages,
     required this.onPageChanged,
     required this.pageBuilder,
-    this.onScrollOffsetChanged,
+    this.onScrollMetricsChanged,
     this.enabled = true,
   });
 
@@ -34,8 +36,8 @@ class S1SwipePagination extends StatefulWidget {
   /// 构建当前页可滚动内容。
   final S1PageBuilder pageBuilder;
 
-  /// 当前页滚动偏移，供 FAB「返回顶部」等使用。
-  final ValueChanged<double>? onScrollOffsetChanged;
+  /// 当前页滚动状态，供 FAB「返回顶部」等使用。
+  final ValueChanged<S1ScrollMetrics>? onScrollMetricsChanged;
 
   /// 是否启用左右滑动（单页时自动禁用）。
   final bool enabled;
@@ -96,7 +98,7 @@ class S1SwipePaginationState extends State<S1SwipePagination> {
       if (_scrollController.hasClients) {
         _scrollController.jumpTo(0);
       }
-      widget.onScrollOffsetChanged?.call(0);
+      _notifyScrollMetrics();
       if (_pageController.hasClients &&
           _pageController.page?.round() != _centerSlot) {
         _pageController.jumpToPage(_centerSlot);
@@ -104,10 +106,23 @@ class S1SwipePaginationState extends State<S1SwipePagination> {
     });
   }
 
-  void _onScroll() {
-    if (!_scrollController.hasClients) return;
-    widget.onScrollOffsetChanged?.call(_scrollController.offset);
+  void _notifyScrollMetrics() {
+    if (!_scrollController.hasClients) {
+      widget.onScrollMetricsChanged?.call(
+        const S1ScrollMetrics(offset: 0, viewportDimension: 0),
+      );
+      return;
+    }
+    final position = _scrollController.position;
+    widget.onScrollMetricsChanged?.call(
+      S1ScrollMetrics(
+        offset: position.pixels,
+        viewportDimension: position.viewportDimension,
+      ),
+    );
   }
+
+  void _onScroll() => _notifyScrollMetrics();
 
   /// 将当前页滚动回顶部（供 FAB 等外部调用）。
   Future<void> scrollToTop() async {

@@ -26,8 +26,11 @@ class _ForumListScreenState extends ConsumerState<ForumListScreen> {
   final _swipeKey = GlobalKey<S1SwipePaginationState>();
   bool _showScrollToTop = false;
 
-  void _onScrollOffsetChanged(double offset) {
-    final show = offset > 400;
+  void _onScrollMetricsChanged(S1ScrollMetrics metrics) {
+    final show = S1FabLayout.shouldShowScrollToTop(
+      metrics: metrics,
+      currentlyShowing: _showScrollToTop,
+    );
     if (show != _showScrollToTop) {
       setState(() => _showScrollToTop = show);
     }
@@ -102,7 +105,7 @@ class _ForumListScreenState extends ConsumerState<ForumListScreen> {
                   key: _swipeKey,
                   currentPage: state.currentPage,
                   totalPages: state.totalPages,
-                  onScrollOffsetChanged: _onScrollOffsetChanged,
+                  onScrollMetricsChanged: _onScrollMetricsChanged,
                   onPageChanged: (page) => ref
                       .read(threadListProvider(widget.fid).notifier)
                       .goToPage(page),

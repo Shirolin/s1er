@@ -207,6 +207,26 @@ void main() {
       });
     });
 
+    group('parseCommentCount', () {
+      test('parses comment count map from viewthread JSON', () {
+        final json = {
+          'Variables': {
+            'commentcount': {
+              '100': '2',
+              '200': 0,
+            },
+          },
+        };
+
+        expect(ApiService.parseCommentCount(json), {'100': 2, '200': 0});
+      });
+
+      test('returns empty map when commentcount is missing', () {
+        final json = {'Variables': <String, dynamic>{}};
+        expect(ApiService.parseCommentCount(json), isEmpty);
+      });
+    });
+
     group('parsePoll', () {
       test('parses poll from viewthread JSON when special is 1', () {
         final json = {
@@ -308,6 +328,45 @@ void main() {
         expect(options.hasError, isFalse);
         expect(options.scoreOptions, ['0', '+2', '+1', '-1', '-2']);
         expect(options.reasonPresets, ['', '好评加鹅', '欢乐多', '思路广']);
+      });
+
+      test('parses rich rate form fields from Discuz html', () {
+        const richFormHtml = '''
+<?xml version="1.0" encoding="utf-8"?>
+<root><![CDATA[
+<form id="rateform">
+  <input type="hidden" name="formhash" value="2867b07a" />
+  <input type="hidden" name="tid" value="2285380" />
+  <input type="hidden" name="pid" value="67953733" />
+  <input type="hidden" name="referer" value="forum.php?mod=viewthread&amp;tid=2285380" />
+  <input type="hidden" name="handlekey" value="rate" />
+  <table class="dt mbm"><tbody>
+    <tr><td>项目</td><td>分值</td><td>范围</td><td>今日剩余</td></tr>
+    <tr><td>战斗力</td><td></td><td>-2 ~ +2</td><td>+5</td></tr>
+  </tbody></table>
+  <ul id="reasonselect">
+    <li>好评加鹅</li>
+    <li>欢乐多</li>
+  </ul>
+  <input type="checkbox" id="sendreasonpm" checked="checked" disabled="disabled" />
+</form>
+]]></root>''';
+
+        final options = ApiService.parseRateFormResponse(richFormHtml);
+
+        expect(options.formHash, '2867b07a');
+        expect(options.tid, '2285380');
+        expect(options.pid, '67953733');
+        expect(options.referer, 'forum.php?mod=viewthread&tid=2285380');
+        expect(options.handleKey, 'rate');
+        expect(options.minScore, -2);
+        expect(options.maxScore, 2);
+        expect(options.totalScore, 5);
+        expect(options.buildScoreOptions(), ['+2', '+1', '-1', '-2']);
+        expect(options.preferredDefaultScore, '+1');
+        expect(options.reasonPresets, ['好评加鹅', '欢乐多']);
+        expect(options.notifyAuthorDefault, isTrue);
+        expect(options.notifyAuthorDisabled, isTrue);
       });
 
       test('returns error for self-rate message', () {
@@ -524,7 +583,8 @@ void main() {
 
     group('parseReplyResponse', () {
       test('returns success result with pid and tid', () {
-        const xml = "<root><![CDATA[<script>succeedhandle_reply('redirect.php?mod=redirect&goto=findpost&pid=123&ptid=456', '回复发布成功', {fid:'4',tid:'456',pid:'123',from:'1',sechash:'abc'});</script>]]></root>";
+        const xml =
+            "<root><![CDATA[<script>succeedhandle_reply('redirect.php?mod=redirect&goto=findpost&pid=123&ptid=456', '回复发布成功', {fid:'4',tid:'456',pid:'123',from:'1',sechash:'abc'});</script>]]></root>";
         final result = ApiService.parseReplyResponse(xml);
         expect(result.isSuccess, isTrue);
         expect(result.pid, '123');
@@ -550,26 +610,30 @@ void main() {
       });
 
       test('returns error message from errorhandle_reply', () {
-        const xml = "<root><![CDATA[<script>errorhandle_reply('内容过长', 'error');</script>]]></root>";
+        const xml =
+            "<root><![CDATA[<script>errorhandle_reply('内容过长', 'error');</script>]]></root>";
         final result = ApiService.parseReplyResponse(xml);
         expect(result.isSuccess, isFalse);
         expect(result.error, '内容过长');
       });
 
       test('returns second arg when first is empty in errorhandle', () {
-        const xml = "<root><![CDATA[<script>errorhandle_reply('', '操作失败');</script>]]></root>";
+        const xml =
+            "<root><![CDATA[<script>errorhandle_reply('', '操作失败');</script>]]></root>";
         final result = ApiService.parseReplyResponse(xml);
         expect(result.error, '操作失败');
       });
 
       test('returns message from alert', () {
-        const xml = "<root><![CDATA[<script>alert('您没有权限回复');</script>]]></root>";
+        const xml =
+            "<root><![CDATA[<script>alert('您没有权限回复');</script>]]></root>";
         final result = ApiService.parseReplyResponse(xml);
         expect(result.error, '您没有权限回复');
       });
 
       test('returns message from errorhandle_postform', () {
-        const xml = "<root><![CDATA[<script>errorhandle_postform('抱歉，您的请求来路不正确或表单验证串不符，无法提交', {});</script>]]></root>";
+        const xml =
+            "<root><![CDATA[<script>errorhandle_postform('抱歉，您的请求来路不正确或表单验证串不符，无法提交', {});</script>]]></root>";
         final result = ApiService.parseReplyResponse(xml);
         expect(result.error, '抱歉，您的请求来路不正确或表单验证串不符，无法提交');
       });
@@ -620,8 +684,10 @@ void main() {
         }
       });
 
-      test('ensureJson falls back to default message when no messagetext div', () {
-        const html = '<!DOCTYPE html><html><body><p>Something else</p></body></html>';
+      test('ensureJson falls back to default message when no messagetext div',
+          () {
+        const html =
+            '<!DOCTYPE html><html><body><p>Something else</p></body></html>';
         try {
           ApiService.ensureJson(html);
           fail('Expected ServerMaintenanceException');

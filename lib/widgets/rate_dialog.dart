@@ -55,19 +55,20 @@ class _RateDialogState extends ConsumerState<_RateDialog> {
   }
 
   Future<void> _fetchForm() async {
+    setState(() => _options = null);
     final options = await ref.read(apiServiceProvider).fetchRateForm(
           tid: widget.tid,
           pid: widget.pid,
         );
     if (!mounted) return;
 
-    if (options.hasError) {
-      Navigator.of(context).pop();
-      S1SnackBar.show(context, message: options.error!);
-      return;
-    }
-
-    setState(() => _options = options);
+    setState(() {
+      _options = options;
+      if (!options.hasError) {
+        _score = options.preferredDefaultScore;
+        _notifyAuthor = options.notifyAuthorDefault;
+      }
+    });
   }
 
   Future<void> _submit() async {
@@ -84,6 +85,7 @@ class _RateDialogState extends ConsumerState<_RateDialog> {
             score1: _score!,
             reason: _reasonController.text.trim(),
             notifyAuthor: _notifyAuthor,
+            form: _options,
           );
       if (!mounted) return;
 
@@ -110,34 +112,51 @@ class _RateDialogState extends ConsumerState<_RateDialog> {
   @override
   Widget build(BuildContext context) {
     final textTheme = Theme.of(context).textTheme;
-    final ready = _options != null;
+    final options = _options;
 
     return AlertDialog(
       title: Text('评分', style: textTheme.titleLarge),
       content: _buildContent(context),
       actionsPadding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
-      actions: ready
-          ? [
-              TextButton(
-                onPressed: _submitting ? null : () => Navigator.of(context).pop(),
-                child: const Text('取消'),
-              ),
-              FilledButton(
-                onPressed: _submitting ? null : _submit,
-                child: _submitting
-                    ? SizedBox(
-                        width: 18,
-                        height: 18,
-                        child: CircularProgressIndicator(
-                          strokeWidth: 2,
-                          color: Theme.of(context).colorScheme.onPrimary,
-                        ),
-                      )
-                    : const Text('确定'),
-              ),
-            ]
-          : null,
+      actions: _buildActions(context, options),
     );
+  }
+
+  List<Widget>? _buildActions(BuildContext context, RateFormOptions? options) {
+    if (options == null) return null;
+    if (options.hasError) {
+      return [
+        TextButton(
+          onPressed: () => Navigator.of(context).pop(),
+          child: Text(options.retryable ? '取消' : '关闭'),
+        ),
+        if (options.retryable)
+          FilledButton(
+            onPressed: _fetchForm,
+            child: const Text('重试'),
+          ),
+      ];
+    }
+
+    return [
+      TextButton(
+        onPressed: _submitting ? null : () => Navigator.of(context).pop(),
+        child: const Text('取消'),
+      ),
+      FilledButton(
+        onPressed: _submitting ? null : _submit,
+        child: _submitting
+            ? SizedBox(
+                width: 18,
+                height: 18,
+                child: CircularProgressIndicator(
+                  strokeWidth: 2,
+                  color: Theme.of(context).colorScheme.onPrimary,
+                ),
+              )
+            : const Text('确定'),
+      ),
+    ];
   }
 
   Widget _buildContent(BuildContext context) {
@@ -150,11 +169,23 @@ class _RateDialogState extends ConsumerState<_RateDialog> {
     }
 
     final options = _options!;
+    if (options.hasError) {
+      return SizedBox(
+        width: 280,
+        child:
+            Text(options.error!, style: Theme.of(context).textTheme.bodyMedium),
+      );
+    }
+
     final textTheme = Theme.of(context).textTheme;
-    final selectableScores =
-        options.scoreOptions.where((score) => score != '0').toList();
+    final scheme = Theme.of(context).colorScheme;
+    final selectableScores = options.buildScoreOptions();
     final reasonPresets =
         options.reasonPresets.where((preset) => preset.isNotEmpty).toList();
+    final totalScore = options.totalScore;
+    final totalScoreLabel = totalScore == null
+        ? null
+        : '当前总战斗力：${totalScore > 0 ? '+' : ''}$totalScore';
 
     return SizedBox(
       width: double.maxFinite,
@@ -164,6 +195,7 @@ class _RateDialogState extends ConsumerState<_RateDialog> {
         children: [
           _FormFieldSection(
             label: '战斗力',
+            supportingText: totalScoreLabel,
             child: Wrap(
               spacing: 8,
               runSpacing: 8,
@@ -192,7 +224,8 @@ class _RateDialogState extends ConsumerState<_RateDialog> {
               textInputAction: TextInputAction.done,
               decoration: const InputDecoration(
                 hintText: '可选评分理由',
-                contentPadding: EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                contentPadding:
+                    EdgeInsets.symmetric(horizontal: 16, vertical: 12),
               ),
             ),
           ),
@@ -221,14 +254,14 @@ class _RateDialogState extends ConsumerState<_RateDialog> {
           ],
           const SizedBox(height: 16),
           Material(
-            color: Theme.of(context).colorScheme.surfaceContainerLow,
+            color: scheme.surfaceContainerLow,
             borderRadius: S1Shape.medium,
             child: CheckboxListTile(
               contentPadding: const EdgeInsets.symmetric(horizontal: 8),
               controlAffinity: ListTileControlAffinity.leading,
               title: Text('通知作者', style: textTheme.bodyLarge),
               value: _notifyAuthor,
-              onChanged: _submitting
+              onChanged: _submitting || options.notifyAuthorDisabled
                   ? null
                   : (value) => setState(() => _notifyAuthor = value ?? false),
             ),
@@ -240,10 +273,15 @@ class _RateDialogState extends ConsumerState<_RateDialog> {
 }
 
 class _FormFieldSection extends StatelessWidget {
-  const _FormFieldSection({required this.label, required this.child});
+  const _FormFieldSection({
+    required this.label,
+    required this.child,
+    this.supportingText,
+  });
 
   final String label;
   final Widget child;
+  final String? supportingText;
 
   @override
   Widget build(BuildContext context) {
@@ -257,6 +295,14 @@ class _FormFieldSection extends StatelessWidget {
           label,
           style: textTheme.titleSmall?.copyWith(color: scheme.onSurfaceVariant),
         ),
+        if (supportingText != null) ...[
+          const SizedBox(height: 2),
+          Text(
+            supportingText!,
+            style:
+                textTheme.bodySmall?.copyWith(color: scheme.onSurfaceVariant),
+          ),
+        ],
         const SizedBox(height: 8),
         child,
       ],

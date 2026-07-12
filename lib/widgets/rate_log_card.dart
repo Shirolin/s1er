@@ -3,6 +3,8 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../models/rate_log.dart';
 import '../providers/post_provider.dart';
 import '../theme/app_theme.dart';
+import '../utils/format_utils.dart';
+import 'user_profile_sheet.dart';
 
 class RateLogCard extends StatefulWidget {
   const RateLogCard({super.key, required this.rateLog, required this.tid});
@@ -20,6 +22,7 @@ class _RateLogCardState extends State<RateLogCard> {
 
   // 默认初始显示的条数，对齐服务器内联输出上限
   static const int _initialDisplayCount = 20;
+  static const int _collapsedPreviewCount = 3;
 
   Future<void> _handleLoadFull(WidgetRef ref) async {
     setState(() => _isLoadingFull = true);
@@ -57,6 +60,8 @@ class _RateLogCardState extends State<RateLogCard> {
     // 情况 B: 服务器还有更多没加载的
     final hasMoreLocally = rateLog.entries.length > displayEntries.length;
     final needsMoreButton = hasMoreLocally || isServerTruncated;
+    final collapsedEntries =
+        rateLog.entries.take(_collapsedPreviewCount).toList();
 
     return Consumer(
       builder: (context, ref, child) {
@@ -81,6 +86,28 @@ class _RateLogCardState extends State<RateLogCard> {
                     accentColor: accentColor,
                     expanded: _expanded,
                   ),
+                  if (!_expanded && collapsedEntries.isNotEmpty)
+                    Container(
+                      padding: const EdgeInsets.only(bottom: 8),
+                      decoration: BoxDecoration(
+                        color: scheme.surfaceContainer,
+                        borderRadius: BorderRadius.vertical(
+                          bottom: S1Shape.medium.bottomLeft,
+                        ),
+                      ),
+                      child: Column(
+                        children: [
+                          const Divider(height: 1, indent: 12, endIndent: 12),
+                          const SizedBox(height: 4),
+                          ...collapsedEntries.map(
+                            (entry) => _EntryRow(
+                              entry: entry,
+                              accentColor: accentColor,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
                   if (_expanded) ...[
                     Container(
                       padding: const EdgeInsets.only(bottom: 8),
@@ -95,8 +122,10 @@ class _RateLogCardState extends State<RateLogCard> {
                           const Divider(height: 1, indent: 12, endIndent: 12),
                           const SizedBox(height: 4),
                           ...displayEntries.map(
-                            (entry) =>
-                                _EntryRow(entry: entry, accentColor: accentColor),
+                            (entry) => _EntryRow(
+                              entry: entry,
+                              accentColor: accentColor,
+                            ),
                           ),
                           if (needsMoreButton)
                             Padding(
@@ -116,7 +145,9 @@ class _RateLogCardState extends State<RateLogCard> {
                                     : TextButton(
                                         onPressed: () {
                                           if (hasMoreLocally) {
-                                            setState(() => _isLocalExpanded = true);
+                                            setState(
+                                              () => _isLocalExpanded = true,
+                                            );
                                           } else if (isServerTruncated) {
                                             _handleLoadFull(ref);
                                           }
@@ -204,17 +235,31 @@ class _SummaryRow extends StatelessWidget {
   }
 }
 
-class _EntryRow extends StatelessWidget {
+class _EntryRow extends ConsumerWidget {
   const _EntryRow({required this.entry, required this.accentColor});
 
   final RateLog entry;
   final Color accentColor;
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
     final textTheme = Theme.of(context).textTheme;
     final scheme = Theme.of(context).colorScheme;
     final sign = entry.score >= 0 ? '+' : '';
+    final uid = entry.uid;
+    final ratedAt = entry.ratedAt;
+    final ratedAtText = ratedAt == null
+        ? ''
+        : formatDateTime(ratedAt.millisecondsSinceEpoch ~/ 1000);
+    final username = Text(
+      entry.username,
+      style: textTheme.bodySmall?.copyWith(
+        color: uid == null ? scheme.onSurface : scheme.primary,
+        fontWeight: FontWeight.w500,
+      ),
+      maxLines: 1,
+      overflow: TextOverflow.ellipsis,
+    );
 
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
@@ -223,14 +268,31 @@ class _EntryRow extends StatelessWidget {
           const SizedBox(width: 12),
           Expanded(
             flex: 3,
-            child: Text(
-              entry.username,
-              style: textTheme.bodySmall?.copyWith(
-                color: scheme.onSurface,
-                fontWeight: FontWeight.w500,
-              ),
-              maxLines: 1,
-              overflow: TextOverflow.ellipsis,
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                uid == null
+                    ? username
+                    : GestureDetector(
+                        behavior: HitTestBehavior.opaque,
+                        onTap: () => showUserProfileSheet(
+                          context,
+                          future: ref
+                              .read(apiServiceProvider)
+                              .getUserProfileByUid(uid),
+                        ),
+                        child: username,
+                      ),
+                if (ratedAtText.isNotEmpty)
+                  Text(
+                    ratedAtText,
+                    style: textTheme.labelSmall?.copyWith(
+                      color: scheme.onSurfaceVariant,
+                    ),
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                  ),
+              ],
             ),
           ),
           SizedBox(

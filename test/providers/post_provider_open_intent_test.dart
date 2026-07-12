@@ -78,7 +78,8 @@ void main() {
       expect(adapter.requestedPages, isNot(contains(1)));
     });
 
-    test('reading record resume loads lastReadPage without page=1 flash', () async {
+    test('reading record resume loads lastReadPage without page=1 flash',
+        () async {
       container = buildContainer(
         extraOverrides: [
           readingRecordProvider('100').overrideWithValue(
@@ -105,6 +106,19 @@ void main() {
       expect(state.currentPage, 3);
       expect(adapter.requestedPages, [3]);
     });
+
+    test('skips rate log html fetch when commentcount has no rates', () async {
+      adapter.commentCount = {'1': 0};
+      container = buildContainer(
+        extraOverrides: [
+          readingRecordProvider('100').overrideWithValue(null),
+        ],
+      );
+
+      await container.read(postProvider('100').future);
+
+      expect(adapter.rateLogRequests, isEmpty);
+    });
   });
 }
 
@@ -112,6 +126,8 @@ class _ThreadDetailAdapter implements HttpClientAdapter {
   final requestedPages = <int>[];
   final locateRequests = <String>[];
   final locatePageForPid = <String, int>{};
+  final rateLogRequests = <Uri>[];
+  Map<String, int>? commentCount;
 
   @override
   void close({bool force = false}) {}
@@ -143,27 +159,31 @@ class _ThreadDetailAdapter implements HttpClientAdapter {
     if (uri.query.contains('module=viewthread')) {
       final page = int.tryParse(uri.queryParameters['page'] ?? '1') ?? 1;
       requestedPages.add(page);
+      final variables = <String, dynamic>{
+        'ppp': '40',
+        'thread': {
+          'subject': 'Test Thread',
+          'fid': '4',
+          'replies': '159',
+          'allowreply': '1',
+        },
+        'postlist': [
+          {
+            'pid': '1',
+            'author': 'user',
+            'authorid': '1',
+            'message': 'body',
+            'dateline': '1700000000',
+            'floor': '1',
+          },
+        ],
+      };
+      if (commentCount != null) {
+        variables['commentcount'] = commentCount;
+      }
       return ResponseBody.fromString(
         jsonEncode({
-          'Variables': {
-            'ppp': '40',
-            'thread': {
-              'subject': 'Test Thread',
-              'fid': '4',
-              'replies': '159',
-              'allowreply': '1',
-            },
-            'postlist': [
-              {
-                'pid': '1',
-                'author': 'user',
-                'authorid': '1',
-                'message': 'body',
-                'dateline': '1700000000',
-                'floor': '1',
-              },
-            ],
-          },
+          'Variables': variables,
         }),
         200,
         headers: {
@@ -173,6 +193,7 @@ class _ThreadDetailAdapter implements HttpClientAdapter {
     }
 
     if (uri.query.contains('mod=viewthread')) {
+      rateLogRequests.add(uri);
       return ResponseBody.fromString('<html></html>', 200);
     }
 

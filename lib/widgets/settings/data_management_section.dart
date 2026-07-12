@@ -6,11 +6,9 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../providers/post_provider.dart';
 import '../../providers/auth_provider.dart';
 import '../../providers/backup_provider.dart';
-import '../../providers/image_cache_provider.dart';
 import '../../providers/reading_history_provider.dart';
 import '../../providers/settings_provider.dart';
 import '../../services/backup/s1_backup_codec.dart';
-import '../../services/s1_image_cache.dart';
 import '../../theme/app_theme.dart';
 import '../../utils/s1_snack_bar.dart';
 import '../s1_confirm_dialog.dart';
@@ -27,7 +25,6 @@ class DataManagementSection extends ConsumerStatefulWidget {
 class _DataManagementSectionState extends ConsumerState<DataManagementSection> {
   bool _clearingHistory = false;
   bool _clearingVotes = false;
-  bool _clearingImageCache = false;
   bool _exportingBackup = false;
   bool _importingBackup = false;
   bool _resettingSettings = false;
@@ -112,26 +109,6 @@ class _DataManagementSectionState extends ConsumerState<DataManagementSection> {
     );
   }
 
-  Future<void> _clearImageCache() async {
-    await _confirmAction(
-      title: '清除图片缓存',
-      content: kIsWeb
-          ? '将清除应用内图片内存缓存。浏览器磁盘缓存由系统管理，可能无法完全清空。'
-          : '将删除本地下载的图片缓存，下次浏览时会重新下载。',
-      confirmLabel: '清除',
-      isDestructive: true,
-      onConfirm: () => _runTask(
-        current: _clearingImageCache,
-        setBusy: (value) => _clearingImageCache = value,
-        successMessage: '已清除图片缓存',
-        action: () async {
-          await clearS1ImageCaches();
-          ref.invalidate(imageCacheSizeProvider);
-        },
-      ),
-    );
-  }
-
   Future<void> _exportBackup() async {
     await _runTask(
       current: _exportingBackup,
@@ -168,7 +145,7 @@ class _DataManagementSectionState extends ConsumerState<DataManagementSection> {
   Future<void> _resetAppearanceSettings() async {
     await _confirmAction(
       title: '重置显示与主题设置',
-      content: '将恢复主题、字号、图片显示和阅读历史记录开关的默认值。',
+      content: '将恢复主题、字号、图片与缓存相关设置的默认值。',
       confirmLabel: '重置',
       onConfirm: () => _runTask(
         current: _resettingSettings,
@@ -204,17 +181,6 @@ class _DataManagementSectionState extends ConsumerState<DataManagementSection> {
     final hasVoteCache =
         authState.isLoggedIn && (authState.user?.uid.isNotEmpty ?? false);
     final scheme = Theme.of(context).colorScheme;
-    final cacheSizeAsync = ref.watch(imageCacheSizeProvider);
-    final cacheSubtitle = cacheSizeAsync.when(
-      data: (bytes) {
-        if (kIsWeb) {
-          return '浏览器管理磁盘缓存；可清除应用内图片内存缓存';
-        }
-        return '当前约占用 ${S1ImageCache.formatSize(bytes)}，上限 ${S1ImageCache.formatLimit()}';
-      },
-      loading: () => '正在统计缓存占用…',
-      error: (_, __) => '清除已下载的图片，释放本地空间',
-    );
 
     return Card(
       elevation: 0,
@@ -271,28 +237,6 @@ class _DataManagementSectionState extends ConsumerState<DataManagementSection> {
             const SizedBox(height: 8),
             ListTile(
               leading: Icon(
-                Icons.image_not_supported_outlined,
-                color: scheme.onSurfaceVariant,
-              ),
-              title: const Text('清除图片缓存'),
-              subtitle: Text(
-                cacheSubtitle,
-                style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                      color: scheme.onSurfaceVariant,
-                    ),
-              ),
-              trailing: _buildTrailingSpinner(_clearingImageCache),
-              onTap: _clearingImageCache
-                  ? null
-                  : () => unawaited(_clearImageCache()),
-              contentPadding: const EdgeInsets.symmetric(horizontal: 8),
-              shape: const RoundedRectangleBorder(
-                borderRadius: S1Shape.small,
-              ),
-            ),
-            const SizedBox(height: 8),
-            ListTile(
-              leading: Icon(
                 Icons.upload_file_outlined,
                 color: scheme.onSurfaceVariant,
               ),
@@ -338,7 +282,7 @@ class _DataManagementSectionState extends ConsumerState<DataManagementSection> {
               ),
               title: const Text('重置显示与主题设置'),
               subtitle: Text(
-                '恢复主题、字号、图片显示和阅读历史记录开关的默认值',
+                '恢复主题、字号、图片与缓存相关设置的默认值',
                 style: Theme.of(context).textTheme.bodySmall?.copyWith(
                       color: scheme.onSurfaceVariant,
                     ),

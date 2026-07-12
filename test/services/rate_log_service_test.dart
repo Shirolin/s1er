@@ -45,10 +45,12 @@ void main() {
       expect(rateLog.entries.length, 4);
 
       expect(rateLog.entries[0].username, 'rustincohle');
+      expect(rateLog.entries[0].uid, '100');
       expect(rateLog.entries[0].score, 2);
       expect(rateLog.entries[0].reason, '好评加鹅');
 
       expect(rateLog.entries[1].username, 'anotheruser');
+      expect(rateLog.entries[1].uid, '200');
       expect(rateLog.entries[1].score, 3);
       expect(rateLog.entries[1].reason, '精彩回复');
 
@@ -103,7 +105,8 @@ void main() {
     });
 
     test('returns empty map for HTML without rate logs', () {
-      const html = '<html><body><div class="postcontent">hello</div></body></html>';
+      const html =
+          '<html><body><div class="postcontent">hello</div></body></html>';
       final result = RateLogService.parseRateLogs(html);
       expect(result, isEmpty);
     });
@@ -162,6 +165,41 @@ void main() {
       final result = RateLogService.parseRateLogs(html);
       expect(result['500']!.entries.length, 1);
       expect(result['500']!.entries[0].username, 'validuser');
+    });
+
+    test('parses viewratings table with uid and timestamp', () {
+      const html = '''
+<table>
+  <tbody>
+    <tr>
+      <td>战斗力 +2</td>
+      <td><a href="home.php?mod=space&uid=100">rustincohle</a></td>
+      <td>2018-4-14 22:20</td>
+      <td>好评加鹅</td>
+    </tr>
+    <tr>
+      <td>战斗力 -1</td>
+      <td><a href="home.php?mod=space&uid=200">another</a></td>
+      <td>2018-04-15 09:05</td>
+      <td>扣分</td>
+    </tr>
+  </tbody>
+</table>
+''';
+
+      final result =
+          RateLogService.parseRateLogs(html, fallbackPid: '67953733');
+      final rateLog = result['67953733']!;
+
+      expect(rateLog.participantCount, 2);
+      expect(rateLog.totalScore, 1);
+      expect(rateLog.entries[0].uid, '100');
+      expect(rateLog.entries[0].username, 'rustincohle');
+      expect(rateLog.entries[0].score, 2);
+      expect(rateLog.entries[0].ratedAt, DateTime(2018, 4, 14, 22, 20));
+      expect(rateLog.entries[1].uid, '200');
+      expect(rateLog.entries[1].score, -1);
+      expect(rateLog.entries[1].ratedAt, DateTime(2018, 4, 15, 9, 5));
     });
   });
 }

@@ -31,7 +31,6 @@ class ServerMaintenanceException implements Exception {
 }
 
 class ApiService {
-
   ApiService(this._httpClient);
   final S1HttpClient _httpClient;
 
@@ -91,7 +90,8 @@ class ApiService {
   /// 业务数据；仅当解析结果为空且命中此条件时才视为需要登录。
   static bool isLoginRequiredResponse(Map<String, dynamic> json) {
     final message = json['Message'];
-    if (message is Map<String, dynamic> && message['messageval'] == 'to_login') {
+    if (message is Map<String, dynamic> &&
+        message['messageval'] == 'to_login') {
       return true;
     }
     if (json['error'] == 'to_login') return true;
@@ -139,17 +139,15 @@ class ApiService {
     final threadList = variables?['forum_threadlist'] as List?;
     if (threadList == null) return [];
     final threadTypes = parseThreadTypes(json);
-    return threadList
-        .map((t) {
-          final thread = Thread.fromJson(t as Map<String, dynamic>);
-          if (thread.typeId != null &&
-              thread.typeName == null &&
-              threadTypes.containsKey(thread.typeId)) {
-            return thread.copyWith(typeName: threadTypes[thread.typeId]);
-          }
-          return thread;
-        })
-        .toList();
+    return threadList.map((t) {
+      final thread = Thread.fromJson(t as Map<String, dynamic>);
+      if (thread.typeId != null &&
+          thread.typeName == null &&
+          threadTypes.containsKey(thread.typeId)) {
+        return thread.copyWith(typeName: threadTypes[thread.typeId]);
+      }
+      return thread;
+    }).toList();
   }
 
   static List<Post> parsePostList(Map<String, dynamic> json) {
@@ -159,6 +157,19 @@ class ApiService {
     return postList
         .map((p) => Post.fromJson(p as Map<String, dynamic>))
         .toList();
+  }
+
+  static Map<String, int> parseCommentCount(Map<String, dynamic> json) {
+    final variables = json['Variables'] as Map<String, dynamic>?;
+    final commentCount = variables?['commentcount'];
+    if (commentCount is! Map) return {};
+
+    return commentCount.map((key, value) {
+      return MapEntry(
+        key.toString(),
+        int.tryParse(value?.toString() ?? '') ?? 0,
+      );
+    });
   }
 
   /// 解析投票帖数据。非投票帖或缺少 `special_poll` 时返回 null。
@@ -213,15 +224,17 @@ class ApiService {
         totalTodayPosts += sub.todayPosts;
       }
 
-      categories.add(ForumCategory(
-        fid: catFid,
-        name: catName,
-        description: '',
-        threads: totalThreads,
-        posts: totalPosts,
-        todayPosts: totalTodayPosts,
-        subforums: subforums,
-      ),);
+      categories.add(
+        ForumCategory(
+          fid: catFid,
+          name: catName,
+          description: '',
+          threads: totalThreads,
+          posts: totalPosts,
+          todayPosts: totalTodayPosts,
+          subforums: subforums,
+        ),
+      );
     }
 
     return categories;
@@ -277,7 +290,8 @@ class ApiService {
     return json;
   }
 
-  Future<Map<String, dynamic>> getThreadDetail(String tid, {
+  Future<Map<String, dynamic>> getThreadDetail(
+    String tid, {
     int page = 1,
     String? authorId,
   }) async {
@@ -370,8 +384,9 @@ class ApiService {
         if (message is Map<String, dynamic>) {
           final messageval = message['messageval'];
           final messagestr = message['messagestr'] as String?;
-          
-          if (messageval == 'login_succeed' || messageval?.contains('succeed') == true) {
+
+          if (messageval == 'login_succeed' ||
+              messageval?.contains('succeed') == true) {
             await _httpClient.refreshFormhashAfterAuth();
             return null; // 登录成功
           } else if (messagestr != null) {
@@ -505,7 +520,8 @@ class ApiService {
     if (body.contains('thread_poll_succeed') ||
         body.contains('pollvote_succeed') ||
         body.contains('投票成功') ||
-        (body.contains('window.location.href') && body.contains('viewthread'))) {
+        (body.contains('window.location.href') &&
+            body.contains('viewthread'))) {
       return null;
     }
 
@@ -587,15 +603,51 @@ class ApiService {
 
   static List<String> _parseSelectOptions(String html, String selectId) {
     try {
+      html = _unwrapAjaxHtml(html);
       final doc = parse(html);
       final select = doc.querySelector('select#$selectId');
       if (select == null) return [];
 
-      return select.querySelectorAll('option').map((option) {
-        final value = option.attributes['value'];
-        if (value != null) return value;
-        return option.text.trim();
-      }).where((v) => v.isNotEmpty || selectId == 'reason').toList();
+      return select
+          .querySelectorAll('option')
+          .map((option) {
+            final value = option.attributes['value'];
+            if (value != null) return value;
+            return option.text.trim();
+          })
+          .where((v) => v.isNotEmpty || selectId == 'reason')
+          .toList();
+    } catch (_) {
+      return [];
+    }
+  }
+
+  static String _unwrapAjaxHtml(String body) {
+    final cdataMatch = RegExp(
+      r'<!\[CDATA\[(.*)\]\]>',
+      dotAll: true,
+    ).firstMatch(body);
+    return cdataMatch?.group(1) ?? body;
+  }
+
+  static int? _parseSignedInt(String? raw) {
+    if (raw == null) return null;
+    final match = RegExp(r'[+-]?\s*\d+').firstMatch(raw);
+    if (match == null) return null;
+    return int.tryParse(
+      match.group(0)!.replaceAll(' ', '').replaceAll('+', ''),
+    );
+  }
+
+  static List<String> _parseReasonListItems(String html) {
+    try {
+      html = _unwrapAjaxHtml(html);
+      final doc = parse(html);
+      return doc
+          .querySelectorAll('#reasonselect li')
+          .map((element) => element.text.trim())
+          .where((value) => value.isNotEmpty)
+          .toList();
     } catch (_) {
       return [];
     }
@@ -603,13 +655,74 @@ class ApiService {
 
   /// 从 Discuz rate 弹窗响应中解析表单选项与错误。
   static RateFormOptions parseRateFormResponse(String body) {
+    final html = _unwrapAjaxHtml(body);
     final error = _extractMessagetextError(body);
     if (error != null) {
       return RateFormOptions.withDefaults(error: error);
     }
 
-    var scoreOptions = _parseSelectOptions(body, 'rate1');
-    var reasonPresets = _parseSelectOptions(body, 'reason');
+    var scoreOptions = _parseSelectOptions(html, 'rate1');
+    var reasonPresets = _parseSelectOptions(html, 'reason');
+    if (reasonPresets.isEmpty) {
+      reasonPresets = _parseReasonListItems(html);
+    }
+
+    String? formHash;
+    String? parsedTid;
+    String? parsedPid;
+    String? referer;
+    String? handleKey;
+    int? minScore;
+    int? maxScore;
+    int? totalScore;
+    var notifyAuthorDefault = false;
+    var notifyAuthorDisabled = false;
+
+    try {
+      final doc = parse(html);
+      final rateFormInputs = doc.querySelectorAll('#rateform input');
+      final hiddenFields = <String, String>{};
+      for (final input in rateFormInputs) {
+        final value = input.attributes['value'] ?? '';
+        final name = input.attributes['name'];
+        if (name != null && name.isNotEmpty) hiddenFields[name] = value;
+        final id = input.attributes['id'];
+        if (id != null && id.isNotEmpty) hiddenFields[id] = value;
+      }
+      formHash = hiddenFields['formhash'];
+      parsedTid = hiddenFields['tid'];
+      parsedPid = hiddenFields['pid'];
+      referer = hiddenFields['referer'];
+      handleKey = hiddenFields['handlekey'];
+      if (rateFormInputs.length >= 5) {
+        formHash ??= rateFormInputs[0].attributes['value'];
+        parsedTid ??= rateFormInputs[1].attributes['value'];
+        parsedPid ??= rateFormInputs[2].attributes['value'];
+        referer ??= rateFormInputs[3].attributes['value'];
+        handleKey ??= rateFormInputs[4].attributes['value'];
+      }
+
+      for (final row in doc.querySelectorAll('.dt.mbm tbody tr')) {
+        final cells = row.children;
+        for (var i = 0; i < cells.length; i++) {
+          final rangeMatch = RegExp(
+            r'([+-]?\s*\d+)\s*~\s*([+-]?\s*\d+)',
+          ).firstMatch(cells[i].text);
+          if (rangeMatch == null) continue;
+          minScore = _parseSignedInt(rangeMatch.group(1));
+          maxScore = _parseSignedInt(rangeMatch.group(2));
+          if (i + 1 < cells.length) {
+            totalScore = _parseSignedInt(cells[i + 1].text);
+          }
+        }
+      }
+
+      final notifyAuthor = doc.querySelector('#sendreasonpm');
+      if (notifyAuthor != null) {
+        notifyAuthorDefault = notifyAuthor.attributes.containsKey('checked');
+        notifyAuthorDisabled = notifyAuthor.attributes.containsKey('disabled');
+      }
+    } catch (_) {}
 
     if (scoreOptions.isEmpty) {
       scoreOptions = RateFormOptions.defaultScoreOptions;
@@ -621,6 +734,16 @@ class ApiService {
     return RateFormOptions(
       scoreOptions: scoreOptions,
       reasonPresets: reasonPresets,
+      formHash: formHash,
+      tid: parsedTid,
+      pid: parsedPid,
+      referer: referer,
+      handleKey: handleKey,
+      minScore: minScore,
+      maxScore: maxScore,
+      totalScore: totalScore,
+      notifyAuthorDefault: notifyAuthorDefault,
+      notifyAuthorDisabled: notifyAuthorDisabled,
     );
   }
 
@@ -653,6 +776,7 @@ class ApiService {
       }
       return RateFormOptions.withDefaults(
         error: friendlyError(e, '获取评分表单'),
+        retryable: true,
       );
     }
   }
@@ -660,7 +784,8 @@ class ApiService {
   static String? parseRateSubmitResponse(String body) {
     if (body.contains('rate_succeed') ||
         body.contains('评分成功') ||
-        (body.contains('window.location.href') && body.contains('viewthread'))) {
+        (body.contains('window.location.href') &&
+            body.contains('viewthread'))) {
       return null;
     }
 
@@ -696,19 +821,26 @@ class ApiService {
     required String score1,
     String reason = '',
     bool notifyAuthor = false,
+    RateFormOptions? form,
   }) async {
     const url = '${ApiConfig.forumPostUrl}'
         '?mod=misc&action=rate&ratesubmit=yes&infloat=yes&inajax=1';
 
     final data = <String, String>{
-      'tid': tid,
-      'pid': pid,
-      'referer': ApiConfig.forumRateReferer(tid, pid),
-      'handlekey': 'rate',
+      'tid': form?.tid?.isNotEmpty == true ? form!.tid! : tid,
+      'pid': form?.pid?.isNotEmpty == true ? form!.pid! : pid,
+      'referer': form?.referer?.isNotEmpty == true
+          ? form!.referer!
+          : ApiConfig.forumRateReferer(tid, pid),
+      'handlekey':
+          form?.handleKey?.isNotEmpty == true ? form!.handleKey! : 'rate',
       'score1': score1,
       'reason': reason,
       'ratesubmit': 'true',
     };
+    if (form?.formHash?.isNotEmpty == true) {
+      data['formhash'] = form!.formHash!;
+    }
     if (notifyAuthor) {
       data['sendreasonpm'] = '1';
     }
@@ -748,7 +880,8 @@ class ApiService {
         username: variables['member_username']?.toString() ?? '',
         avatar: variables['member_avatar']?.toString(),
         groupTitle: group?['grouptitle']?.toString(),
-        credits: int.tryParse(variables['member_credits']?.toString() ?? '') ?? 0,
+        credits:
+            int.tryParse(variables['member_credits']?.toString() ?? '') ?? 0,
         groupid: int.tryParse(variables['groupid']?.toString() ?? ''),
       );
 
@@ -764,14 +897,19 @@ class ApiService {
           final space = profileVars['space'] as Map<String, dynamic>?;
           if (space != null) {
             user = user.copyWith(
-              posts: int.tryParse(space['posts']?.toString() ?? '') ?? user.posts,
-              threads: int.tryParse(space['threads']?.toString() ?? '') ?? user.threads,
-              friends: int.tryParse(space['friends']?.toString() ?? '') ?? user.friends,
+              posts:
+                  int.tryParse(space['posts']?.toString() ?? '') ?? user.posts,
+              threads: int.tryParse(space['threads']?.toString() ?? '') ??
+                  user.threads,
+              friends: int.tryParse(space['friends']?.toString() ?? '') ??
+                  user.friends,
               follower: int.tryParse(space['follower']?.toString() ?? '') ?? 0,
-              following: int.tryParse(space['following']?.toString() ?? '') ?? 0,
+              following:
+                  int.tryParse(space['following']?.toString() ?? '') ?? 0,
               oltime: int.tryParse(space['oltime']?.toString() ?? '') ?? 0,
               combat: int.tryParse(space['extcredits1']?.toString() ?? '') ?? 0,
-              deadfish: int.tryParse(space['extcredits5']?.toString() ?? '') ?? 0,
+              deadfish:
+                  int.tryParse(space['extcredits5']?.toString() ?? '') ?? 0,
               regdate: space['regdate']?.toString() ?? '',
             );
           }
@@ -891,24 +1029,21 @@ class ApiService {
           r'<em[^>]*>(.*?)</em>',
           dotAll: true,
         ).firstMatch(block);
-        final subject = titleMatch != null
-            ? _stripHtml(titleMatch.group(1) ?? '')
-            : '';
+        final subject =
+            titleMatch != null ? _stripHtml(titleMatch.group(1) ?? '') : '';
 
         final timeMatch = RegExp(
           r'<span class="mtime">(\d{4}-\d{1,2}-\d{1,2})</span>',
         ).firstMatch(block);
-        final dateline = timeMatch != null
-            ? _parseDateString(timeMatch.group(1) ?? '')
-            : 0;
+        final dateline =
+            timeMatch != null ? _parseDateString(timeMatch.group(1) ?? '') : 0;
 
         final forumMatch = RegExp(
           r'forumdisplay&(?:amp;)?fid=\d+[^"]*"[^>]*>#?(.*?)</a>',
           dotAll: true,
         ).firstMatch(block);
-        final forumName = forumMatch != null
-            ? _stripHtml(forumMatch.group(1) ?? '')
-            : null;
+        final forumName =
+            forumMatch != null ? _stripHtml(forumMatch.group(1) ?? '') : null;
 
         final eyeMatch = RegExp(
           r'dm-eye-fill"></i>\s*(\d[\d,]*)',
@@ -924,14 +1059,16 @@ class ApiService {
             ? int.tryParse(chatMatch.group(1)!.replaceAll(',', '')) ?? 0
             : 0;
 
-        items.add(UserSpaceItem(
-          tid: tid,
-          subject: subject,
-          forumName: forumName,
-          dateline: dateline,
-          replies: replies,
-          views: views,
-        ),);
+        items.add(
+          UserSpaceItem(
+            tid: tid,
+            subject: subject,
+            forumName: forumName,
+            dateline: dateline,
+            replies: replies,
+            views: views,
+          ),
+        );
       }
     } else {
       // 桌面版模板
@@ -962,14 +1099,16 @@ class ApiService {
           dateline = _parseDateString(dlMatch.group(1) ?? '');
         }
 
-        items.add(UserSpaceItem(
-          tid: tid,
-          subject: subject,
-          forumName: forumName,
-          dateline: dateline,
-          replies: replies,
-          views: views,
-        ),);
+        items.add(
+          UserSpaceItem(
+            tid: tid,
+            subject: subject,
+            forumName: forumName,
+            dateline: dateline,
+            replies: replies,
+            views: views,
+          ),
+        );
       }
     }
 
@@ -998,23 +1137,24 @@ class ApiService {
           r'<em[^>]*>(.*?)</em>',
           dotAll: true,
         ).firstMatch(block);
-        final subject = titleMatch != null
-            ? _stripHtml(titleMatch.group(1) ?? '')
-            : '';
+        final subject =
+            titleMatch != null ? _stripHtml(titleMatch.group(1) ?? '') : '';
 
         final replyRe = RegExp(
           r'mod=redirect&(?:amp;)?goto=findpost&(?:amp;)?ptid=\d+&(?:amp;)?pid=(\d+)[^>]*>\s*(?:<div class="quote">)?<blockquote>(.*?)</blockquote>',
           dotAll: true,
         );
         for (final rm in replyRe.allMatches(block)) {
-          items.add(UserSpaceItem(
-            tid: tid,
-            subject: subject,
-            dateline: 0,
-            replyExcerpt: _stripHtml(rm.group(2) ?? ''),
-            pid: rm.group(1),
-            isReply: true,
-          ),);
+          items.add(
+            UserSpaceItem(
+              tid: tid,
+              subject: subject,
+              dateline: 0,
+              replyExcerpt: _stripHtml(rm.group(2) ?? ''),
+              pid: rm.group(1),
+              isReply: true,
+            ),
+          );
         }
       }
     } else {
@@ -1044,15 +1184,17 @@ class ApiService {
           final fm = forumLinkRe.firstMatch(after);
           currentForum = fm != null ? _stripHtml(fm.group(1) ?? '') : null;
         } else {
-          items.add(UserSpaceItem(
-            tid: tid,
-            subject: currentTid == tid ? (currentSubject ?? '') : '',
-            forumName: currentTid == tid ? currentForum : null,
-            dateline: 0,
-            replyExcerpt: text,
-            pid: pid,
-            isReply: true,
-          ),);
+          items.add(
+            UserSpaceItem(
+              tid: tid,
+              subject: currentTid == tid ? (currentSubject ?? '') : '',
+              forumName: currentTid == tid ? currentForum : null,
+              dateline: 0,
+              replyExcerpt: text,
+              pid: pid,
+              isReply: true,
+            ),
+          );
         }
       }
     }
@@ -1209,8 +1351,7 @@ class ApiService {
         .where((item) => item.touid.isNotEmpty)
         .toList();
 
-    final perpage =
-        int.tryParse(variables['perpage']?.toString() ?? '') ?? 20;
+    final perpage = int.tryParse(variables['perpage']?.toString() ?? '') ?? 20;
     final count = int.tryParse(variables['count']?.toString() ?? '');
     final totalPages = count != null && count > 0 && perpage > 0
         ? (count / perpage).ceil()
@@ -1379,7 +1520,7 @@ class ApiService {
     final response = await _httpClient.get(url);
     final json = ensureJson(response.data);
     checkAuthError(json);
-      return parseFavoriteThreadListJson(json, page: page);
+    return parseFavoriteThreadListJson(json, page: page);
   }
 
   Future<FavoriteListResult> _getFavoriteForumListJson({int page = 1}) async {
@@ -1449,8 +1590,7 @@ class ApiService {
         .where((item) => item.id.isNotEmpty)
         .toList();
 
-    final perpage =
-        int.tryParse(variables['perpage']?.toString() ?? '') ?? 20;
+    final perpage = int.tryParse(variables['perpage']?.toString() ?? '') ?? 20;
     final count = int.tryParse(variables['count']?.toString() ?? '');
     final totalPages = count != null && count > 0 && perpage > 0
         ? (count / perpage).ceil()
@@ -1477,8 +1617,7 @@ class ApiService {
         .where((item) => item.type == FavoriteType.forum && item.id.isNotEmpty)
         .toList();
 
-    final perpage =
-        int.tryParse(variables['perpage']?.toString() ?? '') ?? 20;
+    final perpage = int.tryParse(variables['perpage']?.toString() ?? '') ?? 20;
     final count = int.tryParse(variables['count']?.toString() ?? '');
     final totalPages = count != null && count > 0 && perpage > 0
         ? (count / perpage).ceil()
@@ -1599,9 +1738,8 @@ class ApiService {
     final timeMatch = RegExp(
       r'<span class="mtime">(\d{4}-\d{1,2}-\d{1,2})</span>',
     ).firstMatch(block);
-    final dateline = timeMatch != null
-        ? _parseDateString(timeMatch.group(1) ?? '')
-        : 0;
+    final dateline =
+        timeMatch != null ? _parseDateString(timeMatch.group(1) ?? '') : 0;
 
     if (threadMatch != null &&
         (forumMatch == null ||
@@ -1963,7 +2101,6 @@ class ApiService {
 }
 
 class UserSpaceListResult {
-
   const UserSpaceListResult({required this.items, this.totalPages = 1});
   static const empty = UserSpaceListResult(items: []);
   final List<UserSpaceItem> items;

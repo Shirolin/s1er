@@ -1,19 +1,26 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import '../theme/app_theme.dart';
+import '../utils/post_image_index_counter.dart';
 import 'bbcode_renderer.dart';
 
 class QuoteBlock extends StatelessWidget {
   const QuoteBlock({
     super.key,
     required this.content,
+    required this.imageIndexCounter,
     this.depth = 0,
     this.currentTid,
+    this.imagesExpanded = false,
+    this.onExpandImages,
   });
 
   final String content;
+  final PostImageIndexCounter imageIndexCounter;
   final int depth;
   final String? currentTid;
+  final bool imagesExpanded;
+  final VoidCallback? onExpandImages;
 
   static const _maxDepth = 3;
 
@@ -102,8 +109,11 @@ class QuoteBlock extends StatelessWidget {
             padding: const EdgeInsets.fromLTRB(12, 4, 12, 8),
             child: BbcodeRenderer(
               bbcode: bodyContent,
+              imageIndexCounter: imageIndexCounter,
               quoteDepth: depth + 1,
               currentTid: currentTid,
+              imagesExpanded: imagesExpanded,
+              onExpandImages: onExpandImages,
             ),
           ),
         ],

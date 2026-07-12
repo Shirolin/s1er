@@ -1,5 +1,3 @@
-import 'dart:io';
-import 'dart:typed_data';
 import 'package:flutter/material.dart';
 import 'package:flutter_cache_manager/flutter_cache_manager.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -10,8 +8,6 @@ import 'package:s1_app/providers/settings_provider.dart';
 import 'package:s1_app/services/s1_image_cache.dart';
 import 'package:s1_app/theme/app_theme.dart';
 import 'package:s1_app/widgets/image_viewer.dart';
-
-import '../helpers/memory_cache_info_repository.dart';
 
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
@@ -87,7 +83,8 @@ void main() {
     expect(find.text('[图片]'), findsNothing);
   });
 
-  testWidgets('ImageViewer accepts distinct preview and full URLs', (tester) async {
+  testWidgets('ImageViewer accepts distinct preview and full URLs',
+      (tester) async {
     const preview = 'https://img.stage1st.com/forum/a.png.thumb.jpg';
     const full = 'https://img.stage1st.com/forum/a.png';
 
@@ -110,7 +107,8 @@ void main() {
     expect(viewer.fullImageUrl, full);
   });
 
-  testWidgets('ImageViewer shows tap placeholder in manual mode', (tester) async {
+  testWidgets('ImageViewer shows tap placeholder in manual mode',
+      (tester) async {
     await tester.pumpWidget(
       ProviderScope(
         overrides: [

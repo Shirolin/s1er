@@ -1,10 +1,30 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:s1_app/providers/settings_provider.dart';
 import 'package:s1_app/theme/app_theme.dart';
 import 'package:s1_app/utils/bbcode_parser.dart';
+import 'package:s1_app/utils/post_image_index_counter.dart';
 import 'package:s1_app/widgets/emoticon_widget.dart';
 import 'package:s1_app/widgets/quote_block.dart';
 import 'package:s1_app/widgets/bbcode_renderer.dart';
+
+Widget _wrapBbcode(
+  Widget child, {
+  AppSettings settings = const AppSettings(),
+}) {
+  return ProviderScope(
+    overrides: [
+      settingsProvider.overrideWith(
+        () => SettingsNotifier(initial: settings),
+      ),
+    ],
+    child: MaterialApp(
+      theme: AppTheme.lightTheme('purple'),
+      home: Scaffold(body: child),
+    ),
+  );
+}
 
 void main() {
   group('BbcodeParser (unit)', () {
@@ -118,18 +138,19 @@ void main() {
           ),
         ),
       );
-      // The widget should render without errors regardless of emoticon mapping
       expect(find.byType(EmoticonWidget), findsOneWidget);
     });
   });
 
   group('QuoteBlock', () {
+    final counter = PostImageIndexCounter();
+
     testWidgets('renders with left border decoration', (tester) async {
       await tester.pumpWidget(
-        MaterialApp(
-          theme: AppTheme.lightTheme('purple'),
-          home: const Scaffold(
-            body: QuoteBlock(content: 'quoted text'),
+        _wrapBbcode(
+          QuoteBlock(
+            content: 'quoted text',
+            imageIndexCounter: counter,
           ),
         ),
       );
@@ -142,23 +163,22 @@ void main() {
 
     testWidgets('displays quoted content via BbcodeRenderer', (tester) async {
       await tester.pumpWidget(
-        MaterialApp(
-          theme: AppTheme.lightTheme('purple'),
-          home: const Scaffold(
-            body: QuoteBlock(content: 'quoted text'),
+        _wrapBbcode(
+          QuoteBlock(
+            content: 'quoted text',
+            imageIndexCounter: counter,
           ),
         ),
       );
-      // QuoteBlock uses BbcodeRenderer internally
       expect(find.byType(BbcodeRenderer), findsOneWidget);
     });
 
     testWidgets('handles empty content', (tester) async {
       await tester.pumpWidget(
-        MaterialApp(
-          theme: AppTheme.lightTheme('purple'),
-          home: const Scaffold(
-            body: QuoteBlock(content: ''),
+        _wrapBbcode(
+          QuoteBlock(
+            content: '',
+            imageIndexCounter: counter,
           ),
         ),
       );
@@ -167,10 +187,10 @@ void main() {
 
     testWidgets('handles complex quoted content', (tester) async {
       await tester.pumpWidget(
-        MaterialApp(
-          theme: AppTheme.lightTheme('purple'),
-          home: const Scaffold(
-            body: QuoteBlock(content: '[b]bold quote[/b]'),
+        _wrapBbcode(
+          QuoteBlock(
+            content: '[b]bold quote[/b]',
+            imageIndexCounter: counter,
           ),
         ),
       );
@@ -181,10 +201,10 @@ void main() {
   group('BbcodeRenderer', () {
     testWidgets('renders empty string as SizedBox', (tester) async {
       await tester.pumpWidget(
-        MaterialApp(
-          theme: AppTheme.lightTheme('purple'),
-          home: const Scaffold(
-            body: BbcodeRenderer(bbcode: ''),
+        _wrapBbcode(
+          BbcodeRenderer(
+            bbcode: '',
+            imageIndexCounter: PostImageIndexCounter(),
           ),
         ),
       );
@@ -193,10 +213,10 @@ void main() {
 
     testWidgets('renders plain text content', (tester) async {
       await tester.pumpWidget(
-        MaterialApp(
-          theme: AppTheme.lightTheme('purple'),
-          home: const Scaffold(
-            body: BbcodeRenderer(bbcode: 'Hello world'),
+        _wrapBbcode(
+          BbcodeRenderer(
+            bbcode: 'Hello world',
+            imageIndexCounter: PostImageIndexCounter(),
           ),
         ),
       );
@@ -205,29 +225,23 @@ void main() {
 
     testWidgets('handles content with quote block', (tester) async {
       await tester.pumpWidget(
-        MaterialApp(
-          theme: AppTheme.lightTheme('purple'),
-          home: const Scaffold(
-            body: BbcodeRenderer(
-              bbcode: 'before [quote]quoted[/quote] after',
-            ),
+        _wrapBbcode(
+          BbcodeRenderer(
+            bbcode: 'before [quote]quoted[/quote] after',
+            imageIndexCounter: PostImageIndexCounter(),
           ),
         ),
       );
-      // Should have a QuoteBlock for the quoted section
       expect(find.byType(QuoteBlock), findsOneWidget);
-      // QuoteBlock internally creates a BbcodeRenderer, so there are 2 total
       expect(find.byType(BbcodeRenderer), findsWidgets);
     });
 
     testWidgets('handles multiple quote blocks', (tester) async {
       await tester.pumpWidget(
-        MaterialApp(
-          theme: AppTheme.lightTheme('purple'),
-          home: const Scaffold(
-            body: BbcodeRenderer(
-              bbcode: '[quote]first[/quote]middle[quote]second[/quote]',
-            ),
+        _wrapBbcode(
+          BbcodeRenderer(
+            bbcode: '[quote]first[/quote]middle[quote]second[/quote]',
+            imageIndexCounter: PostImageIndexCounter(),
           ),
         ),
       );
@@ -236,28 +250,56 @@ void main() {
 
     testWidgets('handles content without quotes', (tester) async {
       await tester.pumpWidget(
-        MaterialApp(
-          theme: AppTheme.lightTheme('purple'),
-          home: const Scaffold(
-            body: BbcodeRenderer(bbcode: '[b]bold[/b]'),
+        _wrapBbcode(
+          BbcodeRenderer(
+            bbcode: '[b]bold[/b]',
+            imageIndexCounter: PostImageIndexCounter(),
           ),
         ),
       );
-      // No QuoteBlock when there are no [quote] tags
       expect(find.byType(QuoteBlock), findsNothing);
       expect(find.byType(BbcodeRenderer), findsOneWidget);
     });
 
     testWidgets('returns Column as root widget', (tester) async {
       await tester.pumpWidget(
-        MaterialApp(
-          theme: AppTheme.lightTheme('purple'),
-          home: const Scaffold(
-            body: BbcodeRenderer(bbcode: 'text'),
+        _wrapBbcode(
+          BbcodeRenderer(
+            bbcode: 'text',
+            imageIndexCounter: PostImageIndexCounter(),
           ),
         ),
       );
       expect(find.byType(Column), findsOneWidget);
+    });
+
+    testWidgets('shows expand chip when images exceed per-post limit',
+        (tester) async {
+      final counter = PostImageIndexCounter();
+      var expanded = false;
+
+      await tester.pumpWidget(
+        _wrapBbcode(
+          StatefulBuilder(
+            builder: (context, setState) {
+              return BbcodeRenderer(
+                bbcode:
+                    '[img]https://example.com/1.jpg[/img]'
+                    '[img]https://example.com/2.jpg[/img]'
+                    '[img]https://example.com/3.jpg[/img]',
+                imageIndexCounter: counter,
+                imagesExpanded: expanded,
+                onExpandImages: () => setState(() => expanded = true),
+              );
+            },
+          ),
+          settings: const AppSettings(maxImagesPerPost: 2),
+        ),
+      );
+      await tester.pump();
+
+      expect(find.text('还有 1 张图片，点击展开'), findsOneWidget);
+      expect(counter.assignedCount, 3);
     });
   });
 }

@@ -1,7 +1,9 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../models/image_load_policy.dart';
+import '../config/constants.dart';
 import '../services/app_local_data.dart';
+import '../services/s1_image_cache.dart';
 import '../services/settings_store.dart';
 import '../theme/app_theme.dart';
 
@@ -11,6 +13,9 @@ class AppSettings {
     this.themeColor = 'purple',
     this.showImages = true,
     this.imageLoadPolicy = ImageLoadPolicy.always,
+    this.avatarLoadPolicy = ImageLoadPolicy.always,
+    this.maxImagesPerPost = S1Constants.defaultMaxImagesPerPost,
+    this.imageCacheLimitMb = S1Constants.defaultImageCacheLimitMb,
     this.recordReadingHistory = true,
     this.fontSize = S1Typography.defaultBodySize,
     this.useDynamicColor = false,
@@ -22,6 +27,9 @@ class AppSettings {
   final String themeColor;
   final bool showImages;
   final ImageLoadPolicy imageLoadPolicy;
+  final ImageLoadPolicy avatarLoadPolicy;
+  final int maxImagesPerPost;
+  final int imageCacheLimitMb;
   final bool recordReadingHistory;
   final int fontSize;
   final bool useDynamicColor;
@@ -35,6 +43,9 @@ class AppSettings {
     String? themeColor,
     bool? showImages,
     ImageLoadPolicy? imageLoadPolicy,
+    ImageLoadPolicy? avatarLoadPolicy,
+    int? maxImagesPerPost,
+    int? imageCacheLimitMb,
     bool? recordReadingHistory,
     int? fontSize,
     bool? useDynamicColor,
@@ -46,6 +57,9 @@ class AppSettings {
       themeColor: themeColor ?? this.themeColor,
       showImages: showImages ?? this.showImages,
       imageLoadPolicy: imageLoadPolicy ?? this.imageLoadPolicy,
+      avatarLoadPolicy: avatarLoadPolicy ?? this.avatarLoadPolicy,
+      maxImagesPerPost: maxImagesPerPost ?? this.maxImagesPerPost,
+      imageCacheLimitMb: imageCacheLimitMb ?? this.imageCacheLimitMb,
       recordReadingHistory:
           recordReadingHistory ?? this.recordReadingHistory,
       fontSize: fontSize ?? this.fontSize,
@@ -72,8 +86,17 @@ class SettingsNotifier extends Notifier<AppSettings> {
 
   @override
   AppSettings build() {
-    if (initial != null) return initial!;
-    return _loadSettings();
+    if (initial != null) {
+      _applyImageCacheLimit(initial!.imageCacheLimitMb);
+      return initial!;
+    }
+    final settings = _loadSettings();
+    _applyImageCacheLimit(settings.imageCacheLimitMb);
+    return settings;
+  }
+
+  void _applyImageCacheLimit(int limitMb) {
+    S1ImageCache.setMaxCacheBytes(limitMb * 1024 * 1024);
   }
 
   SettingsStore? get _effectiveStore {
@@ -109,6 +132,19 @@ class SettingsNotifier extends Notifier<AppSettings> {
       imageLoadPolicy: ImageLoadPolicy.fromStored(
         settingsStore.get<String>('imageLoadPolicy'),
       ),
+      avatarLoadPolicy: ImageLoadPolicy.fromStored(
+        settingsStore.get<String>('avatarLoadPolicy'),
+      ),
+      maxImagesPerPost: settingsStore.get<int>(
+            'maxImagesPerPost',
+            defaultValue: S1Constants.defaultMaxImagesPerPost,
+          ) ??
+          S1Constants.defaultMaxImagesPerPost,
+      imageCacheLimitMb: settingsStore.get<int>(
+            'imageCacheLimitMb',
+            defaultValue: S1Constants.defaultImageCacheLimitMb,
+          ) ??
+          S1Constants.defaultImageCacheLimitMb,
       recordReadingHistory: settingsStore.get<bool>(
             'recordReadingHistory',
             defaultValue: true,
@@ -156,6 +192,23 @@ class SettingsNotifier extends Notifier<AppSettings> {
     _persist('imageLoadPolicy', value.storageKey);
   }
 
+  void setAvatarLoadPolicy(ImageLoadPolicy value) {
+    state = state.copyWith(avatarLoadPolicy: value);
+    _persist('avatarLoadPolicy', value.storageKey);
+  }
+
+  void setMaxImagesPerPost(int value) {
+    state = state.copyWith(maxImagesPerPost: value);
+    _persist('maxImagesPerPost', value);
+  }
+
+  void setImageCacheLimitMb(int value) {
+    state = state.copyWith(imageCacheLimitMb: value);
+    _persist('imageCacheLimitMb', value);
+    _applyImageCacheLimit(value);
+    S1ImageCache.evictIfNeeded();
+  }
+
   void setRecordReadingHistory(bool value) {
     state = state.copyWith(recordReadingHistory: value);
     _persist('recordReadingHistory', value);
@@ -194,6 +247,9 @@ class SettingsNotifier extends Notifier<AppSettings> {
       themeColor: defaults.themeColor,
       showImages: defaults.showImages,
       imageLoadPolicy: defaults.imageLoadPolicy,
+      avatarLoadPolicy: defaults.avatarLoadPolicy,
+      maxImagesPerPost: defaults.maxImagesPerPost,
+      imageCacheLimitMb: defaults.imageCacheLimitMb,
       recordReadingHistory: defaults.recordReadingHistory,
       fontSize: defaults.fontSize,
       useDynamicColor: defaults.useDynamicColor,
@@ -203,6 +259,10 @@ class SettingsNotifier extends Notifier<AppSettings> {
     _persist('themeColor', defaults.themeColor);
     _persist('showImages', defaults.showImages);
     _persist('imageLoadPolicy', defaults.imageLoadPolicy.storageKey);
+    _persist('avatarLoadPolicy', defaults.avatarLoadPolicy.storageKey);
+    _persist('maxImagesPerPost', defaults.maxImagesPerPost);
+    _persist('imageCacheLimitMb', defaults.imageCacheLimitMb);
+    _applyImageCacheLimit(defaults.imageCacheLimitMb);
     _persist('recordReadingHistory', defaults.recordReadingHistory);
     _persist('fontSize', defaults.fontSize);
     _persist('useDynamicColor', defaults.useDynamicColor);

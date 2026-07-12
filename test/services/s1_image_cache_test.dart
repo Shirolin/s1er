@@ -1,7 +1,7 @@
 import 'dart:typed_data';
 
-import 'package:flutter_cache_manager/flutter_cache_manager.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:s1_app/config/constants.dart';
 import 'package:s1_app/services/s1_image_cache.dart';
 import 'package:s1_app/widgets/image_viewer.dart';
 
@@ -12,6 +12,7 @@ void main() {
 
   tearDown(() {
     S1ImageCache.debugSetManager(null);
+    S1ImageCache.debugResetMaxCacheBytes();
   });
 
   group('S1ImageCache.formatSize', () {
@@ -23,6 +24,14 @@ void main() {
     });
 
     test('formatLimit reflects configured cap', () {
+      expect(
+        S1ImageCache.formatLimit(),
+        '${S1Constants.defaultImageCacheLimitMb}.0 MB',
+      );
+    });
+
+    test('setMaxCacheBytes updates formatLimit', () {
+      S1ImageCache.setMaxCacheBytes(100 * 1024 * 1024);
       expect(S1ImageCache.formatLimit(), '100.0 MB');
     });
   });

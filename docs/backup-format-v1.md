@@ -88,7 +88,10 @@ v1 **不使用** JSONL；列表一律为 JSON 数组。
 | `theme_mode` | string | `system` / `light` / `dark` |
 | `theme_color` | string | 种子色名 |
 | `show_images` | bool | |
-| `image_load_policy` | string | `always` / `wifi_only` / `manual` |
+| `image_load_policy` | string | `always` / `wifi_only` / `manual`（正文图片） |
+| `avatar_load_policy` | string | `always` / `wifi_only` / `manual`（头像） |
+| `max_images_per_post` | int | 每楼层 inline 图片上限；`0` = 不限 |
+| `image_cache_limit_mb` | int | 磁盘图片缓存上限（MB）；常见 `100` / `256` / `512` |
 | `record_reading_history` | bool | |
 | `font_size` | int | |
 | `use_dynamic_color` | bool | |

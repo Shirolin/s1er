@@ -2,11 +2,15 @@ class RateLog {
   const RateLog({
     required this.username,
     required this.score,
+    this.uid,
+    this.ratedAt,
     this.reason = '',
   });
 
+  final String? uid;
   final String username;
   final int score;
+  final DateTime? ratedAt;
   final String reason;
 
   bool get isPositive => score > 0;

@@ -7,13 +7,14 @@ import '../providers/post_provider.dart';
 import '../theme/app_theme.dart';
 import '../utils/compact_label.dart';
 import '../utils/format_utils.dart';
+import '../utils/post_image_index_counter.dart';
 import 'bbcode_renderer.dart';
 import 'post_action_menu.dart';
 import 'rate_log_card.dart';
 import 'user_profile_sheet.dart';
 import 'web_avatar.dart';
 
-class PostItem extends ConsumerWidget {
+class PostItem extends ConsumerStatefulWidget {
   const PostItem({
     super.key,
     required this.post,
@@ -25,6 +26,7 @@ class PostItem extends ConsumerWidget {
     this.rateLog,
     this.isHighlighted = false,
   });
+
   final Post post;
   final int? displayFloor;
   final String? tid;
@@ -34,29 +36,38 @@ class PostItem extends ConsumerWidget {
   final PostRateLog? rateLog;
   final bool isHighlighted;
 
+  @override
+  ConsumerState<PostItem> createState() => _PostItemState();
+}
+
+class _PostItemState extends ConsumerState<PostItem> {
+  bool _imagesExpanded = false;
+
   void _showUserInfo(BuildContext context, WidgetRef ref) {
     final currentUid = ref.read(authStateProvider).user?.uid;
-    final future = ref.read(apiServiceProvider).getUserProfileByUid(post.authorId);
+    final future =
+        ref.read(apiServiceProvider).getUserProfileByUid(widget.post.authorId);
 
     showUserProfileSheet(
       context,
       future: future,
-      isSelf: currentUid != null && currentUid == post.authorId,
-      onFilterByAuthor: onFilterByAuthor,
+      isSelf: currentUid != null && currentUid == widget.post.authorId,
+      onFilterByAuthor: widget.onFilterByAuthor,
     );
   }
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  Widget build(BuildContext context) {
     final scheme = Theme.of(context).colorScheme;
     final textTheme = Theme.of(context).textTheme;
-    final timeStr = formatDateTime(post.dateline);
-    final floor = displayFloor ?? post.floor;
+    final timeStr = formatDateTime(widget.post.dateline);
+    final floor = widget.displayFloor ?? widget.post.floor;
+    final imageIndexCounter = PostImageIndexCounter();
 
     return Card(
       margin: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
       elevation: 0,
-      color: isHighlighted
+      color: widget.isHighlighted
           ? scheme.primaryContainer.withValues(alpha: S1Alpha.half)
           : scheme.surfaceContainerLow,
       shape: S1Shape.cardShape,
@@ -70,9 +81,11 @@ class PostItem extends ConsumerWidget {
                 GestureDetector(
                   onTap: () => _showUserInfo(context, ref),
                   child: WebAvatar(
-                    url: post.avatar,
+                    url: widget.post.avatar,
                     radius: 20,
-                    fallbackLetter: post.author.isNotEmpty ? post.author[0] : '?',
+                    fallbackLetter: widget.post.author.isNotEmpty
+                        ? widget.post.author[0]
+                        : '?',
                   ),
                 ),
                 const SizedBox(width: 8),
@@ -80,27 +93,44 @@ class PostItem extends ConsumerWidget {
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Text(post.author,
-                          style: Theme.of(context).textTheme.bodyMedium?.copyWith(fontWeight: FontWeight.bold),),
+                      Text(
+                        widget.post.author,
+                        style: Theme.of(context)
+                            .textTheme
+                            .bodyMedium
+                            ?.copyWith(fontWeight: FontWeight.bold),
+                      ),
                       if (timeStr.isNotEmpty)
-                        Text(timeStr,
-                            style: textTheme.labelSmall?.copyWith(color: scheme.onSurfaceVariant),),
+                        Text(
+                          timeStr,
+                          style: textTheme.labelSmall?.copyWith(
+                            color: scheme.onSurfaceVariant,
+                          ),
+                        ),
                     ],
                   ),
                 ),
                 _FloorBadge(floor: floor),
                 const SizedBox(width: 2),
                 PostActionMenu(
-                  onFilterByAuthor: onFilterByAuthor,
-                  onReply: onReply,
-                  onRate: onRate,
+                  onFilterByAuthor: widget.onFilterByAuthor,
+                  onReply: widget.onReply,
+                  onRate: widget.onRate,
                 ),
               ],
             ),
             const Divider(height: 16),
-            BbcodeRenderer(bbcode: post.message, currentTid: tid),
-            if (rateLog != null && !rateLog!.isEmpty && tid != null)
-              RateLogCard(rateLog: rateLog!, tid: tid!),
+            BbcodeRenderer(
+              bbcode: widget.post.message,
+              imageIndexCounter: imageIndexCounter,
+              currentTid: widget.tid,
+              imagesExpanded: _imagesExpanded,
+              onExpandImages: () => setState(() => _imagesExpanded = true),
+            ),
+            if (widget.rateLog != null &&
+                !widget.rateLog!.isEmpty &&
+                widget.tid != null)
+              RateLogCard(rateLog: widget.rateLog!, tid: widget.tid!),
           ],
         ),
       ),

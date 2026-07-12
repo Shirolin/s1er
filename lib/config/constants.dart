@@ -14,8 +14,15 @@ class S1Constants {
   /// 注意：勿与 forumdisplay 的 `tpp`(=50，主题列表每页数) 混用。
   static const int postsPerPageFallback = 40;
 
-  /// 图片磁盘缓存总字节上限（与 [S1ImageCache.maxNrOfCacheObjects] 并存）。
-  static const int maxImageCacheBytes = 100 * 1024 * 1024;
+  /// 图片磁盘缓存默认上限（运行时由设置 [imageCacheLimitMb] 覆盖）。
+  static const int defaultImageCacheLimitMb = 256;
+  static const int maxImageCacheBytes = defaultImageCacheLimitMb * 1024 * 1024;
+
+  /// 每楼层默认 inline 图片显示上限（0 = 不限制）。
+  static const int defaultMaxImagesPerPost = 10;
+
+  /// 可选磁盘缓存上限档位（MB）。
+  static const List<int> imageCacheLimitOptionsMb = [100, 256, 512];
 
   /// Inline 图片解码宽度 clamp（物理像素）。
   static const int inlineImageDecodeMinPx = 200;

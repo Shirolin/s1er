@@ -71,11 +71,17 @@ void main() {
         'collapsedForums': {'4', '6'},
         'fontSize': 16,
         'imageLoadPolicy': 'wifiOnly',
+        'avatarLoadPolicy': 'manual',
+        'maxImagesPerPost': 20,
+        'imageCacheLimitMb': 512,
       });
       expect(backup['theme_mode'], 'dark');
       expect(backup['collapsed_forums'], isA<List>());
       expect(backup['font_size'], 16);
       expect(backup['image_load_policy'], 'wifi_only');
+      expect(backup['avatar_load_policy'], 'manual');
+      expect(backup['max_images_per_post'], 20);
+      expect(backup['image_cache_limit_mb'], 512);
 
       final app = S1BackupSettingsMapper.toApp({
         ...backup,
@@ -84,6 +90,9 @@ void main() {
       expect(app['themeMode'], 'dark');
       expect(app['fontSize'], 16);
       expect(app['imageLoadPolicy'], 'wifiOnly');
+      expect(app['avatarLoadPolicy'], 'manual');
+      expect(app['maxImagesPerPost'], 20);
+      expect(app['imageCacheLimitMb'], 512);
       expect(app.containsKey('unknown_field'), isFalse);
     });
   });

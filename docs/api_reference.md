@@ -145,7 +145,7 @@ S1 论坛使用的 Discuz! Mobile API (version=4)。所有请求走 `ApiConfig.m
 | `height` | string | 图片高度 |
 | `thumb` | string | 缩略图标记 |
 
-> **客户端图片策略**（对齐 [S1-Next](https://github.com/ykrank/S1-Next)）：帖子正文以 `viewthread` → `postlist[].message` 内嵌 HTML 为准，**只信任服务端提供的 `<img src>`**（及可选的 `<a href>` 原图链接），不猜测 `.thumb.jpg` 或构造 `forum.php?mod=image` URL。inline 与全屏共用同一 URL；省流量靠 **下载门控**（始终 / 仅 Wi-Fi / 手动）与 **客户端 `ResizeImage` 降采样**，磁盘仍缓存原图字节供全屏复用。`attachmentImagePreviewList` 主要用于 **forumdisplay 列表封面**，详情页正文暂不依赖该字段。
+> **客户端图片策略**（对齐 [S1-Next](https://github.com/ykrank/S1-Next)）：帖子正文以 `viewthread` → `postlist[].message` 内嵌 HTML 为准，**只信任服务端提供的 `<img src>`**（及可选的 `<a href>` 原图链接），不猜测 `.thumb.jpg` 或构造 `forum.php?mod=image` URL。inline 与全屏共用同一 URL；省流量靠 **下载门控**（始终 / 仅 Wi-Fi / 手动）、**每楼层 inline 图片张数上限**（默认 10，0 = 不限；超出显示「展开」且不挂载 `ImageViewer`）、**可配置磁盘缓存上限**（默认 256MB，可选 100/256/512）与 **客户端 `ResizeImage` 降采样**，磁盘仍缓存原图字节供全屏复用。头像可单独配置加载策略（始终 / 仅 Wi-Fi / 手动）；已磁盘缓存的头像不受门控阻塞。全屏看图不受正文图片门控限制。`attachmentImagePreviewList` 主要用于 **forumdisplay 列表封面**，详情页正文暂不依赖该字段。
 
 ### `threadtypes` — 主题分类映射（不同版块不同）
 

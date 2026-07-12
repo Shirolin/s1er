@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:s1_app/theme/app_theme.dart';
 import 'package:s1_app/models/rate_log.dart';
@@ -6,9 +7,11 @@ import 'package:s1_app/widgets/rate_log_card.dart';
 
 void main() {
   Widget wrap(Widget child) {
-    return MaterialApp(
-      theme: AppTheme.lightTheme('purple'),
-      home: Scaffold(body: child),
+    return ProviderScope(
+      child: MaterialApp(
+        theme: AppTheme.lightTheme('purple'),
+        home: Scaffold(body: child),
+      ),
     );
   }
 
@@ -21,7 +24,8 @@ void main() {
         participantCount: 4,
       );
 
-      await tester.pumpWidget(wrap(const RateLogCard(rateLog: rateLog, tid: '123')));
+      await tester
+          .pumpWidget(wrap(const RateLogCard(rateLog: rateLog, tid: '123')));
       await tester.pumpAndSettle();
 
       expect(find.text('评分 +6'), findsOneWidget);
@@ -36,7 +40,8 @@ void main() {
         participantCount: 1,
       );
 
-      await tester.pumpWidget(wrap(const RateLogCard(rateLog: rateLog, tid: '123')));
+      await tester
+          .pumpWidget(wrap(const RateLogCard(rateLog: rateLog, tid: '123')));
       await tester.pumpAndSettle();
 
       expect(find.text('评分 -3'), findsOneWidget);
@@ -54,10 +59,11 @@ void main() {
         participantCount: 2,
       );
 
-      await tester.pumpWidget(wrap(const RateLogCard(rateLog: rateLog, tid: '123')));
+      await tester
+          .pumpWidget(wrap(const RateLogCard(rateLog: rateLog, tid: '123')));
       await tester.pumpAndSettle();
 
-      expect(find.text('rustincohle'), findsNothing);
+      expect(find.text('rustincohle'), findsOneWidget);
 
       await tester.tap(find.byType(RateLogCard));
       await tester.pumpAndSettle();
@@ -70,24 +76,71 @@ void main() {
       expect(find.text('扣分'), findsOneWidget);
     });
 
-    testWidgets('collapses when tapped again', (tester) async {
+    testWidgets('shows first three entries while collapsed', (tester) async {
       const rateLog = PostRateLog(
         pid: '1',
-        entries: [RateLog(username: 'user', score: 1)],
+        entries: [
+          RateLog(username: 'user1', score: 1),
+          RateLog(username: 'user2', score: 1),
+          RateLog(username: 'user3', score: 1),
+          RateLog(username: 'user4', score: 1),
+        ],
+        totalScore: 4,
+        participantCount: 4,
+      );
+
+      await tester
+          .pumpWidget(wrap(const RateLogCard(rateLog: rateLog, tid: '123')));
+      await tester.pumpAndSettle();
+
+      expect(find.text('user1'), findsOneWidget);
+      expect(find.text('user2'), findsOneWidget);
+      expect(find.text('user3'), findsOneWidget);
+      expect(find.text('user4'), findsNothing);
+    });
+
+    testWidgets('expands to show all collapsed preview entries',
+        (tester) async {
+      const rateLog = PostRateLog(
+        pid: '1',
+        entries: [
+          RateLog(username: 'user1', score: 1),
+          RateLog(username: 'user2', score: 1),
+          RateLog(username: 'user3', score: 1),
+          RateLog(username: 'user4', score: 1),
+        ],
+        totalScore: 4,
+        participantCount: 4,
+      );
+
+      await tester
+          .pumpWidget(wrap(const RateLogCard(rateLog: rateLog, tid: '123')));
+      await tester.pumpAndSettle();
+
+      await tester.tap(find.byType(RateLogCard));
+      await tester.pumpAndSettle();
+
+      expect(find.text('user4'), findsOneWidget);
+    });
+
+    testWidgets('shows rated timestamp when available', (tester) async {
+      final rateLog = PostRateLog(
+        pid: '1',
+        entries: [
+          RateLog(
+            username: 'user',
+            score: 1,
+            ratedAt: DateTime(2018, 4, 14, 22, 20),
+          ),
+        ],
         totalScore: 1,
         participantCount: 1,
       );
 
-      await tester.pumpWidget(wrap(const RateLogCard(rateLog: rateLog, tid: '123')));
+      await tester.pumpWidget(wrap(RateLogCard(rateLog: rateLog, tid: '123')));
       await tester.pumpAndSettle();
 
-      await tester.tap(find.byType(RateLogCard));
-      await tester.pumpAndSettle();
-      expect(find.text('user'), findsOneWidget);
-
-      await tester.tap(find.byType(RateLogCard));
-      await tester.pumpAndSettle();
-      expect(find.text('user'), findsNothing);
+      expect(find.text('2018-04-14 22:20'), findsOneWidget);
     });
   });
 }

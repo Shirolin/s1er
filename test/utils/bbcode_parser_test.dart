@@ -2,6 +2,7 @@ import 'dart:io';
 
 import 'package:flutter_test/flutter_test.dart';
 import 'package:s1_app/utils/bbcode_parser.dart';
+import 'package:s1_app/utils/post_image_index_counter.dart';
 
 void main() {
   group('BbcodeParser post images', () {
@@ -42,6 +43,32 @@ void main() {
       const html =
           '<span class="post-image" data-preview="https://a/p.jpg" data-full="https://a/f.jpg"></span>';
       expect(BbcodeParser.extractImages(html), ['https://a/p.jpg']);
+    });
+
+    test('assigns sequential data-image-index per post floor', () {
+      final counter = PostImageIndexCounter();
+      final parsed = BbcodeParser.parse(
+        '[img]https://example.com/1.jpg[/img]'
+        '[img]https://example.com/2.jpg[/img]',
+        imageIndexCounter: counter,
+      );
+
+      expect(parsed, contains('data-image-index="0"'));
+      expect(parsed, contains('data-image-index="1"'));
+      expect(counter.assignedCount, 2);
+      expect(BbcodeParser.countPostImages(parsed), 2);
+    });
+
+    test('emoticons do not receive data-image-index', () {
+      final counter = PostImageIndexCounter();
+      final parsed = BbcodeParser.parse(
+        '[f:001][img]https://example.com/p.jpg[/img]',
+        imageIndexCounter: counter,
+      );
+
+      expect(parsed, contains('emoticon'));
+      expect(parsed, contains('data-image-index="0"'));
+      expect(counter.assignedCount, 1);
     });
   });
 }

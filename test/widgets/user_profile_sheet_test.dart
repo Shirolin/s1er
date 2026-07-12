@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:s1_app/providers/settings_provider.dart';
 import 'package:s1_app/theme/app_theme.dart';
 import 'package:s1_app/models/user.dart';
 import 'package:s1_app/widgets/user_profile_sheet.dart';
@@ -21,16 +23,23 @@ void main() {
     );
 
     await tester.pumpWidget(
-      MaterialApp(
-        theme: AppTheme.lightTheme('purple'),
-        home: Builder(
-          builder: (context) => Scaffold(
-            body: FilledButton(
-              onPressed: () => showUserProfileSheet(
-                context,
-                future: Future.value(user),
+      ProviderScope(
+        overrides: [
+          settingsProvider.overrideWith(
+            () => SettingsNotifier(initial: const AppSettings()),
+          ),
+        ],
+        child: MaterialApp(
+          theme: AppTheme.lightTheme('purple'),
+          home: Builder(
+            builder: (context) => Scaffold(
+              body: FilledButton(
+                onPressed: () => showUserProfileSheet(
+                  context,
+                  future: Future.value(user),
+                ),
+                child: const Text('open'),
               ),
-              child: const Text('open'),
             ),
           ),
         ),

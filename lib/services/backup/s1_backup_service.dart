@@ -58,6 +58,9 @@ class S1BackupService {
     appSettings.putIfAbsent('themeColor', () => 'purple');
     appSettings.putIfAbsent('showImages', () => true);
     appSettings.putIfAbsent('imageLoadPolicy', () => 'always');
+    appSettings.putIfAbsent('avatarLoadPolicy', () => 'always');
+    appSettings.putIfAbsent('maxImagesPerPost', () => 10);
+    appSettings.putIfAbsent('imageCacheLimitMb', () => 256);
     appSettings.putIfAbsent('recordReadingHistory', () => true);
     appSettings.putIfAbsent('fontSize', () => 14);
     appSettings.putIfAbsent('useDynamicColor', () => false);

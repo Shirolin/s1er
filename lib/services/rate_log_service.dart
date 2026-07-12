@@ -13,7 +13,10 @@ class RateLogService {
         '?mod=viewthread&tid=$tid&page=$page&mobile=2';
   }
 
-  Future<Map<String, PostRateLog>> fetchRateLogs(String tid, {int page = 1}) async {
+  Future<Map<String, PostRateLog>> fetchRateLogs(
+    String tid, {
+    int page = 1,
+  }) async {
     try {
       final url = _buildUrl(tid, page: page);
       final response = await _httpClient.get(
@@ -37,20 +40,24 @@ class RateLogService {
         options: Options(responseType: ResponseType.plain),
       );
       final html = response.data as String;
-      final results = parseRateLogs(html);
+      final results = parseRateLogs(html, fallbackPid: pid);
       return results[pid];
     } catch (_) {
       return null;
     }
   }
 
-  static Map<String, PostRateLog> parseRateLogs(String html) {
+  static Map<String, PostRateLog> parseRateLogs(
+    String html, {
+    String? fallbackPid,
+  }) {
     final result = <String, PostRateLog>{};
     if (html.isEmpty) return result;
 
     try {
       final doc = parse(html);
-      final ratelogDivs = doc.querySelectorAll('*')
+      final ratelogDivs = doc
+          .querySelectorAll('*')
           .where((el) => el.id.startsWith('ratelog_'))
           .toList();
 
@@ -95,6 +102,7 @@ class RateLogService {
           if (link == null) continue;
           final username = link.text.trim();
           if (username.isEmpty) continue;
+          final uid = _parseUid(link.attributes['href']);
 
           final score = _parseScore(divs[1].text);
 
@@ -103,11 +111,14 @@ class RateLogService {
             reason = divs[2].text.trim();
           }
 
-          entries.add(RateLog(
-            username: username,
-            score: score,
-            reason: reason,
-          ),);
+          entries.add(
+            RateLog(
+              uid: uid,
+              username: username,
+              score: score,
+              reason: reason,
+            ),
+          );
         }
 
         if (entries.isNotEmpty) {
@@ -121,11 +132,70 @@ class RateLogService {
       }
     } catch (_) {}
 
+    if (result.isEmpty && fallbackPid != null && fallbackPid.isNotEmpty) {
+      final entries = _parseRatingTable(html);
+      if (entries.isNotEmpty) {
+        result[fallbackPid] = PostRateLog(
+          pid: fallbackPid,
+          entries: entries,
+          totalScore: entries.fold<int>(0, (sum, entry) => sum + entry.score),
+          participantCount: entries.length,
+        );
+      }
+    }
+
     return result;
+  }
+
+  static List<RateLog> _parseRatingTable(String html) {
+    try {
+      final doc = parse(html);
+      return doc
+          .querySelectorAll('table tbody tr')
+          .map((row) {
+            final cells = row.children;
+            if (cells.length < 4) return null;
+
+            final link = cells[1].querySelector('a');
+            final username = link?.text.trim() ?? '';
+            if (username.isEmpty) return null;
+
+            return RateLog(
+              uid: _parseUid(link?.attributes['href']),
+              username: username,
+              score: _parseScore(cells[0].text),
+              ratedAt: _parseRatedAt(cells[2].text),
+              reason: cells[3].text.trim(),
+            );
+          })
+          .whereType<RateLog>()
+          .toList();
+    } catch (_) {
+      return [];
+    }
   }
 
   static int _parseScore(String raw) {
     final cleaned = raw.replaceAll(' ', '');
-    return int.tryParse(cleaned) ?? 0;
+    final match = RegExp(r'[+-]?\d+').firstMatch(cleaned);
+    return int.tryParse(match?.group(0) ?? '') ?? 0;
+  }
+
+  static String? _parseUid(String? href) {
+    if (href == null || href.isEmpty) return null;
+    return RegExp(r'uid=(\d+)').firstMatch(href)?.group(1);
+  }
+
+  static DateTime? _parseRatedAt(String raw) {
+    final match = RegExp(
+      r'(\d{4})-(\d{1,2})-(\d{1,2})\s+(\d{1,2}):(\d{1,2})',
+    ).firstMatch(raw.trim());
+    if (match == null) return null;
+    final parts = List.generate(
+      5,
+      (index) => int.tryParse(match.group(index + 1) ?? ''),
+    );
+    if (parts.any((part) => part == null)) return null;
+    return DateTime(parts[0]!, parts[1]!, parts[2]!, parts[3]!, parts[4]!);
   }
 }

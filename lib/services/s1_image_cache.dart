@@ -19,7 +19,28 @@ class S1ImageCache {
   static const String cacheKey = 's1ImageCache';
   static const Duration stalePeriod = Duration(days: 14);
   static const int maxNrOfCacheObjects = 500;
-  static const int maxCacheBytes = S1Constants.maxImageCacheBytes;
+  static int _maxCacheBytesOverride = S1Constants.maxImageCacheBytes;
+
+  static int get maxCacheBytes => _maxCacheBytesOverride;
+
+  static void setMaxCacheBytes(int bytes) {
+    _maxCacheBytesOverride = bytes;
+  }
+
+  @visibleForTesting
+  static void debugResetMaxCacheBytes() {
+    _maxCacheBytesOverride = S1Constants.maxImageCacheBytes;
+  }
+
+  /// Returns true when [url] exists in disk cache (native only).
+  static Future<bool> hasCachedFile(String url) async {
+    try {
+      final info = await manager.getFileFromCache(url);
+      return info != null;
+    } catch (_) {
+      return false;
+    }
+  }
 
   static CacheManager? _manager;
 

@@ -8,7 +8,6 @@ import 'package:s1_app/providers/forum_list_provider.dart';
 import 'package:s1_app/providers/messages_segment_provider.dart';
 import 'package:s1_app/providers/settings_provider.dart';
 import 'package:s1_app/screens/home_screen.dart';
-import 'package:s1_app/services/auth_service.dart';
 import 'package:s1_app/theme/app_theme.dart';
 import '../helpers/messages_test_helpers.dart';
 
@@ -20,7 +19,7 @@ void main() {
           authStateProvider.overrideWith(_LoggedOutAuthNotifier.new),
           forumListProvider.overrideWith(_GuestForumListNotifier.new),
           settingsProvider.overrideWith(
-            (ref) => SettingsNotifier(const AppSettings()),
+            () => SettingsNotifier(initial: const AppSettings()),
           ),
           ...messagesProviderOverrides(),
         ],
@@ -48,7 +47,7 @@ void main() {
           authStateProvider.overrideWith(_LoggedInAuthNotifier.new),
           forumListProvider.overrideWith(_GuestForumListNotifier.new),
           settingsProvider.overrideWith(
-            (ref) => SettingsNotifier(const AppSettings()),
+            () => SettingsNotifier(initial: const AppSettings()),
           ),
           ...messagesProviderOverrides(),
         ],
@@ -111,46 +110,18 @@ class _GuestForumListNotifier extends ForumListNotifier {
 }
 
 class _LoggedOutAuthNotifier extends AuthNotifier {
-  _LoggedOutAuthNotifier(Ref ref) : super(_FakeAuthService(), ref) {
-    state = AuthState();
-  }
+  @override
+  AuthState build() => AuthState();
 }
 
 class _LoggedInAuthNotifier extends AuthNotifier {
-  _LoggedInAuthNotifier(Ref ref) : super(_FakeAuthService(), ref) {
-    state = AuthState(
-      isLoggedIn: true,
-      user: User(
-        uid: '1',
-        username: 'tester',
-        avatar: '',
-      ),
-    );
-  }
-}
-
-class _FakeAuthService implements AuthService {
   @override
-  User? get currentUser => null;
-
-  @override
-  bool get isLoggedIn => false;
-
-  @override
-  void setLoggedIn(String username) {}
-
-  @override
-  Future<String?> login(String username, String password) async => null;
-
-  @override
-  Future<User?> fetchProfile() async => null;
-
-  @override
-  Future<void> logout() async {}
-
-  @override
-  Future<bool> checkSession() async => false;
-
-  @override
-  dynamic noSuchMethod(Invocation invocation) => super.noSuchMethod(invocation);
+  AuthState build() => AuthState(
+        isLoggedIn: true,
+        user: User(
+          uid: '1',
+          username: 'tester',
+          avatar: '',
+        ),
+      );
 }

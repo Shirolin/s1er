@@ -91,7 +91,7 @@ class _HistoryTile extends ConsumerWidget {
   final ReadingRecord record;
 
   String? _forumName(WidgetRef ref) {
-    final categories = ref.watch(forumListProvider).valueOrNull;
+    final categories = ref.watch(forumListProvider).asData?.value;
     if (categories == null || record.fid.isEmpty) return null;
     for (final category in categories) {
       if (category.fid == record.fid) return category.name;

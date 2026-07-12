@@ -1,11 +1,14 @@
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:hive_flutter/hive_flutter.dart';
 import 'package:talker_dio_logger/talker_dio_logger.dart';
 import 'app.dart';
 import 'config/env_config.dart';
 import 'models/emoticon.dart';
+import 'providers/settings_provider.dart';
+import 'services/app_database.dart';
+import 'services/app_local_data.dart';
+import 'services/hive_to_drift_migrator.dart';
 import 'services/http_client.dart';
 import 'services/talker.dart';
 
@@ -36,13 +39,17 @@ void main() async {
     };
   }
 
-  await Hive.initFlutter();
-  await Hive.openBox('cookies');
-  await Hive.openBox('settings');
-  await Hive.openBox('cache');
-  await Hive.openBox<Map>('reading_history');
+  final db = AppDatabase();
+  final localData = AppLocalData(db);
+  await localData.load();
+  await HiveToDriftMigrator(localData).run();
+  await localData.load();
 
-  final container = ProviderContainer();
+  final container = ProviderContainer(
+    overrides: [
+      localDataProvider.overrideWithValue(localData),
+    ],
+  );
   final httpClient = container.read(httpClientProvider);
   await httpClient.init();
   httpClient.dio.interceptors.add(

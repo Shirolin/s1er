@@ -1,11 +1,13 @@
+import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import '../config/resource_domains.dart';
+import '../services/s1_image_cache.dart';
 import 'avatar_fallback.dart';
 
 /// 跨平台头像组件
 /// Web: 通过代理加载（avatar 服务器未返回 CORS 头）
-/// Native: 用 Image.network 直加载
+/// Native: 磁盘缓存 [CachedNetworkImage]
 class WebAvatar extends StatelessWidget {
 
   const WebAvatar({
@@ -30,14 +32,24 @@ class WebAvatar extends StatelessWidget {
       return _fallback(context);
     }
     final imageUrl = kIsWeb ? _proxyUrl(url!) : url!;
+    final size = radius * 2;
     return ClipOval(
-      child: Image.network(
-        imageUrl,
-        width: radius * 2,
-        height: radius * 2,
-        fit: BoxFit.cover,
-        errorBuilder: (_, __, ___) => _fallback(context),
-      ),
+      child: kIsWeb
+          ? Image.network(
+              imageUrl,
+              width: size,
+              height: size,
+              fit: BoxFit.cover,
+              errorBuilder: (_, __, ___) => _fallback(context),
+            )
+          : CachedNetworkImage(
+              imageUrl: imageUrl,
+              cacheManager: S1ImageCache.manager,
+              width: size,
+              height: size,
+              fit: BoxFit.cover,
+              errorWidget: (_, __, ___) => _fallback(context),
+            ),
     );
   }
 

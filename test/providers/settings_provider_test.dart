@@ -1,60 +1,72 @@
-import 'dart:io';
-
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:hive/hive.dart';
 import 'package:s1_app/providers/settings_provider.dart';
+import 'package:s1_app/services/settings_store.dart';
 import 'package:s1_app/theme/app_theme.dart';
+import '../helpers/test_local_data.dart';
 
 void main() {
-  late Directory tempDir;
+  late SettingsStore store;
+  late dynamic db;
 
-  setUpAll(() async {
-    TestWidgetsFlutterBinding.ensureInitialized();
-    tempDir = Directory.systemTemp.createTempSync('s1_settings_test');
-    Hive.init(tempDir.path);
-    await Hive.openBox('settings');
+  setUp(() async {
+    final opened = await openTestLocalData();
+    db = opened.$1;
+    store = opened.$2.settings;
   });
 
   tearDown(() async {
-    await Hive.box('settings').clear();
-  });
-
-  tearDownAll(() async {
-    await Hive.close();
-    tempDir.deleteSync(recursive: true);
+    await db.close();
   });
 
   test('resetAppearanceSettings restores defaults only for appearance prefs',
       () {
-    final notifier = SettingsNotifier(
-      const AppSettings(
-        themeMode: 'dark',
-        themeColor: 'green',
-        showImages: false,
-        recordReadingHistory: false,
-        fontSize: 18,
-        useDynamicColor: true,
-        collapsedForums: {'42'},
-      ),
+    final container = ProviderContainer(
+      overrides: [
+        settingsProvider.overrideWith(
+          () => SettingsNotifier(
+            store: store,
+            initial: const AppSettings(
+              themeMode: 'dark',
+              themeColor: 'green',
+              showImages: false,
+              recordReadingHistory: false,
+              fontSize: 18,
+              useDynamicColor: true,
+              collapsedForums: {'42'},
+            ),
+          ),
+        ),
+      ],
     );
+    addTearDown(container.dispose);
 
-    notifier.resetAppearanceSettings();
+    container.read(settingsProvider.notifier).resetAppearanceSettings();
+    final state = container.read(settingsProvider);
 
-    expect(notifier.state.themeMode, 'system');
-    expect(notifier.state.themeColor, 'purple');
-    expect(notifier.state.showImages, isTrue);
-    expect(notifier.state.recordReadingHistory, isTrue);
-    expect(notifier.state.fontSize, S1Typography.defaultBodySize);
-    expect(notifier.state.useDynamicColor, isFalse);
-    expect(notifier.state.collapsedForums, const {'42'});
+    expect(state.themeMode, 'system');
+    expect(state.themeColor, 'purple');
+    expect(state.showImages, isTrue);
+    expect(state.recordReadingHistory, isTrue);
+    expect(state.fontSize, S1Typography.defaultBodySize);
+    expect(state.useDynamicColor, isFalse);
+    expect(state.collapsedForums, const {'42'});
   });
 
-  test('setRecordReadingHistory persists to Hive', () {
-    final notifier = SettingsNotifier(const AppSettings());
+  test('setRecordReadingHistory persists to settings store', () async {
+    final container = ProviderContainer(
+      overrides: [
+        settingsProvider.overrideWith(
+          () => SettingsNotifier(store: store, initial: const AppSettings()),
+        ),
+      ],
+    );
+    addTearDown(container.dispose);
 
-    notifier.setRecordReadingHistory(false);
+    container.read(settingsProvider.notifier).setRecordReadingHistory(false);
 
-    expect(notifier.state.recordReadingHistory, isFalse);
-    expect(Hive.box('settings').get('recordReadingHistory'), isFalse);
+    expect(container.read(settingsProvider).recordReadingHistory, isFalse);
+    await Future<void>.delayed(const Duration(milliseconds: 50));
+    expect(store.get<bool>('recordReadingHistory'), isFalse);
   });
 }

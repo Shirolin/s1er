@@ -40,7 +40,7 @@ class _MessagesScreenState extends ConsumerState<MessagesScreen> {
             onSelectionChanged: (value) {
               final next = value.first;
               setState(() => _segment = next);
-              ref.read(messagesSegmentProvider.notifier).state = next;
+              ref.read(messagesSegmentProvider.notifier).select(next);
             },
             style: S1SegmentedButtonStyle.forScheme(scheme),
           ),

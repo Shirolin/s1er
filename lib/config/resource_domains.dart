@@ -3,7 +3,7 @@
 /// 论坛历史上换过多次资源域名，所有域名规则集中在此文件管理。
 /// Flutter 端（http_client / image_viewer）和代理端（proxy_server）共享此配置。
 /// 新增/修改域名只需改动此文件。
-library resource_domains;
+library;
 
 import 'env_config.dart';
 

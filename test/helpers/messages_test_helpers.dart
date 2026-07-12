@@ -1,14 +1,8 @@
-import 'package:dio/dio.dart';
-import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:flutter_riverpod/misc.dart' show Override;
 import 'package:s1_app/models/notice_item.dart';
 import 'package:s1_app/models/private_message_item.dart';
 import 'package:s1_app/providers/notice_list_provider.dart';
 import 'package:s1_app/providers/pm_list_provider.dart';
-import 'package:s1_app/services/api_service.dart';
-import 'package:s1_app/services/http_client.dart';
-
-ApiService _testApiService() =>
-    ApiService(S1HttpClient.test(ProviderContainer(), Dio()));
 
 PmListState samplePmListState() {
   return PmListState(
@@ -49,22 +43,15 @@ NoticeListState sampleNoticeListState({
 }
 
 List<Override> messagesProviderOverrides({
-  AsyncValue<PmListState>? pmAsync,
-  AsyncValue<NoticeListState>? noticeAsync,
+  PmListState? pmState,
+  NoticeListState? noticeState,
 }) {
   return [
     pmListProvider.overrideWith(
-      (ref) => PmListNotifier(
-        apiService: _testApiService(),
-        initialState: pmAsync ?? AsyncValue.data(samplePmListState()),
-      ),
+      () => PmListNotifier(seed: pmState ?? samplePmListState()),
     ),
     noticeListProvider.overrideWith(
-      (ref) => NoticeListNotifier(
-        apiService: _testApiService(),
-        initialState:
-            noticeAsync ?? AsyncValue.data(sampleNoticeListState()),
-      ),
+      () => NoticeListNotifier(seed: noticeState ?? sampleNoticeListState()),
     ),
   ];
 }

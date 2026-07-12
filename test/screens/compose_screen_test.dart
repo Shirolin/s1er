@@ -67,6 +67,9 @@ void main() {
 
     await tester.pumpWidget(
       ProviderScope(
+        overrides: [
+          authStateProvider.overrideWith(_LoggedOutAuthNotifier.new),
+        ],
         child: MaterialApp.router(
           theme: AppTheme.lightTheme('purple'),
           routerConfig: router,
@@ -98,8 +101,11 @@ void main() {
 }
 
 class _LoggedInAuthNotifier extends AuthNotifier {
-  _LoggedInAuthNotifier(Ref ref)
-      : super(ref.watch(authServiceProvider), ref) {
-    state = AuthState(isLoggedIn: true, username: 'tester');
-  }
+  @override
+  AuthState build() => AuthState(isLoggedIn: true, username: 'tester');
+}
+
+class _LoggedOutAuthNotifier extends AuthNotifier {
+  @override
+  AuthState build() => AuthState();
 }

@@ -1,6 +1,6 @@
 /// 阅读记录 / 阅读进度模型（纯 Dart，不依赖 Flutter）。
 ///
-/// 存储于 Hive Box `reading_history`，value 为 [toJson] 的 Map。
+/// 存储于本地 Drift 表 `reading_histories`，内存镜像为 [toJson] 的 Map。
 class ReadingRecord {
   ReadingRecord({
     required this.tid,

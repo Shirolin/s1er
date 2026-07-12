@@ -3,6 +3,7 @@ import 'dart:math' as math;
 import 'dart:typed_data';
 import 'dart:ui' as ui;
 
+import 'package:cached_network_image/cached_network_image.dart';
 import 'package:dio/dio.dart';
 import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart';
@@ -12,6 +13,7 @@ import 'package:go_router/go_router.dart';
 
 import '../config/resource_domains.dart';
 import '../services/http_client.dart';
+import '../services/s1_image_cache.dart';
 import '../theme/app_theme.dart';
 import '../utils/s1_snack_bar.dart';
 import '../widgets/web_image_stub.dart'
@@ -55,7 +57,15 @@ class _ImageViewerScreenState extends ConsumerState<ImageViewerScreen> {
 
   ImageProvider _resolveProvider() {
     final bytes = widget.imageBytes ?? _fetchedBytes;
-    if (bytes == null) return NetworkImage(widget.imageUrl);
+    if (bytes == null) {
+      if (widget.resourceType == ResourceType.publicAsset && !kIsWeb) {
+        return CachedNetworkImageProvider(
+          widget.imageUrl,
+          cacheManager: S1ImageCache.manager,
+        );
+      }
+      return NetworkImage(widget.imageUrl);
+    }
 
     if (_cachedMemoryImage != null && identical(_cachedMemoryImage!.bytes, bytes)) {
       return _cachedMemoryImage!;
@@ -104,12 +114,17 @@ class _ImageViewerScreenState extends ConsumerState<ImageViewerScreen> {
 
   Future<Uint8List?> _tryFetchBytes() async {
     try {
+      final disk = await S1ImageCache.getBytes(widget.imageUrl);
+      if (disk != null) return disk;
+
       final httpClient = ref.read(httpClientProvider);
       final response = await httpClient.get(
         widget.imageUrl,
         options: Options(responseType: ResponseType.bytes),
       );
-      return Uint8List.fromList(response.data as List<int>);
+      final bytes = Uint8List.fromList(response.data as List<int>);
+      await S1ImageCache.putBytes(widget.imageUrl, bytes);
+      return bytes;
     } catch (_) {
       return null;
     }

@@ -253,8 +253,6 @@ class _StatsCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final colorScheme = Theme.of(context).colorScheme;
-
     return Card(
       elevation: 0,
       child: Padding(
@@ -435,8 +433,6 @@ class _InfoCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final colorScheme = Theme.of(context).colorScheme;
-
     return Card(
       elevation: 0,
       child: Column(
@@ -497,7 +493,6 @@ abstract class _ProfileListMetrics {
   static const double iconSize = 24;
   static const double gap = 16;
   static const double vPadding = 12;
-  static const double textIndent = hPadding + iconSize + gap;
 }
 
 class _SystemGroupCard extends ConsumerWidget {

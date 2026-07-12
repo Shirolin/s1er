@@ -1,26 +1,26 @@
-import 'dart:io';
-
+import 'package:drift/native.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:hive/hive.dart';
+import 'package:s1_app/services/app_database.dart';
+import 'package:s1_app/services/app_local_data.dart';
 import 'package:s1_app/services/reading_history_service.dart';
 
 void main() {
-  late Box<Map> box;
-
-  setUpAll(() {
-    TestWidgetsFlutterBinding.ensureInitialized();
-    Hive.init(Directory.systemTemp.createTempSync('s1_reading_hist').path);
-  });
+  late AppDatabase db;
+  late AppLocalData local;
 
   setUp(() async {
-    box = await Hive.openBox<Map>('reading_history_test_${DateTime.now().microsecondsSinceEpoch}');
+    TestWidgetsFlutterBinding.ensureInitialized();
+    db = AppDatabase.forTesting(NativeDatabase.memory());
+    local = AppLocalData(db);
+    await local.load();
   });
 
   tearDown(() async {
-    await box.deleteFromDisk();
+    await db.close();
   });
 
-  ReadingHistoryService service(String uid) => ReadingHistoryService(box, uid);
+  ReadingHistoryService service(String uid) =>
+      ReadingHistoryService(local, uid);
 
   void record(
     ReadingHistoryService s,
@@ -49,17 +49,16 @@ void main() {
     final r = s.getRecord('100');
     expect(r, isNotNull);
     expect(r!.lastReadPage, 2);
-    // (2-1)*40 + 5
     expect(r.lastReadFloor, 45);
     expect(r.readCount, 1);
   });
 
   test('readCount 仅在 isNewVisit 时递增（翻页不计）', () {
     final s = service('u1');
-    record(s, '100', page: 1, isNewVisit: true); // 首次进入 -> 1
-    record(s, '100', page: 2, isNewVisit: false); // 翻页 -> 不加
+    record(s, '100', page: 1, isNewVisit: true);
+    record(s, '100', page: 2, isNewVisit: false);
     expect(s.getRecord('100')!.readCount, 1);
-    record(s, '100', page: 1, isNewVisit: true); // 再次进入 -> 2
+    record(s, '100', page: 1, isNewVisit: true);
     expect(s.getRecord('100')!.readCount, 2);
   });
 
@@ -92,7 +91,6 @@ void main() {
 
     await u1.clearAll();
     expect(u1.getAllRecords(), isEmpty);
-    // guest 记录不受影响
     expect(guest.getRecord('200'), isNotNull);
   });
 
@@ -107,13 +105,11 @@ void main() {
 
   test('超过上限按 lastReadAt 淘汰最旧（按 uid 计数）', () async {
     final s = service('u1');
-    // 造 maxRecords + 2 条，第一条最旧
     for (var i = 0; i < ReadingHistoryService.maxRecords + 2; i++) {
       record(s, 't$i');
       await Future<void>.delayed(const Duration(milliseconds: 1));
     }
     expect(s.count, ReadingHistoryService.maxRecords);
-    // 最旧的两条应被淘汰
     expect(s.getRecord('t0'), isNull);
     expect(s.getRecord('t1'), isNull);
     expect(s.getRecord('t2'), isNotNull);
@@ -124,7 +120,7 @@ void main() {
     record(guest, '42');
     expect(guest.getRecord('42'), isNotNull);
 
-    final user = ReadingHistoryService(box, '10001');
+    final user = ReadingHistoryService(local, '10001');
     user.migrateGuestRecords('10001');
 
     expect(guest.getRecord('42'), isNull);

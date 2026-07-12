@@ -1,6 +1,7 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:hive/hive.dart';
 
+import '../services/app_local_data.dart';
+import '../services/settings_store.dart';
 import '../theme/app_theme.dart';
 
 class AppSettings {
@@ -40,7 +41,8 @@ class AppSettings {
       themeMode: themeMode ?? this.themeMode,
       themeColor: themeColor ?? this.themeColor,
       showImages: showImages ?? this.showImages,
-      recordReadingHistory: recordReadingHistory ?? this.recordReadingHistory,
+      recordReadingHistory:
+          recordReadingHistory ?? this.recordReadingHistory,
       fontSize: fontSize ?? this.fontSize,
       useDynamicColor: useDynamicColor ?? this.useDynamicColor,
       collapsedForums: collapsedForums ?? this.collapsedForums,
@@ -49,71 +51,116 @@ class AppSettings {
   }
 }
 
-class SettingsNotifier extends StateNotifier<AppSettings> {
-  SettingsNotifier([AppSettings? initial])
-      : super(initial ?? const AppSettings()) {
-    if (initial == null) {
-      _loadSettings();
+final localDataProvider = Provider<AppLocalData>((ref) {
+  throw StateError('AppLocalData not initialized');
+});
+
+final settingsStoreProvider = Provider<SettingsStore>((ref) {
+  return ref.watch(localDataProvider).settings;
+});
+
+class SettingsNotifier extends Notifier<AppSettings> {
+  SettingsNotifier({this.initial, this.store});
+
+  final AppSettings? initial;
+  final SettingsStore? store;
+
+  @override
+  AppSettings build() {
+    if (initial != null) return initial!;
+    return _loadSettings();
+  }
+
+  SettingsStore? get _effectiveStore {
+    if (store != null) return store;
+    try {
+      return ref.read(settingsStoreProvider);
+    } catch (_) {
+      return null;
     }
   }
 
-  void _loadSettings() {
-    final box = Hive.box('settings');
+  void _persist(String key, Object? value) => _effectiveStore?.put(key, value);
 
-    String themeMode = box.get('themeMode', defaultValue: '') as String;
+  AppSettings _loadSettings() {
+    final settingsStore = _effectiveStore;
+    if (settingsStore == null) return const AppSettings();
+
+    String themeMode =
+        settingsStore.get<String>('themeMode', defaultValue: '') ?? '';
     if (themeMode.isEmpty) {
-      final oldDarkMode = box.get('darkMode', defaultValue: false) as bool;
+      final oldDarkMode =
+          settingsStore.get<bool>('darkMode', defaultValue: false) ?? false;
       themeMode = oldDarkMode ? 'dark' : 'system';
-      box.put('themeMode', themeMode);
+      settingsStore.put('themeMode', themeMode);
     }
 
-    state = AppSettings(
+    return AppSettings(
       themeMode: themeMode,
-      themeColor: box.get('themeColor', defaultValue: 'purple') as String,
-      showImages: box.get('showImages', defaultValue: true),
-      recordReadingHistory: box.get('recordReadingHistory', defaultValue: true),
-      fontSize: box.get('fontSize', defaultValue: S1Typography.defaultBodySize),
-      useDynamicColor: box.get('useDynamicColor', defaultValue: false),
+      themeColor: settingsStore.get<String>('themeColor', defaultValue: 'purple') ??
+          'purple',
+      showImages:
+          settingsStore.get<bool>('showImages', defaultValue: true) ?? true,
+      recordReadingHistory: settingsStore.get<bool>(
+            'recordReadingHistory',
+            defaultValue: true,
+          ) ??
+          true,
+      fontSize: settingsStore.get<int>(
+            'fontSize',
+            defaultValue: S1Typography.defaultBodySize,
+          ) ??
+          S1Typography.defaultBodySize,
+      useDynamicColor: settingsStore.get<bool>(
+            'useDynamicColor',
+            defaultValue: false,
+          ) ??
+          false,
       collapsedForums: Set<String>.from(
-        (box.get('collapsedForums') as List?)?.cast<String>() ?? [],
+        (settingsStore.get<List<dynamic>>('collapsedForums'))?.cast<String>() ??
+            [],
       ),
-      simulateDynamic: box.get('simulateDynamic', defaultValue: false) as bool,
+      simulateDynamic: settingsStore.get<bool>(
+            'simulateDynamic',
+            defaultValue: false,
+          ) ??
+          false,
     );
   }
 
   void setThemeMode(String value) {
     state = state.copyWith(themeMode: value);
-    Hive.box('settings').put('themeMode', value);
+    _persist('themeMode', value);
   }
 
   void setThemeColor(String value) {
     state = state.copyWith(themeColor: value);
-    Hive.box('settings').put('themeColor', value);
+    _persist('themeColor', value);
   }
 
   void setShowImages(bool value) {
     state = state.copyWith(showImages: value);
-    Hive.box('settings').put('showImages', value);
+    _persist('showImages', value);
   }
 
   void setRecordReadingHistory(bool value) {
     state = state.copyWith(recordReadingHistory: value);
-    Hive.box('settings').put('recordReadingHistory', value);
+    _persist('recordReadingHistory', value);
   }
 
   void setFontSize(int value) {
     state = state.copyWith(fontSize: value);
-    Hive.box('settings').put('fontSize', value);
+    _persist('fontSize', value);
   }
 
   void setUseDynamicColor(bool value) {
     state = state.copyWith(useDynamicColor: value);
-    Hive.box('settings').put('useDynamicColor', value);
+    _persist('useDynamicColor', value);
   }
 
   void setSimulateDynamic(bool value) {
     state = state.copyWith(simulateDynamic: value);
-    Hive.box('settings').put('simulateDynamic', value);
+    _persist('simulateDynamic', value);
   }
 
   void toggleForumCollapse(String fid) {
@@ -124,7 +171,7 @@ class SettingsNotifier extends StateNotifier<AppSettings> {
       collapsed.add(fid);
     }
     state = state.copyWith(collapsedForums: collapsed);
-    Hive.box('settings').put('collapsedForums', collapsed.toList());
+    _persist('collapsedForums', collapsed.toList());
   }
 
   void resetAppearanceSettings() {
@@ -138,20 +185,25 @@ class SettingsNotifier extends StateNotifier<AppSettings> {
       useDynamicColor: defaults.useDynamicColor,
       simulateDynamic: defaults.simulateDynamic,
     );
-    final box = Hive.box('settings');
-    box.put('themeMode', defaults.themeMode);
-    box.put('themeColor', defaults.themeColor);
-    box.put('showImages', defaults.showImages);
-    box.put('recordReadingHistory', defaults.recordReadingHistory);
-    box.put('fontSize', defaults.fontSize);
-    box.put('useDynamicColor', defaults.useDynamicColor);
-    box.put('simulateDynamic', defaults.simulateDynamic);
+    _persist('themeMode', defaults.themeMode);
+    _persist('themeColor', defaults.themeColor);
+    _persist('showImages', defaults.showImages);
+    _persist('recordReadingHistory', defaults.recordReadingHistory);
+    _persist('fontSize', defaults.fontSize);
+    _persist('useDynamicColor', defaults.useDynamicColor);
+    _persist('simulateDynamic', defaults.simulateDynamic);
   }
 }
 
 final settingsProvider =
-    StateNotifierProvider<SettingsNotifier, AppSettings>((ref) {
-  return SettingsNotifier();
-});
+    NotifierProvider<SettingsNotifier, AppSettings>(SettingsNotifier.new);
 
-final dynamicColorAvailableProvider = StateProvider<bool>((ref) => false);
+class DynamicColorAvailable extends Notifier<bool> {
+  @override
+  bool build() => false;
+
+  void setAvailable(bool value) => state = value;
+}
+
+final dynamicColorAvailableProvider =
+    NotifierProvider<DynamicColorAvailable, bool>(DynamicColorAvailable.new);

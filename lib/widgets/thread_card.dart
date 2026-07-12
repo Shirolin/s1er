@@ -29,13 +29,15 @@ class ThreadCard extends ConsumerWidget {
     return (totalPosts / perPage).ceil().clamp(1, 9999);
   }
 
-  /// 点击：有未读完记录则续读到上次页码，否则从第一页打开。
+  /// 点击：按阅读记录解析目标页（续读 / 已读落末页 / 有新回复落新页）。
   void _handleTap(BuildContext context, WidgetRef ref) {
     final record = _recordFor(ref.read(readingHistoryProvider), thread.tid);
-    if (record != null && !record.isFinished && record.lastReadPage > 1) {
-      context.push('/thread/${thread.tid}?page=${record.lastReadPage}');
-    } else {
+    final liveTotalPages = _calcTotalPages(thread.replies);
+    final targetPage = record?.resolveOpenPage(liveTotalPages) ?? 1;
+    if (targetPage <= 1) {
       context.push('/thread/${thread.tid}');
+    } else {
+      context.push('/thread/${thread.tid}?page=$targetPage');
     }
   }
 
@@ -114,7 +116,10 @@ class ThreadCard extends ConsumerWidget {
                     ? () => _showPageSheet(context)
                     : null,
               ),
-              _ReadingProgressBar(tid: thread.tid),
+              _ReadingProgressBar(
+                tid: thread.tid,
+                liveTotalPages: totalPages,
+              ),
             ],
           ),
         ),
@@ -128,8 +133,12 @@ class ThreadCard extends ConsumerWidget {
 // ═══════════════════════════════════════════════════════════
 
 class _ReadingProgressBar extends ConsumerWidget {
-  const _ReadingProgressBar({required this.tid});
+  const _ReadingProgressBar({
+    required this.tid,
+    required this.liveTotalPages,
+  });
   final String tid;
+  final int liveTotalPages;
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -137,13 +146,14 @@ class _ReadingProgressBar extends ConsumerWidget {
     final record = ref.watch(
       readingHistoryProvider.select((list) => _recordFor(list, tid)),
     );
-    if (record == null || record.progress <= 0) {
+    if (record == null || record.progressAt(liveTotalPages) <= 0) {
       return const SizedBox.shrink();
     }
 
     final scheme = Theme.of(context).colorScheme;
     final textTheme = Theme.of(context).textTheme;
-    final isFinished = record.isFinished;
+    final isFinished = record.isFinishedAt(liveTotalPages);
+    final hasNewPages = record.hasNewPages(liveTotalPages);
     final accent = isFinished ? scheme.onSurfaceVariant : scheme.primary;
 
     return Padding(
@@ -160,7 +170,7 @@ class _ReadingProgressBar extends ConsumerWidget {
             child: ClipRRect(
               borderRadius: S1Shape.extraSmall,
               child: LinearProgressIndicator(
-                value: record.progress,
+                value: record.progressAt(liveTotalPages),
                 minHeight: 3,
                 backgroundColor: scheme.surfaceContainerHighest,
                 valueColor: AlwaysStoppedAnimation<Color>(
@@ -173,7 +183,11 @@ class _ReadingProgressBar extends ConsumerWidget {
           ),
           const SizedBox(width: 6),
           Text(
-            isFinished ? '已读' : 'P${record.lastReadPage}',
+            isFinished
+                ? '已读'
+                : hasNewPages
+                    ? 'P${record.lastReadPage}/$liveTotalPages'
+                    : 'P${record.lastReadPage}',
             style: textTheme.labelSmall?.copyWith(
               color: accent,
               fontWeight: FontWeight.w500,

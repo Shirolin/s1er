@@ -71,7 +71,41 @@ class ReadingRecord {
   ///
   /// 说明：数据流只知「已加载到第几页」，故按页级判定。0 回复帖
   /// (`totalReplies == 0`) 亦满足 `totalPages == 1 && lastReadPage == 1 ⇒ 已读`。
+  /// 仅反映**上次写入时**的缓存；列表卡片请用 [isFinishedAt] 对照实时页数。
   bool get isFinished => lastReadPage >= totalPages;
+
+  /// 相对实时总页数，是否已读完（用于列表/API 页数更新后的展示）。
+  bool isFinishedAt(int liveTotalPages) =>
+      liveTotalPages > 0 && lastReadPage >= liveTotalPages;
+
+  /// 缓存总页数是否落后于实时值（有新回复撑大页数）。
+  bool hasNewPages(int liveTotalPages) => liveTotalPages > totalPages;
+
+  /// 相对实时总页数的进度（列表卡片进度条用）。
+  double progressAt(int liveTotalPages) => liveTotalPages > 0
+      ? (lastReadPage / liveTotalPages).clamp(0.0, 1.0)
+      : 0.0;
+
+  /// 打开详情时应落地的页码（1-based）。
+  ///
+  /// [liveTotalPages] 须来自列表 `thread.replies` 或详情 API 的实时计算值。
+  int resolveOpenPage(int liveTotalPages) {
+    final pages = liveTotalPages.clamp(1, 9999);
+
+    if (!isFinished && lastReadPage > 1) {
+      return lastReadPage.clamp(1, pages);
+    }
+
+    if (isFinished && hasNewPages(pages)) {
+      return (totalPages + 1).clamp(1, pages);
+    }
+
+    if (isFinished) {
+      return pages;
+    }
+
+    return 1;
+  }
 
   Map<String, dynamic> toJson() => {
         'tid': tid,

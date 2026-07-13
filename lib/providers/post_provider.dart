@@ -136,8 +136,12 @@ class PostNotifier extends AsyncNotifier<PostListState> {
       authorId: _filterAuthorId,
     );
     final loaded = _buildStateFromResult(result, page);
-    if (!_shouldFetchRateLogs(result) && ref.mounted) {
+    if (!ref.mounted) return loaded;
+
+    if (!_shouldFetchRateLogs(result)) {
       ref.read(threadRateLogsProvider(tid).notifier).clear();
+    } else {
+      await ref.read(threadRateLogsProvider(tid).notifier).ensurePageRateLogs(page);
     }
     return loaded;
   }

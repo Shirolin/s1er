@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
@@ -85,6 +87,9 @@ class _ThreadDetailScreenState extends ConsumerState<ThreadDetailScreen> {
 
   /// 当前页各楼 PostItem 的 key（不含 PollCard），翻页时重建。
   List<GlobalKey> _postKeys = [];
+
+  /// 防止连点叠加滚动动画。
+  bool _scrollAnimating = false;
 
   @override
   void dispose() {
@@ -189,11 +194,29 @@ class _ThreadDetailScreenState extends ConsumerState<ThreadDetailScreen> {
   }
 
   void _scrollToTop() {
-    _swipeKey.currentState?.scrollToTop();
+    unawaited(_runScrollAction(_scrollToTopImpl));
   }
 
   void _scrollToBottom() {
-    _swipeKey.currentState?.scrollToBottom();
+    unawaited(_runScrollAction(_scrollToBottomImpl));
+  }
+
+  Future<void> _scrollToTopImpl() async {
+    await _swipeKey.currentState?.scrollToTop();
+  }
+
+  Future<void> _scrollToBottomImpl() async {
+    await _swipeKey.currentState?.scrollToBottom();
+  }
+
+  Future<void> _runScrollAction(Future<void> Function() action) async {
+    if (_scrollAnimating) return;
+    _scrollAnimating = true;
+    try {
+      await action();
+    } finally {
+      _scrollAnimating = false;
+    }
   }
 
   /// 保证 [_postKeys] 长度与当前页楼层数一致（在帧末调用，避免 build 期间副作用）。
@@ -210,10 +233,12 @@ class _ThreadDetailScreenState extends ConsumerState<ThreadDetailScreen> {
 
   /// 单击「下一楼」：滚至下一楼靠上展示；已是末楼则滚到页底。
   void _scrollToNextFloor() {
-    ScrollFloorNavigator.scrollToNextFloor(
-      postKeys: _postKeys,
-      onAtLastFloor: _scrollToBottom,
-    );
+    unawaited(_runScrollAction(() async {
+      await ScrollFloorNavigator.scrollToNextFloor(
+        postKeys: _postKeys,
+        onAtLastFloor: () => unawaited(_scrollToBottomImpl()),
+      );
+    },));
   }
 
   Future<void> _goToPage(int page) async {

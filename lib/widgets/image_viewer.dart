@@ -15,8 +15,6 @@ import '../theme/app_theme.dart';
 import '../utils/image_load_policy.dart';
 import '../utils/inline_image_decode.dart';
 import 'lazy_visibility_loader.dart';
-import 'web_image_stub.dart'
-    if (dart.library.html) 'web_image_html.dart';
 
 class ImageViewer extends ConsumerStatefulWidget {
 
@@ -71,7 +69,6 @@ class _ImageViewerState extends ConsumerState<ImageViewer> {
   ImageProvider? _imageProvider;
   late ResourceType _resourceType;
   late String _displayUrl;
-  double _webAspectRatio = 16 / 9;
 
   String get _previewUrl => widget.imageUrl;
 
@@ -193,16 +190,16 @@ class _ImageViewerState extends ConsumerState<ImageViewer> {
 
     _deferredLoad = false;
     _networkLoadAllowed = true;
-    if (_resourceType == ResourceType.publicAsset) {
+    if (_resourceType == ResourceType.publicAsset && !kIsWeb) {
       setState(() {
         _loading = false;
       });
-      if (kIsWeb) {
-        await _detectAspectRatio(url);
-      }
       return;
     }
 
+    // Web 上所有图片都通过统一代理取 bytes，再由 Flutter Image 渲染。
+    // 避免 HtmlElementView 在 ListView 回收期间触发 detached RenderObject
+    // 的 PlatformView post-frame 断言。
     await _loadAuthOrProxied(url);
   }
 
@@ -310,16 +307,6 @@ class _ImageViewerState extends ConsumerState<ImageViewer> {
     _fallbackToFullInline();
   }
 
-  Future<void> _detectAspectRatio(String url) async {
-    final ratio = await detectImageAspectRatio(url);
-    if (!mounted) return;
-    if (ratio != _webAspectRatio) {
-      setState(() {
-        _webAspectRatio = ratio;
-      });
-    }
-  }
-
   void _listenForPolicyChanges() {
     ref.listen(
       settingsProvider.select(
@@ -388,10 +375,6 @@ class _ImageViewerState extends ConsumerState<ImageViewer> {
       );
     }
 
-    if (_resourceType == ResourceType.publicAsset && kIsWeb) {
-      return _wrapDeferred(_buildWebPublicImage(context));
-    }
-
     if (_imageProvider != null) {
       return _wrapDeferred(_buildImage(_imageProvider!));
     }
@@ -409,50 +392,6 @@ class _ImageViewerState extends ConsumerState<ImageViewer> {
       onVisible: _onBecomeVisible,
       child: child,
     );
-  }
-
-  Widget _buildWebPublicImage(BuildContext context) {
-    final scheme = Theme.of(context).colorScheme;
-    Widget child = Semantics(
-      button: true,
-      label: '查看大图',
-      child: LayoutBuilder(
-        builder: (context, constraints) {
-          final w = constraints.hasBoundedWidth ? constraints.maxWidth : 300.0;
-          final h = w / _webAspectRatio;
-          return Stack(
-            children: [
-              buildWebImage(_displayUrl, width: w, height: h),
-              Positioned.fill(
-                child: GestureDetector(
-                  onTap: () => _showFullScreen(context),
-                  behavior: HitTestBehavior.translucent,
-                ),
-              ),
-            ],
-          );
-        },
-      ),
-    );
-
-    if (widget.showBorder) {
-      child = ClipRRect(
-        borderRadius: S1Shape.small,
-        child: Container(
-          decoration: BoxDecoration(
-            border: Border.all(color: scheme.outlineVariant),
-            borderRadius: S1Shape.small,
-          ),
-          child: child,
-        ),
-      );
-    }
-
-    if (widget.margin != null) {
-      child = Padding(padding: widget.margin!, child: child);
-    }
-
-    return child;
   }
 
   Widget _buildImage(ImageProvider provider) {
@@ -623,20 +562,20 @@ class _ImageViewerState extends ConsumerState<ImageViewer> {
 
   Widget _buildEmoticon(BuildContext context) {
     const double size = 24.0;
-    Widget child;
-    if (_resourceType == ResourceType.publicAsset && kIsWeb) {
-      child = buildWebImage(widget.imageUrl, width: size, height: size);
-    } else {
-      child = Image(
-        key: ValueKey(widget.imageUrl),
-        image: _imageProvider ?? _publicNetworkProvider(widget.imageUrl),
-        width: size,
-        height: size,
-        fit: BoxFit.contain,
-        gaplessPlayback: true,
-        errorBuilder: (_, __, ___) => const SizedBox(width: size, height: size),
-      );
-    }
+    final provider = _imageProvider ??
+        (!kIsWeb ? _publicNetworkProvider(widget.imageUrl) : null);
+    Widget child = provider == null
+        ? const SizedBox(width: size, height: size)
+        : Image(
+            key: ValueKey(widget.imageUrl),
+            image: provider,
+            width: size,
+            height: size,
+            fit: BoxFit.contain,
+            gaplessPlayback: true,
+            errorBuilder: (_, __, ___) =>
+                const SizedBox(width: size, height: size),
+          );
 
     if (widget.margin != null) {
       child = Padding(padding: widget.margin!, child: child);

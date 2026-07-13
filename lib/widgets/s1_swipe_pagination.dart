@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+import '../utils/scroll_motion.dart';
 import 's1_fab_layout.dart';
 
 typedef S1PageBuilder = Widget Function(
@@ -136,11 +137,8 @@ class S1SwipePaginationState extends State<S1SwipePagination> {
   /// 将当前页滚动回顶部（供 FAB 等外部调用）。
   Future<void> scrollToTop() async {
     if (!_scrollController.hasClients) return;
-    await _scrollController.animateTo(
-      0,
-      duration: const Duration(milliseconds: 300),
-      curve: Curves.easeOutCubic,
-    );
+    final position = _scrollController.position;
+    await S1ScrollMotion.animateTo(position, position.minScrollExtent);
   }
 
   /// 将当前页滚动到底部。
@@ -149,31 +147,7 @@ class S1SwipePaginationState extends State<S1SwipePagination> {
   /// 动画过程中增长；单次 [animateTo] 会停在过期的 extent，故循环校正。
   Future<void> scrollToBottom() async {
     if (!_scrollController.hasClients) return;
-
-    const settleTolerance = 0.5;
-    const maxPasses = 4;
-    const duration = Duration(milliseconds: 300);
-
-    for (var pass = 0; pass < maxPasses; pass++) {
-      if (!_scrollController.hasClients) return;
-      final position = _scrollController.position;
-      final target = position.maxScrollExtent;
-      if ((target - position.pixels).abs() <= settleTolerance) return;
-
-      await _scrollController.animateTo(
-        target,
-        duration: duration,
-        curve: Curves.easeOutCubic,
-      );
-      await WidgetsBinding.instance.endOfFrame;
-    }
-
-    if (_scrollController.hasClients) {
-      final max = _scrollController.position.maxScrollExtent;
-      if (_scrollController.offset < max - settleTolerance) {
-        _scrollController.jumpTo(max);
-      }
-    }
+    await S1ScrollMotion.animateToMaxExtent(_scrollController.position);
   }
 
   bool get _canSwipeToPrevious => widget.currentPage > 1;

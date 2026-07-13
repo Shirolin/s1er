@@ -10,12 +10,10 @@ int? _harnessRequestedPage;
 /// 与帖子详情一致的 FAB 显隐状态（ValueNotifier，不重建列表）。
 class _ScrollFabVisibility {
   const _ScrollFabVisibility({
-    this.showScrollToTop = false,
     this.showScrollDown = false,
     this.atPageBottom = false,
   });
 
-  final bool showScrollToTop;
   final bool showScrollDown;
   final bool atPageBottom;
 }
@@ -105,7 +103,7 @@ class _NextFloorHarnessState extends State<_NextFloorHarness> {
                       : ScrollNavAdvanceMode.nextFloor;
                   return S1FabStack(
                     scrollNav: S1ScrollNavConfig(
-                      showScrollToTop: fab.showScrollToTop,
+                      showScrollToTop: false,
                       showScrollAdvance: showScrollAdvance,
                       advanceMode: advanceMode,
                       onScrollToNextFloor: _scrollToNextFloor,

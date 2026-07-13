@@ -9,7 +9,6 @@ import '../utils/compact_label.dart';
 import '../utils/format_utils.dart';
 import '../utils/post_image_index_counter.dart';
 import 'bbcode_renderer.dart';
-import 'lazy_visibility_loader.dart';
 import 'post_action_menu.dart';
 import 'rate_log_card.dart';
 import 'user_profile_sheet.dart';
@@ -146,18 +145,9 @@ class _PostItemState extends ConsumerState<PostItem> {
               onExpandImages: () => setState(() => _imagesExpanded = true),
             ),
             if (widget.tid != null && widget.commentCount > 0)
-              LazyVisibilityLoader(
-                onVisible: () {
-                  final page = widget.currentPage;
-                  if (page == null) return;
-                  ref
-                      .read(threadRateLogsProvider(widget.tid!).notifier)
-                      .ensurePageRateLogs(page);
-                },
-                child: _PostRateLogSection(
-                  tid: widget.tid!,
-                  pid: widget.post.pid,
-                ),
+              _PostRateLogSection(
+                tid: widget.tid!,
+                pid: widget.post.pid,
               ),
           ],
         ),

@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/scheduler.dart';
 
 /// 在子组件进入视口（含预加载边距）时触发 [onVisible]，仅一次。
 class LazyVisibilityLoader extends StatefulWidget {
@@ -19,14 +20,26 @@ class LazyVisibilityLoader extends StatefulWidget {
 
 class _LazyVisibilityLoaderState extends State<LazyVisibilityLoader> {
   bool _fired = false;
+  bool _checkScheduled = false;
 
   @override
   void initState() {
     super.initState();
-    WidgetsBinding.instance.addPostFrameCallback(_checkVisibility);
+    _scheduleCheck();
+  }
+
+  void _scheduleCheck() {
+    if (_fired || !mounted || _checkScheduled) return;
+    _checkScheduled = true;
+    SchedulerBinding.instance.scheduleFrameCallback((_) {
+      _checkScheduled = false;
+      _checkVisibility();
+    });
   }
 
   bool _intersectsViewport(RenderBox box) {
+    if (!box.attached || !box.hasSize) return false;
+
     final offset = box.localToGlobal(Offset.zero);
     final size = box.size;
     final screen = MediaQuery.sizeOf(context);
@@ -36,28 +49,27 @@ class _LazyVisibilityLoaderState extends State<LazyVisibilityLoader> {
     return rectBottom >= -margin && rectTop <= screen.height + margin;
   }
 
-  void _checkVisibility([Duration? _]) {
+  void _checkVisibility() {
     if (_fired || !mounted) return;
 
     final renderObject = context.findRenderObject();
     if (renderObject is! RenderBox ||
-        !renderObject.hasSize ||
-        !renderObject.attached) {
-      WidgetsBinding.instance.addPostFrameCallback(_checkVisibility);
+        !renderObject.attached ||
+        !renderObject.hasSize) {
       return;
     }
 
-    if (_intersectsViewport(renderObject)) {
-      _fired = true;
-      widget.onVisible();
-    }
+    if (!_intersectsViewport(renderObject)) return;
+
+    _fired = true;
+    widget.onVisible();
   }
 
   @override
   Widget build(BuildContext context) {
     return NotificationListener<ScrollNotification>(
       onNotification: (_) {
-        _checkVisibility();
+        _scheduleCheck();
         return false;
       },
       child: widget.child,

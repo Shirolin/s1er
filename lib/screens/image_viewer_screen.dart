@@ -55,9 +55,10 @@ class _ImageViewerScreenState extends ConsumerState<ImageViewerScreen> {
 
   bool get _canSaveToGallery => !kIsWeb && !Platform.isLinux;
 
-  ImageProvider _resolveProvider() {
+  ImageProvider? _resolveProvider() {
     final bytes = widget.imageBytes ?? _fetchedBytes;
     if (bytes == null) {
+      if (kIsWeb) return null;
       if (widget.resourceType == ResourceType.publicAsset && !kIsWeb) {
         return CachedNetworkImageProvider(
           widget.imageUrl,
@@ -264,23 +265,13 @@ class _ImageViewerScreenState extends ConsumerState<ImageViewerScreen> {
     }
   }
 
-  Widget _buildImageContent(ImageProvider provider, ColorScheme colorScheme) {
-    if (widget.resourceType == ResourceType.publicAsset && kIsWeb) {
-      return LayoutBuilder(
-        builder: (context, constraints) {
-          _updateViewportSize(constraints.maxWidth, constraints.maxHeight);
-          return buildWebImage(
-            widget.imageUrl,
-            width: constraints.maxWidth,
-            height: constraints.maxHeight,
-          );
-        },
-      );
-    }
-
+  Widget _buildImageContent(ImageProvider? provider, ColorScheme colorScheme) {
     return LayoutBuilder(
       builder: (context, constraints) {
         _updateViewportSize(constraints.maxWidth, constraints.maxHeight);
+        if (provider == null) {
+          return const Center(child: CircularProgressIndicator());
+        }
         return Image(
           image: provider,
           fit: BoxFit.contain,

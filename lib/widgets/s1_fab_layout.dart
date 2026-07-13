@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 
 import '../theme/app_theme.dart';
 
@@ -228,6 +229,7 @@ class S1ScrollNavGroup extends StatelessWidget {
         _NavActionButton(
           key: ValueKey(isNextPage ? 'scroll_nav_forward' : 'scroll_nav_down'),
           icon: isNextPage ? Icons.arrow_forward : Icons.arrow_downward,
+          iconKey: ValueKey(isNextPage ? 'scroll_nav_forward_icon' : 'scroll_nav_down_icon'),
           tooltip: isNextPage ? '下一页（长按到底部）' : '下一楼（长按到底部）',
           semanticLabel: isNextPage ? '下一页' : '下一楼',
           semanticHint: '长按跳至页底',
@@ -265,17 +267,29 @@ class _NavActionButton extends StatelessWidget {
     required this.icon,
     required this.tooltip,
     required this.onPressed,
+    this.iconKey,
     this.onLongPress,
     this.semanticLabel,
     this.semanticHint,
   });
 
   final IconData icon;
+  final Key? iconKey;
   final String tooltip;
   final VoidCallback onPressed;
   final VoidCallback? onLongPress;
   final String? semanticLabel;
   final String? semanticHint;
+
+  void _onTap() {
+    HapticFeedback.selectionClick();
+    onPressed();
+  }
+
+  void _onLongPress() {
+    HapticFeedback.mediumImpact();
+    onLongPress?.call();
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -289,16 +303,31 @@ class _NavActionButton extends StatelessWidget {
         child: Material(
           color: Colors.transparent,
           child: InkWell(
-            onTap: onPressed,
-            onLongPress: onLongPress,
+            onTap: _onTap,
+            onLongPress: onLongPress == null ? null : _onLongPress,
             customBorder: const CircleBorder(),
             child: SizedBox(
               width: S1FabLayout.navButtonSize,
               height: S1FabLayout.navButtonSize,
-              child: Icon(
-                icon,
-                size: S1FabLayout.navIconSize,
-                color: scheme.onSurfaceVariant,
+              child: AnimatedSwitcher(
+                duration: const Duration(milliseconds: 220),
+                switchInCurve: Curves.easeOutCubic,
+                switchOutCurve: Curves.easeInCubic,
+                transitionBuilder: (child, animation) {
+                  return FadeTransition(
+                    opacity: animation,
+                    child: ScaleTransition(
+                      scale: Tween<double>(begin: 0.84, end: 1).animate(animation),
+                      child: child,
+                    ),
+                  );
+                },
+                child: Icon(
+                  icon,
+                  key: iconKey ?? ValueKey(icon),
+                  size: S1FabLayout.navIconSize,
+                  color: scheme.onSurfaceVariant,
+                ),
               ),
             ),
           ),

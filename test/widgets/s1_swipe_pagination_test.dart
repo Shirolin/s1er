@@ -310,9 +310,7 @@ void main() {
     await tester.pump();
 
     unawaited(state.scrollToTop());
-    for (var i = 0; i < 8; i++) {
-      await tester.pump(const Duration(milliseconds: 50));
-    }
+    await tester.pumpAndSettle();
 
     expect(controller.offset, 0);
   });
@@ -337,9 +335,7 @@ void main() {
     expect(controller.offset, 0);
 
     unawaited(state.scrollToBottom());
-    for (var i = 0; i < 8; i++) {
-      await tester.pump(const Duration(milliseconds: 50));
-    }
+    await tester.pumpAndSettle();
 
     expect(controller.offset, controller.position.maxScrollExtent);
   });

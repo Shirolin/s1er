@@ -133,18 +133,19 @@ void main() {
       expect(adapter.rateLogRequests, isEmpty);
     });
 
-    test('does not auto-fetch rate logs on page load when commentcount > 0',
-        () async {
+    test('auto-fetches rate logs on page load when commentcount > 0', () async {
       adapter.commentCount = {'1': 2};
       container = buildContainer(
         extraOverrides: [
           readingRecordProvider('100').overrideWithValue(null),
         ],
       );
+      final sub = container.listen(postProvider('100'), (_, __) {});
+      addTearDown(sub.close);
 
       await container.read(postProvider('100').future);
 
-      expect(adapter.rateLogRequests, isEmpty);
+      expect(adapter.rateLogRequests, isNotEmpty);
     });
 
     test('rate log merge does not mutate postProvider state', () async {
@@ -177,11 +178,7 @@ void main() {
       final initial = await container.read(postProvider('100').future);
       final postsBefore = initial.posts;
 
-      expect(adapter.rateLogRequests, isEmpty);
-
-      await container
-          .read(threadRateLogsProvider('100').notifier)
-          .ensurePageRateLogs(1);
+      expect(adapter.rateLogRequests, isNotEmpty);
 
       final after = container.read(postProvider('100')).asData!.value;
       expect(identical(after.posts, postsBefore), isTrue);

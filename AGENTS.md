@@ -101,7 +101,11 @@ lib/
   - `screens/`：页面组合层，调用 providers 获取数据，不直接调用 services
   - `widgets/`：可复用的 UI 片段，通过参数接收数据，不持有状态逻辑
 
-- **数据流方向**：Screen → Provider → Service → Dio HTTP → Discuz! API，单向，禁止跨层直调
+- **标准数据流**：Screen / Widget → Provider / Notifier → Service → `S1HttpClient` / Dio → Discuz! API，单向，禁止跨层直调
+  - 后端类比：Screen / Widget ≈ View + 薄 Controller；Provider / Notifier ≈ Application Service / Use Case；Service ≈ Repository / Gateway；Provider 构造依赖 ≈ Factory + DI
+  - Provider / Notifier 负责业务编排及 `loading/data/error`、缓存失效和关联刷新，不能退化为 Service 的无状态透传层
+  - 纯 UI 状态（动画、展开收起、输入框、滚动）可留在 Widget；网络、持久化、认证、缓存和业务错误必须下沉
+  - 保持最少必要分层，禁止为单一动作叠加无实际职责的 Controller / UseCase / Repository 包装
 
 ---
 

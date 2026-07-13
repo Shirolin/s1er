@@ -6,6 +6,7 @@ import 'package:s1_app/models/forum_category.dart';
 import 'package:s1_app/models/user.dart';
 import 'package:s1_app/providers/auth_provider.dart';
 import 'package:s1_app/providers/forum_list_provider.dart';
+import 'package:s1_app/providers/forum_name_provider.dart';
 import 'package:s1_app/providers/messages_segment_provider.dart';
 import 'package:s1_app/providers/settings_provider.dart';
 import 'package:s1_app/screens/home_screen.dart';
@@ -166,9 +167,10 @@ void main() {
   });
 
   testWidgets(
-      'login route transition does not dirty ProviderScope during Overlay build',
+      'login then forum route does not dirty ProviderScope during Overlay build',
       (tester) async {
     late _MutableAuthNotifier authNotifier;
+    late ProviderContainer container;
     final db = AppDatabase.forTesting(NativeDatabase.memory());
     final local = AppLocalData(db);
     await local.loadEssentials();
@@ -178,19 +180,24 @@ void main() {
       routes: [
         GoRoute(path: '/', builder: (_, __) => const HomeScreen()),
         GoRoute(
+          path: '/forum/:fid',
+          builder: (_, state) => _ForumRouteProbe(
+            fid: state.pathParameters['fid']!,
+          ),
+        ),
+        GoRoute(
           path: '/login',
           builder: (context, _) => _LoginTransitionScreen(
             onLogin: () {
+              authNotifier.setState(
+                AuthState(
+                  isLoggedIn: true,
+                  username: 'alice',
+                  user: User(uid: '1', username: 'alice'),
+                ),
+              );
+              container.invalidate(forumListProvider);
               context.go('/');
-              WidgetsBinding.instance.addPostFrameCallback((_) {
-                authNotifier.setState(
-                  AuthState(
-                    isLoggedIn: true,
-                    username: 'alice',
-                    user: User(uid: '1', username: 'alice'),
-                  ),
-                );
-              });
             },
           ),
         ),
@@ -219,6 +226,9 @@ void main() {
       ),
     );
     await tester.pumpAndSettle();
+    container = ProviderScope.containerOf(
+      tester.element(find.byType(HomeScreen)),
+    );
 
     await tester.tap(find.text('我的'));
     await tester.pumpAndSettle();
@@ -236,6 +246,24 @@ void main() {
     expect(tester.takeException(), isNull, reason: '登录过渡完成后不应遗留异常');
     expect(find.text('Stage1st'), findsOneWidget);
     expect(find.text('搜索'), findsOneWidget);
+
+    await tester.tap(find.text('游戏论坛'));
+    await tester.pumpAndSettle();
+    expect(
+      tester.takeException(),
+      isNull,
+      reason: '进入板块时不应触发 ProviderScope 异常',
+    );
+    expect(find.text('游戏论坛'), findsNWidgets(2));
+
+    router.pop();
+    await tester.pumpAndSettle();
+    expect(
+      tester.takeException(),
+      isNull,
+      reason: '返回论坛首页时不应触发 ProviderScope 异常',
+    );
+    expect(find.text('Stage1st'), findsOneWidget);
   });
 
   testWidgets(
@@ -431,6 +459,21 @@ class _LoginTransitionScreen extends StatelessWidget {
           child: const Text('完成登录'),
         ),
       ),
+    );
+  }
+}
+
+class _ForumRouteProbe extends ConsumerWidget {
+  const _ForumRouteProbe({required this.fid});
+
+  final String fid;
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final forumName = ref.watch(forumNameProvider(fid));
+    return Scaffold(
+      appBar: AppBar(elevation: 0, title: Text(forumName ?? '版块')),
+      body: Center(child: Text(forumName ?? '版块')),
     );
   }
 }

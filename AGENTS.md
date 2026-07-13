@@ -17,7 +17,7 @@
 |:---|:---|:---|
 | 语言 | Dart | >=3.4 <4.0 |
 | 框架 | Flutter | >=3.4 |
-| 状态管理 | flutter_riverpod | ^3.3.2（Notifier / AsyncNotifier；禁长期依赖 `legacy.dart`） |
+| 状态管理 | flutter_riverpod | 3.2.1（临时固定；规避 #4765；Notifier / AsyncNotifier；禁长期依赖 `legacy.dart`） |
 | HTTP 客户端 | dio | ^5.4.0 |
 | 路由 | go_router | ^17.0.0 |
 | 本地结构化存储 | drift / drift_flutter | ^2.34.1 / ^0.3.1 |
@@ -195,6 +195,7 @@ flutter run -d chrome --dart-define=TALKER_LOG_LEVEL=all --dart-define=TALKER_MA
 - 表情包资源通过脚本从 GitHub 下载（`scripts/download_emoticons.dart`），未内置到仓库
 - test 目录覆盖率仍不足，尤其是 screens 和 widgets 层
 - 技术栈现代化定案与拆分：`docs/plans/2026-07-12-tech-stack-modernization.md`（P0–P6 已落地后以本文件锁定表为准）
+- flutter_riverpod 临时固定为 `3.2.1`：`3.3.2` 存在上游 [#4765](https://github.com/rrousselGit/riverpod/issues/4765) 的 Provider 订阅恢复期 `markNeedsBuild` 回归；升级前必须先通过路由 Provider 链回归测试。
 
 ### M3 允许模式
 

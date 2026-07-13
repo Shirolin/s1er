@@ -233,12 +233,14 @@ class _ThreadDetailScreenState extends ConsumerState<ThreadDetailScreen> {
 
   /// 单击「下一楼」：滚至下一楼靠上展示；已是末楼则滚到页底。
   void _scrollToNextFloor() {
-    unawaited(_runScrollAction(() async {
-      await ScrollFloorNavigator.scrollToNextFloor(
-        postKeys: _postKeys,
-        onAtLastFloor: () => unawaited(_scrollToBottomImpl()),
-      );
-    }));
+    unawaited(_runScrollAction(
+      () async {
+        await ScrollFloorNavigator.scrollToNextFloor(
+          postKeys: _postKeys,
+          onAtLastFloor: () => unawaited(_scrollToBottomImpl()),
+        );
+      },
+    ),);
   }
 
   Future<void> _goToPage(int page) async {

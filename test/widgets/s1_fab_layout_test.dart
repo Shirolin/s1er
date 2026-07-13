@@ -9,16 +9,16 @@ void main() {
     await tester.pumpWidget(
       MaterialApp(
         theme: AppTheme.lightTheme('purple'),
-        home: Scaffold(
+        home: const Scaffold(
           body: S1FabStack(
-            scrollNav: const S1ScrollNavConfig(
+            scrollNav: S1ScrollNavConfig(
               showScrollToTop: true,
               showScrollAdvance: true,
               onScrollToTop: _noop,
               onScrollToNextFloor: _noop,
               onScrollToBottom: _noop,
             ),
-            primary: const S1FabItem(
+            primary: S1FabItem(
               heroTag: 'reply',
               icon: Icons.edit_outlined,
               tooltip: '回复',
@@ -74,9 +74,9 @@ void main() {
     await tester.pumpWidget(
       MaterialApp(
         theme: AppTheme.lightTheme('purple'),
-        home: Scaffold(
+        home: const Scaffold(
           body: S1ScrollNavGroup(
-            config: const S1ScrollNavConfig(
+            config: S1ScrollNavConfig(
               showScrollToTop: true,
               showScrollAdvance: false,
               onScrollToTop: _noop,
@@ -91,7 +91,7 @@ void main() {
     await tester.pumpWidget(
       MaterialApp(
         theme: AppTheme.lightTheme('purple'),
-        home: Scaffold(
+        home: const Scaffold(
           body: S1ScrollNavGroup(
             config: S1ScrollNavConfig(
               showScrollToTop: false,
@@ -109,9 +109,9 @@ void main() {
     await tester.pumpWidget(
       MaterialApp(
         theme: AppTheme.lightTheme('purple'),
-        home: Scaffold(
+        home: const Scaffold(
           body: S1ScrollNavGroup(
-            config: const S1ScrollNavConfig(
+            config: S1ScrollNavConfig(
               showScrollToTop: true,
               showScrollAdvance: true,
               onScrollToTop: _noop,

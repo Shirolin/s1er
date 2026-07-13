@@ -170,8 +170,18 @@ flutter build apk --debug
 
 项目遵循单向数据流：
 
-```text
-Screen -> Provider -> Service -> S1HttpClient -> Discuz! API
+```mermaid
+flowchart LR
+    UI["Screen / Widget<br/>展示与用户交互"]
+    State["Provider / Notifier<br/>状态与业务编排"]
+    Service["Service<br/>外部交互封装"]
+    Client["S1HttpClient / Dio<br/>限速、Cookie、formhash、超时"]
+    API["Discuz! API<br/>Web 经本地代理"]
+    Local["Drift / 安全存储 / 图片缓存"]
+
+    UI --> State --> Service
+    Service --> Client --> API
+    Service --> Local
 ```
 
 | 目录 | 职责 |

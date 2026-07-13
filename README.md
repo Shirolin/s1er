@@ -233,3 +233,10 @@ Issue 与 Pull Request 都欢迎。在开始较大改动前，建议先创建 Is
 
 - [Stage1st](https://stage1st.com/) 提供论坛服务与社区内容。
 - Flutter、Dart 及本项目使用的所有开源依赖与贡献者。
+
+## 支持项目
+
+如果你觉得 S1 Client 有帮助，欢迎支持开发者：
+
+- 爱发电 (Afdian)：[https://ifdian.net/a/shirolin](https://ifdian.net/a/shirolin)
+- Ko-fi：[https://ko-fi.com/shirolin](https://ko-fi.com/shirolin)

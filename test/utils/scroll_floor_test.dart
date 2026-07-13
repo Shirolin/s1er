@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import 'package:flutter/rendering.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:s1_app/utils/scroll_floor.dart';
 
@@ -52,7 +51,7 @@ void main() {
     expect(controller.offset, 0);
     expect(controller.position.maxScrollExtent, greaterThan(0));
 
-    ScrollFloorNavigator.scrollToNextFloor(
+    await ScrollFloorNavigator.scrollToNextFloor(
       postKeys: postKeys,
       onAtLastFloor: () => fail('should not reach last floor'),
     );
@@ -96,7 +95,7 @@ void main() {
     await tester.pumpAndSettle();
     expect(controller.offset, 168);
 
-    ScrollFloorNavigator.scrollToNextFloor(
+    await ScrollFloorNavigator.scrollToNextFloor(
       postKeys: postKeys,
       onAtLastFloor: () => fail('should scroll to post 3'),
     );

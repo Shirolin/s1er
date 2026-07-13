@@ -238,7 +238,7 @@ class _ThreadDetailScreenState extends ConsumerState<ThreadDetailScreen> {
         postKeys: _postKeys,
         onAtLastFloor: () => unawaited(_scrollToBottomImpl()),
       );
-    },));
+    }));
   }
 
   Future<void> _goToPage(int page) async {

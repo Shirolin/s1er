@@ -18,7 +18,7 @@ void main() {
               onScrollToNextFloor: _noop,
               onScrollToBottom: _noop,
             ),
-            primary: S1FabItem(
+            primary: const S1FabItem(
               heroTag: 'reply',
               icon: Icons.edit_outlined,
               tooltip: '回复',
@@ -85,7 +85,8 @@ void main() {
         ),
       ),
     );
-    final upOnly = await navButtonSize(find.byKey(const ValueKey('scroll_nav_up')));
+    final upOnly =
+        await navButtonSize(find.byKey(const ValueKey('scroll_nav_up')));
 
     await tester.pumpWidget(
       MaterialApp(
@@ -121,7 +122,8 @@ void main() {
         ),
       ),
     );
-    final upBoth = await navButtonSize(find.byKey(const ValueKey('scroll_nav_up')));
+    final upBoth =
+        await navButtonSize(find.byKey(const ValueKey('scroll_nav_up')));
     final downBoth =
         await navButtonSize(find.byKey(const ValueKey('scroll_nav_down')));
 
@@ -261,8 +263,7 @@ void main() {
     });
 
     test('shows when remaining distance exceeds 12% viewport', () {
-      final remainingShow =
-          viewport * S1FabLayout.scrollDownShowFraction + 1;
+      const remainingShow = viewport * S1FabLayout.scrollDownShowFraction + 1;
       expect(
         S1FabLayout.shouldShowScrollDown(
           metrics: metrics(maxExtent - remainingShow),
@@ -330,7 +331,7 @@ void main() {
         isTrue,
       );
 
-      final awayFromBottom =
+      const awayFromBottom =
           maxExtent - viewport * S1FabLayout.scrollDownShowFraction - 2;
       expect(
         S1FabLayout.isAtPageBottom(

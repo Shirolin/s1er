@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:go_router/go_router.dart';
 import 'package:s1_app/models/forum_category.dart';
 import 'package:s1_app/models/user.dart';
 import 'package:s1_app/providers/auth_provider.dart';
@@ -112,6 +113,180 @@ void main() {
     await tester.pumpAndSettle();
     expect(find.text('JOJOROY'), findsOneWidget);
     expect(messagesBrowserUrl(1), contains('do=notice'));
+  });
+
+  testWidgets('guest profile tab then login resets to forum tab without error',
+      (tester) async {
+    late _MutableAuthNotifier authNotifier;
+    final db = AppDatabase.forTesting(NativeDatabase.memory());
+    final local = AppLocalData(db);
+    await local.loadEssentials();
+    addTearDown(db.close);
+
+    await tester.pumpWidget(
+      ProviderScope(
+        overrides: [
+          localDataProvider.overrideWithValue(local),
+          authStateProvider.overrideWith(() {
+            authNotifier = _MutableAuthNotifier(AuthState());
+            return authNotifier;
+          }),
+          forumListProvider.overrideWith(_GuestForumListNotifier.new),
+          settingsProvider.overrideWith(
+            () => SettingsNotifier(initial: const AppSettings()),
+          ),
+          ...messagesProviderOverrides(),
+        ],
+        child: MaterialApp(
+          theme: AppTheme.lightTheme('purple'),
+          home: const HomeScreen(),
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.text('我的'));
+    await tester.pumpAndSettle();
+    expect(find.text('登录'), findsWidgets);
+
+    authNotifier.setState(
+      AuthState(
+        isLoggedIn: true,
+        username: 'alice',
+        user: User(uid: '1', username: 'alice'),
+      ),
+    );
+    await tester.pump();
+    await tester.pump();
+
+    expect(tester.takeException(), isNull);
+    expect(find.text('Stage1st'), findsOneWidget);
+    expect(find.text('搜索'), findsOneWidget);
+    expect(find.byType(NavigationBar), findsOneWidget);
+  });
+
+  testWidgets(
+      'login route transition does not dirty ProviderScope during Overlay build',
+      (tester) async {
+    late _MutableAuthNotifier authNotifier;
+    final db = AppDatabase.forTesting(NativeDatabase.memory());
+    final local = AppLocalData(db);
+    await local.loadEssentials();
+    addTearDown(db.close);
+
+    final router = GoRouter(
+      routes: [
+        GoRoute(path: '/', builder: (_, __) => const HomeScreen()),
+        GoRoute(
+          path: '/login',
+          builder: (context, _) => _LoginTransitionScreen(
+            onLogin: () {
+              context.go('/');
+              WidgetsBinding.instance.addPostFrameCallback((_) {
+                authNotifier.setState(
+                  AuthState(
+                    isLoggedIn: true,
+                    username: 'alice',
+                    user: User(uid: '1', username: 'alice'),
+                  ),
+                );
+              });
+            },
+          ),
+        ),
+      ],
+    );
+    addTearDown(router.dispose);
+
+    await tester.pumpWidget(
+      ProviderScope(
+        overrides: [
+          localDataProvider.overrideWithValue(local),
+          authStateProvider.overrideWith(() {
+            authNotifier = _MutableAuthNotifier(AuthState());
+            return authNotifier;
+          }),
+          forumListProvider.overrideWith(_GuestForumListNotifier.new),
+          settingsProvider.overrideWith(
+            () => SettingsNotifier(initial: const AppSettings()),
+          ),
+          ...messagesProviderOverrides(),
+        ],
+        child: MaterialApp.router(
+          theme: AppTheme.lightTheme('purple'),
+          routerConfig: router,
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.text('我的'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('登录').last);
+    await tester.pumpAndSettle();
+    expect(find.text('完成登录'), findsOneWidget);
+
+    await tester.tap(find.text('完成登录'));
+    expect(tester.takeException(), isNull, reason: '点击登录时不应同步报错');
+    await tester.pump();
+    expect(tester.takeException(), isNull, reason: '认证状态重建时不应报错');
+    await tester.pump();
+    expect(tester.takeException(), isNull, reason: 'Overlay 路由重建时不应报错');
+    await tester.pumpAndSettle();
+    expect(tester.takeException(), isNull, reason: '登录过渡完成后不应遗留异常');
+    expect(find.text('Stage1st'), findsOneWidget);
+    expect(find.text('搜索'), findsOneWidget);
+  });
+
+  testWidgets(
+      'logout from logged-in profile tab resets guest tabs without error',
+      (tester) async {
+    late _MutableAuthNotifier authNotifier;
+    final db = AppDatabase.forTesting(NativeDatabase.memory());
+    final local = AppLocalData(db);
+    await local.loadEssentials();
+    addTearDown(db.close);
+
+    await tester.pumpWidget(
+      ProviderScope(
+        overrides: [
+          localDataProvider.overrideWithValue(local),
+          authStateProvider.overrideWith(() {
+            authNotifier = _MutableAuthNotifier(
+              AuthState(
+                isLoggedIn: true,
+                username: 'alice',
+                user: User(uid: '1', username: 'alice'),
+              ),
+            );
+            return authNotifier;
+          }),
+          forumListProvider.overrideWith(_GuestForumListNotifier.new),
+          settingsProvider.overrideWith(
+            () => SettingsNotifier(initial: const AppSettings()),
+          ),
+          ...messagesProviderOverrides(),
+        ],
+        child: MaterialApp(
+          theme: AppTheme.lightTheme('purple'),
+          home: const HomeScreen(),
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.text('消息'));
+    await tester.pumpAndSettle();
+    expect(find.text('我的消息'), findsOneWidget);
+
+    authNotifier.setState(AuthState());
+    await tester.pump();
+    await tester.pump();
+
+    expect(tester.takeException(), isNull);
+    expect(find.text('登录'), findsOneWidget);
+    expect(find.text('我的'), findsOneWidget);
+    expect(find.text('消息'), findsNothing);
   });
 
   testWidgets('profile tab refreshes when auth loads full user after login',
@@ -238,5 +413,24 @@ class _MutableAuthNotifier extends AuthNotifier {
   void setState(AuthState next) {
     _state = next;
     state = next;
+  }
+}
+
+class _LoginTransitionScreen extends StatelessWidget {
+  const _LoginTransitionScreen({required this.onLogin});
+
+  final VoidCallback onLogin;
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: AppBar(elevation: 0, title: const Text('登录')),
+      body: Center(
+        child: FilledButton(
+          onPressed: onLogin,
+          child: const Text('完成登录'),
+        ),
+      ),
+    );
   }
 }

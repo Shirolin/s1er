@@ -1,5 +1,6 @@
 import 'dart:async';
 
+import 'package:flutter/scheduler.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../models/user.dart';
 import '../services/auth_service.dart';
@@ -51,11 +52,17 @@ class AuthNotifier extends Notifier<AuthState> {
     final ok = await _authService.checkSession();
     if (!ref.mounted) return;
     if (ok) {
-      _syncStateFromService();
-      if (state.user == null || state.user!.uid.isEmpty) {
-        await refreshProfile();
-      }
+      await _applyLoginSuccess();
     }
+  }
+
+  Future<void> _applyLoginSuccess() async {
+    if (!ref.mounted) return;
+    _syncStateFromService();
+    if (state.user == null || state.user!.uid.isEmpty) {
+      await refreshProfile();
+    }
+    if (ref.mounted) ref.invalidate(forumListProvider);
   }
 
   void _syncStateFromService() {
@@ -75,11 +82,10 @@ class AuthNotifier extends Notifier<AuthState> {
   Future<String?> login(String username, String password) async {
     final error = await _authService.login(username, password);
     if (error == null) {
-      _syncStateFromService();
-      if (state.user == null || state.user!.uid.isEmpty) {
-        await refreshProfile();
-      }
-      ref.invalidate(forumListProvider);
+      // 先让登录页发起路由替换；Home 的 Riverpod 订阅恢复后再发布认证状态。
+      SchedulerBinding.instance.addPostFrameCallback((_) {
+        unawaited(_applyLoginSuccess());
+      });
     }
     return error;
   }

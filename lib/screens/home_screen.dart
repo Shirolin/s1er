@@ -27,26 +27,32 @@ class HomeScreen extends ConsumerStatefulWidget {
 class _HomeScreenState extends ConsumerState<HomeScreen> {
   int _currentTab = 0;
 
+  /// 游客「我的」(index 1) 登录后 index 1 会变成「搜索」，首次重建时改显论坛。
+  bool _showForumAfterLogin = false;
+
+  @override
+  void initState() {
+    super.initState();
+    ref.listenManual<AuthState>(
+      authStateProvider,
+      (previous, next) {
+        final wasLoggedIn = previous?.isLoggedIn ?? false;
+        if (!wasLoggedIn && next.isLoggedIn) {
+          _showForumAfterLogin = true;
+        }
+      },
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final isLoggedIn = ref.watch(
       authStateProvider.select((auth) => auth.isLoggedIn),
     );
 
-    ref.listen<AuthState>(authStateProvider, (previous, next) {
-      final wasLoggedIn = previous?.isLoggedIn ?? false;
-      if (!wasLoggedIn && next.isLoggedIn) {
-        // 游客「我的」(index 1) 登录后会误落到「搜索」，强制回到论坛并刷新列表
-        setState(() => _currentTab = 0);
-        ref.invalidate(forumListProvider);
-      } else if (wasLoggedIn && !next.isLoggedIn && _currentTab > 1) {
-        setState(() => _currentTab = 0);
-        ref.invalidate(forumListProvider);
-      }
-    });
-
-    // 游客只有 2 个 Tab，越界时用计算值，避免在 build 中改写 state
-    final tabIndex = (!isLoggedIn && _currentTab > 1) ? 0 : _currentTab;
+    final tabIndex = isLoggedIn
+        ? (_showForumAfterLogin ? 0 : _currentTab.clamp(0, 3))
+        : (_currentTab > 1 ? 0 : _currentTab);
 
     final isProfileTab = isLoggedIn ? tabIndex == 3 : tabIndex == 1;
     final isMessagesTab = isLoggedIn && tabIndex == 2;
@@ -83,21 +89,21 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                     ),
                   ]
                 : [
-                if (isLoggedIn)
-                  AppBarMoreMenu(
-                    onRefresh: () =>
-                        ref.read(forumListProvider.notifier).refresh(),
-                    browserUrl: ApiConfig.baseUrl,
-                  )
-                else
-                  Padding(
-                    padding: const EdgeInsets.only(right: 16),
-                    child: FilledButton.tonal(
-                      onPressed: () => context.push('/login'),
-                      child: const Text('登录'),
-                    ),
-                  ),
-              ],
+                    if (isLoggedIn)
+                      AppBarMoreMenu(
+                        onRefresh: () =>
+                            ref.read(forumListProvider.notifier).refresh(),
+                        browserUrl: ApiConfig.baseUrl,
+                      )
+                    else
+                      Padding(
+                        padding: const EdgeInsets.only(right: 16),
+                        child: FilledButton.tonal(
+                          onPressed: () => context.push('/login'),
+                          child: const Text('登录'),
+                        ),
+                      ),
+                  ],
       ),
       body: isLoggedIn
           ? tabIndex == 0
@@ -106,17 +112,22 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                   ? const Center(child: Text('搜索'))
                   : tabIndex == 2
                       ? const MessagesScreen()
-                      : ProfileBody(key: ValueKey('profile-logged-in'))
+                      : const ProfileBody(
+                          key: ValueKey('profile-logged-in'),
+                        )
           : tabIndex == 0
               ? const _ForumTab()
-              : ProfileBody(key: ValueKey('profile-guest')),
+              : const ProfileBody(key: ValueKey('profile-guest')),
       bottomNavigationBar: NavigationBar(
         selectedIndex: tabIndex,
         onDestinationSelected: (index) {
           if (_currentTab == 2 && index != 2) {
             ref.read(messagesSegmentProvider.notifier).select(0);
           }
-          setState(() => _currentTab = index);
+          setState(() {
+            _showForumAfterLogin = false;
+            _currentTab = index;
+          });
         },
         destinations: isLoggedIn
             ? const [
@@ -197,7 +208,6 @@ class _ForumTab extends ConsumerWidget {
 }
 
 class _ForumCategoryTile extends ConsumerWidget {
-
   const _ForumCategoryTile({required this.category});
   final ForumCategory category;
 
@@ -231,47 +241,53 @@ class _ForumCategoryTile extends ConsumerWidget {
                 constraints: const BoxConstraints(minHeight: 48),
                 child: Container(
                   width: double.infinity,
-                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
                   color: scheme.surfaceContainer,
-              child: Row(
-                children: [
-                  Icon(Icons.folder_outlined, size: 18, color: scheme.primary),
-                  const SizedBox(width: 8),
-                  Expanded(
-                    child: Text(
-                      category.name,
-                      style: Theme.of(context).textTheme.titleSmall?.copyWith(
-                            color: scheme.primary,
-                            fontWeight: FontWeight.w600,
-                          ),
-                    ),
-                  ),
-                  _StatChip(
-                    icon: Icons.article_outlined,
-                    label: formatCount(category.threads),
-                  ),
-                  const SizedBox(width: 8),
-                  _StatChip(
-                    icon: Icons.chat_bubble_outline,
-                    label: formatCount(category.posts),
-                  ),
-                  if (hasSubs) ...[
-                    const SizedBox(width: 4),
-                    AnimatedRotation(
-                      turns: isCollapsed ? -0.25 : 0,
-                      duration: const Duration(milliseconds: 200),
-                      child: Icon(
-                        Icons.expand_more,
-                        size: 20,
+                  child: Row(
+                    children: [
+                      Icon(
+                        Icons.folder_outlined,
+                        size: 18,
                         color: scheme.primary,
                       ),
-                    ),
-                  ],
-                ],
+                      const SizedBox(width: 8),
+                      Expanded(
+                        child: Text(
+                          category.name,
+                          style:
+                              Theme.of(context).textTheme.titleSmall?.copyWith(
+                                    color: scheme.primary,
+                                    fontWeight: FontWeight.w600,
+                                  ),
+                        ),
+                      ),
+                      _StatChip(
+                        icon: Icons.article_outlined,
+                        label: formatCount(category.threads),
+                      ),
+                      const SizedBox(width: 8),
+                      _StatChip(
+                        icon: Icons.chat_bubble_outline,
+                        label: formatCount(category.posts),
+                      ),
+                      if (hasSubs) ...[
+                        const SizedBox(width: 4),
+                        AnimatedRotation(
+                          turns: isCollapsed ? -0.25 : 0,
+                          duration: const Duration(milliseconds: 200),
+                          child: Icon(
+                            Icons.expand_more,
+                            size: 20,
+                            color: scheme.primary,
+                          ),
+                        ),
+                      ],
+                    ],
+                  ),
+                ),
               ),
             ),
-          ),
-        ),
           ),
           // 子版块列表
           AnimatedSize(
@@ -296,7 +312,6 @@ class _ForumCategoryTile extends ConsumerWidget {
 }
 
 class _StatChip extends StatelessWidget {
-
   const _StatChip({required this.icon, required this.label});
   final IconData icon;
   final String label;
@@ -310,14 +325,18 @@ class _StatChip extends StatelessWidget {
       children: [
         Icon(icon, size: 13, color: scheme.onSurfaceVariant),
         const SizedBox(width: 2),
-        Text(label, style: textTheme.labelSmall?.copyWith(color: scheme.onSurfaceVariant)),
+        Text(
+          label,
+          style: textTheme.labelSmall?.copyWith(
+            color: scheme.onSurfaceVariant,
+          ),
+        ),
       ],
     );
   }
 }
 
 class _ForumTile extends StatelessWidget {
-
   const _ForumTile({required this.forum});
   final ForumCategory forum;
 
@@ -365,7 +384,8 @@ class _ForumTile extends StatelessWidget {
                       forum.description,
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
-                      style: textTheme.bodySmall?.copyWith(color: scheme.onSurfaceVariant),
+                      style: textTheme.bodySmall
+                          ?.copyWith(color: scheme.onSurfaceVariant),
                     ),
                   ],
                 ],
@@ -386,7 +406,8 @@ class _ForumTile extends StatelessWidget {
             else
               Text(
                 formatCount(forum.threads),
-                style: textTheme.bodySmall?.copyWith(color: scheme.onSurfaceVariant),
+                style: textTheme.bodySmall
+                    ?.copyWith(color: scheme.onSurfaceVariant),
               ),
             const SizedBox(width: 4),
             Icon(Icons.chevron_right, size: 18, color: scheme.onSurfaceVariant),
@@ -396,5 +417,3 @@ class _ForumTile extends StatelessWidget {
     );
   }
 }
-
-

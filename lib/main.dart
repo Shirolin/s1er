@@ -40,7 +40,7 @@ void main() async {
 
   final db = AppDatabase();
   final localData = AppLocalData(db);
-  await localData.load();
+  await localData.loadEssentials();
 
   final container = ProviderContainer(
     overrides: [

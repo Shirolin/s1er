@@ -3,7 +3,7 @@ import '../models/favorite_item.dart';
 import '../providers/auth_provider.dart';
 import '../providers/favorite_list_provider.dart';
 import '../services/api_service.dart';
-import '../services/http_client.dart';
+import 'api_service_provider.dart';
 
 class FavoriteMembershipState {
   const FavoriteMembershipState({
@@ -35,17 +35,16 @@ class FavoriteMembershipState {
 }
 
 class FavoriteMembershipNotifier extends Notifier<FavoriteMembershipState> {
+  bool _syncEnsured = false;
+
   @override
   FavoriteMembershipState build() {
     ref.listen(
       authStateProvider,
       (previous, next) {
         if (!next.isLoggedIn) {
+          _syncEnsured = false;
           state = const FavoriteMembershipState();
-          return;
-        }
-        if (previous?.isLoggedIn != true) {
-          Future.microtask(sync);
         }
       },
       fireImmediately: true,
@@ -53,9 +52,21 @@ class FavoriteMembershipNotifier extends Notifier<FavoriteMembershipState> {
     return const FavoriteMembershipState();
   }
 
-  ApiService get _apiService => ApiService(ref.read(httpClientProvider));
+  ApiService get _apiService => ref.read(apiServiceProvider);
 
   String? get _uid => ref.read(authStateProvider).user?.uid;
+
+  Future<void> ensureSynced() async {
+    if (_syncEnsured || state.isLoading) return;
+    if (state.keys.isNotEmpty) {
+      _syncEnsured = true;
+      return;
+    }
+    final uid = _uid;
+    if (uid == null || uid.isEmpty) return;
+    _syncEnsured = true;
+    await sync();
+  }
 
   Future<void> sync() async {
     final uid = _uid;
@@ -66,16 +77,20 @@ class FavoriteMembershipNotifier extends Notifier<FavoriteMembershipState> {
 
     state = state.copyWith(isLoading: true);
     try {
-      final threadResult = await _apiService.getFavoriteList(
-        uid: uid,
-        type: 'thread',
-        page: 1,
-      );
-      final forumResult = await _apiService.getFavoriteList(
-        uid: uid,
-        type: 'forum',
-        page: 1,
-      );
+      final results = await Future.wait([
+        _apiService.getFavoriteList(
+          uid: uid,
+          type: 'thread',
+          page: 1,
+        ),
+        _apiService.getFavoriteList(
+          uid: uid,
+          type: 'forum',
+          page: 1,
+        ),
+      ]);
+      final threadResult = results[0];
+      final forumResult = results[1];
 
       final keys = <String>{};
       final favids = <String, String>{};

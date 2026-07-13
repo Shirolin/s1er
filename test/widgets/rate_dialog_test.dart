@@ -3,7 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:s1_app/models/rate_form.dart';
-import 'package:s1_app/providers/post_provider.dart';
+import 'package:s1_app/providers/api_service_provider.dart';
 import 'package:s1_app/services/api_service.dart';
 import 'package:s1_app/services/http_client.dart';
 import 'package:s1_app/theme/app_theme.dart';

@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import '../config/api_config.dart';
-import '../providers/forum_list_provider.dart';
+import '../providers/forum_name_provider.dart';
 import '../providers/thread_list_provider.dart';
 import '../widgets/app_bar_more_menu.dart';
 import '../widgets/favorite_bookmark_button.dart';
@@ -36,22 +36,12 @@ class _ForumListScreenState extends ConsumerState<ForumListScreen> {
     }
   }
 
-  String _forumName() {
-    final categories = ref.watch(forumListProvider).asData?.value;
-    if (categories == null) return '';
-    for (final cat in categories) {
-      if (cat.fid == widget.fid) return cat.name;
-      for (final sub in cat.subforums) {
-        if (sub.fid == widget.fid) return sub.name;
-      }
-    }
-    return '';
-  }
-
   @override
   Widget build(BuildContext context) {
     final threadsAsync = ref.watch(threadListProvider(widget.fid));
-    final forum = _forumName();
+    final forum = ref.watch(forumNameProvider(widget.fid)) ??
+        threadsAsync.asData?.value.forumName ??
+        '';
 
     return Scaffold(
       appBar: AppBar(
@@ -121,8 +111,16 @@ class _ForumListScreenState extends ConsumerState<ForumListScreen> {
                               controller: scrollController,
                               padding: S1FabLayout.scrollBottomPadding,
                               itemCount: state.threads.length,
-                              itemBuilder: (context, index) =>
-                                  ThreadCard(thread: state.threads[index]),
+                              itemBuilder: (context, index) {
+                                final thread = state.threads[index];
+                                return RepaintBoundary(
+                                  key: ValueKey('thread_card_${thread.tid}'),
+                                  child: ThreadCard(
+                                    key: ValueKey(thread.tid),
+                                    thread: thread,
+                                  ),
+                                );
+                              },
                             ),
                     ),
                   ),

@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import '../models/poll.dart';
+import '../providers/api_service_provider.dart';
 import '../providers/auth_provider.dart';
 import '../providers/post_provider.dart';
 import '../theme/app_theme.dart';
@@ -106,7 +107,9 @@ class _PollCardState extends ConsumerState<PollCard> {
     final poll = widget.poll;
     final scheme = Theme.of(context).colorScheme;
     final textTheme = Theme.of(context).textTheme;
-    final isLoggedIn = ref.watch(authStateProvider).isLoggedIn;
+    final isLoggedIn = ref.watch(
+      authStateProvider.select((auth) => auth.isLoggedIn),
+    );
     final showResults = poll.showResults;
     final canInteract = poll.canVote && isLoggedIn;
 

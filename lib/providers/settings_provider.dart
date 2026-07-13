@@ -68,6 +68,42 @@ class AppSettings {
       simulateDynamic: simulateDynamic ?? this.simulateDynamic,
     );
   }
+
+  @override
+  bool operator ==(Object other) {
+    return other is AppSettings &&
+        other.themeMode == themeMode &&
+        other.themeColor == themeColor &&
+        other.showImages == showImages &&
+        other.imageLoadPolicy == imageLoadPolicy &&
+        other.avatarLoadPolicy == avatarLoadPolicy &&
+        other.maxImagesPerPost == maxImagesPerPost &&
+        other.imageCacheLimitMb == imageCacheLimitMb &&
+        other.recordReadingHistory == recordReadingHistory &&
+        other.fontSize == fontSize &&
+        other.useDynamicColor == useDynamicColor &&
+        _setEquals(other.collapsedForums, collapsedForums) &&
+        other.simulateDynamic == simulateDynamic;
+  }
+
+  static bool _setEquals(Set<String> a, Set<String> b) =>
+      a.length == b.length && a.containsAll(b);
+
+  @override
+  int get hashCode => Object.hash(
+        themeMode,
+        themeColor,
+        showImages,
+        imageLoadPolicy,
+        avatarLoadPolicy,
+        maxImagesPerPost,
+        imageCacheLimitMb,
+        recordReadingHistory,
+        fontSize,
+        useDynamicColor,
+        Object.hashAllUnordered(collapsedForums),
+        simulateDynamic,
+      );
 }
 
 final localDataProvider = Provider<AppLocalData>((ref) {
@@ -109,6 +145,11 @@ class SettingsNotifier extends Notifier<AppSettings> {
   }
 
   void _persist(String key, Object? value) => _effectiveStore?.put(key, value);
+
+  void _commit(AppSettings next) {
+    if (next == state) return;
+    state = next;
+  }
 
   AppSettings _loadSettings() {
     final settingsStore = _effectiveStore;
@@ -173,59 +214,59 @@ class SettingsNotifier extends Notifier<AppSettings> {
   }
 
   void setThemeMode(String value) {
-    state = state.copyWith(themeMode: value);
+    _commit(state.copyWith(themeMode: value));
     _persist('themeMode', value);
   }
 
   void setThemeColor(String value) {
-    state = state.copyWith(themeColor: value);
+    _commit(state.copyWith(themeColor: value));
     _persist('themeColor', value);
   }
 
   void setShowImages(bool value) {
-    state = state.copyWith(showImages: value);
+    _commit(state.copyWith(showImages: value));
     _persist('showImages', value);
   }
 
   void setImageLoadPolicy(ImageLoadPolicy value) {
-    state = state.copyWith(imageLoadPolicy: value);
+    _commit(state.copyWith(imageLoadPolicy: value));
     _persist('imageLoadPolicy', value.storageKey);
   }
 
   void setAvatarLoadPolicy(ImageLoadPolicy value) {
-    state = state.copyWith(avatarLoadPolicy: value);
+    _commit(state.copyWith(avatarLoadPolicy: value));
     _persist('avatarLoadPolicy', value.storageKey);
   }
 
   void setMaxImagesPerPost(int value) {
-    state = state.copyWith(maxImagesPerPost: value);
+    _commit(state.copyWith(maxImagesPerPost: value));
     _persist('maxImagesPerPost', value);
   }
 
   void setImageCacheLimitMb(int value) {
-    state = state.copyWith(imageCacheLimitMb: value);
+    _commit(state.copyWith(imageCacheLimitMb: value));
     _persist('imageCacheLimitMb', value);
     _applyImageCacheLimit(value);
     S1ImageCache.evictIfNeeded();
   }
 
   void setRecordReadingHistory(bool value) {
-    state = state.copyWith(recordReadingHistory: value);
+    _commit(state.copyWith(recordReadingHistory: value));
     _persist('recordReadingHistory', value);
   }
 
   void setFontSize(int value) {
-    state = state.copyWith(fontSize: value);
+    _commit(state.copyWith(fontSize: value));
     _persist('fontSize', value);
   }
 
   void setUseDynamicColor(bool value) {
-    state = state.copyWith(useDynamicColor: value);
+    _commit(state.copyWith(useDynamicColor: value));
     _persist('useDynamicColor', value);
   }
 
   void setSimulateDynamic(bool value) {
-    state = state.copyWith(simulateDynamic: value);
+    _commit(state.copyWith(simulateDynamic: value));
     _persist('simulateDynamic', value);
   }
 
@@ -236,13 +277,13 @@ class SettingsNotifier extends Notifier<AppSettings> {
     } else {
       collapsed.add(fid);
     }
-    state = state.copyWith(collapsedForums: collapsed);
+    _commit(state.copyWith(collapsedForums: collapsed));
     _persist('collapsedForums', collapsed.toList());
   }
 
   void resetAppearanceSettings() {
     const defaults = AppSettings();
-    state = state.copyWith(
+    final next = state.copyWith(
       themeMode: defaults.themeMode,
       themeColor: defaults.themeColor,
       showImages: defaults.showImages,
@@ -255,6 +296,7 @@ class SettingsNotifier extends Notifier<AppSettings> {
       useDynamicColor: defaults.useDynamicColor,
       simulateDynamic: defaults.simulateDynamic,
     );
+    _commit(next);
     _persist('themeMode', defaults.themeMode);
     _persist('themeColor', defaults.themeColor);
     _persist('showImages', defaults.showImages);

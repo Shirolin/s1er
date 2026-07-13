@@ -1,13 +1,32 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:s1_app/theme/app_theme.dart';
 import 'package:s1_app/models/rate_log.dart';
+import 'package:s1_app/providers/thread_rate_logs_provider.dart';
+import 'package:s1_app/theme/app_theme.dart';
 import 'package:s1_app/widgets/rate_log_card.dart';
 
+class _SeededRateLogsNotifier extends ThreadRateLogsNotifier {
+  _SeededRateLogsNotifier(super.tid, this.seed);
+
+  final Map<String, PostRateLog> seed;
+
+  @override
+  Map<String, PostRateLog> build() => seed;
+}
+
 void main() {
-  Widget wrap(Widget child) {
+  Widget wrap(
+    Widget child, {
+    required String tid,
+    required Map<String, PostRateLog> seed,
+  }) {
     return ProviderScope(
+      overrides: [
+        threadRateLogsProvider(tid).overrideWith(
+          () => _SeededRateLogsNotifier(tid, seed),
+        ),
+      ],
       child: MaterialApp(
         theme: AppTheme.lightTheme('purple'),
         home: Scaffold(body: child),
@@ -24,8 +43,13 @@ void main() {
         participantCount: 4,
       );
 
-      await tester
-          .pumpWidget(wrap(const RateLogCard(rateLog: rateLog, tid: '123')));
+      await tester.pumpWidget(
+        wrap(
+          const RateLogCard(tid: '123', pid: '1'),
+          tid: '123',
+          seed: {'1': rateLog},
+        ),
+      );
       await tester.pumpAndSettle();
 
       expect(find.text('评分 +6'), findsOneWidget);
@@ -40,8 +64,13 @@ void main() {
         participantCount: 1,
       );
 
-      await tester
-          .pumpWidget(wrap(const RateLogCard(rateLog: rateLog, tid: '123')));
+      await tester.pumpWidget(
+        wrap(
+          const RateLogCard(tid: '123', pid: '1'),
+          tid: '123',
+          seed: {'1': rateLog},
+        ),
+      );
       await tester.pumpAndSettle();
 
       expect(find.text('评分 -3'), findsOneWidget);
@@ -59,8 +88,13 @@ void main() {
         participantCount: 2,
       );
 
-      await tester
-          .pumpWidget(wrap(const RateLogCard(rateLog: rateLog, tid: '123')));
+      await tester.pumpWidget(
+        wrap(
+          const RateLogCard(tid: '123', pid: '1'),
+          tid: '123',
+          seed: {'1': rateLog},
+        ),
+      );
       await tester.pumpAndSettle();
 
       expect(find.text('rustincohle'), findsOneWidget);
@@ -89,8 +123,13 @@ void main() {
         participantCount: 4,
       );
 
-      await tester
-          .pumpWidget(wrap(const RateLogCard(rateLog: rateLog, tid: '123')));
+      await tester.pumpWidget(
+        wrap(
+          const RateLogCard(tid: '123', pid: '1'),
+          tid: '123',
+          seed: {'1': rateLog},
+        ),
+      );
       await tester.pumpAndSettle();
 
       expect(find.text('user1'), findsOneWidget);
@@ -113,8 +152,13 @@ void main() {
         participantCount: 4,
       );
 
-      await tester
-          .pumpWidget(wrap(const RateLogCard(rateLog: rateLog, tid: '123')));
+      await tester.pumpWidget(
+        wrap(
+          const RateLogCard(tid: '123', pid: '1'),
+          tid: '123',
+          seed: {'1': rateLog},
+        ),
+      );
       await tester.pumpAndSettle();
 
       await tester.tap(find.byType(RateLogCard));
@@ -137,7 +181,13 @@ void main() {
         participantCount: 1,
       );
 
-      await tester.pumpWidget(wrap(RateLogCard(rateLog: rateLog, tid: '123')));
+      await tester.pumpWidget(
+        wrap(
+          RateLogCard(tid: '123', pid: '1'),
+          tid: '123',
+          seed: {'1': rateLog},
+        ),
+      );
       await tester.pumpAndSettle();
 
       expect(find.text('2018-04-14 22:20'), findsOneWidget);

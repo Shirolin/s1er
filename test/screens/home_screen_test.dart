@@ -37,7 +37,34 @@ void main() {
     expect(find.text('Login'), findsNothing);
     expect(find.text('主论坛'), findsOneWidget);
     expect(find.text('游戏论坛'), findsOneWidget);
+    expect(find.text('动漫论坛'), findsOneWidget);
+    expect(find.text('音乐论坛'), findsOneWidget);
     expect(find.text('我的'), findsOneWidget);
+  });
+
+  testWidgets('expanded category shows all subforums', (tester) async {
+    await tester.pumpWidget(
+      ProviderScope(
+        overrides: [
+          authStateProvider.overrideWith(_LoggedOutAuthNotifier.new),
+          forumListProvider.overrideWith(_GuestForumListNotifier.new),
+          settingsProvider.overrideWith(
+            () => SettingsNotifier(initial: const AppSettings()),
+          ),
+          ...messagesProviderOverrides(),
+        ],
+        child: MaterialApp(
+          theme: AppTheme.lightTheme('purple'),
+          home: const HomeScreen(),
+        ),
+      ),
+    );
+
+    await tester.pumpAndSettle();
+
+    expect(find.text('游戏论坛'), findsOneWidget);
+    expect(find.text('动漫论坛'), findsOneWidget);
+    expect(find.text('音乐论坛'), findsOneWidget);
   });
 
   testWidgets('logged in home screen uses chinese labels', (tester) async {
@@ -102,6 +129,20 @@ class _GuestForumListNotifier extends ForumListNotifier {
             description: '游戏文化，原创，新闻',
             threads: 100,
             posts: 500,
+          ),
+          ForumCategory(
+            fid: '5',
+            name: '动漫论坛',
+            description: '',
+            threads: 50,
+            posts: 200,
+          ),
+          ForumCategory(
+            fid: '6',
+            name: '音乐论坛',
+            description: '',
+            threads: 30,
+            posts: 120,
           ),
         ],
       ),

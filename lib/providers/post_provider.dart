@@ -1,16 +1,19 @@
+import 'dart:async';
+
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../config/constants.dart';
 import '../models/post.dart';
 import '../models/poll.dart';
-import '../models/rate_log.dart';
 import '../services/api_service.dart';
 import '../services/http_client.dart';
 import '../services/poll_vote_cache.dart';
 import '../services/rate_log_service.dart';
 import '../utils/thread_navigation.dart';
+import 'api_service_provider.dart';
 import 'reading_history_provider.dart';
 import 'settings_provider.dart';
 import 'thread_open_intent_provider.dart';
+import 'thread_rate_logs_provider.dart';
 
 class PostListState {
   PostListState({
@@ -24,8 +27,8 @@ class PostListState {
     this.poll,
     this.filterAuthorId,
     this.filterAuthorName,
-    this.rateLogs = const {},
     this.allowReply = true,
+    this.commentCountByPid = const {},
   });
 
   final List<Post> posts;
@@ -38,8 +41,8 @@ class PostListState {
   final ThreadPoll? poll;
   final String? filterAuthorId;
   final String? filterAuthorName;
-  final Map<String, PostRateLog> rateLogs;
   final bool allowReply;
+  final Map<String, int> commentCountByPid;
 
   bool get isFiltering => filterAuthorId != null;
 
@@ -55,8 +58,8 @@ class PostListState {
     String? filterAuthorId,
     String? filterAuthorName,
     bool clearFilter = false,
-    Map<String, PostRateLog>? rateLogs,
     bool? allowReply,
+    Map<String, int>? commentCountByPid,
   }) {
     return PostListState(
       posts: posts ?? this.posts,
@@ -71,15 +74,11 @@ class PostListState {
           clearFilter ? null : (filterAuthorId ?? this.filterAuthorId),
       filterAuthorName:
           clearFilter ? null : (filterAuthorName ?? this.filterAuthorName),
-      rateLogs: rateLogs ?? this.rateLogs,
       allowReply: allowReply ?? this.allowReply,
+      commentCountByPid: commentCountByPid ?? this.commentCountByPid,
     );
   }
 }
-
-final apiServiceProvider = Provider<ApiService>((ref) {
-  return ApiService(ref.watch(httpClientProvider));
-});
 
 final rateLogServiceProvider = Provider<RateLogService>((ref) {
   return RateLogService(ref.watch(httpClientProvider));
@@ -87,6 +86,7 @@ final rateLogServiceProvider = Provider<RateLogService>((ref) {
 
 final pollVoteCacheProvider =
     Provider.family<PollVoteCache, String>((ref, uid) {
+  ref.watch(pollVotesBootstrapProvider);
   return PollVoteCache(ref.watch(localDataProvider), uid);
 });
 
@@ -98,7 +98,6 @@ class PostNotifier extends AsyncNotifier<PostListState> {
   String? _filterAuthorName;
 
   ApiService get _apiService => ref.read(apiServiceProvider);
-  RateLogService get _rateLogService => ref.read(rateLogServiceProvider);
 
   @override
   Future<PostListState> build() async {
@@ -131,17 +130,25 @@ class PostNotifier extends AsyncNotifier<PostListState> {
   }
 
   Future<PostListState> _loadPage(int page) async {
-    final detailFuture = _apiService.getThreadDetail(
+    final result = await _apiService.getThreadDetail(
       tid,
       page: page,
       authorId: _filterAuthorId,
     );
-    final rateLogFuture = _rateLogService.fetchRateLogs(tid, page: page);
+    final loaded = _buildStateFromResult(result, page);
+    if (!_shouldFetchRateLogs(result) && ref.mounted) {
+      ref.read(threadRateLogsProvider(tid).notifier).clear();
+    }
+    return loaded;
+  }
 
-    final results = await Future.wait<Object>([detailFuture, rateLogFuture]);
-    final result = results[0] as Map<String, dynamic>;
-    final rateLogs = results[1] as Map<String, PostRateLog>;
+  bool _shouldFetchRateLogs(Map<String, dynamic> result) {
+    final counts = ApiService.parseCommentCount(result);
+    if (counts.isEmpty) return false;
+    return counts.values.any((count) => count > 0);
+  }
 
+  PostListState _buildStateFromResult(Map<String, dynamic> result, int page) {
     final posts = ApiService.parsePostList(result);
     final variables = result['Variables'] as Map<String, dynamic>? ?? {};
     final thread = variables['thread'] as Map<String, dynamic>? ?? {};
@@ -151,6 +158,7 @@ class PostNotifier extends AsyncNotifier<PostListState> {
     final totalPosts = totalReplies + 1;
     final totalPages = (totalPosts / perPage).ceil().clamp(1, 9999);
     final allowReply = thread['allowreply']?.toString() != '0';
+    final commentCountByPid = ApiService.parseCommentCount(result);
 
     return PostListState(
       posts: posts,
@@ -165,8 +173,8 @@ class PostNotifier extends AsyncNotifier<PostListState> {
           : null,
       filterAuthorId: _filterAuthorId,
       filterAuthorName: _filterAuthorName,
-      rateLogs: rateLogs,
       allowReply: allowReply,
+      commentCountByPid: commentCountByPid,
     );
   }
 
@@ -202,18 +210,6 @@ class PostNotifier extends AsyncNotifier<PostListState> {
     final current = state.asData?.value.currentPage ?? 1;
     state = const AsyncValue.loading();
     state = await AsyncValue.guard(() => _loadPage(current));
-  }
-
-  Future<void> loadFullRateLog(String pid) async {
-    final currentState = state.asData?.value;
-    if (currentState == null) return;
-
-    final fullRateLog = await _rateLogService.fetchFullRateLog(tid, pid);
-    if (fullRateLog != null) {
-      final newRateLogs = Map<String, PostRateLog>.from(currentState.rateLogs);
-      newRateLogs[pid] = fullRateLog;
-      state = AsyncValue.data(currentState.copyWith(rateLogs: newRateLogs));
-    }
   }
 }
 

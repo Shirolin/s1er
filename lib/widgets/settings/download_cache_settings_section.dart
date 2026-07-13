@@ -25,6 +25,12 @@ class DownloadCacheSettingsSection extends ConsumerStatefulWidget {
 class _DownloadCacheSettingsSectionState
     extends ConsumerState<DownloadCacheSettingsSection> {
   bool _clearingImageCache = false;
+  bool _sizeRequested = false;
+
+  void _requestCacheSize() {
+    setState(() => _sizeRequested = true);
+    ref.invalidate(imageCacheSizeProvider);
+  }
 
   Future<void> _clearImageCache() async {
     final confirmed = await showS1ConfirmDialog(
@@ -41,7 +47,9 @@ class _DownloadCacheSettingsSectionState
     setState(() => _clearingImageCache = true);
     try {
       await clearS1ImageCaches();
-      ref.invalidate(imageCacheSizeProvider);
+      if (_sizeRequested) {
+        ref.invalidate(imageCacheSizeProvider);
+      }
       if (mounted) {
         S1SnackBar.show(context, message: '已清除图片缓存');
       }
@@ -60,18 +68,23 @@ class _DownloadCacheSettingsSectionState
     final notifier = ref.read(settingsProvider.notifier);
     final scheme = Theme.of(context).colorScheme;
     final textTheme = Theme.of(context).textTheme;
-    final cacheSizeAsync = ref.watch(imageCacheSizeProvider);
+    final cacheSizeAsync =
+        _sizeRequested ? ref.watch(imageCacheSizeProvider) : null;
 
-    final cacheSummary = cacheSizeAsync.when(
-      data: (bytes) {
-        if (kIsWeb) {
-          return '浏览器管理磁盘缓存；可清除应用内图片内存缓存';
-        }
-        return '当前约占用 ${S1ImageCache.formatSize(bytes)}，上限 ${S1ImageCache.formatLimit()}';
-      },
-      loading: () => '正在统计缓存占用…',
-      error: (_, __) => '清除已下载的图片，释放本地空间',
-    );
+    final cacheSummary = !_sizeRequested
+        ? (kIsWeb
+            ? '浏览器管理磁盘缓存；可清除应用内图片内存缓存'
+            : '点击「查看占用」统计本地图片缓存')
+        : cacheSizeAsync!.when(
+            data: (bytes) {
+              if (kIsWeb) {
+                return '浏览器管理磁盘缓存；可清除应用内图片内存缓存';
+              }
+              return '当前约占用 ${S1ImageCache.formatSize(bytes)}，上限 ${S1ImageCache.formatLimit()}';
+            },
+            loading: () => '正在统计缓存占用…',
+            error: (_, __) => '清除已下载的图片，释放本地空间',
+          );
 
     return Card(
       elevation: 0,
@@ -92,6 +105,18 @@ class _DownloadCacheSettingsSectionState
                   color: scheme.onSurfaceVariant,
                 ),
               ),
+              trailing: !_sizeRequested
+                  ? TextButton(
+                      onPressed: _requestCacheSize,
+                      child: const Text('查看占用'),
+                    )
+                  : cacheSizeAsync?.isLoading == true
+                      ? const SizedBox(
+                          width: 18,
+                          height: 18,
+                          child: CircularProgressIndicator(strokeWidth: 2),
+                        )
+                      : null,
               contentPadding: const EdgeInsets.symmetric(horizontal: 8),
               shape: const RoundedRectangleBorder(
                 borderRadius: S1Shape.small,

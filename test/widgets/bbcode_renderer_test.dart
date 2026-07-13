@@ -20,7 +20,7 @@ Widget _wrapBbcode(
       ),
     ],
     child: MaterialApp(
-      theme: AppTheme.lightTheme('purple'),
+      theme: AppTheme.lightTheme(settings.themeColor),
       home: Scaffold(body: child),
     ),
   );
@@ -301,5 +301,94 @@ void main() {
       expect(find.text('还有 1 张图片，点击展开'), findsOneWidget);
       expect(counter.assignedCount, 3);
     });
+
+    testWidgets('refreshes link color when theme seed changes', (tester) async {
+      Color? linkColor() {
+        Color? walk(InlineSpan span) {
+          if (span is TextSpan) {
+            if (span.text?.contains('themed link') == true &&
+                span.style?.color != null) {
+              return span.style!.color;
+            }
+            for (final child in span.children ?? const <InlineSpan>[]) {
+              final found = walk(child);
+              if (found != null) return found;
+            }
+          }
+          return null;
+        }
+
+        for (final rich in tester.widgetList<RichText>(find.byType(RichText))) {
+          final found = walk(rich.text);
+          if (found != null) return found;
+        }
+        return null;
+      }
+
+      await tester.pumpWidget(
+        const _ThemeSwitchBbcodeHost(),
+      );
+      await tester.pump();
+
+      final purpleLink = linkColor();
+      final purplePrimary = Theme.of(
+        tester.element(find.byType(BbcodeRenderer)),
+      ).colorScheme.primary;
+      expect(purpleLink, isNotNull);
+
+      await tester.tap(find.text('switch theme'));
+      await tester.pump();
+
+      final bluePrimary = Theme.of(
+        tester.element(find.byType(BbcodeRenderer)),
+      ).colorScheme.primary;
+      expect(bluePrimary, isNot(equals(purplePrimary)));
+
+      final blueLink = linkColor();
+      expect(blueLink, isNotNull);
+      expect(blueLink, equals(bluePrimary));
+    });
   });
+}
+
+class _ThemeSwitchBbcodeHost extends StatefulWidget {
+  const _ThemeSwitchBbcodeHost();
+
+  @override
+  State<_ThemeSwitchBbcodeHost> createState() => _ThemeSwitchBbcodeHostState();
+}
+
+class _ThemeSwitchBbcodeHostState extends State<_ThemeSwitchBbcodeHost> {
+  String _seed = 'purple';
+
+  @override
+  Widget build(BuildContext context) {
+    return ProviderScope(
+      overrides: [
+        settingsProvider.overrideWith(
+          () => SettingsNotifier(
+            initial: AppSettings(themeColor: _seed),
+          ),
+        ),
+      ],
+      child: MaterialApp(
+        key: ValueKey(_seed),
+        theme: AppTheme.lightTheme(_seed),
+        home: Scaffold(
+          body: Column(
+            children: [
+              BbcodeRenderer(
+                bbcode: '[url=https://example.com]themed link[/url]',
+                imageIndexCounter: PostImageIndexCounter(),
+              ),
+              FilledButton(
+                onPressed: () => setState(() => _seed = 'blue'),
+                child: const Text('switch theme'),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
 }

@@ -32,6 +32,16 @@ bool shouldRecordReadingProgress(AppSettings settings, AuthState auth) {
   return true;
 }
 
+/// 仅在首访或翻页时写库；同页非进度更新（如评分日志合并）跳过。
+bool shouldWriteReadingProgressUpdate({
+  required bool hasRecordedInitialVisit,
+  required int? lastRecordedPage,
+  required int currentPage,
+}) {
+  if (!hasRecordedInitialVisit) return true;
+  return lastRecordedPage != currentPage;
+}
+
 /// 滚动 FAB 显隐状态（用 [ValueNotifier] 更新，避免重建列表）。
 class _ScrollFabVisibility {
   const _ScrollFabVisibility({
@@ -66,6 +76,7 @@ class _ThreadDetailScreenState extends ConsumerState<ThreadDetailScreen> {
       ValueNotifier(const _ScrollFabVisibility());
   String? _scrollOncePid;
   bool _hasRecordedInitialVisit = false;
+  int? _lastRecordedPage;
   bool _pendingInitialNavigation = false;
   bool _b3CorrectionDone = false;
   String? _highlightPid;
@@ -92,6 +103,13 @@ class _ThreadDetailScreenState extends ConsumerState<ThreadDetailScreen> {
     if (!shouldRecordReadingProgress(settings, auth)) {
       return;
     }
+    if (!shouldWriteReadingProgressUpdate(
+      hasRecordedInitialVisit: _hasRecordedInitialVisit,
+      lastRecordedPage: _lastRecordedPage,
+      currentPage: state.currentPage,
+    )) {
+      return;
+    }
     ref.read(readingHistoryServiceProvider).updateProgress(
           tid: widget.tid,
           page: state.currentPage,
@@ -105,8 +123,12 @@ class _ThreadDetailScreenState extends ConsumerState<ThreadDetailScreen> {
           isNewVisit: !_hasRecordedInitialVisit,
         );
     _hasRecordedInitialVisit = true;
-    ref.invalidate(readingRecordProvider(widget.tid));
-    ref.read(readingHistoryProvider.notifier).refresh();
+    _lastRecordedPage = state.currentPage;
+    final record =
+        ref.read(readingHistoryServiceProvider).getRecord(widget.tid);
+    if (record != null) {
+      ref.read(readingHistoryProvider.notifier).upsert(record);
+    }
   }
 
   /// B3 边缘：无 URL 参数且本地 record 落后于 API 总页数时，静默跳到新回复页。
@@ -174,10 +196,16 @@ class _ThreadDetailScreenState extends ConsumerState<ThreadDetailScreen> {
     _swipeKey.currentState?.scrollToBottom();
   }
 
-  /// 保证 [_postKeys] 长度与当前页楼层数一致。
-  void _ensurePostKeys(int count) {
+  /// 保证 [_postKeys] 长度与当前页楼层数一致（在帧末调用，避免 build 期间副作用）。
+  void _scheduleEnsurePostKeys(int count) {
     if (_postKeys.length == count) return;
-    _postKeys = List.generate(count, (_) => GlobalKey());
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) return;
+      if (_postKeys.length == count) return;
+      setState(() {
+        _postKeys = List.generate(count, (_) => GlobalKey());
+      });
+    });
   }
 
   /// 单击「下一楼」：滚至下一楼靠上展示；已是末楼则滚到页底。
@@ -281,7 +309,10 @@ class _ThreadDetailScreenState extends ConsumerState<ThreadDetailScreen> {
     int index,
   ) {
     if (_showsPollOnPage(state) && index == 1) {
-      return PollCard(poll: state.poll!, tid: widget.tid);
+      return RepaintBoundary(
+        key: ValueKey('poll-${widget.tid}'),
+        child: PollCard(poll: state.poll!, tid: widget.tid),
+      );
     }
 
     final postIndex = _showsPollOnPage(state) && index > 1 ? index - 1 : index;
@@ -310,28 +341,32 @@ class _ThreadDetailScreenState extends ConsumerState<ThreadDetailScreen> {
 
     final floorOffset = (state.currentPage - 1) * state.perPage;
     final displayFloor = floorOffset + postIndex + 1;
-    return PostItem(
-      key: postKey,
-      post: post,
-      displayFloor: displayFloor,
-      tid: widget.tid,
-      rateLog: state.rateLogs[post.pid],
-      isHighlighted: post.pid == highlightPid,
-      onFilterByAuthor: () {
-        ref.read(postProvider(widget.tid).notifier).filterByAuthor(
-              post.authorId,
-              post.author,
-            );
-        _scrollToTop();
-      },
-      onReply: state.allowReply
-          ? () => _openCompose(
-                state,
-                replyTo: post,
-                displayFloor: displayFloor,
-              )
-          : null,
-      onRate: _canRatePost(post) ? () => _openRateDialog(post) : null,
+    return RepaintBoundary(
+      key: ValueKey(post.pid),
+      child: PostItem(
+        key: postKey,
+        post: post,
+        displayFloor: displayFloor,
+        tid: widget.tid,
+        currentPage: state.currentPage,
+        commentCount: state.commentCountByPid[post.pid] ?? 0,
+        isHighlighted: post.pid == highlightPid,
+        onFilterByAuthor: () {
+          ref.read(postProvider(widget.tid).notifier).filterByAuthor(
+                post.authorId,
+                post.author,
+              );
+          _scrollToTop();
+        },
+        onReply: state.allowReply
+            ? () => _openCompose(
+                  state,
+                  replyTo: post,
+                  displayFloor: displayFloor,
+                )
+            : null,
+        onRate: _canRatePost(post) ? () => _openRateDialog(post) : null,
+      ),
     );
   }
 
@@ -384,7 +419,9 @@ class _ThreadDetailScreenState extends ConsumerState<ThreadDetailScreen> {
     });
 
     final postsAsync = ref.watch(postProvider(widget.tid));
-    final isLoggedIn = ref.watch(authStateProvider).isLoggedIn;
+    final isLoggedIn = ref.watch(
+      authStateProvider.select((auth) => auth.isLoggedIn),
+    );
 
     return Scaffold(
       appBar: AppBar(
@@ -425,7 +462,7 @@ class _ThreadDetailScreenState extends ConsumerState<ThreadDetailScreen> {
                 onLogin: () => context.push('/login'),
               ),
               data: (state) {
-                _ensurePostKeys(state.posts.length);
+                _scheduleEnsurePostKeys(state.posts.length);
                 final showPrimary = isLoggedIn && state.allowReply;
                 final hasNextPage = state.currentPage < state.totalPages;
                 final scheme = Theme.of(context).colorScheme;
@@ -527,18 +564,15 @@ class _ThreadDetailScreenState extends ConsumerState<ThreadDetailScreen> {
                             controller: scrollController,
                             child: state.posts.isEmpty
                                 ? const Center(child: Text('暂无回复'))
-                                : SingleChildScrollView(
+                                : ListView.builder(
                                     controller: scrollController,
                                     padding: S1FabLayout.scrollBottomPadding,
-                                    child: Column(
-                                      children: List.generate(
-                                        _detailItemCount(state),
-                                        (index) => _buildDetailItem(
-                                          context,
-                                          state,
-                                          index,
-                                        ),
-                                      ),
+                                    itemCount: _detailItemCount(state),
+                                    itemBuilder: (context, index) =>
+                                        _buildDetailItem(
+                                      context,
+                                      state,
+                                      index,
                                     ),
                                   ),
                           ),

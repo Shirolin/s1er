@@ -24,6 +24,8 @@ class FavoritesScreen extends ConsumerStatefulWidget {
 class _FavoritesScreenState extends ConsumerState<FavoritesScreen>
     with SingleTickerProviderStateMixin {
   late final TabController _tabController;
+  late final Set<int> _visitedTabs;
+  bool _membershipEnsured = false;
   final _swipeKeys = List.generate(
     3,
     (_) => GlobalKey<S1SwipePaginationState>(),
@@ -39,19 +41,42 @@ class _FavoritesScreenState extends ConsumerState<FavoritesScreen>
   void initState() {
     super.initState();
     _tabController = TabController(length: 3, vsync: this);
+    _visitedTabs = {_tabController.index};
+    _tabController.addListener(_onTabChanged);
+  }
+
+  void _onTabChanged() {
+    if (_tabController.indexIsChanging) return;
+    final index = _tabController.index;
+    if (_visitedTabs.add(index)) {
+      setState(() {});
+    }
   }
 
   @override
   void dispose() {
+    _tabController.removeListener(_onTabChanged);
     _tabController.dispose();
     super.dispose();
   }
 
+  void _ensureMembershipSynced() {
+    if (_membershipEnsured) return;
+    _membershipEnsured = true;
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) return;
+      ref.read(favoriteMembershipProvider.notifier).ensureSynced();
+    });
+  }
+
   @override
   Widget build(BuildContext context) {
-    final auth = ref.watch(authStateProvider);
-    final browserUrl = auth.user?.uid != null
-        ? '${ApiConfig.baseUrl}/home.php?mod=space&uid=${auth.user!.uid}&do=favorite&view=me&mobile=2'
+    _ensureMembershipSynced();
+    final uid = ref.watch(
+      authStateProvider.select((auth) => auth.user?.uid),
+    );
+    final browserUrl = uid != null
+        ? '${ApiConfig.baseUrl}/home.php?mod=space&uid=$uid&do=favorite&view=me&mobile=2'
         : '${ApiConfig.baseUrl}/home.php?mod=space&do=favorite&view=me&mobile=2';
 
     return Scaffold(
@@ -63,7 +88,7 @@ class _FavoritesScreenState extends ConsumerState<FavoritesScreen>
             onRefresh: () {
               final segment = _segments[_tabController.index];
               ref.read(favoriteListProvider(segment).notifier).refresh();
-              ref.read(favoriteMembershipProvider.notifier).sync();
+              ref.read(favoriteMembershipProvider.notifier).ensureSynced();
             },
             browserUrl: browserUrl,
           ),
@@ -82,10 +107,12 @@ class _FavoritesScreenState extends ConsumerState<FavoritesScreen>
         physics: const NeverScrollableScrollPhysics(),
         children: [
           for (var i = 0; i < _segments.length; i++)
-            _FavoriteListBody(
-              segment: _segments[i],
-              swipeKey: _swipeKeys[i],
-            ),
+            _visitedTabs.contains(i)
+                ? _FavoriteListBody(
+                    segment: _segments[i],
+                    swipeKey: _swipeKeys[i],
+                  )
+                : const SizedBox.shrink(),
         ],
       ),
     );
@@ -129,7 +156,7 @@ class _FavoriteListBody extends ConsumerWidget {
               pageBuilder: (context, scrollController) => RefreshIndicator(
                 onRefresh: () async {
                   await ref.read(favoriteListProvider(segment).notifier).refresh();
-                  await ref.read(favoriteMembershipProvider.notifier).sync();
+                  await ref.read(favoriteMembershipProvider.notifier).ensureSynced();
                 },
                 child: state.items.isEmpty
                     ? ListView(
@@ -145,9 +172,13 @@ class _FavoriteListBody extends ConsumerWidget {
                         itemCount: state.items.length,
                         itemBuilder: (context, index) {
                           final item = state.items[index];
-                          return _FavoriteTile(
-                            item: item,
-                            onRemove: () => _removeFavorite(context, ref, item),
+                          return KeyedSubtree(
+                            key: ValueKey('favorite_${item.favid}'),
+                            child: _FavoriteTile(
+                              item: item,
+                              onRemove: () =>
+                                  _removeFavorite(context, ref, item),
+                            ),
                           );
                         },
                       ),

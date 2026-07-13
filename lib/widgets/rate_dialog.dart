@@ -2,7 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../models/rate_form.dart';
-import '../providers/post_provider.dart';
+import '../providers/api_service_provider.dart';
+import '../providers/thread_rate_logs_provider.dart';
 import '../theme/app_theme.dart';
 import '../utils/s1_snack_bar.dart';
 
@@ -95,7 +96,7 @@ class _RateDialogState extends ConsumerState<_RateDialog> {
       }
 
       await ref
-          .read(postProvider(widget.tid).notifier)
+          .read(threadRateLogsProvider(widget.tid).notifier)
           .loadFullRateLog(widget.pid);
 
       if (!mounted) return;

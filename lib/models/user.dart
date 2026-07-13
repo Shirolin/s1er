@@ -111,4 +111,45 @@ class User {
       groupid: groupid ?? this.groupid,
     );
   }
+
+  @override
+  bool operator ==(Object other) {
+    return other is User &&
+        other.uid == uid &&
+        other.username == username &&
+        other.avatar == avatar &&
+        other.groupTitle == groupTitle &&
+        other.credits == credits &&
+        other.posts == posts &&
+        other.threads == threads &&
+        other.friends == friends &&
+        other.follower == follower &&
+        other.following == following &&
+        other.oltime == oltime &&
+        other.deadfish == deadfish &&
+        other.combat == combat &&
+        other.regdate == regdate &&
+        other.groupid == groupid &&
+        other.signaturUrl == signaturUrl;
+  }
+
+  @override
+  int get hashCode => Object.hash(
+        uid,
+        username,
+        avatar,
+        groupTitle,
+        credits,
+        posts,
+        threads,
+        friends,
+        follower,
+        following,
+        oltime,
+        deadfish,
+        combat,
+        regdate,
+        groupid,
+        signaturUrl,
+      );
 }

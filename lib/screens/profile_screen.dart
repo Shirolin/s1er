@@ -6,7 +6,7 @@ import '../config/api_config.dart';
 import '../theme/app_theme.dart';
 import '../utils/format_utils.dart';
 import '../providers/auth_provider.dart';
-import '../providers/favorite_list_provider.dart';
+import '../providers/favorite_membership_provider.dart';
 import '../providers/reading_history_provider.dart';
 import '../models/user.dart';
 import '../widgets/app_bar_more_menu.dart';
@@ -19,14 +19,16 @@ class ProfileScreen extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final authState = ref.watch(authStateProvider);
+    final isLoggedIn = ref.watch(
+      authStateProvider.select((auth) => auth.isLoggedIn),
+    );
 
     return Scaffold(
       appBar: AppBar(
         elevation: 0,
         title: const Text('个人资料'),
         actions: [
-          if (authState.isLoggedIn)
+          if (isLoggedIn)
             AppBarMoreMenu(
               onRefresh: () =>
                   ref.read(authStateProvider.notifier).refreshProfile(),
@@ -493,8 +495,9 @@ class _FavoritesEntryCard extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final count =
-        ref.watch(favoriteListProvider(FavoriteSegment.all)).asData?.value.items.length ?? 0;
+    final count = ref.watch(
+      favoriteMembershipProvider.select((s) => s.keys.length),
+    );
     final colorScheme = Theme.of(context).colorScheme;
 
     return Card(
@@ -529,7 +532,7 @@ class _SystemGroupCard extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final count = ref.watch(readingHistoryProvider).length;
+    final count = ref.watch(readingHistoryProvider.select((s) => s.records.length));
     final colorScheme = Theme.of(context).colorScheme;
 
     return Card(

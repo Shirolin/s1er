@@ -10,7 +10,9 @@ class BrowsingSettingsSection extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final settings = ref.watch(settingsProvider);
+    final recordReadingHistory = ref.watch(
+      settingsProvider.select((settings) => settings.recordReadingHistory),
+    );
     final notifier = ref.read(settingsProvider.notifier);
     final scheme = Theme.of(context).colorScheme;
 
@@ -33,7 +35,7 @@ class BrowsingSettingsSection extends ConsumerWidget {
                       color: scheme.onSurfaceVariant,
                     ),
               ),
-              value: settings.recordReadingHistory,
+              value: recordReadingHistory,
               onChanged: notifier.setRecordReadingHistory,
               contentPadding: const EdgeInsets.symmetric(horizontal: 8),
               shape: const RoundedRectangleBorder(

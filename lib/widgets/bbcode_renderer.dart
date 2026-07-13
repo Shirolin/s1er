@@ -5,6 +5,7 @@ import 'package:url_launcher/url_launcher.dart';
 import '../config/constants.dart';
 import '../providers/settings_provider.dart';
 import '../theme/app_theme.dart';
+import '../utils/bbcode_cache.dart';
 import '../utils/bbcode_parser.dart';
 import '../utils/post_image_index_counter.dart';
 import '../utils/post_image_urls.dart';
@@ -43,15 +44,28 @@ class BbcodeRenderer extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     if (bbcode.isEmpty) return const SizedBox.shrink();
 
-    final settings = ref.watch(settingsProvider);
-    final widgets = _buildParts(context, bbcode);
+    // Subscribe to theme updates so memoized HTML blocks rebuild on theme change.
+    Theme.of(context).colorScheme;
+
+    final showImages = ref.watch(
+      settingsProvider.select((s) => s.showImages),
+    );
+    final maxImagesPerPost = ref.watch(
+      settingsProvider.select((s) => s.maxImagesPerPost),
+    );
+    final widgets = _buildParts(
+      context,
+      bbcode,
+      showImages: showImages,
+      maxImagesPerPost: maxImagesPerPost,
+    );
     final totalImages = imageIndexCounter.assignedCount;
-    final max = settings.maxImagesPerPost;
+    final max = maxImagesPerPost;
     final hiddenCount = (!imagesExpanded && max > 0 && totalImages > max)
         ? totalImages - max
         : 0;
 
-    if (hiddenCount > 0 && settings.showImages && onExpandImages != null) {
+    if (hiddenCount > 0 && showImages && onExpandImages != null) {
       widgets.add(
         Padding(
           padding: const EdgeInsets.symmetric(vertical: 8),
@@ -74,7 +88,12 @@ class BbcodeRenderer extends ConsumerWidget {
     );
   }
 
-  List<Widget> _buildParts(BuildContext context, String text) {
+  List<Widget> _buildParts(
+    BuildContext context,
+    String text, {
+    required bool showImages,
+    required int maxImagesPerPost,
+  }) {
     final widgets = <Widget>[];
     final segments = _splitQuotes(text);
 
@@ -100,16 +119,57 @@ class BbcodeRenderer extends ConsumerWidget {
           '',
         );
         if (cleanedText.trim().isNotEmpty) {
-          final html = BbcodeParser.parse(
+          final html = _parseSegmentHtml(
             cleanedText,
-            imageIndexCounter: imageIndexCounter,
+            showImages: showImages,
+            maxImagesPerPost: maxImagesPerPost,
           );
-          widgets.add(_buildHtmlContent(context, html));
+          widgets.add(
+            _MemoizedHtmlBlock(
+              html: html,
+              showImages: showImages,
+              maxImagesPerPost: maxImagesPerPost,
+              imagesExpanded: imagesExpanded,
+              imageIndexCounter: imageIndexCounter,
+              onExpandImages: onExpandImages,
+            ),
+          );
         }
       }
     }
 
     return widgets;
+  }
+
+  String _parseSegmentHtml(
+    String cleanedText, {
+    required bool showImages,
+    required int maxImagesPerPost,
+  }) {
+    final cacheKey = BbcodeCache.buildKey(
+      message: cleanedText,
+      showImages: showImages,
+      maxImagesPerPost: maxImagesPerPost,
+      quoteDepth: quoteDepth,
+    );
+    final cached = BbcodeCache.get(cacheKey);
+    if (cached != null) {
+      _advanceImageIndexFromHtml(cached);
+      return cached;
+    }
+    final html = BbcodeParser.parse(
+      cleanedText,
+      imageIndexCounter: imageIndexCounter,
+    );
+    BbcodeCache.put(cacheKey, html);
+    return html;
+  }
+
+  void _advanceImageIndexFromHtml(String html) {
+    final count = BbcodeParser.countPostImages(html);
+    for (var i = 0; i < count; i++) {
+      imageIndexCounter.assign();
+    }
   }
 
   List<_Segment> _splitQuotes(String text) {
@@ -136,8 +196,84 @@ class BbcodeRenderer extends ConsumerWidget {
 
     return segments;
   }
+}
 
-  Widget _buildHtmlContent(BuildContext context, String html) {
+class _MemoizedHtmlBlock extends StatefulWidget {
+  const _MemoizedHtmlBlock({
+    required this.html,
+    required this.showImages,
+    required this.maxImagesPerPost,
+    required this.imagesExpanded,
+    required this.imageIndexCounter,
+    this.onExpandImages,
+  });
+
+  final String html;
+  final bool showImages;
+  final int maxImagesPerPost;
+  final bool imagesExpanded;
+  final PostImageIndexCounter imageIndexCounter;
+  final VoidCallback? onExpandImages;
+
+  @override
+  State<_MemoizedHtmlBlock> createState() => _MemoizedHtmlBlockState();
+}
+
+class _MemoizedHtmlBlockState extends State<_MemoizedHtmlBlock> {
+  late String _cachedHtml;
+  late bool _cachedShowImages;
+  late int _cachedMaxImages;
+  late bool _cachedImagesExpanded;
+  int? _cachedThemeToken;
+  Widget? _cachedWidget;
+
+  @override
+  void initState() {
+    super.initState();
+    _cachedHtml = widget.html;
+    _cachedShowImages = widget.showImages;
+    _cachedMaxImages = widget.maxImagesPerPost;
+    _cachedImagesExpanded = widget.imagesExpanded;
+  }
+
+  @override
+  void didUpdateWidget(_MemoizedHtmlBlock oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (widget.html != _cachedHtml ||
+        widget.showImages != _cachedShowImages ||
+        widget.maxImagesPerPost != _cachedMaxImages ||
+        widget.imagesExpanded != _cachedImagesExpanded) {
+      _cachedHtml = widget.html;
+      _cachedShowImages = widget.showImages;
+      _cachedMaxImages = widget.maxImagesPerPost;
+      _cachedImagesExpanded = widget.imagesExpanded;
+      _cachedWidget = null;
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final scheme = Theme.of(context).colorScheme;
+    final themeToken = Object.hash(
+      scheme.brightness,
+      scheme.primary,
+      scheme.onSurface,
+      scheme.surfaceContainerHighest,
+    );
+    if (themeToken != _cachedThemeToken) {
+      _cachedThemeToken = themeToken;
+      _cachedWidget = null;
+    }
+    _cachedWidget ??= _buildHtml(context);
+    return _cachedWidget!;
+  }
+
+  Widget _buildHtml(BuildContext context) {
+    final html = widget.html;
+    final showImages = widget.showImages;
+    final maxImagesPerPost = widget.maxImagesPerPost;
+    final imagesExpanded = widget.imagesExpanded;
+
     final scheme = Theme.of(context).colorScheme;
     final textTheme = Theme.of(context).textTheme;
     final bodySize = S1Typography.bodySize(textTheme);
@@ -145,18 +281,13 @@ class BbcodeRenderer extends ConsumerWidget {
     final bodyLineHeight = S1Typography.bodyLineHeight(textTheme);
     final codeFontFamily = textTheme.bodySmall?.fontFamily ?? 'monospace';
 
-    return Consumer(
-      builder: (context, ref, _) {
-        final settings = ref.watch(settingsProvider);
-        final max = settings.maxImagesPerPost;
+    bool shouldShowPostImage(int index) {
+      if (!showImages) return false;
+      if (maxImagesPerPost <= 0 || imagesExpanded) return true;
+      return index < maxImagesPerPost;
+    }
 
-        bool shouldShowPostImage(int index) {
-          if (!settings.showImages) return false;
-          if (max <= 0 || imagesExpanded) return true;
-          return index < max;
-        }
-
-        return Html(
+    return Html(
           data: html,
           style: {
             'body': Style(
@@ -232,6 +363,7 @@ class BbcodeRenderer extends ConsumerWidget {
                     fullImageUrl: full,
                     showBorder: true,
                     margin: const EdgeInsets.symmetric(vertical: 8),
+                    deferUntilVisible: true,
                   );
                 }
 
@@ -276,13 +408,12 @@ class BbcodeRenderer extends ConsumerWidget {
                   fullImageUrl: urls.fullUrl,
                   showBorder: true,
                   margin: const EdgeInsets.symmetric(vertical: 8),
+                  deferUntilVisible: true,
                 );
               },
             ),
           ],
         );
-      },
-    );
   }
 }
 

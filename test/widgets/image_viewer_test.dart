@@ -221,6 +221,47 @@ void main() {
 
     expect(find.text('点击加载图片'), findsOneWidget);
   });
+
+  testWidgets('ImageViewer defers load until visible when deferUntilVisible',
+      (tester) async {
+    await tester.pumpWidget(
+      ProviderScope(
+        overrides: [
+          settingsProvider.overrideWith(
+            () => SettingsNotifier(
+              initial: const AppSettings(
+                showImages: true,
+                imageLoadPolicy: ImageLoadPolicy.always,
+              ),
+            ),
+          ),
+        ],
+        child: MaterialApp(
+          theme: AppTheme.lightTheme('purple'),
+          home: Scaffold(
+            body: ListView(
+              children: [
+                const SizedBox(height: 800),
+                const ImageViewer(
+                  imageUrl: 'https://example.com/offscreen.jpg',
+                  deferUntilVisible: true,
+                ),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+
+    await tester.pump();
+    expect(find.byType(CircularProgressIndicator), findsNothing);
+
+    await tester.drag(find.byType(ListView), const Offset(0, -900));
+    await tester.pump();
+    await tester.pump();
+
+    expect(find.text('点击加载图片'), findsNothing);
+  });
 }
 
 class _FakeCacheManager implements CacheManager {

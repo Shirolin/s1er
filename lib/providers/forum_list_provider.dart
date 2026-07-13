@@ -1,7 +1,6 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../models/forum_category.dart';
-import '../services/api_service.dart';
-import '../services/http_client.dart';
+import 'api_service_provider.dart';
 
 final forumListProvider =
     AsyncNotifierProvider<ForumListNotifier, List<ForumCategory>>(
@@ -11,8 +10,8 @@ final forumListProvider =
 class ForumListNotifier extends AsyncNotifier<List<ForumCategory>> {
   @override
   Future<List<ForumCategory>> build() async {
-    final apiService = ApiService(ref.watch(httpClientProvider));
-    return await apiService.getForumList();
+    final apiService = ref.watch(apiServiceProvider);
+    return apiService.getForumList();
   }
 
   Future<void> refresh() async {

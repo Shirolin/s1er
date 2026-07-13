@@ -177,9 +177,14 @@ class _DataManagementSectionState extends ConsumerState<DataManagementSection> {
 
   @override
   Widget build(BuildContext context) {
-    final authState = ref.watch(authStateProvider);
-    final hasVoteCache =
-        authState.isLoggedIn && (authState.user?.uid.isNotEmpty ?? false);
+    final hasVoteCache = ref.watch(
+      authStateProvider.select(
+        (auth) => auth.isLoggedIn && (auth.user?.uid.isNotEmpty ?? false),
+      ),
+    );
+    final isLoggedIn = ref.watch(
+      authStateProvider.select((auth) => auth.isLoggedIn),
+    );
     final scheme = Theme.of(context).colorScheme;
 
     return Card(
@@ -296,7 +301,7 @@ class _DataManagementSectionState extends ConsumerState<DataManagementSection> {
                 borderRadius: S1Shape.small,
               ),
             ),
-            if (authState.isLoggedIn) ...[
+            if (isLoggedIn) ...[
               const SizedBox(height: 8),
               ListTile(
                 leading: Icon(Icons.logout, color: scheme.error),

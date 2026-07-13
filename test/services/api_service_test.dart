@@ -141,6 +141,27 @@ void main() {
       });
     });
 
+    group('parseForumDisplayName', () {
+      test('returns forum name from Variables.forum', () {
+        final name = ApiService.parseForumDisplayName({
+          'Variables': {
+            'forum': {'name': '  游戏论坛  '},
+          },
+        });
+        expect(name, '游戏论坛');
+      });
+
+      test('returns null when forum name is missing', () {
+        expect(ApiService.parseForumDisplayName({}), isNull);
+        expect(
+          ApiService.parseForumDisplayName({
+            'Variables': {'forum': <String, dynamic>{}},
+          }),
+          isNull,
+        );
+      });
+    });
+
     group('parsePostList', () {
       test('parses post list from JSON', () {
         final json = {

@@ -122,4 +122,31 @@ void main() {
     expect(store.get<int>('maxImagesPerPost'), 5);
     expect(store.get<int>('imageCacheLimitMb'), 512);
   });
+
+  test('setShowImages with same value does not notify listeners', () {
+    final container = ProviderContainer(
+      overrides: [
+        settingsProvider.overrideWith(
+          () => SettingsNotifier(
+            store: store,
+            initial: const AppSettings(showImages: true),
+          ),
+        ),
+      ],
+    );
+    addTearDown(container.dispose);
+
+    var notifications = 0;
+    container.listen(
+      settingsProvider,
+      (_, __) => notifications++,
+      fireImmediately: true,
+    );
+    notifications = 0;
+
+    container.read(settingsProvider.notifier).setShowImages(true);
+
+    expect(notifications, 0);
+    expect(container.read(settingsProvider).showImages, isTrue);
+  });
 }

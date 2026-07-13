@@ -3,7 +3,6 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import '../config/api_config.dart';
 import '../models/user_space_item.dart';
-import '../models/reading_record.dart';
 import '../providers/reading_history_provider.dart';
 import '../providers/user_space_provider.dart';
 import '../theme/app_theme.dart';
@@ -34,6 +33,9 @@ class UserSpaceScreen extends ConsumerStatefulWidget {
 class _UserSpaceScreenState extends ConsumerState<UserSpaceScreen>
     with SingleTickerProviderStateMixin {
   late final TabController _tabController;
+  late final Set<int> _visitedTabs;
+
+  UserSpaceParams get _params => (widget.uid, widget.isSelf);
 
   @override
   void initState() {
@@ -43,17 +45,37 @@ class _UserSpaceScreenState extends ConsumerState<UserSpaceScreen>
       vsync: this,
       initialIndex: widget.initialTab,
     );
+    _visitedTabs = {_tabController.index};
+    _tabController.addListener(_onTabChanged);
+    if (widget.initialTab == 1) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (!mounted) return;
+        ref.read(userSpaceProvider(_params).notifier).ensureRepliesLoaded();
+      });
+    }
+  }
+
+  void _onTabChanged() {
+    if (_tabController.indexIsChanging) return;
+    final index = _tabController.index;
+    if (_visitedTabs.add(index)) {
+      setState(() {});
+    }
+    if (index == 1) {
+      ref.read(userSpaceProvider(_params).notifier).ensureRepliesLoaded();
+    }
   }
 
   @override
   void dispose() {
+    _tabController.removeListener(_onTabChanged);
     _tabController.dispose();
     super.dispose();
   }
 
   @override
   Widget build(BuildContext context) {
-    final async = ref.watch(userSpaceProvider((widget.uid, widget.isSelf)));
+    final async = ref.watch(userSpaceProvider(_params));
     final title = widget.username != null && widget.username!.isNotEmpty
         ? '${widget.username} 的空间'
         : '用户空间';
@@ -65,7 +87,7 @@ class _UserSpaceScreenState extends ConsumerState<UserSpaceScreen>
         actions: [
           AppBarMoreMenu(
             onRefresh: () =>
-                ref.read(userSpaceProvider((widget.uid, widget.isSelf)).notifier).refresh(),
+                ref.read(userSpaceProvider(_params).notifier).refresh(),
             browserUrl: '${ApiConfig.baseUrl}/home.php?mod=space&uid=${widget.uid}',
           ),
         ],
@@ -87,27 +109,34 @@ class _UserSpaceScreenState extends ConsumerState<UserSpaceScreen>
         error: (e, st) => S1ErrorView(
           error: e,
           onRetry: () =>
-              ref.read(userSpaceProvider((widget.uid, widget.isSelf)).notifier).refresh(),
+              ref.read(userSpaceProvider(_params).notifier).refresh(),
           onLogin: () => context.push('/login'),
         ),
         data: (state) => TabBarView(
           controller: _tabController,
           physics: const NeverScrollableScrollPhysics(),
           children: [
-            _ThreadList(
-              items: state.threads,
-              currentPage: state.threadPage,
-              totalPages: state.threadTotalPages,
-              uid: widget.uid,
-              isSelf: widget.isSelf,
-            ),
-            _ReplyList(
-              items: state.replies,
-              currentPage: state.replyPage,
-              totalPages: state.replyTotalPages,
-              uid: widget.uid,
-              isSelf: widget.isSelf,
-            ),
+            if (_visitedTabs.contains(0))
+              _ThreadList(
+                items: state.threads,
+                currentPage: state.threadPage,
+                totalPages: state.threadTotalPages,
+                uid: widget.uid,
+                isSelf: widget.isSelf,
+              )
+            else
+              const SizedBox.shrink(),
+            if (_visitedTabs.contains(1))
+              _ReplyList(
+                items: state.replies,
+                currentPage: state.replyPage,
+                totalPages: state.replyTotalPages,
+                uid: widget.uid,
+                isSelf: widget.isSelf,
+                repliesLoaded: state.repliesLoaded,
+              )
+            else
+              const SizedBox.shrink(),
           ],
         ),
       ),
@@ -151,7 +180,10 @@ class _ThreadList extends ConsumerWidget {
             pageBuilder: (context, scrollController) => ListView.builder(
               controller: scrollController,
               itemCount: items.length,
-              itemBuilder: (context, index) => _ThreadCard(item: items[index]),
+              itemBuilder: (context, index) => KeyedSubtree(
+                key: ValueKey('uspace_thread_${items[index].tid}'),
+                child: _ThreadCard(item: items[index]),
+              ),
             ),
           ),
         ),
@@ -174,15 +206,20 @@ class _ReplyList extends ConsumerWidget {
     required this.totalPages,
     required this.uid,
     required this.isSelf,
+    required this.repliesLoaded,
   });
   final List<UserSpaceItem> items;
   final int currentPage;
   final int totalPages;
   final String uid;
   final bool isSelf;
+  final bool repliesLoaded;
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
+    if (!repliesLoaded) {
+      return const Center(child: CircularProgressIndicator());
+    }
     if (items.isEmpty) {
       return ListView(
         children: const [
@@ -203,7 +240,13 @@ class _ReplyList extends ConsumerWidget {
             pageBuilder: (context, scrollController) => ListView.builder(
               controller: scrollController,
               itemCount: items.length,
-              itemBuilder: (context, index) => _ReplyCard(item: items[index]),
+              itemBuilder: (context, index) {
+                final item = items[index];
+                return KeyedSubtree(
+                  key: ValueKey('uspace_reply_${item.pid ?? item.tid}'),
+                  child: _ReplyCard(item: item),
+                );
+              },
             ),
           ),
         ),
@@ -223,13 +266,6 @@ class _ThreadCard extends ConsumerWidget {
   const _ThreadCard({required this.item});
   final UserSpaceItem item;
 
-  ReadingRecord? _recordFor(List<ReadingRecord> list) {
-    for (final r in list) {
-      if (r.tid == item.tid) return r;
-    }
-    return null;
-  }
-
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final scheme = Theme.of(context).colorScheme;
@@ -245,7 +281,7 @@ class _ThreadCard extends ConsumerWidget {
       shape: S1Shape.cardShape,
       child: InkWell(
         onTap: () {
-          final record = _recordFor(ref.read(readingHistoryProvider));
+          final record = ref.read(readingRecordProvider(item.tid));
           context.push(
             buildThreadDetailPath(
               item.tid,

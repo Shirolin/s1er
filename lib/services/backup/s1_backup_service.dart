@@ -47,6 +47,7 @@ class S1BackupService {
     required PackageInfo packageInfo,
     String platform = 'unknown',
   }) async {
+    await _local.ensureAllLoaded();
     final effectiveUid = (uid == null || uid.isEmpty) ? 'guest' : uid;
 
     final appSettings = <String, Object?>{};
@@ -167,6 +168,7 @@ class S1BackupService {
   }
 
   Future<S1BackupImportResult> importPayload(S1BackupPayload payload) async {
+    await _local.ensureAllLoaded();
     var settingsApplied = 0;
     var historyUpserts = 0;
     var voteUpserts = 0;

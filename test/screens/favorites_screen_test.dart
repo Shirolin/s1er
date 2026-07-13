@@ -110,6 +110,59 @@ void main() {
   });
 
   group('FavoritesScreen', () {
+    testWidgets('lazy loads only active tab list provider', (tester) async {
+      _TrackingFavoriteListNotifier.reset();
+
+      await tester.pumpWidget(
+        ProviderScope(
+          overrides: [
+            ...localOverrides(),
+            packageInfoOverride(),
+            authStateProvider.overrideWith(
+              () => _TestAuthNotifier(
+                AuthState(
+                  isLoggedIn: true,
+                  username: 'u',
+                  user: User(uid: '1', username: 'u'),
+                ),
+              ),
+            ),
+            favoriteListProvider(FavoriteSegment.all).overrideWith(
+              () => _TrackingFavoriteListNotifier(FavoriteSegment.all),
+            ),
+            favoriteListProvider(FavoriteSegment.thread).overrideWith(
+              () => _TrackingFavoriteListNotifier(FavoriteSegment.thread),
+            ),
+            favoriteListProvider(FavoriteSegment.forum).overrideWith(
+              () => _TrackingFavoriteListNotifier(FavoriteSegment.forum),
+            ),
+            favoriteMembershipProvider.overrideWith(
+              () => _EmptyMembershipNotifier(),
+            ),
+          ],
+          child: MaterialApp(
+            theme: AppTheme.lightTheme('purple'),
+            home: const FavoritesScreen(),
+          ),
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      expect(_TrackingFavoriteListNotifier.builtSegments, [FavoriteSegment.all]);
+
+      await tester.tap(find.text('帖子'));
+      await tester.pumpAndSettle();
+
+      expect(
+        _TrackingFavoriteListNotifier.builtSegments,
+        containsAll([FavoriteSegment.all, FavoriteSegment.thread]),
+      );
+      expect(
+        _TrackingFavoriteListNotifier.builtSegments,
+        isNot(contains(FavoriteSegment.forum)),
+      );
+    });
+
     testWidgets('shows tab bar and empty state', (tester) async {
       await tester.pumpWidget(
         ProviderScope(
@@ -175,4 +228,18 @@ class _EmptyFavoriteListNotifier extends FavoriteListNotifier {
 class _EmptyMembershipNotifier extends FavoriteMembershipNotifier {
   @override
   FavoriteMembershipState build() => const FavoriteMembershipState();
+}
+
+class _TrackingFavoriteListNotifier extends FavoriteListNotifier {
+  _TrackingFavoriteListNotifier(super.segment);
+
+  static final builtSegments = <FavoriteSegment>[];
+
+  static void reset() => builtSegments.clear();
+
+  @override
+  Future<FavoriteListState> build() async {
+    builtSegments.add(segment);
+    return FavoriteListState();
+  }
 }

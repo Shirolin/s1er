@@ -56,10 +56,7 @@ class RateLogService {
 
     try {
       final doc = parse(html);
-      final ratelogDivs = doc
-          .querySelectorAll('*')
-          .where((el) => el.id.startsWith('ratelog_'))
-          .toList();
+      final ratelogDivs = doc.querySelectorAll('[id^=ratelog_]');
 
       for (final div in ratelogDivs) {
         final pid = div.id.replaceFirst('ratelog_', '');

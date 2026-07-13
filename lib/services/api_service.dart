@@ -150,6 +150,13 @@ class ApiService {
     }).toList();
   }
 
+  static String? parseForumDisplayName(Map<String, dynamic> json) {
+    final forum = json['Variables']?['forum'] as Map<String, dynamic>?;
+    final name = forum?['name']?.toString().trim();
+    if (name == null || name.isEmpty) return null;
+    return name;
+  }
+
   static List<Post> parsePostList(Map<String, dynamic> json) {
     final variables = json['Variables'] as Map<String, dynamic>?;
     final postList = variables?['postlist'] as List?;

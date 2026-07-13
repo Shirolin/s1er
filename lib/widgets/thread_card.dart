@@ -2,7 +2,6 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import '../config/constants.dart';
-import '../models/reading_record.dart';
 import '../models/thread.dart';
 import '../providers/reading_history_provider.dart';
 import '../theme/app_theme.dart';
@@ -12,15 +11,7 @@ import '../utils/thread_navigation.dart';
 import 'page_picker_sheet.dart';
 
 /// 从当前用户的阅读历史列表中查出指定 tid 的记录（无则 null）。
-ReadingRecord? _recordFor(List<ReadingRecord> list, String tid) {
-  for (final r in list) {
-    if (r.tid == tid) return r;
-  }
-  return null;
-}
-
 class ThreadCard extends ConsumerWidget {
-
   const ThreadCard({super.key, required this.thread});
   final Thread thread;
 
@@ -31,7 +22,7 @@ class ThreadCard extends ConsumerWidget {
 
   /// 点击：按阅读记录解析目标页（续读 / 已读落末页 / 有新回复落新页）。
   void _handleTap(BuildContext context, WidgetRef ref) {
-    final record = _recordFor(ref.read(readingHistoryProvider), thread.tid);
+    final record = ref.read(readingRecordProvider(thread.tid));
     final liveTotalPages = _calcTotalPages(thread.replies);
     context.push(
       buildThreadDetailPath(
@@ -143,10 +134,8 @@ class _ReadingProgressBar extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    // 从历史列表按 tid 选取，随 readingHistoryProvider 刷新而实时更新。
-    final record = ref.watch(
-      readingHistoryProvider.select((list) => _recordFor(list, tid)),
-    );
+    // 按 tid 订阅阅读记录，仅在对应记录变化时重建。
+    final record = ref.watch(readingRecordProvider(tid));
     if (record == null || record.progressAt(liveTotalPages) <= 0) {
       return const SizedBox.shrink();
     }

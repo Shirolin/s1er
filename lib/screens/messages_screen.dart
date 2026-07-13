@@ -84,11 +84,14 @@ class _PmListBody extends ConsumerWidget {
                 itemCount: state.items.length,
                 itemBuilder: (context, index) {
                   final item = state.items[index];
-                  return PmListTile(
-                    item: item,
-                    onTap: () => launchUrl(
-                      Uri.parse(item.browserUrl),
-                      mode: LaunchMode.externalApplication,
+                  return KeyedSubtree(
+                    key: ValueKey('pm_${item.touid}'),
+                    child: PmListTile(
+                      item: item,
+                      onTap: () => launchUrl(
+                        Uri.parse(item.browserUrl),
+                        mode: LaunchMode.externalApplication,
+                      ),
                     ),
                   );
                 },
@@ -145,17 +148,20 @@ class _NoticeListBody extends ConsumerWidget {
                         itemCount: state.items.length,
                         itemBuilder: (context, index) {
                           final item = state.items[index];
-                          return NoticeListTile(
-                            item: item,
-                            onTap: () {
-                              if (!item.canNavigate) return;
-                              final pid = item.pid;
-                              if (pid != null && pid.isNotEmpty) {
-                                context.push('/thread/${item.tid}?pid=$pid');
-                              } else {
-                                context.push('/thread/${item.tid}');
-                              }
-                            },
+                          return KeyedSubtree(
+                            key: ValueKey('notice_${item.id}'),
+                            child: NoticeListTile(
+                              item: item,
+                              onTap: () {
+                                if (!item.canNavigate) return;
+                                final pid = item.pid;
+                                if (pid != null && pid.isNotEmpty) {
+                                  context.push('/thread/${item.tid}?pid=$pid');
+                                } else {
+                                  context.push('/thread/${item.tid}');
+                                }
+                              },
+                            ),
                           );
                         },
                       ),

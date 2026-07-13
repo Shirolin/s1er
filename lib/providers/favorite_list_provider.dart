@@ -2,7 +2,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../models/favorite_item.dart';
 import '../providers/auth_provider.dart';
 import '../services/api_service.dart';
-import '../services/http_client.dart';
+import 'api_service_provider.dart';
 
 enum FavoriteSegment { all, thread, forum }
 
@@ -53,7 +53,7 @@ class FavoriteListNotifier extends AsyncNotifier<FavoriteListState> {
     return _loadPage(1);
   }
 
-  ApiService get _apiService => ApiService(ref.watch(httpClientProvider));
+  ApiService get _apiService => ref.watch(apiServiceProvider);
 
   String? get _uid {
     final user = ref.read(authStateProvider).user;

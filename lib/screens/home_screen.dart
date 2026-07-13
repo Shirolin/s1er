@@ -29,7 +29,9 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final isLoggedIn = ref.watch(authStateProvider).isLoggedIn;
+    final isLoggedIn = ref.watch(
+      authStateProvider.select((auth) => auth.isLoggedIn),
+    );
 
     ref.listen<AuthState>(authStateProvider, (previous, next) {
       final wasLoggedIn = previous?.isLoggedIn ?? false;
@@ -277,10 +279,12 @@ class _ForumCategoryTile extends ConsumerWidget {
             curve: Curves.easeInOut,
             clipBehavior: Clip.hardEdge,
             child: (hasSubs && !isCollapsed)
-                ? Column(
-                    children: category.subforums
-                        .map((sub) => _ForumTile(forum: sub))
-                        .toList(),
+                ? ListView.builder(
+                    shrinkWrap: true,
+                    physics: const NeverScrollableScrollPhysics(),
+                    itemCount: category.subforums.length,
+                    itemBuilder: (context, index) =>
+                        _ForumTile(forum: category.subforums[index]),
                   )
                 : const SizedBox.shrink(),
           ),

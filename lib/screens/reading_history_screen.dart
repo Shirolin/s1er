@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import '../models/reading_record.dart';
-import '../providers/forum_list_provider.dart';
+import '../providers/forum_name_provider.dart';
 import '../providers/reading_history_provider.dart';
 import '../theme/app_theme.dart';
 import '../utils/format_utils.dart';
@@ -14,7 +14,8 @@ class ReadingHistoryScreen extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final records = ref.watch(readingHistoryProvider);
+    final records = ref.watch(readingHistoryProvider.select((s) => s.records));
+    final fidToForumName = ref.watch(fidToForumNameMapProvider);
 
     return Scaffold(
       appBar: AppBar(
@@ -34,8 +35,10 @@ class ReadingHistoryScreen extends ConsumerWidget {
           : ListView.builder(
               padding: const EdgeInsets.symmetric(vertical: 8),
               itemCount: records.length,
-              itemBuilder: (context, index) =>
-                  _HistoryTile(record: records[index]),
+              itemBuilder: (context, index) => _HistoryTile(
+                record: records[index],
+                forumName: fidToForumName[records[index].fid],
+              ),
             ),
     );
   }
@@ -79,20 +82,12 @@ class _EmptyState extends StatelessWidget {
 }
 
 class _HistoryTile extends ConsumerWidget {
-  const _HistoryTile({required this.record});
+  const _HistoryTile({
+    required this.record,
+    this.forumName,
+  });
   final ReadingRecord record;
-
-  String? _forumName(WidgetRef ref) {
-    final categories = ref.watch(forumListProvider).asData?.value;
-    if (categories == null || record.fid.isEmpty) return null;
-    for (final category in categories) {
-      if (category.fid == record.fid) return category.name;
-      for (final sub in category.subforums) {
-        if (sub.fid == record.fid) return sub.name;
-      }
-    }
-    return null;
-  }
+  final String? forumName;
 
   void _open(BuildContext context) {
     context.push(
@@ -110,11 +105,10 @@ class _HistoryTile extends ConsumerWidget {
     final textTheme = Theme.of(context).textTheme;
     final isFinished = record.isFinished;
     final accent = isFinished ? scheme.onSurfaceVariant : scheme.primary;
-    final forumName = _forumName(ref);
 
     final metaParts = <String>[
       if (record.author.isNotEmpty) record.author,
-      if (forumName != null && forumName.isNotEmpty) forumName,
+      if (forumName != null && forumName!.isNotEmpty) forumName!,
       formatTimeAgo(record.lastReadAt ~/ 1000),
       if (record.readCount > 1) '读过 ${record.readCount} 次',
     ];

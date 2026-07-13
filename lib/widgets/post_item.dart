@@ -1,14 +1,15 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../models/post.dart';
-import '../models/rate_log.dart';
+import '../providers/api_service_provider.dart';
 import '../providers/auth_provider.dart';
-import '../providers/post_provider.dart';
+import '../providers/thread_rate_logs_provider.dart';
 import '../theme/app_theme.dart';
 import '../utils/compact_label.dart';
 import '../utils/format_utils.dart';
 import '../utils/post_image_index_counter.dart';
 import 'bbcode_renderer.dart';
+import 'lazy_visibility_loader.dart';
 import 'post_action_menu.dart';
 import 'rate_log_card.dart';
 import 'user_profile_sheet.dart';
@@ -23,8 +24,9 @@ class PostItem extends ConsumerStatefulWidget {
     this.onFilterByAuthor,
     this.onReply,
     this.onRate,
-    this.rateLog,
     this.isHighlighted = false,
+    this.currentPage,
+    this.commentCount = 0,
   });
 
   final Post post;
@@ -33,8 +35,9 @@ class PostItem extends ConsumerStatefulWidget {
   final VoidCallback? onFilterByAuthor;
   final VoidCallback? onReply;
   final VoidCallback? onRate;
-  final PostRateLog? rateLog;
   final bool isHighlighted;
+  final int? currentPage;
+  final int commentCount;
 
   @override
   ConsumerState<PostItem> createState() => _PostItemState();
@@ -42,6 +45,22 @@ class PostItem extends ConsumerStatefulWidget {
 
 class _PostItemState extends ConsumerState<PostItem> {
   bool _imagesExpanded = false;
+  late PostImageIndexCounter _imageIndexCounter;
+
+  @override
+  void initState() {
+    super.initState();
+    _imageIndexCounter = PostImageIndexCounter();
+  }
+
+  @override
+  void didUpdateWidget(PostItem oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.post.pid != widget.post.pid) {
+      _imageIndexCounter = PostImageIndexCounter();
+      _imagesExpanded = false;
+    }
+  }
 
   void _showUserInfo(BuildContext context, WidgetRef ref) {
     final currentUid = ref.read(authStateProvider).user?.uid;
@@ -62,7 +81,6 @@ class _PostItemState extends ConsumerState<PostItem> {
     final textTheme = Theme.of(context).textTheme;
     final timeStr = formatDateTime(widget.post.dateline);
     final floor = widget.displayFloor ?? widget.post.floor;
-    final imageIndexCounter = PostImageIndexCounter();
 
     return Card(
       margin: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
@@ -122,19 +140,45 @@ class _PostItemState extends ConsumerState<PostItem> {
             const Divider(height: 16),
             BbcodeRenderer(
               bbcode: widget.post.message,
-              imageIndexCounter: imageIndexCounter,
+              imageIndexCounter: _imageIndexCounter,
               currentTid: widget.tid,
               imagesExpanded: _imagesExpanded,
               onExpandImages: () => setState(() => _imagesExpanded = true),
             ),
-            if (widget.rateLog != null &&
-                !widget.rateLog!.isEmpty &&
-                widget.tid != null)
-              RateLogCard(rateLog: widget.rateLog!, tid: widget.tid!),
+            if (widget.tid != null && widget.commentCount > 0)
+              LazyVisibilityLoader(
+                onVisible: () {
+                  final page = widget.currentPage;
+                  if (page == null) return;
+                  ref
+                      .read(threadRateLogsProvider(widget.tid!).notifier)
+                      .ensurePageRateLogs(page);
+                },
+                child: _PostRateLogSection(
+                  tid: widget.tid!,
+                  pid: widget.post.pid,
+                ),
+              ),
           ],
         ),
       ),
     );
+  }
+}
+
+class _PostRateLogSection extends ConsumerWidget {
+  const _PostRateLogSection({required this.tid, required this.pid});
+
+  final String tid;
+  final String pid;
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final rateLog = ref.watch(rateLogProvider((tid, pid)));
+    if (rateLog == null || rateLog.isEmpty) {
+      return const SizedBox.shrink();
+    }
+    return RateLogCard(tid: tid, pid: pid);
   }
 }
 

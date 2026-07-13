@@ -16,6 +16,7 @@ void main() {
   });
 
   tearDown(() async {
+    await local.flushPendingWrites();
     await db.close();
   });
 

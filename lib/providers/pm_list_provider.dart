@@ -1,7 +1,7 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../models/private_message_item.dart';
 import '../services/api_service.dart';
-import '../services/http_client.dart';
+import 'api_service_provider.dart';
 
 class PmListState {
   PmListState({
@@ -38,7 +38,7 @@ class PmListNotifier extends AsyncNotifier<PmListState> {
     return _loadPage(1);
   }
 
-  ApiService get _apiService => ApiService(ref.watch(httpClientProvider));
+  ApiService get _apiService => ref.watch(apiServiceProvider);
 
   Future<PmListState> _loadPage(int page) async {
     final result = await _apiService.getPmList(page: page);

@@ -18,6 +18,7 @@ String _backupPlatformLabel() {
 }
 
 Future<S1BackupExportResult> exportS1Backup(WidgetRef ref) async {
+  await ref.read(localDataProvider).flushPendingWrites();
   final packageInfo = await ref.read(packageInfoProvider.future);
   final uid = ref.read(authStateProvider).user?.uid;
   final result = await ref.read(s1BackupServiceProvider).exportL1(

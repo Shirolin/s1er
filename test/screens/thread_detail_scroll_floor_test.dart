@@ -97,23 +97,19 @@ class _NextFloorHarnessState extends State<_NextFloorHarness> {
                 },
                 pageBuilder: (context, scrollController) => Scrollbar(
                   controller: scrollController,
-                  child: SingleChildScrollView(
+                  child: ListView.builder(
                     controller: scrollController,
                     padding: S1FabLayout.scrollBottomPadding,
-                    child: Column(
-                      children: [
-                        for (var i = 0; i < _postKeys.length; i++)
-                          widget.shortPosts
-                              ? _ShortPostCard(
-                                  key: _postKeys[i],
-                                  label: 'Post ${i + 1}',
-                                )
-                              : _TallPostCard(
-                                  key: _postKeys[i],
-                                  label: 'Post ${i + 1}',
-                                ),
-                      ],
-                    ),
+                    itemCount: _postKeys.length,
+                    itemBuilder: (context, i) => widget.shortPosts
+                        ? _ShortPostCard(
+                            key: _postKeys[i],
+                            label: 'Post ${i + 1}',
+                          )
+                        : _TallPostCard(
+                            key: _postKeys[i],
+                            label: 'Post ${i + 1}',
+                          ),
                   ),
                 ),
               ),
@@ -215,7 +211,7 @@ void main() {
     await tester.pumpAndSettle();
 
     final controller = tester
-        .widget<SingleChildScrollView>(find.byType(SingleChildScrollView))
+        .widget<ListView>(find.byType(ListView))
         .controller!;
     expect(controller.offset, 0);
 
@@ -241,7 +237,7 @@ void main() {
     await tester.pumpAndSettle();
 
     final controller = tester
-        .widget<SingleChildScrollView>(find.byType(SingleChildScrollView))
+        .widget<ListView>(find.byType(ListView))
         .controller!;
 
     await tester.longPress(find.byKey(const ValueKey('scroll_nav_down')));

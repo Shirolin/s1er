@@ -439,7 +439,7 @@ ConsumerWidget。使用丰富信息式 `_HistoryTile`，通过 `forumListProvide
 | 0 回复帖（仅主楼） | `totalPages=1`、`lastReadPage=1` ⇒ `isFinished=true`（C2 已修 v1.0 bug） |
 | API 未返回 `ppp` | 用 `S1Constants.postsPerPageFallback = 40`（C1） |
 | 未登录 / uid 为空串 | key 前缀归一到 `guest_`（C3） |
-| 登录态在启动时异步恢复 | `checkSession()` 完成前写入的记录会落到 `guest_`；`authStateProvider` 就绪后 `readingHistoryServiceProvider` 自动重建、切到真实 uid。属已知取舍，`guest_` 记录不迁移（可作 v2 优化） |
+| 登录态在启动时异步恢复 | `checkSession()` 完成前写入的记录会落到 `guest_`；`authStateProvider` 就绪后 `readingHistoryCoordinatorProvider` 监听 uid 变化，将 `guest_*` 合并到真实 uid 命名空间（幂等） |
 | 切换账号 | 因 key 带 `{uid}_` 前缀，天然隔离；淘汰 `_evictIfNeeded` 也按当前 uid 计数（优于设计文档 v1.0 的全局 `_box.length`） |
 | 帖子标题/页数变化 | 每次进入用最新值覆盖缓存 |
 | 列表页进度条不实时刷新 | 遵循 D4：返回列表页触发重建时刷新；详情页内写库后 `invalidate(readingRecordProvider(tid))`（C4） |

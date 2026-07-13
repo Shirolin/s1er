@@ -1,28 +1,32 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../models/thread.dart';
+import 'api_service_provider.dart';
 import '../services/api_service.dart';
-import '../services/http_client.dart';
 
 class ThreadListState {
   ThreadListState({
     this.threads = const [],
     this.currentPage = 1,
     this.totalPages = 1,
+    this.forumName,
   });
 
   final List<Thread> threads;
   final int currentPage;
   final int totalPages;
+  final String? forumName;
 
   ThreadListState copyWith({
     List<Thread>? threads,
     int? currentPage,
     int? totalPages,
+    String? forumName,
   }) {
     return ThreadListState(
       threads: threads ?? this.threads,
       currentPage: currentPage ?? this.currentPage,
       totalPages: totalPages ?? this.totalPages,
+      forumName: forumName ?? this.forumName,
     );
   }
 }
@@ -35,7 +39,7 @@ class ThreadListNotifier extends AsyncNotifier<ThreadListState> {
   @override
   Future<ThreadListState> build() => _loadPage(1);
 
-  ApiService get _apiService => ApiService(ref.watch(httpClientProvider));
+  ApiService get _apiService => ref.watch(apiServiceProvider);
 
   Future<ThreadListState> _loadPage(int page) async {
     final result = await _apiService.getThreadListRaw(fid, page: page);
@@ -45,6 +49,7 @@ class ThreadListNotifier extends AsyncNotifier<ThreadListState> {
       threads: threads,
       currentPage: page,
       totalPages: totalPages,
+      forumName: ApiService.parseForumDisplayName(result),
     );
   }
 

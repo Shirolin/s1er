@@ -26,6 +26,7 @@ class FavoriteBookmarkButton extends ConsumerStatefulWidget {
 
 class _FavoriteBookmarkButtonState extends ConsumerState<FavoriteBookmarkButton> {
   bool _busy = false;
+  bool _syncRequested = false;
 
   Future<void> _toggle() async {
     final isLoggedIn = ref.read(authStateProvider).isLoggedIn;
@@ -36,6 +37,9 @@ class _FavoriteBookmarkButtonState extends ConsumerState<FavoriteBookmarkButton>
     }
 
     if (_busy || widget.id.isEmpty) return;
+
+    await ref.read(favoriteMembershipProvider.notifier).ensureSynced();
+    if (!mounted) return;
 
     final membership = ref.read(favoriteMembershipProvider);
     final isFavorited = membership.isFavorited(widget.type, widget.id);
@@ -61,10 +65,24 @@ class _FavoriteBookmarkButtonState extends ConsumerState<FavoriteBookmarkButton>
 
   @override
   Widget build(BuildContext context) {
-    final membership = ref.watch(favoriteMembershipProvider);
-    final isFavorited = membership.isFavorited(widget.type, widget.id);
+    if (!_syncRequested && ref.read(authStateProvider).isLoggedIn) {
+      _syncRequested = true;
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (!mounted) return;
+        ref.read(favoriteMembershipProvider.notifier).ensureSynced();
+      });
+    }
 
-    if (_busy || membership.isLoading) {
+    final isFavorited = ref.watch(
+      favoriteMembershipProvider.select(
+        (m) => m.isFavorited(widget.type, widget.id),
+      ),
+    );
+    final isLoading = ref.watch(
+      favoriteMembershipProvider.select((m) => m.isLoading),
+    );
+
+    if (_busy || isLoading) {
       return const Padding(
         padding: EdgeInsets.all(12),
         child: SizedBox(

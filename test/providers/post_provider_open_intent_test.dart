@@ -10,6 +10,7 @@ import 'package:s1_app/models/thread_open_intent.dart';
 import 'package:s1_app/providers/post_provider.dart';
 import 'package:s1_app/providers/reading_history_provider.dart';
 import 'package:s1_app/providers/thread_open_intent_provider.dart';
+import 'package:s1_app/providers/thread_rate_logs_provider.dart';
 import 'package:s1_app/services/http_client.dart';
 
 void main() {
@@ -119,6 +120,77 @@ void main() {
 
       expect(adapter.rateLogRequests, isEmpty);
     });
+
+    test('skips rate log html fetch when commentcount is missing', () async {
+      container = buildContainer(
+        extraOverrides: [
+          readingRecordProvider('100').overrideWithValue(null),
+        ],
+      );
+
+      await container.read(postProvider('100').future);
+
+      expect(adapter.rateLogRequests, isEmpty);
+    });
+
+    test('does not auto-fetch rate logs on page load when commentcount > 0',
+        () async {
+      adapter.commentCount = {'1': 2};
+      container = buildContainer(
+        extraOverrides: [
+          readingRecordProvider('100').overrideWithValue(null),
+        ],
+      );
+
+      await container.read(postProvider('100').future);
+
+      expect(adapter.rateLogRequests, isEmpty);
+    });
+
+    test('rate log merge does not mutate postProvider state', () async {
+      adapter.commentCount = {'1': 2};
+      adapter.rateLogHtml = '''
+<div id="ratelog_1">
+  <ul class="post_box cl">
+    <li class="flex-box mli p0">
+      <div class="flex-2"><a> 参与人数 <span class="xi1">1</span></a></div>
+      <div class="flex-2">战斗力 <i><span class="xi1">+2</span></i></div>
+      <div class="flex-3">理由</div>
+    </li>
+    <li class="flex-box mli p0">
+      <div class="flex-2"><a href="home.php?mod=space&uid=1">userA</a></div>
+      <div class="flex-2 xi1"> + 2</div>
+      <div class="flex-3">good</div>
+    </li>
+  </ul>
+</div>
+''';
+      container = buildContainer(
+        extraOverrides: [
+          readingRecordProvider('100').overrideWithValue(null),
+        ],
+      );
+
+      final sub = container.listen(postProvider('100'), (_, __) {});
+      addTearDown(sub.close);
+
+      final initial = await container.read(postProvider('100').future);
+      final postsBefore = initial.posts;
+
+      expect(adapter.rateLogRequests, isEmpty);
+
+      await container
+          .read(threadRateLogsProvider('100').notifier)
+          .ensurePageRateLogs(1);
+
+      final after = container.read(postProvider('100')).asData!.value;
+      expect(identical(after.posts, postsBefore), isTrue);
+      expect(adapter.rateLogRequests, isNotEmpty);
+      expect(
+        container.read(threadRateLogsProvider('100')),
+        isNotEmpty,
+      );
+    });
   });
 }
 
@@ -128,6 +200,7 @@ class _ThreadDetailAdapter implements HttpClientAdapter {
   final locatePageForPid = <String, int>{};
   final rateLogRequests = <Uri>[];
   Map<String, int>? commentCount;
+  String rateLogHtml = '<html></html>';
 
   @override
   void close({bool force = false}) {}
@@ -194,7 +267,7 @@ class _ThreadDetailAdapter implements HttpClientAdapter {
 
     if (uri.query.contains('mod=viewthread')) {
       rateLogRequests.add(uri);
-      return ResponseBody.fromString('<html></html>', 200);
+      return ResponseBody.fromString(rateLogHtml, 200);
     }
 
     return ResponseBody.fromString('{}', 200);

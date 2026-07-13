@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:typed_data';
 
 import 'package:dynamic_color/dynamic_color.dart';
@@ -6,6 +7,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:talker_flutter/talker_flutter.dart';
 import 'config/resource_domains.dart';
+import 'providers/reading_history_coordinator.dart';
 import 'providers/settings_provider.dart';
 import 'screens/home_screen.dart';
 import 'screens/login_screen.dart';
@@ -156,13 +158,48 @@ final _router = GoRouter(
   ],
 );
 
-class S1App extends ConsumerWidget {
+class S1App extends ConsumerStatefulWidget {
   const S1App({super.key});
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
-    final settings = ref.watch(settingsProvider);
-    final themeMode = switch (settings.themeMode) {
+  ConsumerState<S1App> createState() => _S1AppState();
+}
+
+class _S1AppState extends ConsumerState<S1App> with WidgetsBindingObserver {
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addObserver(this);
+  }
+
+  @override
+  void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
+    super.dispose();
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    if (state == AppLifecycleState.paused ||
+        state == AppLifecycleState.detached) {
+      unawaited(ref.read(localDataProvider).flushPendingWrites());
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    ref.watch(readingHistoryCoordinatorProvider);
+
+    final themeModeStr = ref.watch(settingsProvider.select((s) => s.themeMode));
+    final themeColor = ref.watch(settingsProvider.select((s) => s.themeColor));
+    final useDynamicColor =
+        ref.watch(settingsProvider.select((s) => s.useDynamicColor));
+    final simulateDynamic =
+        ref.watch(settingsProvider.select((s) => s.simulateDynamic));
+    final textScaleFactor =
+        ref.watch(settingsProvider.select((s) => s.textScaleFactor));
+
+    final themeMode = switch (themeModeStr) {
       'light' => ThemeMode.light,
       'dark' => ThemeMode.dark,
       _ => ThemeMode.system,
@@ -170,7 +207,6 @@ class S1App extends ConsumerWidget {
 
     return DynamicColorBuilder(
       builder: (lightDynamic, darkDynamic) {
-        final useDynamic = settings.useDynamicColor;
         final hasDynamic = lightDynamic != null && darkDynamic != null;
 
         WidgetsBinding.instance.addPostFrameCallback((_) {
@@ -179,12 +215,12 @@ class S1App extends ConsumerWidget {
           }
         });
 
-        final lightTheme = useDynamic && hasDynamic
+        final lightTheme = useDynamicColor && hasDynamic
             ? AppTheme.fromColorScheme(lightDynamic, isDynamic: true)
-            : AppTheme.lightTheme(settings.themeColor, isDynamic: settings.simulateDynamic);
-        final darkTheme = useDynamic && hasDynamic
+            : AppTheme.lightTheme(themeColor, isDynamic: simulateDynamic);
+        final darkTheme = useDynamicColor && hasDynamic
             ? AppTheme.fromColorScheme(darkDynamic, isDynamic: true)
-            : AppTheme.darkTheme(settings.themeColor, isDynamic: settings.simulateDynamic);
+            : AppTheme.darkTheme(themeColor, isDynamic: simulateDynamic);
 
         return TalkerWrapper(
           talker: talker,
@@ -200,7 +236,7 @@ class S1App extends ConsumerWidget {
             builder: (context, child) {
               return MediaQuery(
                 data: MediaQuery.of(context).copyWith(
-                  textScaler: TextScaler.linear(settings.textScaleFactor),
+                  textScaler: TextScaler.linear(textScaleFactor),
                 ),
                 child: child!,
               );

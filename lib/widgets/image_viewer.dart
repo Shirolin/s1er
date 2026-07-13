@@ -14,6 +14,7 @@ import '../services/s1_image_cache.dart';
 import '../theme/app_theme.dart';
 import '../utils/image_load_policy.dart';
 import '../utils/inline_image_decode.dart';
+import 'lazy_visibility_loader.dart';
 import 'web_image_stub.dart'
     if (dart.library.html) 'web_image_html.dart';
 
@@ -26,6 +27,7 @@ class ImageViewer extends ConsumerStatefulWidget {
     this.isEmoticon = false,
     this.showBorder = false,
     this.margin,
+    this.deferUntilVisible = false,
   });
 
   /// Inline preview URL.
@@ -36,6 +38,9 @@ class ImageViewer extends ConsumerStatefulWidget {
   final bool isEmoticon;
   final bool showBorder;
   final EdgeInsetsGeometry? margin;
+
+  /// 为 true 时等到进入视口后再加载（帖子内联图片用）。
+  final bool deferUntilVisible;
 
   /// Flush process-local byte LRU (called when clearing disk cache in settings).
   static void clearMemoryCache() {
@@ -61,6 +66,7 @@ class _ImageViewerState extends ConsumerState<ImageViewer> {
   bool _userRequestedLoad = false;
   bool _deferredLoad = false;
   bool _networkLoadAllowed = false;
+  bool _visibilityLoadTriggered = false;
   Uint8List? _bytes;
   ImageProvider? _imageProvider;
   late ResourceType _resourceType;
@@ -82,8 +88,16 @@ class _ImageViewerState extends ConsumerState<ImageViewer> {
     super.initState();
     _resourceType = _resolveType(_previewUrl);
     _displayUrl = _previewUrl;
-    _load();
+    if (!widget.deferUntilVisible || widget.isEmoticon) {
+      _load();
+    }
     _initDone = true;
+  }
+
+  void _onBecomeVisible() {
+    if (_visibilityLoadTriggered) return;
+    _visibilityLoadTriggered = true;
+    _load();
   }
 
   @override
@@ -96,10 +110,13 @@ class _ImageViewerState extends ConsumerState<ImageViewer> {
       _userRequestedLoad = false;
       _deferredLoad = false;
       _networkLoadAllowed = false;
+      _visibilityLoadTriggered = false;
       _displayUrl = _previewUrl;
       _bytes = null;
       _imageProvider = null;
-      _load();
+      if (!widget.deferUntilVisible || widget.isEmoticon) {
+        _load();
+      }
     }
   }
 
@@ -310,6 +327,7 @@ class _ImageViewerState extends ConsumerState<ImageViewer> {
       ),
       (previous, next) {
         if (widget.isEmoticon) return;
+        if (widget.deferUntilVisible && !_visibilityLoadTriggered) return;
         if (!_deferredLoad && _hasDisplayableImage) return;
         if (_shouldAutoLoad()) {
           _load();
@@ -319,6 +337,7 @@ class _ImageViewerState extends ConsumerState<ImageViewer> {
 
     ref.listen(wifiConnectedProvider, (previous, next) {
       if (widget.isEmoticon) return;
+      if (widget.deferUntilVisible && !_visibilityLoadTriggered) return;
       if (!_deferredLoad && _hasDisplayableImage) return;
       if (_shouldAutoLoad()) {
         _load();
@@ -337,39 +356,59 @@ class _ImageViewerState extends ConsumerState<ImageViewer> {
       settingsProvider.select((s) => s.showImages),
       (previous, next) {
         if (!widget.isEmoticon && next && previous == false) {
+          if (widget.deferUntilVisible && !_visibilityLoadTriggered) return;
           _load();
         }
       },
     );
 
-    if (!showImages) return _buildHiddenPlaceholder();
+    if (!showImages) return _wrapDeferred(_buildHiddenPlaceholder());
 
-    if (widget.isEmoticon) return _buildEmoticon(context);
+    if (widget.deferUntilVisible &&
+        !widget.isEmoticon &&
+        !_visibilityLoadTriggered &&
+        !_hasDisplayableImage &&
+        !_loading &&
+        !_deferredLoad) {
+      return _wrapDeferred(const SizedBox(height: 96));
+    }
+
+    if (widget.isEmoticon) return _wrapDeferred(_buildEmoticon(context));
 
     if (_deferredLoad) {
-      return _buildTapToLoadPlaceholder();
+      return _wrapDeferred(_buildTapToLoadPlaceholder());
     }
 
     if (_loading) {
-      return const SizedBox(
-        height: 96,
-        child: Center(child: CircularProgressIndicator(strokeWidth: 2)),
+      return _wrapDeferred(
+        const SizedBox(
+          height: 96,
+          child: Center(child: CircularProgressIndicator(strokeWidth: 2)),
+        ),
       );
     }
 
     if (_resourceType == ResourceType.publicAsset && kIsWeb) {
-      return _buildWebPublicImage(context);
+      return _wrapDeferred(_buildWebPublicImage(context));
     }
 
     if (_imageProvider != null) {
-      return _buildImage(_imageProvider!);
+      return _wrapDeferred(_buildImage(_imageProvider!));
     }
 
     if (_resourceType == ResourceType.publicAsset) {
-      return _buildImage(_publicNetworkProvider(_displayUrl));
+      return _wrapDeferred(_buildImage(_publicNetworkProvider(_displayUrl)));
     }
 
-    return _buildError();
+    return _wrapDeferred(_buildError());
+  }
+
+  Widget _wrapDeferred(Widget child) {
+    if (!widget.deferUntilVisible || widget.isEmoticon) return child;
+    return LazyVisibilityLoader(
+      onVisible: _onBecomeVisible,
+      child: child,
+    );
   }
 
   Widget _buildWebPublicImage(BuildContext context) {

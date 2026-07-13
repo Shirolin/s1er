@@ -39,15 +39,12 @@ void main() {
                     onControllerCreated?.call(scrollController);
                     return Scrollbar(
                       controller: scrollController,
-                      child: SingleChildScrollView(
+                      child: ListView.builder(
                         controller: scrollController,
                         padding: S1FabLayout.scrollBottomPadding,
-                        child: const Column(
-                          children: [
-                            _ShortPostCard(label: 'Post 1'),
-                            _ShortPostCard(label: 'Post 2'),
-                            _ShortPostCard(label: 'Post 3'),
-                          ],
+                        itemCount: 3,
+                        itemBuilder: (context, index) => _ShortPostCard(
+                          label: 'Post ${index + 1}',
                         ),
                       ),
                     );
@@ -105,8 +102,7 @@ void main() {
     controller!.jumpTo(400);
     await tester.pump();
 
-    final scrolledTop = await topOffset(tester, find.text('Post 1'));
-    expect(scrolledTop, lessThan(0));
+    expect(controller!.offset, 400);
 
     await tester.pumpWidget(buildThreadDetailLikeHarness(
       totalPages: 1,

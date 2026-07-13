@@ -5,6 +5,7 @@ import '../models/user.dart';
 import '../services/auth_service.dart';
 import '../services/http_client.dart';
 import 'forum_list_provider.dart';
+import 'settings_provider.dart';
 
 final authServiceProvider = Provider<AuthService>((ref) {
   return AuthService(httpClient: ref.watch(httpClientProvider));
@@ -24,6 +25,17 @@ class AuthState {
       user: user ?? this.user,
     );
   }
+
+  @override
+  bool operator ==(Object other) {
+    return other is AuthState &&
+        other.isLoggedIn == isLoggedIn &&
+        other.username == username &&
+        other.user == user;
+  }
+
+  @override
+  int get hashCode => Object.hash(isLoggedIn, username, user);
 }
 
 class AuthNotifier extends Notifier<AuthState> {
@@ -43,11 +55,12 @@ class AuthNotifier extends Notifier<AuthState> {
   }
 
   void _syncStateFromService() {
-    state = AuthState(
+    final next = AuthState(
       isLoggedIn: true,
       username: _authService.currentUser?.username,
       user: _authService.currentUser,
     );
+    if (next != state) state = next;
   }
 
   void setLoggedIn(String username) {
@@ -69,7 +82,8 @@ class AuthNotifier extends Notifier<AuthState> {
     for (var i = 0; i < 20; i++) {
       final user = _authService.currentUser;
       if (user != null && user.uid.isNotEmpty) {
-        state = state.copyWith(user: user, username: user.username);
+        final next = state.copyWith(user: user, username: user.username);
+        if (next != state) state = next;
         return;
       }
       await Future<void>.delayed(const Duration(milliseconds: 100));
@@ -80,12 +94,14 @@ class AuthNotifier extends Notifier<AuthState> {
     final user = await _authService.fetchProfile();
     if (user != null) {
       try {
-        state = state.copyWith(user: user, username: user.username);
+        final next = state.copyWith(user: user, username: user.username);
+        if (next != state) state = next;
       } catch (_) {}
     }
   }
 
   Future<void> logout() async {
+    await ref.read(localDataProvider).flushPendingWrites();
     await _authService.logout();
     state = AuthState();
     ref.invalidate(forumListProvider);

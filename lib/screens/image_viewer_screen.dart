@@ -16,6 +16,7 @@ import '../services/http_client.dart';
 import '../services/s1_image_cache.dart';
 import '../theme/app_theme.dart';
 import '../utils/s1_snack_bar.dart';
+import '../services/talker.dart';
 import '../widgets/web_image_stub.dart'
     if (dart.library.html) '../widgets/web_image_html.dart';
 
@@ -110,7 +111,9 @@ class _ImageViewerScreenState extends ConsumerState<ImageViewerScreen> {
       });
       frameInfo.image.dispose();
       codec.dispose();
-    } catch (_) {}
+    } catch (e, st) {
+      talker.debug('Failed to probe image dimensions', e, st);
+    }
   }
 
   Future<Uint8List?> _tryFetchBytes() async {

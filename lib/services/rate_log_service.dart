@@ -3,6 +3,7 @@ import 'package:html/parser.dart' show parse;
 import '../config/api_config.dart';
 import '../models/rate_log.dart';
 import 'http_client.dart';
+import 'talker.dart';
 
 class RateLogService {
   RateLogService(this._httpClient);
@@ -127,7 +128,9 @@ class RateLogService {
           );
         }
       }
-    } catch (_) {}
+    } catch (e, st) {
+      talker.debug('Failed to parse rate log block from HTML', e, st);
+    }
 
     if (result.isEmpty && fallbackPid != null && fallbackPid.isNotEmpty) {
       final entries = _parseRatingTable(html);

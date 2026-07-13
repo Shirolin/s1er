@@ -6,6 +6,7 @@ import 'package:drift/drift.dart';
 import '../models/reading_record.dart';
 import 'app_database.dart';
 import 'settings_store.dart';
+import 'talker.dart';
 
 /// Local structured data: in-memory mirrors + Drift write-through.
 class AppLocalData {
@@ -97,7 +98,9 @@ class AppLocalData {
               .where((id) => id.isNotEmpty)
               .toList();
         }
-      } catch (_) {}
+      } catch (e, st) {
+        talker.debug('Failed to decode poll vote JSON for ${row.tid}', e, st);
+      }
     }
     _pollVotesLoaded = true;
   }

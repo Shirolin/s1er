@@ -2,6 +2,8 @@ import 'dart:convert';
 
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import 'talker.dart';
+
 class FormhashNotifier extends Notifier<String> {
   @override
   String build() => '';
@@ -31,7 +33,9 @@ class FormhashExtractor {
       if (variables is! Map) return null;
       final formhash = variables['formhash'];
       if (formhash is String && formhash.isNotEmpty) return formhash;
-    } catch (_) {}
+    } catch (e, st) {
+      talker.debug('Failed to extract formhash from API response', e, st);
+    }
     return null;
   }
 

@@ -94,7 +94,9 @@ class AuthService {
         _isLoggedIn = true;
         return true;
       }
-    } catch (_) {}
+    } catch (e, st) {
+      talker.debug('Session profile check failed, falling back to cookies', e, st);
+    }
 
     // 2. API 验证失败时，检查本地 PersistCookieJar 中是否有 auth Cookie
     //    尝试多个路径以覆盖 Discuz 不同的 Cookie Path 设置
@@ -122,7 +124,9 @@ class AuthService {
           return true;
         }
       }
-    } catch (_) {}
+    } catch (e, st) {
+      talker.debug('Cookie jar session restore failed', e, st);
+    }
     return false;
   }
 }

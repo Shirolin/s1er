@@ -17,6 +17,7 @@ import '../models/rate_form.dart';
 import '../utils/error_handler.dart';
 import 'formhash_service.dart';
 import 'http_client.dart';
+import 'talker.dart';
 
 class LoginRequiredException implements Exception {
   @override
@@ -103,7 +104,9 @@ class ApiService {
     if (data is String) {
       try {
         return jsonDecode(data) as Map<String, dynamic>;
-      } catch (_) {}
+      } catch (e, st) {
+        talker.debug('Failed to decode JSON string response', e, st);
+      }
     }
     return null;
   }
@@ -275,7 +278,9 @@ class ApiService {
     try {
       final url = buildApiUrl(module: ApiConfig.moduleLogin);
       await _httpClient.get(url);
-    } catch (_) {}
+    } catch (e, st) {
+      talker.warning('Guest session warm-up failed', e, st);
+    }
   }
 
   Future<List<Thread>> getThreadList(String fid, {int page = 1}) async {
@@ -334,7 +339,9 @@ class ApiService {
       } else if (initData is String) {
         try {
           initDataMap = jsonDecode(initData) as Map<String, dynamic>;
-        } catch (_) {}
+        } catch (e, st) {
+          talker.debug('Failed to decode login init JSON response', e, st);
+        }
       }
 
       if (initDataMap != null) {
@@ -383,7 +390,9 @@ class ApiService {
       } else if (data is String) {
         try {
           dataMap = jsonDecode(data) as Map<String, dynamic>;
-        } catch (_) {}
+        } catch (e, st) {
+          talker.debug('Failed to decode login response JSON', e, st);
+        }
       }
 
       if (dataMap != null) {
@@ -729,7 +738,9 @@ class ApiService {
         notifyAuthorDefault = notifyAuthor.attributes.containsKey('checked');
         notifyAuthorDisabled = notifyAuthor.attributes.containsKey('disabled');
       }
-    } catch (_) {}
+    } catch (e, st) {
+      talker.debug('Failed to parse rate form HTML', e, st);
+    }
 
     if (scoreOptions.isEmpty) {
       scoreOptions = RateFormOptions.defaultScoreOptions;
@@ -921,7 +932,9 @@ class ApiService {
             );
           }
         }
-      } catch (_) {}
+      } catch (e, st) {
+        talker.debug('Failed to parse profile space extras', e, st);
+      }
 
       return user;
     } catch (_) {
@@ -1286,7 +1299,9 @@ class ApiService {
         _pageCache[cacheKey] = page;
         return page;
       }
-    } catch (_) {}
+    } catch (e, st) {
+      talker.debug('Failed to parse pagination page from HTML', e, st);
+    }
     return 1;
   }
 
@@ -2067,7 +2082,9 @@ class ApiService {
                 .millisecondsSinceEpoch ~/
             1000;
       }
-    } catch (_) {}
+    } catch (e, st) {
+      talker.debug('Failed to parse Chinese date string', e, st);
+    }
     return _parseDateString(normalized);
   }
 

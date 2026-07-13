@@ -7,6 +7,7 @@ import '../../models/reading_record.dart';
 import '../app_database.dart';
 import '../app_local_data.dart';
 import 's1_backup_codec.dart';
+import '../talker.dart';
 
 class S1BackupExportResult {
   S1BackupExportResult({
@@ -111,7 +112,9 @@ class S1BackupService {
       try {
         final decoded = jsonDecode(row.scopeJson);
         if (decoded is List) scope = decoded;
-      } catch (_) {}
+      } catch (e, st) {
+        talker.debug('Failed to decode blacklist scope JSON', e, st);
+      }
       return {
         'uid': row.uid,
         'username': row.username,

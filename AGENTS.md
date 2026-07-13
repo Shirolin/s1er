@@ -193,7 +193,7 @@ flutter run -d chrome --dart-define=TALKER_LOG_LEVEL=all --dart-define=TALKER_MA
 - 跨客户端备份格式：`docs/backup-format-v1.md`（默认仅 L1 JSON ZIP；`native/` L2 可选且未作为默认导出）
 - 黑名单：仅 Drift 表 + 备份字段预留，产品 UI 尚未实现
 - 表情包资源通过脚本从 GitHub 下载（`scripts/download_emoticons.dart`），未内置到仓库
-- test 目录覆盖率仍不足，尤其是 screens 和 widgets 层
+- test 目录覆盖率仍不足，尤其是 widgets 层（核心 Screen 已补 smoke 测试）
 - 技术栈现代化定案与拆分：`docs/plans/2026-07-12-tech-stack-modernization.md`（P0–P6 已落地后以本文件锁定表为准）
 - flutter_riverpod 临时固定为 `3.2.1`：`3.3.2` 存在上游 [#4765](https://github.com/rrousselGit/riverpod/issues/4765) 的 Provider 订阅恢复期 `markNeedsBuild` 回归；升级前必须先通过路由 Provider 链回归测试。
 
@@ -221,7 +221,8 @@ flutter run -d chrome --dart-define=TALKER_LOG_LEVEL=all --dart-define=TALKER_MA
 > 面向后续 Cloud Agent 的持久化环境说明（依赖已由 update script `flutter pub get` 自动刷新，此处只记录非显而易见的启动/运行注意事项）。
 
 - **Flutter SDK**：预装在 `/home/ubuntu/flutter`（stable，Dart 3.12+），已通过 `~/.bashrc` 加入交互式 shell 的 PATH。非交互式脚本请用全路径 `/home/ubuntu/flutter/bin/flutter`。
-- **Lint / Test**：`flutter analyze`（当前 0 issue）与 `flutter test`（250+ 测试）。注意：**首次** `flutter test` 会一次性编译引擎测试产物，可能数分钟无输出（输出被 shell 缓冲），属正常；产物缓存后整套测试约数秒到十几秒。用 `--reporter expanded` 可看到实时进度。
+- **Lint / Test**：`flutter analyze`（须 0 issue）与 `flutter test`（455+ 测试）。注意：**首次** `flutter test` 会一次性编译引擎测试产物，可能数分钟无输出（输出被 shell 缓冲），属正常；产物缓存后整套测试约数秒到十几秒。用 `--reporter expanded` 可看到实时进度。
+- **CI**：GitHub Actions 工作流 `.github/workflows/ci.yml` 在 push/PR 时运行 `flutter analyze`、`flutter test` 与 `dart run scripts/audit_m3.dart --fail-on-error`。
 - **M3 审计**：`dart run scripts/audit_m3.dart --fail-on-error` 扫描 `lib/`（P0/P1）与 `test/`，报告输出至 `reports/m3_audit_<date>.md`。
 - **运行 Web 开发环境（推荐的可测试目标）**：需要同时启动两个进程（标准命令见 `README.md`）：
   1. CORS 代理：`dart run scripts/proxy_server.dart`，监听 `http://localhost:19080`，转发到 `https://stage1st.com/2b/...` 并处理 CORS/Cookie。

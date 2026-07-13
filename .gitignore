@@ -138,6 +138,7 @@ Pods/
 .kilo/
 .vibe/
 .mimocode/
+.codex/
 
 # CORS 代理日志
 proxy_server.log

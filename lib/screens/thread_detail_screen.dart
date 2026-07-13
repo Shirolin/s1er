@@ -374,7 +374,6 @@ class _ThreadDetailScreenState extends ConsumerState<ThreadDetailScreen> {
         displayFloor: displayFloor,
         tid: widget.tid,
         currentPage: state.currentPage,
-        commentCount: state.commentCountByPid[post.pid] ?? 0,
         isHighlighted: post.pid == highlightPid,
         onFilterByAuthor: () {
           ref.read(postProvider(widget.tid).notifier).filterByAuthor(

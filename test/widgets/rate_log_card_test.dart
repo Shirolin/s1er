@@ -1,9 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:s1_app/models/post.dart';
 import 'package:s1_app/models/rate_log.dart';
 import 'package:s1_app/providers/thread_rate_logs_provider.dart';
 import 'package:s1_app/theme/app_theme.dart';
+import 'package:s1_app/widgets/post_item.dart';
 import 'package:s1_app/widgets/rate_log_card.dart';
 
 class _SeededRateLogsNotifier extends ThreadRateLogsNotifier {
@@ -75,6 +77,37 @@ void main() {
 
       expect(find.text('评分 -3'), findsOneWidget);
       expect(find.text('(1人)'), findsOneWidget);
+    });
+
+    testWidgets('PostItem shows rate log when commentcount is zero',
+        (tester) async {
+      const rateLog = PostRateLog(
+        pid: '1',
+        entries: [RateLog(username: 'a', score: 2)],
+        totalScore: 2,
+        participantCount: 1,
+      );
+
+      await tester.pumpWidget(
+        wrap(
+          PostItem(
+            post: Post(
+              pid: '1',
+              message: 'body',
+              author: 'author',
+              authorId: '1',
+              dateline: 0,
+              floor: 1,
+            ),
+            tid: '123',
+          ),
+          tid: '123',
+          seed: {'1': rateLog},
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      expect(find.text('评分 +2'), findsOneWidget);
     });
 
     testWidgets('expands to show entries on tap', (tester) async {

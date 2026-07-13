@@ -25,7 +25,6 @@ class PostItem extends ConsumerStatefulWidget {
     this.onRate,
     this.isHighlighted = false,
     this.currentPage,
-    this.commentCount = 0,
   });
 
   final Post post;
@@ -36,7 +35,6 @@ class PostItem extends ConsumerStatefulWidget {
   final VoidCallback? onRate;
   final bool isHighlighted;
   final int? currentPage;
-  final int commentCount;
 
   @override
   ConsumerState<PostItem> createState() => _PostItemState();
@@ -144,7 +142,7 @@ class _PostItemState extends ConsumerState<PostItem> {
               imagesExpanded: _imagesExpanded,
               onExpandImages: () => setState(() => _imagesExpanded = true),
             ),
-            if (widget.tid != null && widget.commentCount > 0)
+            if (widget.tid != null)
               _PostRateLogSection(
                 tid: widget.tid!,
                 pid: widget.post.pid,

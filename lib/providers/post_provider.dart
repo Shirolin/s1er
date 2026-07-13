@@ -28,7 +28,6 @@ class PostListState {
     this.filterAuthorId,
     this.filterAuthorName,
     this.allowReply = true,
-    this.commentCountByPid = const {},
   });
 
   final List<Post> posts;
@@ -42,7 +41,6 @@ class PostListState {
   final String? filterAuthorId;
   final String? filterAuthorName;
   final bool allowReply;
-  final Map<String, int> commentCountByPid;
 
   bool get isFiltering => filterAuthorId != null;
 
@@ -59,7 +57,6 @@ class PostListState {
     String? filterAuthorName,
     bool clearFilter = false,
     bool? allowReply,
-    Map<String, int>? commentCountByPid,
   }) {
     return PostListState(
       posts: posts ?? this.posts,
@@ -75,7 +72,6 @@ class PostListState {
       filterAuthorName:
           clearFilter ? null : (filterAuthorName ?? this.filterAuthorName),
       allowReply: allowReply ?? this.allowReply,
-      commentCountByPid: commentCountByPid ?? this.commentCountByPid,
     );
   }
 }
@@ -138,18 +134,10 @@ class PostNotifier extends AsyncNotifier<PostListState> {
     final loaded = _buildStateFromResult(result, page);
     if (!ref.mounted) return loaded;
 
-    if (!_shouldFetchRateLogs(result)) {
-      ref.read(threadRateLogsProvider(tid).notifier).clear();
-    } else {
-      await ref.read(threadRateLogsProvider(tid).notifier).ensurePageRateLogs(page);
-    }
+    await ref
+        .read(threadRateLogsProvider(tid).notifier)
+        .ensurePageRateLogs(page);
     return loaded;
-  }
-
-  bool _shouldFetchRateLogs(Map<String, dynamic> result) {
-    final counts = ApiService.parseCommentCount(result);
-    if (counts.isEmpty) return false;
-    return counts.values.any((count) => count > 0);
   }
 
   PostListState _buildStateFromResult(Map<String, dynamic> result, int page) {
@@ -162,7 +150,6 @@ class PostNotifier extends AsyncNotifier<PostListState> {
     final totalPosts = totalReplies + 1;
     final totalPages = (totalPosts / perPage).ceil().clamp(1, 9999);
     final allowReply = thread['allowreply']?.toString() != '0';
-    final commentCountByPid = ApiService.parseCommentCount(result);
 
     return PostListState(
       posts: posts,
@@ -178,7 +165,6 @@ class PostNotifier extends AsyncNotifier<PostListState> {
       filterAuthorId: _filterAuthorId,
       filterAuthorName: _filterAuthorName,
       allowReply: allowReply,
-      commentCountByPid: commentCountByPid,
     );
   }
 

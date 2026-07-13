@@ -108,29 +108,33 @@ void main() {
       expect(adapter.requestedPages, [3]);
     });
 
-    test('skips rate log html fetch when commentcount has no rates', () async {
+    test('fetches rate logs when commentcount is zero', () async {
       adapter.commentCount = {'1': 0};
       container = buildContainer(
         extraOverrides: [
           readingRecordProvider('100').overrideWithValue(null),
         ],
       );
+      final sub = container.listen(postProvider('100'), (_, __) {});
+      addTearDown(sub.close);
 
       await container.read(postProvider('100').future);
 
-      expect(adapter.rateLogRequests, isEmpty);
+      expect(adapter.rateLogRequests, isNotEmpty);
     });
 
-    test('skips rate log html fetch when commentcount is missing', () async {
+    test('fetches rate logs when commentcount is missing', () async {
       container = buildContainer(
         extraOverrides: [
           readingRecordProvider('100').overrideWithValue(null),
         ],
       );
+      final sub = container.listen(postProvider('100'), (_, __) {});
+      addTearDown(sub.close);
 
       await container.read(postProvider('100').future);
 
-      expect(adapter.rateLogRequests, isEmpty);
+      expect(adapter.rateLogRequests, isNotEmpty);
     });
 
     test('auto-fetches rate logs on page load when commentcount > 0', () async {

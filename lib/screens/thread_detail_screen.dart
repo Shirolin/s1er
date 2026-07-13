@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import 'package:flutter/rendering.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import '../config/api_config.dart';
@@ -20,6 +19,7 @@ import '../widgets/rate_dialog.dart';
 import '../widgets/s1_error_view.dart';
 import '../widgets/s1_fab_layout.dart';
 import '../widgets/s1_swipe_pagination.dart';
+import '../utils/scroll_floor.dart';
 import '../utils/s1_snack_bar.dart';
 
 bool shouldRecordReadingProgress(AppSettings settings, AuthState auth) {
@@ -52,6 +52,7 @@ class _ThreadDetailScreenState extends ConsumerState<ThreadDetailScreen> {
   String? _scrollOncePid;
   bool _showScrollToTop = false;
   bool _showScrollDown = false;
+  bool _atPageBottom = false;
   bool _hasRecordedInitialVisit = false;
   bool _pendingInitialNavigation = false;
   bool _b3CorrectionDone = false;
@@ -131,10 +132,17 @@ class _ThreadDetailScreenState extends ConsumerState<ThreadDetailScreen> {
       metrics: metrics,
       currentlyShowing: _showScrollDown,
     );
-    if (showTop != _showScrollToTop || showDown != _showScrollDown) {
+    final atBottom = S1FabLayout.isAtPageBottom(
+      metrics: metrics,
+      currentlyAtBottom: _atPageBottom,
+    );
+    if (showTop != _showScrollToTop ||
+        showDown != _showScrollDown ||
+        atBottom != _atPageBottom) {
       setState(() {
         _showScrollToTop = showTop;
         _showScrollDown = showDown;
+        _atPageBottom = atBottom;
       });
     }
   }
@@ -153,64 +161,11 @@ class _ThreadDetailScreenState extends ConsumerState<ThreadDetailScreen> {
     _postKeys = List.generate(count, (_) => GlobalKey());
   }
 
-  /// 单击「下一楼」：滚动到当前视口下一楼；已是末楼则滚到页底。
+  /// 单击「下一楼」：滚至下一楼靠上展示；已是末楼则滚到页底。
   void _scrollToNextFloor() {
-    if (_postKeys.isEmpty) {
-      _scrollToBottom();
-      return;
-    }
-
-    BuildContext? anchorContext;
-    for (final key in _postKeys) {
-      if (key.currentContext != null) {
-        anchorContext = key.currentContext;
-        break;
-      }
-    }
-    if (anchorContext == null) {
-      _scrollToBottom();
-      return;
-    }
-
-    final scrollable = Scrollable.maybeOf(anchorContext);
-    if (scrollable == null) {
-      _scrollToBottom();
-      return;
-    }
-    final scrollOffset = scrollable.position.pixels;
-    const currentFloorSlop = 48.0;
-
-    var currentIndex = -1;
-    for (var i = 0; i < _postKeys.length; i++) {
-      final ctx = _postKeys[i].currentContext;
-      if (ctx == null) continue;
-      final renderObject = ctx.findRenderObject();
-      if (renderObject == null) continue;
-      final viewport = RenderAbstractViewport.maybeOf(renderObject);
-      if (viewport == null) continue;
-      final itemTop = viewport.getOffsetToReveal(renderObject, 0).offset;
-      if (itemTop <= scrollOffset + currentFloorSlop) {
-        currentIndex = i;
-      }
-    }
-
-    final nextIndex = currentIndex + 1;
-    if (nextIndex >= _postKeys.length) {
-      _scrollToBottom();
-      return;
-    }
-
-    final nextContext = _postKeys[nextIndex].currentContext;
-    if (nextContext == null) {
-      _scrollToBottom();
-      return;
-    }
-
-    Scrollable.ensureVisible(
-      nextContext,
-      alignment: 0.08,
-      duration: const Duration(milliseconds: 300),
-      curve: Curves.easeOutCubic,
+    ScrollFloorNavigator.scrollToNextFloor(
+      postKeys: _postKeys,
+      onAtLastFloor: _scrollToBottom,
     );
   }
 
@@ -219,6 +174,7 @@ class _ThreadDetailScreenState extends ConsumerState<ThreadDetailScreen> {
       _manualPageChange = true;
       _showScrollToTop = false;
       _showScrollDown = false;
+      _atPageBottom = false;
       _postKeys = [];
     });
     await ref.read(postProvider(widget.tid).notifier).goToPage(page);
@@ -453,11 +409,13 @@ class _ThreadDetailScreenState extends ConsumerState<ThreadDetailScreen> {
               ),
               data: (state) {
                 _ensurePostKeys(state.posts.length);
-                final fabPadding = S1FabLayout.contentBottomPadding(
-                  showScrollNavTop: _showScrollToTop,
-                  showScrollNavDown: _showScrollDown,
-                  showPrimary: isLoggedIn && state.allowReply,
-                );
+                final showPrimary = isLoggedIn && state.allowReply;
+                final hasNextPage = state.currentPage < state.totalPages;
+                final showScrollAdvance =
+                    _showScrollDown || (_atPageBottom && hasNextPage);
+                final advanceMode = _atPageBottom && hasNextPage
+                    ? ScrollNavAdvanceMode.nextPage
+                    : ScrollNavAdvanceMode.nextFloor;
                 final scheme = Theme.of(context).colorScheme;
 
                 return Column(
@@ -517,12 +475,16 @@ class _ThreadDetailScreenState extends ConsumerState<ThreadDetailScreen> {
                         fab: S1FabStack(
                           scrollNav: S1ScrollNavConfig(
                             showScrollToTop: _showScrollToTop,
-                            showScrollDown: _showScrollDown,
+                            showScrollAdvance: showScrollAdvance,
+                            advanceMode: advanceMode,
                             onScrollToTop: _scrollToTop,
                             onScrollToNextFloor: _scrollToNextFloor,
                             onScrollToBottom: _scrollToBottom,
+                            onGoToNextPage: hasNextPage
+                                ? () => _goToPage(state.currentPage + 1)
+                                : null,
                           ),
-                          primary: isLoggedIn && state.allowReply
+                          primary: showPrimary
                               ? S1FabItem(
                                   heroTag: 'replyDetail',
                                   icon: Icons.edit_outlined,
@@ -544,8 +506,7 @@ class _ThreadDetailScreenState extends ConsumerState<ThreadDetailScreen> {
                                 ? const Center(child: Text('暂无回复'))
                                 : SingleChildScrollView(
                                     controller: scrollController,
-                                    padding:
-                                        EdgeInsets.only(bottom: fabPadding),
+                                    padding: S1FabLayout.scrollBottomPadding,
                                     child: Column(
                                       children: List.generate(
                                         _detailItemCount(state),

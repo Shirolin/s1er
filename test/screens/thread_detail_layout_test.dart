@@ -41,11 +41,7 @@ void main() {
                       controller: scrollController,
                       child: SingleChildScrollView(
                         controller: scrollController,
-                        padding: EdgeInsets.only(
-                          bottom: S1FabLayout.contentBottomPadding(
-                            showPrimary: true,
-                          ),
-                        ),
+                        padding: S1FabLayout.scrollBottomPadding,
                         child: const Column(
                           children: [
                             _ShortPostCard(label: 'Post 1'),

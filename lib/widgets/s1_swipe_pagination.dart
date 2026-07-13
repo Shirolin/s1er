@@ -143,7 +143,7 @@ class S1SwipePaginationState extends State<S1SwipePagination> {
     );
   }
 
-  /// 将当前页滚动到底部（供「下一楼」双击等外部调用）。
+  /// 将当前页滚动到底部。
   Future<void> scrollToBottom() async {
     if (!_scrollController.hasClients) return;
     await _scrollController.animateTo(

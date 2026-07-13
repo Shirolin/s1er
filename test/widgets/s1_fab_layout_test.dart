@@ -13,7 +13,7 @@ void main() {
           body: S1FabStack(
             scrollNav: const S1ScrollNavConfig(
               showScrollToTop: true,
-              showScrollDown: true,
+              showScrollAdvance: true,
               onScrollToTop: _noop,
               onScrollToNextFloor: _noop,
               onScrollToBottom: _noop,
@@ -36,10 +36,9 @@ void main() {
     expect(find.byType(S1ScrollNavGroup), findsOneWidget);
   });
 
-  testWidgets('S1ScrollNavGroup double tap disambiguates on down button',
+  testWidgets('S1ScrollNavGroup shows forward icon in nextPage mode',
       (tester) async {
-    var taps = 0;
-    var doubleTaps = 0;
+    var nextPageTapped = false;
 
     await tester.pumpWidget(
       MaterialApp(
@@ -48,9 +47,105 @@ void main() {
           body: S1ScrollNavGroup(
             config: S1ScrollNavConfig(
               showScrollToTop: false,
-              showScrollDown: true,
+              showScrollAdvance: true,
+              advanceMode: ScrollNavAdvanceMode.nextPage,
+              onGoToNextPage: () => nextPageTapped = true,
+            ),
+          ),
+        ),
+      ),
+    );
+
+    expect(find.byIcon(Icons.arrow_forward), findsOneWidget);
+    expect(find.byIcon(Icons.arrow_downward), findsNothing);
+
+    await tester.tap(find.byKey(const ValueKey('scroll_nav_forward')));
+    await tester.pump();
+    expect(nextPageTapped, isTrue);
+  });
+
+  testWidgets('S1ScrollNavGroup keeps nav button size for up-only and down-only',
+      (tester) async {
+    Future<Size> navButtonSize(Finder finder) async {
+      final box = tester.renderObject<RenderBox>(finder);
+      return box.size;
+    }
+
+    await tester.pumpWidget(
+      MaterialApp(
+        theme: AppTheme.lightTheme('purple'),
+        home: Scaffold(
+          body: S1ScrollNavGroup(
+            config: const S1ScrollNavConfig(
+              showScrollToTop: true,
+              showScrollAdvance: false,
+              onScrollToTop: _noop,
+            ),
+          ),
+        ),
+      ),
+    );
+    final upOnly = await navButtonSize(find.byKey(const ValueKey('scroll_nav_up')));
+
+    await tester.pumpWidget(
+      MaterialApp(
+        theme: AppTheme.lightTheme('purple'),
+        home: Scaffold(
+          body: S1ScrollNavGroup(
+            config: S1ScrollNavConfig(
+              showScrollToTop: false,
+              showScrollAdvance: true,
+              onScrollToNextFloor: _noop,
+              onScrollToBottom: _noop,
+            ),
+          ),
+        ),
+      ),
+    );
+    final downOnly =
+        await navButtonSize(find.byKey(const ValueKey('scroll_nav_down')));
+
+    await tester.pumpWidget(
+      MaterialApp(
+        theme: AppTheme.lightTheme('purple'),
+        home: Scaffold(
+          body: S1ScrollNavGroup(
+            config: const S1ScrollNavConfig(
+              showScrollToTop: true,
+              showScrollAdvance: true,
+              onScrollToTop: _noop,
+              onScrollToNextFloor: _noop,
+              onScrollToBottom: _noop,
+            ),
+          ),
+        ),
+      ),
+    );
+    final upBoth = await navButtonSize(find.byKey(const ValueKey('scroll_nav_up')));
+    final downBoth =
+        await navButtonSize(find.byKey(const ValueKey('scroll_nav_down')));
+
+    expect(upOnly, const Size(S1FabLayout.navButtonSize, S1FabLayout.navButtonSize));
+    expect(downOnly, const Size(S1FabLayout.navButtonSize, S1FabLayout.navButtonSize));
+    expect(upBoth, upOnly);
+    expect(downBoth, downOnly);
+  });
+
+  testWidgets('S1ScrollNavGroup long press triggers scroll to bottom',
+      (tester) async {
+    var taps = 0;
+    var longPresses = 0;
+
+    await tester.pumpWidget(
+      MaterialApp(
+        theme: AppTheme.lightTheme('purple'),
+        home: Scaffold(
+          body: S1ScrollNavGroup(
+            config: S1ScrollNavConfig(
+              showScrollToTop: false,
+              showScrollAdvance: true,
               onScrollToNextFloor: () => taps++,
-              onScrollToBottom: () => doubleTaps++,
+              onScrollToBottom: () => longPresses++,
             ),
           ),
         ),
@@ -59,55 +154,20 @@ void main() {
 
     final down = find.byKey(const ValueKey('scroll_nav_down'));
     await tester.tap(down);
-    await tester.pump(const Duration(milliseconds: 350));
+    await tester.pump();
     expect(taps, 1);
-    expect(doubleTaps, 0);
+    expect(longPresses, 0);
 
-    await tester.tap(down);
-    await tester.pump(const Duration(milliseconds: 50));
-    await tester.tap(down);
-    await tester.pump(const Duration(milliseconds: 350));
+    await tester.longPress(down);
+    await tester.pumpAndSettle();
     expect(taps, 1);
-    expect(doubleTaps, 1);
+    expect(longPresses, 1);
   });
 
-  test('S1FabLayout.contentBottomPadding grows with visible controls', () {
+  test('S1FabLayout.scrollBottomPadding is fixed edge margin', () {
     expect(
-      S1FabLayout.contentBottomPadding(
-        showScrollNavTop: true,
-        showPrimary: true,
-      ),
-      greaterThan(S1FabLayout.contentBottomPadding(showPrimary: true)),
-    );
-    expect(
-      S1FabLayout.contentBottomPadding(
-        showScrollNavTop: true,
-        showScrollNavDown: true,
-        showPrimary: true,
-      ),
-      greaterThan(
-        S1FabLayout.contentBottomPadding(
-          showScrollNavTop: true,
-          showPrimary: true,
-        ),
-      ),
-    );
-    expect(S1FabLayout.contentBottomPadding(), 16);
-  });
-
-  test('S1FabLayout.scrollNavGroupHeight accounts for one or two buttons', () {
-    expect(
-      S1FabLayout.scrollNavGroupHeight(showScrollDown: true),
-      greaterThan(0),
-    );
-    expect(
-      S1FabLayout.scrollNavGroupHeight(
-        showScrollToTop: true,
-        showScrollDown: true,
-      ),
-      greaterThan(
-        S1FabLayout.scrollNavGroupHeight(showScrollDown: true),
-      ),
+      S1FabLayout.scrollBottomPadding,
+      const EdgeInsets.only(bottom: S1FabLayout.edgeMargin),
     );
   });
 
@@ -211,20 +271,63 @@ void main() {
       );
     });
 
-    test('hides only within 4% viewport of bottom when already showing', () {
-      final remainingHide =
-          viewport * S1FabLayout.scrollDownHideFraction + 1;
+    test('hides only at scroll end when already showing', () {
       expect(
         S1FabLayout.shouldShowScrollDown(
-          metrics: metrics(maxExtent - remainingHide),
+          metrics: metrics(maxExtent - 2),
           currentlyShowing: true,
         ),
         isTrue,
       );
       expect(
         S1FabLayout.shouldShowScrollDown(
-          metrics: metrics(maxExtent - remainingHide + 2),
+          metrics: metrics(maxExtent),
           currentlyShowing: true,
+        ),
+        isFalse,
+      );
+    });
+  });
+
+  group('S1FabLayout.isAtPageBottom', () {
+    const viewport = 600.0;
+    const maxExtent = 2000.0;
+
+    S1ScrollMetrics metrics(double offset) => S1ScrollMetrics(
+          offset: offset,
+          viewportDimension: viewport,
+          maxScrollExtent: maxExtent,
+        );
+
+    test('true when content fits in viewport', () {
+      expect(
+        S1FabLayout.isAtPageBottom(
+          metrics: const S1ScrollMetrics(
+            offset: 0,
+            viewportDimension: viewport,
+            maxScrollExtent: 0,
+          ),
+          currentlyAtBottom: false,
+        ),
+        isTrue,
+      );
+    });
+
+    test('detects page bottom at scroll end with hysteresis', () {
+      expect(
+        S1FabLayout.isAtPageBottom(
+          metrics: metrics(maxExtent),
+          currentlyAtBottom: false,
+        ),
+        isTrue,
+      );
+
+      final awayFromBottom =
+          maxExtent - viewport * S1FabLayout.scrollDownShowFraction - 2;
+      expect(
+        S1FabLayout.isAtPageBottom(
+          metrics: metrics(awayFromBottom),
+          currentlyAtBottom: true,
         ),
         isFalse,
       );

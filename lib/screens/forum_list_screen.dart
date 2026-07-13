@@ -83,10 +83,6 @@ class _ForumListScreenState extends ConsumerState<ForumListScreen> {
           onLogin: () => context.push('/login'),
         ),
         data: (state) {
-          final fabPadding = S1FabLayout.contentBottomPadding(
-            showScrollNavTop: _showScrollToTop,
-          );
-
           return Column(
           children: [
             Expanded(
@@ -94,7 +90,7 @@ class _ForumListScreenState extends ConsumerState<ForumListScreen> {
                 fab: S1FabStack(
                   scrollNav: S1ScrollNavConfig(
                     showScrollToTop: _showScrollToTop,
-                    showScrollDown: false,
+                    showScrollAdvance: false,
                     onScrollToTop: () =>
                         _swipeKey.currentState?.scrollToTop(),
                   ),
@@ -123,7 +119,7 @@ class _ForumListScreenState extends ConsumerState<ForumListScreen> {
                             )
                           : ListView.builder(
                               controller: scrollController,
-                              padding: EdgeInsets.only(bottom: fabPadding),
+                              padding: S1FabLayout.scrollBottomPadding,
                               itemCount: state.threads.length,
                               itemBuilder: (context, index) =>
                                   ThreadCard(thread: state.threads[index]),

@@ -64,6 +64,10 @@ class _RateLogCardState extends ConsumerState<RateLogCard> {
     final needsMoreButton = hasMoreLocally || isServerTruncated;
     final collapsedEntries =
         rateLog.entries.take(_collapsedPreviewCount).toList();
+    final totalEntryCount = rateLog.participantCount > rateLog.entries.length
+        ? rateLog.participantCount
+        : rateLog.entries.length;
+    final collapsedHiddenCount = totalEntryCount - collapsedEntries.length;
 
     return Card(
       margin: const EdgeInsets.only(top: 8),
@@ -85,6 +89,7 @@ class _RateLogCardState extends ConsumerState<RateLogCard> {
                 participantCount: rateLog.participantCount,
                 accentColor: accentColor,
                 expanded: _expanded,
+                hiddenCount: collapsedHiddenCount,
               ),
               if (!_expanded && collapsedEntries.isNotEmpty)
                 Container(
@@ -179,12 +184,14 @@ class _SummaryRow extends StatelessWidget {
     required this.participantCount,
     required this.accentColor,
     required this.expanded,
+    required this.hiddenCount,
   });
 
   final int totalScore;
   final int participantCount;
   final Color accentColor;
   final bool expanded;
+  final int hiddenCount;
 
   @override
   Widget build(BuildContext context) {
@@ -220,10 +227,22 @@ class _SummaryRow extends StatelessWidget {
             ),
           ),
           const Spacer(),
+          if (expanded || hiddenCount > 0) ...[
+            Text(
+              expanded ? '收起' : '查看其余$hiddenCount条',
+              style: textTheme.labelSmall?.copyWith(
+                color: expanded ? scheme.onSurfaceVariant : scheme.primary,
+                fontWeight: FontWeight.w500,
+              ),
+            ),
+            const SizedBox(width: 4),
+          ],
           Icon(
             expanded ? Icons.expand_less : Icons.expand_more,
             size: 20,
-            color: scheme.onSurfaceVariant,
+            color: !expanded && hiddenCount > 0
+                ? scheme.primary
+                : scheme.onSurfaceVariant,
           ),
         ],
       ),

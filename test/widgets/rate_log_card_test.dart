@@ -169,6 +169,38 @@ void main() {
       expect(find.text('user2'), findsOneWidget);
       expect(find.text('user3'), findsOneWidget);
       expect(find.text('user4'), findsNothing);
+      expect(find.text('查看其余1条'), findsOneWidget);
+    });
+
+    testWidgets('shows server-truncated hidden count while collapsed',
+        (tester) async {
+      const rateLog = PostRateLog(
+        pid: '1',
+        entries: [
+          RateLog(username: 'user1', score: 1),
+          RateLog(username: 'user2', score: 1),
+          RateLog(username: 'user3', score: 1),
+        ],
+        totalScore: 17,
+        participantCount: 13,
+      );
+
+      await tester.pumpWidget(
+        wrap(
+          const RateLogCard(tid: '123', pid: '1'),
+          tid: '123',
+          seed: {'1': rateLog},
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      expect(find.text('查看其余10条'), findsOneWidget);
+
+      await tester.tap(find.text('查看其余10条'));
+      await tester.pumpAndSettle();
+
+      expect(find.text('收起'), findsOneWidget);
+      expect(find.text('加载完整评分历史 (共13人)'), findsOneWidget);
     });
 
     testWidgets('expands to show all collapsed preview entries',

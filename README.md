@@ -1,170 +1,225 @@
 # S1 Client
 
-第三方 Stage1st（S1）论坛客户端，基于 Flutter 构建，支持多平台运行。
+[![Flutter](https://img.shields.io/badge/Flutter-%3E%3D3.4-02569B?logo=flutter)](https://flutter.dev/)
+[![Dart](https://img.shields.io/badge/Dart-%3E%3D3.4%20%3C4.0-0175C2?logo=dart)](https://dart.dev/)
+[![License: GPL v3+](https://img.shields.io/badge/License-GPL--3.0--or--later-blue.svg)](LICENSE)
 
-## 功能
+S1 Client 是使用 Flutter 开发的非官方 Stage1st（S1）论坛客户端。项目直接对接 Discuz! Mobile API 与必要的论坛页面接口，采用 Material Design 3，并以同一套代码覆盖 Web、Android、iOS、Windows、macOS 与 Linux 目标。
 
-- **版块浏览** — 查看 S1 论坛的所有版块分类与子版块（未登录可进入入口；实际内容取决于 S1 当前是否开放游客读取）
-- **帖子列表** — 浏览版块内主题，支持分页与页码跳转
-- **帖子详情** — 查看主题回复内容，支持分页
-- **BBCode 渲染** — 解析粗体、斜体、下划线、删除线、颜色、大小、图片、链接、引用、代码、列表、表情等 BBCode 标签
-- **用户登录** — 全平台统一使用 Flutter 表单 + Mobile API 登录，Cookie 由客户端自动持久化
-- **发帖回复** — 登录后可回复主题
-- **用户资料** — 查看个人资料（积分、帖子数、主题数、用户组）
-- **用户空间** — 查看任意用户的主题列表（Tab：「主题」/「回复」），回复列表展示每条回复摘要
-- **深色模式** — 跟随系统主题或手动切换
-- **图片查看** — 点击放大查看帖子内图片，支持手势缩放
-- **表情支持** — 渲染 S1 论坛专用表情
-- **Cookie 持久化** — 登录状态持久保存，下次启动自动恢复
+> [!IMPORTANT]
+> 本项目与 Stage1st 官方无隶属、授权或背书关系。使用客户端时仍须遵守 Stage1st 的服务条款与社区规则；论坛接口、游客权限或页面结构变化都可能影响部分功能。
 
-## 技术栈
+## 项目状态
 
-| 类别 | 技术 |
-|------|------|
-| 框架 | Flutter (>=3.4) |
-| 状态管理 | flutter_riverpod |
-| 路由 | go_router |
-| HTTP 请求 | dio + dio_cookie_manager |
-| Cookie 管理 | cookie_jar (PersistCookieJar) |
-| 本地存储 | drift / drift_flutter |
-| WebView | webview_flutter |
-| 图片加载 | cached_network_image |
-| BBCode 渲染 | flutter_html + 自定义解析器 |
-| 平台支持 | Web / Android / iOS / Windows / macOS / Linux |
+项目仍在积极开发中。目前主要以 Web 和 Android 作为关键路径验收目标；仓库包含其余 Flutter 平台工程，但发布前仍需在对应系统完成签名、构建与真机回归。
 
-## 项目结构
+### 已实现
 
-```
-lib/
-├── config/              # 配置
-│   ├── api_config.dart      # API 地址与模块名
-│   ├── constants.dart       # 应用常量（UA、限速等）
-│   ├── env_config.dart      # --dart-define 环境变量配置
-│   └── resource_domains.dart# 资源域名规则
-├── models/              # 数据模型
-│   ├── emoticon.dart        # 表情映射
-│   ├── forum_category.dart  # 版块分类
-│   ├── post.dart            # 回复
-│   ├── thread.dart          # 主题
-│   ├── user.dart            # 用户
-│   └── user_space_item.dart # 用户空间（主题/回复列表项）
-├── providers/           # Riverpod 状态管理
-│   ├── auth_provider.dart       # 登录状态
-│   ├── forum_list_provider.dart # 版块列表
-│   ├── post_provider.dart       # 帖子内容
-│   ├── settings_provider.dart   # 应用设置
-│   ├── thread_list_provider.dart# 主题列表
-│   └── user_space_provider.dart # 用户空间主题/回复列表
-├── screens/             # 页面
-│   ├── home_screen.dart        # 首页（版块导航）
-│   ├── forum_list_screen.dart  # 版块主题列表
-│   ├── thread_detail_screen.dart# 帖子详情
-│   ├── login_screen.dart       # 登录页
-│   ├── compose_screen.dart     # 发帖/回复
-│   ├── profile_screen.dart     # 个人资料
-│   ├── user_space_screen.dart  # 用户空间（Tab：主题/回复）
-│   └── settings_screen.dart    # 设置页面
-├── services/            # 服务层
-│   ├── http_client.dart        # HTTP 客户端（限速、formhash 注入、Cookie 管理）
-│   ├── api_service.dart        # Discuz! API 封装
-│   ├── auth_service.dart       # 登录/登出/会话管理
-│   └── formhash_service.dart   # Formhash 管理
-├── theme/               # 主题
-│   ├── app_theme.dart          # Material 3 主题
-│   └── colors.dart             # 品牌色
-├── utils/               # 工具
-│   └── bbcode_parser.dart      # BBCode → HTML 解析
-├── widgets/             # 组件
-│   ├── bbcode_renderer.dart    # BBCode 渲染组件
-│   ├── emoticon_widget.dart    # 表情组件
-│   ├── image_viewer.dart       # 图片查看器
-│   ├── post_item.dart          # 回复卡片
-│   ├── quote_block.dart        # 引用块
-│   ├── s1_error_view.dart      # 统一错误视图（维护/登录/通用）
-│   ├── thread_card.dart        # 主题卡片
-│   └── web_avatar.dart         # 跨平台头像组件
-├── app.dart             # 应用入口与路由
-└── main.dart            # 主入口（Drift / AppLocalData、HTTP 客户端初始化）
-```
+- 论坛浏览：版块、主题列表、主题详情、分页、页码跳转与楼层定位
+- 内容渲染：常用 BBCode、引用、代码、列表、链接、S1 表情与帖子图片查看
+- 账号会话：API 表单登录、会话恢复、退出登录与个人资料
+- 互动能力：回复、引用回复、投票、评分，以及主题和版块收藏
+- 消息中心：查看私信与提醒
+- 用户空间：查看用户主题与回复列表
+- 本地体验：阅读历史与进度、回复草稿、投票状态、主题/字号设置
+- Material You：亮色/深色主题、动态取色与多套种子色
+- 图片策略：按网络状态加载、原生磁盘缓存、缓存上限与清理
+- 数据备份：导入/导出 L1 ZIP；不包含 Cookie、密码或图片缓存
+- 诊断能力：Talker 日志与统一的网络、登录、维护状态提示
+
+### 当前限制
+
+- 搜索页目前是占位实现，尚不可用。
+- 黑名单仅有本地数据表和备份字段，尚无产品界面。
+- 游客可见内容取决于 S1 当前开放的接口权限；登录后功能也受账号权限限制。
+- Web 端因浏览器 CORS 限制，开发时必须同时运行仓库内的本地代理。
+- 表情资源不提交到仓库，需要时通过脚本单独下载。
 
 ## 快速开始
 
 ### 环境要求
 
-- Flutter SDK >= 3.4
-- Dart SDK >= 3.4
+- [Flutter SDK](https://docs.flutter.dev/get-started/install) `>=3.4`
+- Dart SDK `>=3.4 <4.0`（随 Flutter 提供）
+- Git
+- Android 开发需要 Android SDK 与 JDK 17
+- iOS / macOS 开发需要 macOS 与对应版本的 Xcode
 
-### 安装与运行
+先确认环境并安装依赖：
 
 ```bash
-# 获取依赖
+git clone https://github.com/Shirolin/s1-app.git
+cd s1-app
+flutter doctor
 flutter pub get
-
-# 运行（桌面/移动端原生）
-flutter run
-
-# 运行（Web 端，需要 CORS 代理）
-./scripts/start_dev.ps1
 ```
 
-### Web 端开发
+### 原生平台
 
-由于 S1 的 Discuz! API 存在 CORS 限制，Web 端开发时需要启动代理服务器：
+连接设备或启动模拟器后：
 
 ```bash
-dart run scripts/proxy_server.dart
+flutter devices
+flutter run -d <device-id>
 ```
 
-代理默认运行在 `http://localhost:19080`（可通过 `--dart-define=PROXY_PORT=` 修改），会自动转发请求到 `https://stage1st.com` 并处理 CORS 头。
+原生端的登录 Cookie 通过 `PersistCookieJar` 持久化，落盘内容使用 AES-256-GCM 加密，密钥保存在系统安全存储中。
 
-启动时会生成或校验访问令牌 `PROXY_AUTH_TOKEN`。若未通过 `--dart-define` 传入，代理会打印随机 token，Flutter Web 需使用相同值：
+### Web
+
+S1 接口不允许浏览器直接跨域访问。请先启动仅监听 `localhost` 的开发代理，再启动 Flutter Web。
+
+Windows 可使用一键脚本：
+
+```powershell
+.\scripts\start_dev.ps1
+```
+
+也可以分别启动两个进程：
+
+```bash
+# 终端 1：CORS / Cookie 代理
+dart run scripts/proxy_server.dart
+
+# 终端 2：Flutter Web
+flutter run -d chrome
+```
+
+无头环境可将第二条命令替换为：
+
+```bash
+flutter run -d web-server --web-port 8080 --web-hostname 0.0.0.0
+```
+
+代理默认监听 `http://localhost:19080`，只接受 `localhost` Origin。开发模式下未设置 `PROXY_AUTH_TOKEN` 时不校验 token；如需显式启用，请在代理与 Flutter 编译参数中使用同一值：
 
 ```bash
 # 终端 1
-dart run scripts/proxy_server.dart
+dart --define=PROXY_AUTH_TOKEN=replace_with_a_random_value run scripts/proxy_server.dart
 
-# 终端 2（将 token 替换为代理启动时打印的值）
-flutter run -d chrome --dart-define=PROXY_AUTH_TOKEN=your_token_here
+# 终端 2
+flutter run -d chrome --dart-define=PROXY_AUTH_TOKEN=replace_with_a_random_value
 ```
 
-## 架构说明
+> [!WARNING]
+> 该代理仅用于本地开发：Cookie 保存在进程内存中，进程结束后即丢失。不要将它暴露到公网，也不要把真实账号、密码、Cookie 或 token 提交到仓库。
 
-### API 对接
+## 配置
 
-S1 Client 对接 Discuz! 的移动端 API（`/api/mobile/index.php`），通过 `module` 参数区分接口类型：
+应用配置通过 `--dart-define` 在编译期注入，定义集中在 `lib/config/env_config.dart`。
 
-| Module | 用途 |
-|--------|------|
-| `forumindex` | 版块列表与用户资料 |
-| `forumdisplay` | 版块内主题列表 |
-| `viewthread` | 帖子详情 |
-| `login` | 用户登录 |
-| `sendpost` | 发送回复 |
+| Key | 默认值 | 说明 |
+|---|---:|---|
+| `TALKER_ENABLED` | `true` | 是否启用 Talker |
+| `TALKER_LOG_LEVEL` | `error` | `error` 仅记录错误，`all` 记录全部请求与响应 |
+| `TALKER_MAX_HISTORY` | `500` | 日志历史条数上限 |
+| `PROXY_PORT` | `19080` | Web 代理端口；代理与 Flutter 端必须一致 |
+| `PROXY_AUTH_TOKEN` | 空 | 非空时启用本地代理 token 校验 |
+| `CONNECT_TIMEOUT` | `20` | 连接超时，单位为秒 |
+| `RECEIVE_TIMEOUT` | `30` | 响应超时，单位为秒 |
 
-### Formhash 机制
+示例：
 
-Discuz! 使用 formhash 进行 CSRF 防护。`S1HttpClient` 在请求拦截器中自动从响应中提取 formhash，并在后续 POST/PUT 请求中自动注入到 URL query 和 body 中。
+```bash
+flutter run -d chrome \
+  --dart-define=TALKER_LOG_LEVEL=all \
+  --dart-define=TALKER_MAX_HISTORY=1000
+```
 
-### 登录流程
+如需修改代理端口，代理进程也必须使用相同的编译期定义：
 
-**全平台**：Flutter Material 表单输入用户名密码 → 获取 formhash → POST Mobile API 登录 → Cookie 自动持久化（Web 走代理 Cookie 罐，原生走加密 PersistCookieJar）。
+```bash
+dart --define=PROXY_PORT=19081 run scripts/proxy_server.dart
+flutter run -d chrome --dart-define=PROXY_PORT=19081
+```
 
-### 速率限制
+代理还会读取 `S1_UPSTREAM_PROXY`，并依次兼容常见的 `HTTPS_PROXY`、`HTTP_PROXY` 与 `ALL_PROXY` 进程环境变量。
 
-`S1HttpClient` 内置了每秒最多 2 个请求的速率限制，避免对 S1 服务器造成压力。
+## 开发与验证
 
-## 开发脚本
+提交前至少运行：
+
+```bash
+dart format --output=none --set-exit-if-changed lib test scripts
+flutter analyze
+flutter test
+dart run scripts/audit_m3.dart --fail-on-error
+```
+
+涉及平台或依赖变更时，再执行对应构建：
+
+```bash
+flutter build web
+flutter build apk --debug
+```
+
+`scripts/test_api.dart` 与 `scripts/test_post.dart` 会访问真实论坛接口，其中发帖测试可能产生真实内容。除非明确了解影响，否则不要把它们加入自动化测试或针对真实账号反复运行。
+
+### 常用脚本
 
 | 脚本 | 用途 |
-|------|------|
-| `scripts/proxy_server.dart` | Web 开发 CORS 代理服务器 |
-| `scripts/start_dev.ps1` | 一键启动代理 + Flutter Web 开发环境 |
-| `scripts/watch_proxy.ps1` | 文件监听 + 代理模式 |
-| `scripts/download_emoticons.dart` | 从 GitHub 下载 S1 论坛表情包 |
-| `scripts/test_api.dart` | API 接口测试 |
-| `scripts/test_post.dart` | 发帖功能测试 |
-| `scripts/audit_m3.dart` | Material Design 3 合规扫描（`--fail-on-error` 供 CI 使用） |
+|---|---|
+| `scripts/start_dev.ps1` | 在 Windows 启动本地代理和 Chrome 开发环境 |
+| `scripts/proxy_server.dart` | Web 开发用 CORS、Cookie 与图片代理 |
+| `scripts/watch_proxy.ps1` | 监听代理文件变更并自动重启 |
+| `scripts/download_emoticons.dart` | 从 GitHub 下载不入库的 S1 表情资源 |
+| `scripts/audit_m3.dart` | 扫描 Material Design 3 合规问题 |
+| `scripts/build.ps1` | Windows 交互式构建菜单；Release 项需要维护者签名配置 |
 
-## 关于 Stage1st
+## 架构
 
-[Stage1st](https://stage1st.com)（简称 S1）是国内知名的 ACG 综合论坛，创立于 2002 年，以游戏、动漫、影视、科技等话题讨论著称。本客户端为非官方第三方实现，通过 Discuz! 移动端 API 进行数据交互。
+项目遵循单向数据流：
+
+```text
+Screen -> Provider -> Service -> S1HttpClient -> Discuz! API
+```
+
+| 目录 | 职责 |
+|---|---|
+| `lib/config/` | API、环境变量与资源域名等静态配置 |
+| `lib/models/` | 不依赖 Flutter 的纯数据模型 |
+| `lib/services/` | HTTP、认证、Drift、本地缓存与备份等外部交互 |
+| `lib/providers/` | Riverpod 状态与服务编排 |
+| `lib/screens/` | 路由页面与页面级组合 |
+| `lib/widgets/` | 可复用 UI 组件 |
+| `lib/theme/` | Material 3 主题、形状、排版与透明度 token |
+| `lib/utils/` | BBCode、导航、格式化等纯工具逻辑 |
+| `test/` | model、service、provider、screen、widget 与审计工具测试 |
+
+关键设计约束：
+
+- 所有外部请求统一经过 `S1HttpClient`，共享超时、每秒最多 2 请求的限速、Cookie 与 formhash 处理。
+- Cookie 不进入 Drift，也不进入 `.s1backup.zip`；密码不做本地持久化。
+- Web 代理只允许受控的 S1 资源域名，并将会话 Cookie 保留在内存中。
+- UI 使用 Material 3 语义色与排版 token，不在页面和组件中硬编码色板或字号。
+
+## 文档
+
+- [备份格式 v1](docs/backup-format-v1.md)
+- [API 参考](docs/api_reference.md)
+- [技术栈现代化方案](docs/plans/2026-07-12-tech-stack-modernization.md)
+
+## 贡献
+
+Issue 与 Pull Request 都欢迎。在开始较大改动前，建议先创建 Issue 对齐范围，避免重复实现。
+
+1. Fork 仓库并从最新 `main` 创建分支。
+2. 只提交与问题直接相关的改动，并为行为变化补充测试。
+3. 运行“开发与验证”中的质量关卡。
+4. Commit 遵循 Angular 格式：`<type>(<scope>): <中文主题>`。
+5. Pull Request 中说明问题、方案、验证结果、平台影响与必要截图。
+
+可用类型：`feat`、`fix`、`docs`、`style`、`refactor`、`perf`、`test`、`chore`；`scope` 必填。
+
+报告缺陷时，请附上复现步骤、预期/实际结果、Flutter 版本、目标平台以及已脱敏的日志。请勿公开提交账号、密码、Cookie 或其他个人信息。安全漏洞应优先通过 GitHub 的私密安全报告渠道告知维护者，不要在公开 Issue 中披露利用细节。
+
+## 许可证
+
+本项目采用 [GNU General Public License v3.0 or later](LICENSE) 发布。分发修改版本时，请同时提供对应源代码、保留许可证与版权声明，并明确标注修改内容。
+
+第三方依赖和外部资源仍分别遵循其各自许可证；Stage1st 名称、内容与相关标识的权利归其权利人所有。
+
+## 致谢
+
+- [Stage1st](https://stage1st.com/) 提供论坛服务与社区内容。
+- Flutter、Dart 及本项目使用的所有开源依赖与贡献者。

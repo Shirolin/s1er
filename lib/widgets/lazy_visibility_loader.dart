@@ -40,7 +40,9 @@ class _LazyVisibilityLoaderState extends State<LazyVisibilityLoader> {
     if (_fired || !mounted) return;
 
     final renderObject = context.findRenderObject();
-    if (renderObject is! RenderBox || !renderObject.hasSize) {
+    if (renderObject is! RenderBox ||
+        !renderObject.hasSize ||
+        !renderObject.attached) {
       WidgetsBinding.instance.addPostFrameCallback(_checkVisibility);
       return;
     }

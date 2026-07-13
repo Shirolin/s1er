@@ -106,10 +106,10 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                   ? const Center(child: Text('搜索'))
                   : tabIndex == 2
                       ? const MessagesScreen()
-                      : const ProfileBody()
+                      : ProfileBody(key: ValueKey('profile-logged-in'))
           : tabIndex == 0
               ? const _ForumTab()
-              : const ProfileBody(),
+              : ProfileBody(key: ValueKey('profile-guest')),
       bottomNavigationBar: NavigationBar(
         selectedIndex: tabIndex,
         onDestinationSelected: (index) {

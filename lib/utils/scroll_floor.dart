@@ -10,10 +10,10 @@ abstract class ScrollFloorNavigator {
   static const Curve scrollCurve = Curves.easeOutCubic;
 
   /// 单击「下一楼」：将下一楼滚至 [revealAlignment]；末楼时调用 [onAtLastFloor]。
-  static void scrollToNextFloor({
+  static Future<void> scrollToNextFloor({
     required List<GlobalKey> postKeys,
     required VoidCallback onAtLastFloor,
-  }) {
+  }) async {
     if (postKeys.isEmpty) {
       onAtLastFloor();
       return;
@@ -72,10 +72,37 @@ abstract class ScrollFloorNavigator {
       return;
     }
 
-    final nextContext = postKeys[nextIndex].currentContext;
+    var nextContext = postKeys[nextIndex].currentContext;
     if (nextContext == null) {
-      onAtLastFloor();
-      return;
+      final currentContext = postKeys[currentIndex].currentContext;
+      final currentRender = currentContext?.findRenderObject();
+      final currentViewport = currentRender == null
+          ? null
+          : RenderAbstractViewport.maybeOf(currentRender);
+      if (currentRender == null || currentViewport == null) return;
+
+      // 下一楼可能尚未被 ListView.builder 构建。根据当前楼层底边估算下一楼
+      // 顶部并滚向该位置，等待布局后再用真实 RenderObject 精确对齐。
+      final currentTop =
+          currentViewport.getOffsetToReveal(currentRender, 0).offset;
+      final estimatedTarget = currentTop +
+          currentRender.paintBounds.height -
+          viewportDimension * revealAlignment;
+
+      for (var pass = 0; pass < 4 && nextContext == null; pass++) {
+        final target = estimatedTarget.clamp(
+          position.minScrollExtent,
+          position.maxScrollExtent,
+        );
+        await position.animateTo(
+          target,
+          duration: scrollDuration,
+          curve: scrollCurve,
+        );
+        await WidgetsBinding.instance.endOfFrame;
+        nextContext = postKeys[nextIndex].currentContext;
+      }
+      if (nextContext == null) return;
     }
 
     final nextRender = nextContext.findRenderObject();

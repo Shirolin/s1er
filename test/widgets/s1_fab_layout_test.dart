@@ -171,6 +171,14 @@ void main() {
     );
   });
 
+  test('S1FabLayout.threadDetailScrollBottomPadding matches max FAB stack', () {
+    expect(S1FabLayout.threadDetailMaxFabStackHeight, 161);
+    expect(
+      S1FabLayout.threadDetailScrollBottomPadding,
+      const EdgeInsets.only(bottom: 161),
+    );
+  });
+
   group('S1FabLayout.shouldShowScrollToTop', () {
     const viewport = 600.0;
     const showAt = viewport * S1FabLayout.scrollToTopShowFraction + 1;

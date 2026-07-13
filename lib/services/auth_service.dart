@@ -34,7 +34,7 @@ class AuthService {
       if (error == null) {
         _isLoggedIn = true;
         _currentUser = User(uid: '', username: username);
-        unawaited(_fetchProfile());
+        await _fetchProfile();
         return null;
       }
       return error;

@@ -9,6 +9,9 @@ import 'package:s1_app/providers/messages_segment_provider.dart';
 import 'package:s1_app/providers/settings_provider.dart';
 import 'package:s1_app/screens/home_screen.dart';
 import 'package:s1_app/theme/app_theme.dart';
+import 'package:drift/native.dart';
+import 'package:s1_app/services/app_database.dart';
+import 'package:s1_app/services/app_local_data.dart';
 import '../helpers/messages_test_helpers.dart';
 
 void main() {
@@ -110,6 +113,63 @@ void main() {
     expect(find.text('JOJOROY'), findsOneWidget);
     expect(messagesBrowserUrl(1), contains('do=notice'));
   });
+
+  testWidgets('profile tab refreshes when auth loads full user after login',
+      (tester) async {
+    late _MutableAuthNotifier authNotifier;
+    final db = AppDatabase.forTesting(NativeDatabase.memory());
+    final local = AppLocalData(db);
+    await local.loadEssentials();
+    addTearDown(db.close);
+
+    await tester.pumpWidget(
+      ProviderScope(
+        overrides: [
+          localDataProvider.overrideWithValue(local),
+          authStateProvider.overrideWith(() {
+            authNotifier = _MutableAuthNotifier(
+              AuthState(isLoggedIn: true, username: 'Shirolin'),
+            );
+            return authNotifier;
+          }),
+          forumListProvider.overrideWith(_GuestForumListNotifier.new),
+          settingsProvider.overrideWith(
+            () => SettingsNotifier(initial: const AppSettings()),
+          ),
+          ...messagesProviderOverrides(),
+        ],
+        child: MaterialApp(
+          theme: AppTheme.lightTheme('purple'),
+          home: const HomeScreen(),
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.text('我的'));
+    await tester.pumpAndSettle();
+
+    expect(find.text('积分'), findsNothing);
+
+    authNotifier.setState(
+      AuthState(
+        isLoggedIn: true,
+        username: 'Shirolin',
+        user: User(
+          uid: '426519',
+          username: 'Shirolin',
+          credits: 1200,
+          posts: 42,
+          threads: 7,
+          friends: 3,
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    expect(find.text('积分'), findsOneWidget);
+    expect(find.text('帖子'), findsOneWidget);
+  });
 }
 
 class _GuestForumListNotifier extends ForumListNotifier {
@@ -165,4 +225,18 @@ class _LoggedInAuthNotifier extends AuthNotifier {
           avatar: '',
         ),
       );
+}
+
+class _MutableAuthNotifier extends AuthNotifier {
+  _MutableAuthNotifier(this._state);
+
+  AuthState _state;
+
+  @override
+  AuthState build() => _state;
+
+  void setState(AuthState next) {
+    _state = next;
+    state = next;
+  }
 }

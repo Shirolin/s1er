@@ -566,7 +566,8 @@ class _ThreadDetailScreenState extends ConsumerState<ThreadDetailScreen> {
                                 ? const Center(child: Text('暂无回复'))
                                 : ListView.builder(
                                     controller: scrollController,
-                                    padding: S1FabLayout.scrollBottomPadding,
+                                    padding:
+                                        S1FabLayout.threadDetailScrollBottomPadding,
                                     itemCount: _detailItemCount(state),
                                     itemBuilder: (context, index) =>
                                         _buildDetailItem(

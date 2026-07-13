@@ -45,7 +45,7 @@ Widget _buildLazyListHarness({required int itemCount}) {
           controller: scrollController,
           child: ListView.builder(
             controller: scrollController,
-            padding: S1FabLayout.scrollBottomPadding,
+            padding: S1FabLayout.threadDetailScrollBottomPadding,
             itemCount: itemCount,
             itemBuilder: (context, index) => _CountedPostCard(
               label: 'Post ${index + 1}',

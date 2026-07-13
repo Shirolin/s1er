@@ -6,15 +6,31 @@ import 'package:s1_app/widgets/s1_fab_layout.dart';
 import 'package:s1_app/widgets/s1_swipe_pagination.dart';
 
 int? _harnessRequestedPage;
+
+/// 与帖子详情一致的 FAB 显隐状态（ValueNotifier，不重建列表）。
+class _ScrollFabVisibility {
+  const _ScrollFabVisibility({
+    this.showScrollToTop = false,
+    this.showScrollDown = false,
+    this.atPageBottom = false,
+  });
+
+  final bool showScrollToTop;
+  final bool showScrollDown;
+  final bool atPageBottom;
+}
+
 /// 复现帖子详情「下一楼」导航：单击下一楼、长按页底。
 class _NextFloorHarness extends StatefulWidget {
   const _NextFloorHarness({
     this.shortPosts = false,
+    this.tallPostHeight = 280,
     this.currentPage = 1,
     this.totalPages = 1,
   });
 
   final bool shortPosts;
+  final double tallPostHeight;
   final int currentPage;
   final int totalPages;
 
@@ -26,11 +42,35 @@ class _NextFloorHarnessState extends State<_NextFloorHarness> {
   final _swipeKey = GlobalKey<S1SwipePaginationState>();
   late final List<GlobalKey> _postKeys =
       List.generate(4, (_) => GlobalKey());
-  bool _showScrollDown = true;
-  bool _atPageBottom = false;
+  final _scrollFabVisibility =
+      ValueNotifier(const _ScrollFabVisibility(showScrollDown: true));
+
+  @override
+  void dispose() {
+    _scrollFabVisibility.dispose();
+    super.dispose();
+  }
 
   void _scrollToBottom() {
     _swipeKey.currentState?.scrollToBottom();
+  }
+
+  void _onScrollMetricsChanged(S1ScrollMetrics metrics) {
+    final fab = _scrollFabVisibility.value;
+    final showDown = S1FabLayout.shouldShowScrollDown(
+      metrics: metrics,
+      currentlyShowing: fab.showScrollDown,
+    );
+    final atBottom = S1FabLayout.isAtPageBottom(
+      metrics: metrics,
+      currentlyAtBottom: fab.atPageBottom,
+    );
+    if (showDown != fab.showScrollDown || atBottom != fab.atPageBottom) {
+      _scrollFabVisibility.value = _ScrollFabVisibility(
+        showScrollDown: showDown,
+        atPageBottom: atBottom,
+      );
+    }
   }
 
   void _scrollToNextFloor() {
@@ -48,11 +88,6 @@ class _NextFloorHarnessState extends State<_NextFloorHarness> {
   @override
   Widget build(BuildContext context) {
     final hasNextPage = widget.currentPage < widget.totalPages;
-    final showScrollAdvance =
-        _showScrollDown || (_atPageBottom && hasNextPage);
-    final advanceMode = _atPageBottom && hasNextPage
-        ? ScrollNavAdvanceMode.nextPage
-        : ScrollNavAdvanceMode.nextFloor;
 
     return Scaffold(
       appBar: AppBar(elevation: 0, title: const Text('Thread')),
@@ -60,17 +95,27 @@ class _NextFloorHarnessState extends State<_NextFloorHarness> {
         children: [
           Expanded(
             child: S1ContentFabOverlay(
-              fab: S1FabStack(
-                scrollNav: S1ScrollNavConfig(
-                  showScrollToTop: false,
-                  showScrollAdvance: showScrollAdvance,
-                  advanceMode: advanceMode,
-                  onScrollToNextFloor: _scrollToNextFloor,
-                  onScrollToBottom: _scrollToBottom,
-                  onGoToNextPage: hasNextPage
-                      ? () => _goToPage(widget.currentPage + 1)
-                      : null,
-                ),
+              fab: ValueListenableBuilder<_ScrollFabVisibility>(
+                valueListenable: _scrollFabVisibility,
+                builder: (context, fab, _) {
+                  final showScrollAdvance =
+                      fab.showScrollDown || (fab.atPageBottom && hasNextPage);
+                  final advanceMode = fab.atPageBottom && hasNextPage
+                      ? ScrollNavAdvanceMode.nextPage
+                      : ScrollNavAdvanceMode.nextFloor;
+                  return S1FabStack(
+                    scrollNav: S1ScrollNavConfig(
+                      showScrollToTop: fab.showScrollToTop,
+                      showScrollAdvance: showScrollAdvance,
+                      advanceMode: advanceMode,
+                      onScrollToNextFloor: _scrollToNextFloor,
+                      onScrollToBottom: _scrollToBottom,
+                      onGoToNextPage: hasNextPage
+                          ? () => _goToPage(widget.currentPage + 1)
+                          : null,
+                    ),
+                  );
+                },
               ),
               child: S1SwipePagination(
                 key: _swipeKey,
@@ -79,27 +124,12 @@ class _NextFloorHarnessState extends State<_NextFloorHarness> {
                 onPageChanged: (page) async {
                   _harnessRequestedPage = page;
                 },
-                onScrollMetricsChanged: (metrics) {
-                  final showDown = S1FabLayout.shouldShowScrollDown(
-                    metrics: metrics,
-                    currentlyShowing: _showScrollDown,
-                  );
-                  final atBottom = S1FabLayout.isAtPageBottom(
-                    metrics: metrics,
-                    currentlyAtBottom: _atPageBottom,
-                  );
-                  if (showDown != _showScrollDown || atBottom != _atPageBottom) {
-                    setState(() {
-                      _showScrollDown = showDown;
-                      _atPageBottom = atBottom;
-                    });
-                  }
-                },
+                onScrollMetricsChanged: _onScrollMetricsChanged,
                 pageBuilder: (context, scrollController) => Scrollbar(
                   controller: scrollController,
                   child: ListView.builder(
                     controller: scrollController,
-                    padding: S1FabLayout.scrollBottomPadding,
+                    padding: S1FabLayout.threadDetailScrollBottomPadding,
                     itemCount: _postKeys.length,
                     itemBuilder: (context, i) => widget.shortPosts
                         ? _ShortPostCard(
@@ -109,6 +139,7 @@ class _NextFloorHarnessState extends State<_NextFloorHarness> {
                         : _TallPostCard(
                             key: _postKeys[i],
                             label: 'Post ${i + 1}',
+                            height: widget.tallPostHeight,
                           ),
                   ),
                 ),
@@ -123,16 +154,21 @@ class _NextFloorHarnessState extends State<_NextFloorHarness> {
 }
 
 class _TallPostCard extends StatelessWidget {
-  const _TallPostCard({super.key, required this.label});
+  const _TallPostCard({
+    super.key,
+    required this.label,
+    required this.height,
+  });
 
   final String label;
+  final double height;
 
   @override
   Widget build(BuildContext context) {
     return Card(
       margin: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
       child: SizedBox(
-        height: 280,
+        height: height,
         child: Align(
           alignment: Alignment.topLeft,
           child: Padding(
@@ -227,6 +263,28 @@ void main() {
     expect(post2TopAfter, lessThan(post2TopBefore));
   });
 
+  testWidgets('single tap builds and scrolls to an unbuilt next floor',
+      (tester) async {
+    await tester.pumpWidget(
+      MaterialApp(
+        theme: AppTheme.lightTheme('purple'),
+        home: const _NextFloorHarness(tallPostHeight: 1200),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    final controller = tester
+        .widget<ListView>(find.byType(ListView))
+        .controller!;
+    expect(find.text('Post 2'), findsNothing);
+
+    await tester.tap(find.byKey(const ValueKey('scroll_nav_down')));
+    await tester.pumpAndSettle();
+
+    expect(find.text('Post 2'), findsOneWidget);
+    expect(controller.offset, lessThan(controller.position.maxScrollExtent));
+  });
+
   testWidgets('long press scrolls to page bottom', (tester) async {
     await tester.pumpWidget(
       MaterialApp(
@@ -244,6 +302,30 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(controller.offset, controller.position.maxScrollExtent);
+  });
+
+  testWidgets('long press from top reaches bottom with lazy tall posts',
+      (tester) async {
+    await tester.pumpWidget(
+      MaterialApp(
+        theme: AppTheme.lightTheme('purple'),
+        home: const _NextFloorHarness(),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    final controller = tester
+        .widget<ListView>(find.byType(ListView))
+        .controller!;
+    expect(controller.offset, 0);
+
+    await tester.longPress(find.byKey(const ValueKey('scroll_nav_down')));
+    await tester.pumpAndSettle();
+
+    expect(
+      controller.offset,
+      closeTo(controller.position.maxScrollExtent, 0.5),
+    );
   });
 
   testWidgets('at page bottom shows forward and requests next page',
@@ -272,5 +354,67 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(_harnessRequestedPage, 2);
+  });
+
+  testWidgets('long press on forward still scrolls to page bottom', (tester) async {
+    _harnessRequestedPage = null;
+
+    await tester.pumpWidget(
+      MaterialApp(
+        theme: AppTheme.lightTheme('purple'),
+        home: const _NextFloorHarness(
+          shortPosts: true,
+          currentPage: 1,
+          totalPages: 3,
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    final controller = tester
+        .widget<ListView>(find.byType(ListView))
+        .controller!;
+
+    await tester.longPress(find.byKey(const ValueKey('scroll_nav_down')));
+    await tester.pumpAndSettle();
+
+    expect(find.byKey(const ValueKey('scroll_nav_forward')), findsOneWidget);
+    expect(controller.offset, controller.position.maxScrollExtent);
+
+    await tester.longPress(find.byKey(const ValueKey('scroll_nav_forward')));
+    await tester.pumpAndSettle();
+
+    expect(
+      controller.offset,
+      closeTo(controller.position.maxScrollExtent, 0.5),
+    );
+    expect(_harnessRequestedPage, isNull);
+  });
+
+  testWidgets('FAB at-bottom update does not shift scroll offset', (tester) async {
+    await tester.pumpWidget(
+      MaterialApp(
+        theme: AppTheme.lightTheme('purple'),
+        home: const _NextFloorHarness(
+          shortPosts: true,
+          currentPage: 1,
+          totalPages: 3,
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    final controller = tester
+        .widget<ListView>(find.byType(ListView))
+        .controller!;
+    await tester.longPress(find.byKey(const ValueKey('scroll_nav_down')));
+    await tester.pumpAndSettle();
+
+    final offsetAtBottom = controller.offset;
+    expect(offsetAtBottom, controller.position.maxScrollExtent);
+    expect(find.byKey(const ValueKey('scroll_nav_forward')), findsOneWidget);
+
+    await tester.pump();
+    expect(controller.offset, offsetAtBottom);
   });
 }

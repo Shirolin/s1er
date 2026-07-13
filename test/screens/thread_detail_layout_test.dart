@@ -41,7 +41,7 @@ void main() {
                       controller: scrollController,
                       child: ListView.builder(
                         controller: scrollController,
-                        padding: S1FabLayout.scrollBottomPadding,
+                        padding: S1FabLayout.threadDetailScrollBottomPadding,
                         itemCount: 3,
                         itemBuilder: (context, index) => _ShortPostCard(
                           label: 'Post ${index + 1}',

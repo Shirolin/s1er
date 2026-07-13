@@ -144,13 +144,36 @@ class S1SwipePaginationState extends State<S1SwipePagination> {
   }
 
   /// 将当前页滚动到底部。
+  ///
+  /// [ListView.builder] 等在滚动中会逐步构建子项，[maxScrollExtent] 可能在
+  /// 动画过程中增长；单次 [animateTo] 会停在过期的 extent，故循环校正。
   Future<void> scrollToBottom() async {
     if (!_scrollController.hasClients) return;
-    await _scrollController.animateTo(
-      _scrollController.position.maxScrollExtent,
-      duration: const Duration(milliseconds: 300),
-      curve: Curves.easeOutCubic,
-    );
+
+    const settleTolerance = 0.5;
+    const maxPasses = 4;
+    const duration = Duration(milliseconds: 300);
+
+    for (var pass = 0; pass < maxPasses; pass++) {
+      if (!_scrollController.hasClients) return;
+      final position = _scrollController.position;
+      final target = position.maxScrollExtent;
+      if ((target - position.pixels).abs() <= settleTolerance) return;
+
+      await _scrollController.animateTo(
+        target,
+        duration: duration,
+        curve: Curves.easeOutCubic,
+      );
+      await WidgetsBinding.instance.endOfFrame;
+    }
+
+    if (_scrollController.hasClients) {
+      final max = _scrollController.position.maxScrollExtent;
+      if (_scrollController.offset < max - settleTolerance) {
+        _scrollController.jumpTo(max);
+      }
+    }
   }
 
   bool get _canSwipeToPrevious => widget.currentPage > 1;

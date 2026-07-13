@@ -49,8 +49,12 @@ class AuthNotifier extends Notifier<AuthState> {
 
   Future<void> _init() async {
     final ok = await _authService.checkSession();
+    if (!ref.mounted) return;
     if (ok) {
       _syncStateFromService();
+      if (state.user == null || state.user!.uid.isEmpty) {
+        await refreshProfile();
+      }
     }
   }
 
@@ -72,22 +76,12 @@ class AuthNotifier extends Notifier<AuthState> {
     final error = await _authService.login(username, password);
     if (error == null) {
       _syncStateFromService();
-      await _waitForProfile();
+      if (state.user == null || state.user!.uid.isEmpty) {
+        await refreshProfile();
+      }
       ref.invalidate(forumListProvider);
     }
     return error;
-  }
-
-  Future<void> _waitForProfile() async {
-    for (var i = 0; i < 20; i++) {
-      final user = _authService.currentUser;
-      if (user != null && user.uid.isNotEmpty) {
-        final next = state.copyWith(user: user, username: user.username);
-        if (next != state) state = next;
-        return;
-      }
-      await Future<void>.delayed(const Duration(milliseconds: 100));
-    }
   }
 
   Future<void> refreshProfile() async {

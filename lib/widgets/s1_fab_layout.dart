@@ -19,6 +19,12 @@ class S1ScrollMetrics {
 ///
 /// FAB 叠在 [Expanded] 内容区右下角，物理上位于分页栏上方，
 /// 不使用 Scaffold.floatingActionButton，因此 SnackBar 不会顶起按钮。
+///
+/// **滚动与底部留白护栏**（违反会导致回弹 / 图标与位置不一致）：
+/// 1. Padding 固定：构建时确定，不随 FAB 显隐或滚动 metrics 变化。
+/// 2. 帖子详情始终按 [threadDetailMaxFabStackHeight] 预留（含回复 FAB 槽位）。
+/// 3. 单一滚动终点：手动滑到底 / 长按 ↓ 一律 `maxScrollExtent`。
+/// 4. FAB 判定只读滚动：显隐只驱动 [ValueNotifier] 等局部刷新，禁止重建列表。
 abstract class S1FabLayout {
   /// 滚动超过视口高度的该比例后显示「返回顶部」。
   static const double scrollToTopShowFraction = 0.15;
@@ -57,9 +63,40 @@ abstract class S1FabLayout {
 
   static double get snackBarClearance => paginationBarHeight + snackBarGap;
 
-  /// 可滚动内容区底部固定留白（FAB 叠在上方，与栈高无关）。
+  /// 滚动导航组高度（0 表示不显示）。仅用于几何常量计算。
+  static double scrollNavGroupHeight({
+    bool showScrollToTop = false,
+    bool showScrollDown = false,
+  }) {
+    if (!showScrollToTop && !showScrollDown) return 0;
+
+    var count = 0;
+    if (showScrollToTop) count++;
+    if (showScrollDown) count++;
+
+    var height = navGroupPadding * 2 + count * navButtonSize;
+    if (count > 1) {
+      height += navGroupInnerGap + 1;
+    }
+    return height;
+  }
+
+  /// 帖子详情 FAB 纵列最大高度（↑+↓ 同组 + 主 FAB，稳定常量）。
+  static double get threadDetailMaxFabStackHeight {
+    final nav = scrollNavGroupHeight(
+      showScrollToTop: true,
+      showScrollDown: true,
+    );
+    return nav + stackGap + regularFabSize;
+  }
+
+  /// 轻量场景底部留白（如版块列表，仅 ↑）。
   static const EdgeInsets scrollBottomPadding =
       EdgeInsets.only(bottom: edgeMargin);
+
+  /// 帖子详情底部留白（固定最大 FAB 栈高，与登录/显隐无关）。
+  static final EdgeInsets threadDetailScrollBottomPadding =
+      EdgeInsets.only(bottom: threadDetailMaxFabStackHeight);
 
   /// 距滚动末尾还剩多少。
   static double _remainingToEnd(S1ScrollMetrics metrics) =>
@@ -191,13 +228,13 @@ class S1ScrollNavGroup extends StatelessWidget {
         _NavActionButton(
           key: ValueKey(isNextPage ? 'scroll_nav_forward' : 'scroll_nav_down'),
           icon: isNextPage ? Icons.arrow_forward : Icons.arrow_downward,
-          tooltip: isNextPage ? '下一页' : '下一楼（长按到底部）',
+          tooltip: isNextPage ? '下一页（长按到底部）' : '下一楼（长按到底部）',
           semanticLabel: isNextPage ? '下一页' : '下一楼',
-          semanticHint: isNextPage ? null : '长按跳至页底',
+          semanticHint: '长按跳至页底',
           onPressed: isNextPage
               ? config.onGoToNextPage!
               : config.onScrollToNextFloor!,
-          onLongPress: isNextPage ? null : config.onScrollToBottom,
+          onLongPress: config.onScrollToBottom,
         ),
       );
     }

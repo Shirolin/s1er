@@ -51,6 +51,20 @@ class ProfileBody extends ConsumerStatefulWidget {
 class _ProfileBodyState extends ConsumerState<ProfileBody> {
   bool _isLoggingOut = false;
 
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addPostFrameCallback((_) => _ensureProfileLoaded());
+  }
+
+  Future<void> _ensureProfileLoaded() async {
+    if (!mounted) return;
+    final auth = ref.read(authStateProvider);
+    if (!auth.isLoggedIn) return;
+    if (auth.user != null && auth.user!.uid.isNotEmpty) return;
+    await ref.read(authStateProvider.notifier).refreshProfile();
+  }
+
   Future<void> _handleLogout() async {
     final confirmed = await showS1ConfirmDialog(
       context,

@@ -4,31 +4,31 @@ import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:s1_app/utils/scroll_floor.dart';
 
+import '../helpers/test_theme.dart';
+
 Widget buildScrollHarness({
   required List<GlobalKey> postKeys,
   required ScrollController controller,
   required double postHeight,
   double viewportHeight = 400,
 }) {
-  return MaterialApp(
-    home: Scaffold(
-      body: SizedBox(
-        height: viewportHeight,
-        child: SingleChildScrollView(
-          controller: controller,
-          child: Column(
-            children: [
-              for (var i = 0; i < postKeys.length; i++)
-                SizedBox(
-                  key: postKeys[i],
-                  height: postHeight,
-                  child: Align(
-                    alignment: Alignment.topLeft,
-                    child: Text('Post ${i + 1}'),
-                  ),
+  return wrapWithAppTheme(
+    SizedBox(
+      height: viewportHeight,
+      child: SingleChildScrollView(
+        controller: controller,
+        child: Column(
+          children: [
+            for (var i = 0; i < postKeys.length; i++)
+              SizedBox(
+                key: postKeys[i],
+                height: postHeight,
+                child: Align(
+                  alignment: Alignment.topLeft,
+                  child: Text('Post ${i + 1}'),
                 ),
-            ],
-          ),
+              ),
+          ],
         ),
       ),
     ),

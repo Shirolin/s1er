@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:s1_app/utils/scroll_motion.dart';
 
+import '../helpers/test_theme.dart';
+
 void main() {
   test('durationForDelta scales with distance and caps', () {
     final short = S1ScrollMotion.durationForDelta(80, 600);
@@ -18,17 +20,15 @@ void main() {
     addTearDown(controller.dispose);
 
     await tester.pumpWidget(
-      MaterialApp(
-        home: Scaffold(
-          body: SizedBox(
-            height: 300,
-            child: ListView.builder(
-              controller: controller,
-              itemCount: 30,
-              itemBuilder: (context, index) => SizedBox(
-                height: 120,
-                child: Text('Item $index'),
-              ),
+      wrapWithAppTheme(
+        SizedBox(
+          height: 300,
+          child: ListView.builder(
+            controller: controller,
+            itemCount: 30,
+            itemBuilder: (context, index) => SizedBox(
+              height: 120,
+              child: Text('Item $index'),
             ),
           ),
         ),

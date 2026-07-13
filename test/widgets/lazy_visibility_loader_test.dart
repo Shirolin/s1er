@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/rendering.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:s1_app/theme/app_theme.dart';
 import 'package:s1_app/widgets/lazy_visibility_loader.dart';
@@ -16,7 +17,7 @@ void main() {
         home: Scaffold(
           body: ListView(
             controller: controller,
-            cacheExtent: 2000,
+            scrollCacheExtent: const ScrollCacheExtent.pixels(2000),
             children: [
               const SizedBox(height: 1200),
               LazyVisibilityLoader(

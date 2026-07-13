@@ -21,6 +21,7 @@ class LazyVisibilityLoader extends StatefulWidget {
 class _LazyVisibilityLoaderState extends State<LazyVisibilityLoader> {
   bool _fired = false;
   bool _checkScheduled = false;
+  ScrollPosition? _scrollPosition;
 
   @override
   void initState() {
@@ -28,10 +29,32 @@ class _LazyVisibilityLoaderState extends State<LazyVisibilityLoader> {
     _scheduleCheck();
   }
 
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    if (_fired) {
+      _scrollPosition?.removeListener(_scheduleCheck);
+      _scrollPosition = null;
+      return;
+    }
+    final nextPosition = Scrollable.maybeOf(context)?.position;
+    if (identical(nextPosition, _scrollPosition)) return;
+    _scrollPosition?.removeListener(_scheduleCheck);
+    _scrollPosition = nextPosition;
+    _scrollPosition?.addListener(_scheduleCheck);
+    _scheduleCheck();
+  }
+
+  @override
+  void dispose() {
+    _scrollPosition?.removeListener(_scheduleCheck);
+    super.dispose();
+  }
+
   void _scheduleCheck() {
     if (_fired || !mounted || _checkScheduled) return;
     _checkScheduled = true;
-    SchedulerBinding.instance.scheduleFrameCallback((_) {
+    SchedulerBinding.instance.addPostFrameCallback((_) {
       _checkScheduled = false;
       _checkVisibility();
     });
@@ -62,17 +85,13 @@ class _LazyVisibilityLoaderState extends State<LazyVisibilityLoader> {
     if (!_intersectsViewport(renderObject)) return;
 
     _fired = true;
+    _scrollPosition?.removeListener(_scheduleCheck);
+    _scrollPosition = null;
     widget.onVisible();
   }
 
   @override
   Widget build(BuildContext context) {
-    return NotificationListener<ScrollNotification>(
-      onNotification: (_) {
-        _scheduleCheck();
-        return false;
-      },
-      child: widget.child,
-    );
+    return widget.child;
   }
 }

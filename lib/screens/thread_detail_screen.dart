@@ -32,6 +32,19 @@ bool shouldRecordReadingProgress(AppSettings settings, AuthState auth) {
   return true;
 }
 
+/// 滚动 FAB 显隐状态（用 [ValueNotifier] 更新，避免重建列表）。
+class _ScrollFabVisibility {
+  const _ScrollFabVisibility({
+    this.showScrollToTop = false,
+    this.showScrollDown = false,
+    this.atPageBottom = false,
+  });
+
+  final bool showScrollToTop;
+  final bool showScrollDown;
+  final bool atPageBottom;
+}
+
 class ThreadDetailScreen extends ConsumerStatefulWidget {
   const ThreadDetailScreen({
     super.key,
@@ -49,10 +62,9 @@ class ThreadDetailScreen extends ConsumerStatefulWidget {
 
 class _ThreadDetailScreenState extends ConsumerState<ThreadDetailScreen> {
   final _swipeKey = GlobalKey<S1SwipePaginationState>();
+  final _scrollFabVisibility =
+      ValueNotifier(const _ScrollFabVisibility());
   String? _scrollOncePid;
-  bool _showScrollToTop = false;
-  bool _showScrollDown = false;
-  bool _atPageBottom = false;
   bool _hasRecordedInitialVisit = false;
   bool _pendingInitialNavigation = false;
   bool _b3CorrectionDone = false;
@@ -62,6 +74,12 @@ class _ThreadDetailScreenState extends ConsumerState<ThreadDetailScreen> {
 
   /// 当前页各楼 PostItem 的 key（不含 PollCard），翻页时重建。
   List<GlobalKey> _postKeys = [];
+
+  @override
+  void dispose() {
+    _scrollFabVisibility.dispose();
+    super.dispose();
+  }
 
   /// 记录阅读进度：写库 + 刷新历史列表（使列表卡片/历史页/资料计数实时更新）。
   /// readCount 只在本次进入详情页首帧 +1（isNewVisit 由 _hasRecordedInitialVisit 守卫）。
@@ -124,26 +142,27 @@ class _ThreadDetailScreenState extends ConsumerState<ThreadDetailScreen> {
   }
 
   void _onScrollMetricsChanged(S1ScrollMetrics metrics) {
+    final fab = _scrollFabVisibility.value;
     final showTop = S1FabLayout.shouldShowScrollToTop(
       metrics: metrics,
-      currentlyShowing: _showScrollToTop,
+      currentlyShowing: fab.showScrollToTop,
     );
     final showDown = S1FabLayout.shouldShowScrollDown(
       metrics: metrics,
-      currentlyShowing: _showScrollDown,
+      currentlyShowing: fab.showScrollDown,
     );
     final atBottom = S1FabLayout.isAtPageBottom(
       metrics: metrics,
-      currentlyAtBottom: _atPageBottom,
+      currentlyAtBottom: fab.atPageBottom,
     );
-    if (showTop != _showScrollToTop ||
-        showDown != _showScrollDown ||
-        atBottom != _atPageBottom) {
-      setState(() {
-        _showScrollToTop = showTop;
-        _showScrollDown = showDown;
-        _atPageBottom = atBottom;
-      });
+    if (showTop != fab.showScrollToTop ||
+        showDown != fab.showScrollDown ||
+        atBottom != fab.atPageBottom) {
+      _scrollFabVisibility.value = _ScrollFabVisibility(
+        showScrollToTop: showTop,
+        showScrollDown: showDown,
+        atPageBottom: atBottom,
+      );
     }
   }
 
@@ -170,11 +189,9 @@ class _ThreadDetailScreenState extends ConsumerState<ThreadDetailScreen> {
   }
 
   Future<void> _goToPage(int page) async {
+    _scrollFabVisibility.value = const _ScrollFabVisibility();
     setState(() {
       _manualPageChange = true;
-      _showScrollToTop = false;
-      _showScrollDown = false;
-      _atPageBottom = false;
       _postKeys = [];
     });
     await ref.read(postProvider(widget.tid).notifier).goToPage(page);
@@ -411,11 +428,6 @@ class _ThreadDetailScreenState extends ConsumerState<ThreadDetailScreen> {
                 _ensurePostKeys(state.posts.length);
                 final showPrimary = isLoggedIn && state.allowReply;
                 final hasNextPage = state.currentPage < state.totalPages;
-                final showScrollAdvance =
-                    _showScrollDown || (_atPageBottom && hasNextPage);
-                final advanceMode = _atPageBottom && hasNextPage
-                    ? ScrollNavAdvanceMode.nextPage
-                    : ScrollNavAdvanceMode.nextFloor;
                 final scheme = Theme.of(context).colorScheme;
 
                 return Column(
@@ -472,26 +484,37 @@ class _ThreadDetailScreenState extends ConsumerState<ThreadDetailScreen> {
                       ),
                     Expanded(
                       child: S1ContentFabOverlay(
-                        fab: S1FabStack(
-                          scrollNav: S1ScrollNavConfig(
-                            showScrollToTop: _showScrollToTop,
-                            showScrollAdvance: showScrollAdvance,
-                            advanceMode: advanceMode,
-                            onScrollToTop: _scrollToTop,
-                            onScrollToNextFloor: _scrollToNextFloor,
-                            onScrollToBottom: _scrollToBottom,
-                            onGoToNextPage: hasNextPage
-                                ? () => _goToPage(state.currentPage + 1)
-                                : null,
-                          ),
-                          primary: showPrimary
-                              ? S1FabItem(
-                                  heroTag: 'replyDetail',
-                                  icon: Icons.edit_outlined,
-                                  tooltip: '回复',
-                                  onPressed: () => _openCompose(state),
-                                )
-                              : null,
+                        fab: ValueListenableBuilder<_ScrollFabVisibility>(
+                          valueListenable: _scrollFabVisibility,
+                          builder: (context, fab, _) {
+                            final showScrollAdvance = fab.showScrollDown ||
+                                (fab.atPageBottom && hasNextPage);
+                            final advanceMode =
+                                fab.atPageBottom && hasNextPage
+                                    ? ScrollNavAdvanceMode.nextPage
+                                    : ScrollNavAdvanceMode.nextFloor;
+                            return S1FabStack(
+                              scrollNav: S1ScrollNavConfig(
+                                showScrollToTop: fab.showScrollToTop,
+                                showScrollAdvance: showScrollAdvance,
+                                advanceMode: advanceMode,
+                                onScrollToTop: _scrollToTop,
+                                onScrollToNextFloor: _scrollToNextFloor,
+                                onScrollToBottom: _scrollToBottom,
+                                onGoToNextPage: hasNextPage
+                                    ? () => _goToPage(state.currentPage + 1)
+                                    : null,
+                              ),
+                              primary: showPrimary
+                                  ? S1FabItem(
+                                      heroTag: 'replyDetail',
+                                      icon: Icons.edit_outlined,
+                                      tooltip: '回复',
+                                      onPressed: () => _openCompose(state),
+                                    )
+                                  : null,
+                            );
+                          },
                         ),
                         child: S1SwipePagination(
                           key: _swipeKey,

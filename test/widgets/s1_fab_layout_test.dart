@@ -9,9 +9,9 @@ void main() {
     await tester.pumpWidget(
       MaterialApp(
         theme: AppTheme.lightTheme('purple'),
-        home: Scaffold(
+        home: const Scaffold(
           body: S1FabStack(
-            scrollNav: const S1ScrollNavConfig(
+            scrollNav: S1ScrollNavConfig(
               showScrollToTop: true,
               showScrollAdvance: true,
               onScrollToTop: _noop,
@@ -74,9 +74,9 @@ void main() {
     await tester.pumpWidget(
       MaterialApp(
         theme: AppTheme.lightTheme('purple'),
-        home: Scaffold(
+        home: const Scaffold(
           body: S1ScrollNavGroup(
-            config: const S1ScrollNavConfig(
+            config: S1ScrollNavConfig(
               showScrollToTop: true,
               showScrollAdvance: false,
               onScrollToTop: _noop,
@@ -85,12 +85,13 @@ void main() {
         ),
       ),
     );
-    final upOnly = await navButtonSize(find.byKey(const ValueKey('scroll_nav_up')));
+    final upOnly =
+        await navButtonSize(find.byKey(const ValueKey('scroll_nav_up')));
 
     await tester.pumpWidget(
       MaterialApp(
         theme: AppTheme.lightTheme('purple'),
-        home: Scaffold(
+        home: const Scaffold(
           body: S1ScrollNavGroup(
             config: S1ScrollNavConfig(
               showScrollToTop: false,
@@ -108,9 +109,9 @@ void main() {
     await tester.pumpWidget(
       MaterialApp(
         theme: AppTheme.lightTheme('purple'),
-        home: Scaffold(
+        home: const Scaffold(
           body: S1ScrollNavGroup(
-            config: const S1ScrollNavConfig(
+            config: S1ScrollNavConfig(
               showScrollToTop: true,
               showScrollAdvance: true,
               onScrollToTop: _noop,
@@ -121,7 +122,8 @@ void main() {
         ),
       ),
     );
-    final upBoth = await navButtonSize(find.byKey(const ValueKey('scroll_nav_up')));
+    final upBoth =
+        await navButtonSize(find.byKey(const ValueKey('scroll_nav_up')));
     final downBoth =
         await navButtonSize(find.byKey(const ValueKey('scroll_nav_down')));
 
@@ -261,8 +263,7 @@ void main() {
     });
 
     test('shows when remaining distance exceeds 12% viewport', () {
-      final remainingShow =
-          viewport * S1FabLayout.scrollDownShowFraction + 1;
+      const remainingShow = viewport * S1FabLayout.scrollDownShowFraction + 1;
       expect(
         S1FabLayout.shouldShowScrollDown(
           metrics: metrics(maxExtent - remainingShow),
@@ -330,7 +331,7 @@ void main() {
         isTrue,
       );
 
-      final awayFromBottom =
+      const awayFromBottom =
           maxExtent - viewport * S1FabLayout.scrollDownShowFraction - 2;
       expect(
         S1FabLayout.isAtPageBottom(

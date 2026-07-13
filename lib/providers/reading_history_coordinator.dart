@@ -48,6 +48,4 @@ final readingHistoryCoordinatorProvider = Provider<void>((ref) {
       await applyUidChange('guest', uid);
     }
   });
-
-  return null;
 });

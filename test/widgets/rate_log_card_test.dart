@@ -248,7 +248,7 @@ void main() {
 
       await tester.pumpWidget(
         wrap(
-          RateLogCard(tid: '123', pid: '1'),
+          const RateLogCard(tid: '123', pid: '1'),
           tid: '123',
           seed: {'1': rateLog},
         ),

@@ -49,6 +49,7 @@ void main() {
     required WidgetTester tester,
     required String location,
     void Function(ReadingHistoryService service)? seedHistory,
+    bool useNestedIntentOverride = false,
   }) async {
     final (db, local) = await openTestLocalData();
     addTearDown(db.close);
@@ -76,9 +77,8 @@ void main() {
           ),
         ),
         authStateProvider.overrideWith(_GuestAuthNotifier.new),
-        // Override on the same container PostNotifier reads from.
-        // Nested ProviderScope overrides are not visible to parent providers.
-        threadOpenIntentProvider(tid).overrideWithValue(intent),
+        if (!useNestedIntentOverride)
+          threadOpenIntentProvider(tid).overrideWithValue(intent),
       ],
     );
     rootContainer = container;
@@ -93,9 +93,18 @@ void main() {
           path: '/thread/:tid',
           pageBuilder: (context, state) {
             final routeTid = state.pathParameters['tid']!;
+            final screen = ThreadDetailScreen(tid: routeTid);
             return NoTransitionPage<void>(
               key: ValueKey('thread-$routeTid'),
-              child: ThreadDetailScreen(tid: routeTid),
+              child: useNestedIntentOverride
+                  ? ProviderScope(
+                      overrides: [
+                        threadOpenIntentProvider(routeTid)
+                            .overrideWithValue(intent),
+                      ],
+                      child: screen,
+                    )
+                  : screen,
             );
           },
         ),
@@ -144,6 +153,22 @@ void main() {
     expect(find.text('第 2 / 3 页'), findsOneWidget);
     expect(router.state.uri.queryParameters['page'], '2');
     expect(router.state.uri.queryParameters.containsKey('pid'), isFalse);
+  });
+
+  testWidgets('route-scoped page intent opens the selected list page',
+      (tester) async {
+    tester.view.physicalSize = const Size(800, 1200);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.resetPhysicalSize);
+
+    await pumpThread(
+      tester: tester,
+      location: '/thread/100?page=2',
+      useNestedIntentOverride: true,
+    );
+
+    expect(adapter.requestedPages.first, 2);
+    expect(find.text('第 2 / 3 页'), findsOneWidget);
   });
 
   testWidgets('resume opens mid-floor and writeback updates lastReadFloor',

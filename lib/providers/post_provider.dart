@@ -285,4 +285,5 @@ class PostNotifier extends AsyncNotifier<PostListState> {
 final postProvider = AsyncNotifierProvider.autoDispose
     .family<PostNotifier, PostListState, String>(
   PostNotifier.new,
+  dependencies: [threadOpenIntentProvider],
 );

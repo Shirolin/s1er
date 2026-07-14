@@ -9,12 +9,14 @@ class PostActionMenu extends StatelessWidget {
     this.onFilterByAuthor,
     this.onReply,
     this.onRate,
+    this.onAddToBlacklist,
     this.onReport,
   });
 
   final VoidCallback? onFilterByAuthor;
   final VoidCallback? onReply;
   final VoidCallback? onRate;
+  final VoidCallback? onAddToBlacklist;
   final VoidCallback? onReport;
 
   @override
@@ -35,6 +37,11 @@ class PostActionMenu extends StatelessWidget {
           onPressed: onRate,
           icon: Icons.favorite_outline,
           label: '评分',
+        ),
+        s1MenuItem(
+          onPressed: onAddToBlacklist,
+          icon: Icons.block_outlined,
+          label: '加入黑名单',
         ),
         const S1MenuDivider(),
         s1MenuItem(

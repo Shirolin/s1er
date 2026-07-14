@@ -198,7 +198,7 @@ flutter run -d chrome --dart-define=TALKER_LOG_LEVEL=all --dart-define=TALKER_MA
 - 本地结构化数据（settings / reading_history / poll_votes / blacklist 表）走 Drift；Cookie 走加密 `PersistCookieJar`。无 Hive。
 - Native 图片使用 `flutter_cache_manager` 磁盘缓存；Web 主要依赖浏览器缓存。备份**禁止**包含图片缓存
 - 跨客户端备份格式：`docs/backup-format-v1.md`（默认仅 L1 JSON ZIP；`native/` L2 可选且未作为默认导出）
-- 黑名单：仅 Drift 表 + 备份字段预留，产品 UI 尚未实现
+- 黑名单：本地黑名单 MVP 已实现（Drift + 设置页管理 + 楼层加入；`scope`：`thread` 滤主题列表、`post` 折叠楼层、`pm` 预留）。不做服务端网页黑名单同步 / 屏蔽词表。
 - 麻将脸：对齐 S1-Next，原 png/gif **入库**于 `assets/emoticons/{face2017|carton2017|…}/` 并随客户端打包；不转 WebP。`scripts/download_emoticons.dart` 仅用于生成/增量更新资源与 `manifest.json` 后提交，不是「clone 后必跑才能构建」的前置。读帖/面板 **local-first**，缺失时再 CDN（Web 走 `/img-proxy`）。
 - test 目录覆盖率仍不足，尤其是 screens 和 widgets 层
 - 技术栈现代化定案与拆分：`docs/plans/2026-07-12-tech-stack-modernization.md`（P0–P6 已落地后以本文件锁定表为准）

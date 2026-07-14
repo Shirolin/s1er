@@ -16,6 +16,7 @@ import 'screens/compose_screen.dart';
 import 'screens/profile_screen.dart';
 import 'screens/settings_screen.dart';
 import 'screens/reading_history_screen.dart';
+import 'screens/blacklist_screen.dart';
 import 'screens/favorites_screen.dart';
 import 'screens/image_viewer_screen.dart';
 import 'screens/user_space_screen.dart';
@@ -116,6 +117,10 @@ final _router = GoRouter(
     GoRoute(
       path: '/reading-history',
       builder: (context, state) => const ReadingHistoryScreen(),
+    ),
+    GoRoute(
+      path: '/blacklist',
+      builder: (context, state) => const BlacklistScreen(),
     ),
     GoRoute(
       path: '/favorites',

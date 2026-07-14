@@ -4,8 +4,10 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import '../config/api_config.dart';
+import '../models/blacklist_record.dart';
 import '../models/post.dart';
 import '../models/reply_submit_result.dart';
+import '../providers/blacklist_provider.dart';
 import '../providers/post_provider.dart';
 import '../providers/auth_provider.dart';
 import '../providers/reading_history_provider.dart';
@@ -18,11 +20,13 @@ import '../widgets/pagination_bar.dart';
 import '../widgets/post_item.dart';
 import '../widgets/poll_card.dart';
 import '../widgets/rate_dialog.dart';
+import '../widgets/s1_confirm_dialog.dart';
 import '../widgets/s1_error_view.dart';
 import '../widgets/s1_fab_layout.dart';
 import '../widgets/s1_swipe_pagination.dart';
 import '../utils/scroll_floor.dart';
 import '../utils/s1_snack_bar.dart';
+import '../theme/app_theme.dart';
 
 bool shouldRecordReadingProgress(AppSettings settings, AuthState auth) {
   if (!settings.recordReadingHistory) {
@@ -87,6 +91,9 @@ class _ThreadDetailScreenState extends ConsumerState<ThreadDetailScreen> {
 
   /// 当前页各楼 PostItem 的 key（不含 PollCard），翻页时重建。
   List<GlobalKey> _postKeys = [];
+
+  /// 已临时展开的被屏蔽楼层 pid（不硬删键位）。
+  final Set<String> _expandedBlockedPids = {};
 
   /// 防止连点叠加滚动动画。
   bool _scrollAnimating = false;
@@ -372,6 +379,37 @@ class _ThreadDetailScreenState extends ConsumerState<ThreadDetailScreen> {
 
     final floorOffset = (state.currentPage - 1) * state.perPage;
     final displayFloor = floorOffset + postIndex + 1;
+
+    final isPostBlocked = post.authorId.isNotEmpty &&
+        ref.watch(
+          blacklistHasScopeProvider(
+            (
+              uid: post.authorId,
+              scope: BlacklistRecord.scopePost,
+            ),
+          ),
+        );
+    final isExpanded = _expandedBlockedPids.contains(post.pid);
+
+    if (isPostBlocked && !isExpanded) {
+      return RepaintBoundary(
+        key: ValueKey(post.pid),
+        child: KeyedSubtree(
+          key: postKey,
+          child: _BlockedPostPlaceholder(
+            author: post.author,
+            onExpand: () {
+              setState(() => _expandedBlockedPids.add(post.pid));
+            },
+          ),
+        ),
+      );
+    }
+
+    final currentUid = ref.watch(authStateProvider).user?.uid;
+    final canAddToBlacklist = post.authorId.isNotEmpty &&
+        post.authorId != currentUid;
+
     return RepaintBoundary(
       key: ValueKey(post.pid),
       child: PostItem(
@@ -396,8 +434,30 @@ class _ThreadDetailScreenState extends ConsumerState<ThreadDetailScreen> {
                 )
             : null,
         onRate: _canRatePost(post) ? () => _openRateDialog(post) : null,
+        onAddToBlacklist:
+            canAddToBlacklist ? () => _confirmAddToBlacklist(post) : null,
       ),
     );
+  }
+
+  Future<void> _confirmAddToBlacklist(Post post) async {
+    final confirmed = await showS1ConfirmDialog(
+      context,
+      title: '加入黑名单',
+      content: '将「${post.author}」加入本地黑名单？\n'
+          '默认屏蔽其主题列表与帖内楼层。',
+      confirmLabel: '加入',
+      destructive: true,
+    );
+    if (!confirmed || !mounted) return;
+
+    ref.read(blacklistProvider.notifier).upsert(
+          uid: post.authorId,
+          username: post.author,
+          scope: BlacklistRecord.defaultScopes,
+        );
+    if (!mounted) return;
+    S1SnackBar.show(context, message: '已加入黑名单');
   }
 
   void _showFullTitle(BuildContext context, String title) {
@@ -625,6 +685,56 @@ class _ThreadDetailScreenState extends ConsumerState<ThreadDetailScreen> {
                 );
               },
             ),
+    );
+  }
+}
+
+/// 被屏蔽楼层的可展开占位行（保留列表键位）。
+class _BlockedPostPlaceholder extends StatelessWidget {
+  const _BlockedPostPlaceholder({
+    required this.author,
+    required this.onExpand,
+  });
+
+  final String author;
+  final VoidCallback onExpand;
+
+  @override
+  Widget build(BuildContext context) {
+    final scheme = Theme.of(context).colorScheme;
+    final textTheme = Theme.of(context).textTheme;
+    final name = author.isNotEmpty ? author : '未知用户';
+
+    return Card(
+      margin: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+      elevation: 0,
+      color: scheme.surfaceContainerLow,
+      shape: S1Shape.cardShape,
+      child: InkWell(
+        onTap: onExpand,
+        borderRadius: S1Shape.medium,
+        child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 14),
+          child: Row(
+            children: [
+              Icon(
+                Icons.visibility_off_outlined,
+                size: 20,
+                color: scheme.onSurfaceVariant,
+              ),
+              const SizedBox(width: 8),
+              Expanded(
+                child: Text(
+                  '已屏蔽 · $name · 点按查看',
+                  style: textTheme.bodyMedium?.copyWith(
+                    color: scheme.onSurfaceVariant,
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
     );
   }
 }

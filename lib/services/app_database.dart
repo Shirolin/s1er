@@ -43,7 +43,7 @@ class PollVotes extends Table {
   Set<Column<Object>> get primaryKey => {uid, tid};
 }
 
-/// Reserved for future blacklist product features (P1: schema only).
+/// Local blacklist of forum users (device-wide; see BlacklistService).
 class BlacklistEntries extends Table {
   TextColumn get uid => text()();
   TextColumn get username => text().withDefault(const Constant(''))();

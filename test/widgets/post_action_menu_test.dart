@@ -27,15 +27,41 @@ void main() {
     expect(find.text('只看该作者'), findsOneWidget);
     expect(find.text('回复'), findsOneWidget);
     expect(find.text('评分'), findsOneWidget);
+    expect(find.text('加入黑名单'), findsOneWidget);
     expect(find.text('举报'), findsOneWidget);
     expect(find.byType(S1MenuDivider), findsOneWidget);
-    expect(find.byType(MenuItemButton), findsNWidgets(4));
+    expect(find.byType(MenuItemButton), findsNWidgets(5));
 
     await tester.tap(find.text('只看该作者'));
     await tester.pumpAndSettle();
 
     expect(filterTapped, isTrue);
     expect(find.text('只看该作者'), findsNothing);
+  });
+
+  testWidgets('PostActionMenu shows enabled blacklist when callback provided',
+      (tester) async {
+    var blacklistTapped = false;
+
+    await tester.pumpWidget(
+      MaterialApp(
+        theme: AppTheme.lightTheme('purple'),
+        home: Scaffold(
+          body: PostActionMenu(
+            onFilterByAuthor: () {},
+            onAddToBlacklist: () => blacklistTapped = true,
+          ),
+        ),
+      ),
+    );
+
+    await tester.tap(find.byIcon(Icons.more_vert));
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.text('加入黑名单'));
+    await tester.pumpAndSettle();
+
+    expect(blacklistTapped, isTrue);
   });
 
   testWidgets('PostActionMenu shows enabled reply when callback provided', (tester) async {

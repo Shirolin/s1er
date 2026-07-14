@@ -2,6 +2,7 @@ import 'package:drift/native.dart';
 import 'package:drift/drift.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:package_info_plus/package_info_plus.dart';
+import 'package:s1_app/models/blacklist_record.dart';
 import 'package:s1_app/models/reading_record.dart';
 import 'package:s1_app/services/app_database.dart';
 import 'package:s1_app/services/app_local_data.dart';
@@ -231,6 +232,38 @@ void main() {
       expect(decoded.settings?['theme_mode'], 'light');
       expect(decoded.readingHistory, isEmpty);
       expect(decoded.blacklist, isEmpty);
+    });
+
+    test('exports and imports non-empty blacklist', () async {
+      local.putBlacklistRecord(
+        const BlacklistRecord(
+          uid: '55',
+          username: 'blocked',
+          createdAt: 1710000000000,
+          reason: 'spam',
+          scope: ['thread', 'post', 'pm'],
+        ),
+      );
+      await local.flushPendingWrites();
+
+      final exported = await service.exportL1(
+        uid: 'u1',
+        packageInfo: info(),
+        platform: 'test',
+      );
+      expect(exported.payload.blacklist, hasLength(1));
+      expect(exported.payload.blacklist.first['uid'], '55');
+      expect(exported.payload.blacklist.first['scope'], ['thread', 'post', 'pm']);
+
+      await local.clearBlacklist();
+      await local.flushPendingWrites();
+      expect(local.blacklist, isEmpty);
+
+      final imported = await service.importL1(exported.bytes);
+      expect(imported.blacklistUpserts, 1);
+      expect(local.blacklist['55']?.username, 'blocked');
+      expect(local.blacklist['55']?.reason, 'spam');
+      expect(local.blacklist['55']?.scope, ['thread', 'post', 'pm']);
     });
 
     test('export rejects corrupted blacklist scope json', () async {

@@ -1,6 +1,9 @@
+import 'dart:ui' as ui;
+
 import 'package:drift/native.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/misc.dart' show Override;
 import 'package:flutter_test/flutter_test.dart';
 import 'package:package_info_plus/package_info_plus.dart';
@@ -48,6 +51,28 @@ void main() {
       );
 
   group('ProfileScreen', () {
+    testWidgets('GitHub mark has a transparent background', (tester) async {
+      final data = await rootBundle.load(
+        'assets/branding/github_mark.png',
+      );
+      final codec = await ui.instantiateImageCodec(
+        data.buffer.asUint8List(),
+      );
+      final frame = await codec.getNextFrame();
+      final pixels = await frame.image.toByteData(
+        format: ui.ImageByteFormat.rawRgba,
+      );
+
+      expect(pixels, isNotNull);
+      expect(pixels!.getUint8(3), 0);
+      final visibleAlphaOffset =
+          ((100 * frame.image.width + frame.image.width ~/ 2) * 4) + 3;
+      expect(pixels.getUint8(visibleAlphaOffset), greaterThan(200));
+
+      frame.image.dispose();
+      codec.dispose();
+    });
+
     testWidgets('shows settings entry tile', (tester) async {
       await tester.pumpWidget(
         ProviderScope(
@@ -99,6 +124,7 @@ void main() {
       expect(find.text('Ko-fi'), findsOneWidget);
       expect(find.text('GitHub'), findsOneWidget);
       expect(find.text('查看项目源代码（即将开源）'), findsOneWidget);
+      expect(find.byKey(const Key('github-mark')), findsOneWidget);
 
       await tester.tap(find.text('爱发电'));
       await tester.pump();

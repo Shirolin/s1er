@@ -56,6 +56,7 @@ flutter_launcher_icons:
 flutter:
   uses-material-design: true
   assets:
+    - assets/branding/github_mark.png
     - assets/emoticons/
     - assets/emoticons/face2017/
     - assets/emoticons/carton2017/

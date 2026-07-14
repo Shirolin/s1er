@@ -695,7 +695,15 @@ class _ProjectSupportCard extends StatelessWidget {
           ),
           divider(),
           _ProfileTwoLineRow(
-            icon: Icons.code,
+            leading: Image.asset(
+              'assets/branding/github_mark.png',
+              key: const Key('github-mark'),
+              width: _ProfileListMetrics.iconSize,
+              height: _ProfileListMetrics.iconSize,
+              color: colorScheme.primary,
+              colorBlendMode: BlendMode.srcIn,
+              excludeFromSemantics: true,
+            ),
             title: 'GitHub',
             subtitle: '查看项目源代码（即将开源）',
             trailing: externalIcon(),
@@ -709,14 +717,16 @@ class _ProjectSupportCard extends StatelessWidget {
 
 class _ProfileTwoLineRow extends StatelessWidget {
   const _ProfileTwoLineRow({
-    required this.icon,
+    this.icon,
     required this.title,
     required this.subtitle,
     required this.onTap,
+    this.leading,
     this.trailing,
-  });
+  }) : assert((icon == null) != (leading == null));
 
-  final IconData icon;
+  final IconData? icon;
+  final Widget? leading;
   final String title;
   final String subtitle;
   final VoidCallback onTap;
@@ -747,11 +757,12 @@ class _ProfileTwoLineRow extends StatelessWidget {
               SizedBox(
                 width: _ProfileListMetrics.iconSize,
                 height: _ProfileListMetrics.iconSize,
-                child: Icon(
-                  icon,
-                  size: _ProfileListMetrics.iconSize,
-                  color: colorScheme.primary,
-                ),
+                child: leading ??
+                    Icon(
+                      icon,
+                      size: _ProfileListMetrics.iconSize,
+                      color: colorScheme.primary,
+                    ),
               ),
               const SizedBox(width: _ProfileListMetrics.gap),
               Expanded(

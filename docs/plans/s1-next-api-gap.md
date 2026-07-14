@@ -1,15 +1,9 @@
 # S1-Next 接口对照
 
-<<<<<<< HEAD
-> 对照源：[S1-Next](https://github.com/ykrank/S1-Next) `v3.0.87-alpha` 的 `S1Service` / `ApiForum` / `ApiHome` / `ApiMember`  
-> 我方以 `lib/services/api_service.dart` + [`docs/api_reference.md`](../api_reference.md) 为准  
-> 上次更新：2026-07-14（搜索 Tab MVP 落地）
-=======
 > 对照源：[S1-Next](https://github.com/ykrank/S1-Next) `master` @ `20a14fdb43`（`alpha 3.3.95`；最近标签 `v3.0.87-alpha`）  
 > 读取文件：`S1Service` / `ApiForum` / `ApiHome` / `ApiMember` / `AppService`  
 > 我方以 `lib/services/api_service.dart` + `lib/config/api_config.dart` + [`docs/api_reference.md`](../api_reference.md) 为准（`main` @ 本文件提交时）  
-> 上次更新：2026-07-14（黑名单 MVP 合入后重审；修正摘要计数；PM 详情入口澄清）
->>>>>>> origin/main
+> 上次更新：2026-07-14（搜索 Tab MVP 落地；衔接 #26 对齐报告重审）
 
 对话旁的 Cursor Canvas 副本在本机：
 `~/.cursor/projects/d-Project-s1-app/canvases/s1-next-api-gap.canvas.tsx`  
@@ -19,18 +13,12 @@
 
 | 状态 | 含义 | 条数 |
 |------|------|------|
-<<<<<<< HEAD
-| 已实现 | 功能等价 | 18 |
+| 已实现 | Discuz 能力功能等价（路径可不同） | 18 |
 | 部分 | 有替代路径但不完整 | 3 |
 | 未实现 | 无客户端能力 | 8 |
-=======
-| 已实现 | Discuz 能力功能等价（路径可不同） | 17 |
-| 部分 | 有替代路径但不完整 | 3 |
-| 未实现 | 无客户端能力 | 9 |
->>>>>>> origin/main
 | 不做/边缘 | 可不跟 | 1 + App API 整组 |
 
-计数口径：下表「Discuz 接口全表」每一行算 1 条（不含 App API 子表）。「收藏版块」属我方多出的已实现项，计入 17。
+计数口径：下表「Discuz 接口全表」每一行算 1 条（不含 App API 子表）。「收藏版块」属我方多出的已实现项；搜索 MVP 已计入 18。
 
 ### 两套后端
 
@@ -41,8 +29,7 @@ S1-Next 同时打 Discuz Mobile / `forum.php`，以及独立 App API（`https://
 
 | 能力 | S1-Next | 我们 | 说明 |
 |------|---------|------|------|
-| 搜索（版块/用户） | `search.php mod=forum\|user` | — | **只读最高价值缺口** |
-| 私信会话详情 | `mypm&subop=view` | 仅列表 → 外链浏览器打开网页 | 部分 |
+| 私信会话详情 | `mypm&subop=view` | 仅列表 → 外链浏览器打开网页 | 部分；**只读下一优先** |
 | 提醒/通知 | `module=mynotelist`（含系统提醒） | `home.php do=notice` HTML | 部分；未用 JSON |
 | 发新主题 | `module=newthread` + 预取页面 | — | docs 实测可用；写操作暂缓 |
 | 发私信 | `module=sendpm` | `ApiConfig.moduleSendMessage` 仅常量 | docs 实测可用；UI/调用未接 |
@@ -102,13 +89,8 @@ S1-Next 同时打 Discuz Mobile / `forum.php`，以及独立 App API（`https://
 ## 建议落地顺序
 
 1. **只读/本地（适合 S1 繁忙或暂缓写操作时）**  
-<<<<<<< HEAD
-   ~~搜索~~（已落地）→ 私信会话详情、通知体验（本地黑名单 UI+过滤已部分落地）
-=======
-   搜索 → 私信会话详情（`mypm&subop=view`）→ 通知体验（可选切 `mynotelist` JSON）  
-   本地黑名单：补 `pm` scope 过滤（可选）；服务端同步仍后置  
-   → **搜索执行计划**：[2026-07-14-search.md](./2026-07-14-search.md)
->>>>>>> origin/main
+   ~~搜索~~（已落地；计划见 [2026-07-14-search.md](./2026-07-14-search.md)）→ 私信会话详情（`mypm&subop=view`）→ 通知体验（可选切 `mynotelist` JSON）  
+   本地黑名单：补 `pm` scope 过滤（可选）；服务端同步仍后置
 2. **写操作（等论坛稳定后再开）**  
    发新帖 `newthread` → 发私信 `sendpm` → 编辑 / 举报
 3. **社交周边（可后置）**  
@@ -116,18 +98,12 @@ S1-Next 同时打 Discuz Mobile / `forum.php`，以及独立 App API（`https://
 
 ## 实现差异备注
 
-<<<<<<< HEAD
-- **回复端点**：已与 S1-Next 对齐为 `module=sendreply`；旧 `forum.php` reply 仅作遗留对照。
-- **搜索**：对齐 `search.php` HTML；主题结果结构化提取（非整段 HTML 渲染）；客户端 30s 提交冷却。
-- **收藏**：他们偏 Mobile `favthread`；我们主路径是 `home.php` HTML，并多了收藏版块。
-- **通知**：他们用 `mynotelist` JSON；我们用 notice HTML 列表（可读已可用）。
-=======
 - **回复端点**：已与 S1-Next 对齐为 `module=sendreply`；旧 `forum.php` reply 仅作遗留对照（`sendPost` `@Deprecated`）。
+- **搜索**：对齐 `search.php` HTML；主题结果结构化提取（非整段 HTML 渲染）；客户端 30s 提交冷却。
 - **收藏**：他们查 `myfavthread`、增删偏 Mobile `favthread`；我们查 JSON + HTML 兜底，增删主路径是 `home.php`，并多了收藏版块。
 - **通知**：他们用 `mynotelist` JSON（帖内提醒 + 系统提醒分接口）；我们用 notice HTML 列表（可读已可用）。
 - **私信详情**：他们原生拉 `mypm&subop=view`；我们列表后跳外部浏览器，无应用内会话页、无 `sendpm`。
 - **forumdisplay `typeid`**：S1-Next 请求带分类筛选；我们展示分类标签，但不按 `typeid` 请求过滤（子能力缺口，不单列未实现）。
->>>>>>> origin/main
 - **登出**：双方都是清 Cookie/会话，无独立 Discuz logout module 依赖。
 - **本地黑名单**：设备级（主键被拉黑 `uid`）；`scope`=`thread`/`post`/`pm`（`pm` 预留）；楼层默认折叠可展开，非硬删；与 `blacklist.json` 备份往返兼容。不接网页好友黑名单同步。MVP 已合入 `main`（#25）。
-- **死常量**：`ApiConfig.moduleSendMessage` / `moduleFavThread` / `moduleFavForum` 已声明，当前无调用方；接 `sendpm` 或切 Mobile 收藏时可复用。
+- **死常量**：`ApiConfig.moduleSendMessage` / `moduleFavThread` / `moduleFavForum` 已声明；`moduleSendMessage` 接 `sendpm`、或切 Mobile 收藏时复用 `moduleFav*`。

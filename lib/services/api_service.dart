@@ -15,6 +15,7 @@ import '../models/notice_item.dart';
 import '../models/favorite_item.dart';
 import '../models/message_list_result.dart';
 import '../models/rate_form.dart';
+import '../models/search_result.dart';
 import '../models/app_exceptions.dart';
 import '../utils/error_handler.dart';
 import '../utils/discuz_message.dart';
@@ -2268,6 +2269,274 @@ class ApiService {
     } catch (_) {
       return null;
     }
+  }
+
+  /// 主题搜索（`search.php?mod=forum`）。
+  ///
+  /// 首页：POST `formhash` + `srchtxt`。翻页：优先 GET [pageHref] 模板。
+  Future<ForumSearchPage> searchForum({
+    required String query,
+    int page = 1,
+    String? pageHref,
+  }) async {
+    final trimmed = query.trim();
+    if (trimmed.isEmpty) {
+      return const ForumSearchPage(error: '请输入搜索关键词');
+    }
+
+    try {
+      final String body;
+      if (page > 1 && pageHref != null && pageHref.isNotEmpty) {
+        final url = _resolveSearchPageUrl(pageHref, page);
+        final response = await _httpClient.get(
+          url,
+          options: Options(responseType: ResponseType.plain),
+        );
+        body = response.data?.toString() ?? '';
+      } else {
+        final hasFormhash = await _httpClient.ensureFormhash(force: true);
+        if (!hasFormhash) {
+          return const ForumSearchPage(error: '无法获取表单验证串，请刷新后重试');
+        }
+        final response = await _httpClient.post(
+          ApiConfig.searchForumUrl(),
+          data: <String, String>{'srchtxt': trimmed},
+          options: Options(
+            contentType: Headers.formUrlEncodedContentType,
+            responseType: ResponseType.plain,
+          ),
+        );
+        body = response.data?.toString() ?? '';
+      }
+      return parseForumSearchHtml(body);
+    } on LoginRequiredException {
+      rethrow;
+    } catch (e, st) {
+      return ForumSearchPage(error: friendlyError(e, '搜索主题', st));
+    }
+  }
+
+  /// 用户搜索（`search.php?mod=user`）。
+  Future<UserSearchPage> searchUser({required String query}) async {
+    final trimmed = query.trim();
+    if (trimmed.isEmpty) {
+      return const UserSearchPage(error: '请输入搜索关键词');
+    }
+
+    try {
+      final hasFormhash = await _httpClient.ensureFormhash(force: true);
+      if (!hasFormhash) {
+        return const UserSearchPage(error: '无法获取表单验证串，请刷新后重试');
+      }
+      final response = await _httpClient.post(
+        ApiConfig.searchUserUrl(),
+        data: <String, String>{'srchtxt': trimmed},
+        options: Options(
+          contentType: Headers.formUrlEncodedContentType,
+          responseType: ResponseType.plain,
+        ),
+      );
+      final body = response.data?.toString() ?? '';
+      return parseUserSearchHtml(body);
+    } on LoginRequiredException {
+      rethrow;
+    } catch (e, st) {
+      return UserSearchPage(error: friendlyError(e, '搜索用户', st));
+    }
+  }
+
+  static String _resolveSearchPageUrl(String pageHref, int page) {
+    final trimmed = pageHref.trim();
+    if (trimmed.contains('page=')) {
+      final withPage = trimmed.replaceFirst(RegExp(r'page=\d*'), 'page=$page');
+      return trimmed.startsWith('http')
+          ? withPage
+          : '${ApiConfig.baseUrl}/$withPage'.replaceFirst(
+              '${ApiConfig.baseUrl}//',
+              '${ApiConfig.baseUrl}/',
+            );
+    }
+    final join = trimmed.contains('?') ? '&' : '?';
+    final path = trimmed.startsWith('http')
+        ? trimmed
+        : '${ApiConfig.baseUrl}/$trimmed'.replaceFirst(
+            '${ApiConfig.baseUrl}//',
+            '${ApiConfig.baseUrl}/',
+          );
+    return '$path${join}page=$page';
+  }
+
+  /// 解析主题搜索 HTML（对齐 S1-Next `ForumSearchWrapper`）。
+  static ForumSearchPage parseForumSearchHtml(String html) {
+    if (html.contains('id="loginform_') || html.contains('name="login"')) {
+      throw LoginRequiredException();
+    }
+
+    final messageError = _extractMessagetextError(html);
+    if (messageError != null && messageError.isNotEmpty) {
+      return ForumSearchPage(error: messageError);
+    }
+
+    final doc = parse(html);
+    var count = 0;
+    for (final em in doc.querySelectorAll('em')) {
+      final text = em.text.trim();
+      final match =
+          RegExp(r'找到\s*[“"](.+?)[”"]\s*相关内容\s*(\d+)\s*个').firstMatch(text);
+      if (match != null) {
+        count = int.tryParse(match.group(2) ?? '') ?? 0;
+        break;
+      }
+    }
+
+    if (count == 0 && doc.querySelectorAll('li.pbw').isEmpty) {
+      return const ForumSearchPage(count: 0);
+    }
+
+    final hits = <ForumSearchHit>[];
+    for (final li in doc.querySelectorAll('li.pbw')) {
+      final hit = _parseForumSearchHit(li.outerHtml);
+      if (hit != null) hits.add(hit);
+    }
+
+    var currentPage = 1;
+    var totalPages = 1;
+    var pageHref = '';
+    final pg = doc.querySelector('div.pg');
+    if (pg != null) {
+      final strong = pg.querySelector('strong');
+      currentPage = int.tryParse(strong?.text.trim() ?? '') ?? 1;
+      final spanTitle = pg.querySelector('span[title]');
+      final titleText = spanTitle?.attributes['title'] ?? spanTitle?.text ?? '';
+      final maxMatch = RegExp(r'(\d+)').firstMatch(titleText);
+      if (maxMatch != null) {
+        totalPages = int.tryParse(maxMatch.group(1) ?? '') ?? 1;
+      }
+      final firstLink = pg.querySelector('a[href]');
+      final href = firstLink?.attributes['href'] ?? '';
+      if (href.isNotEmpty) {
+        pageHref = href.replaceFirst(RegExp(r'page=\d+'), 'page=');
+      }
+      if (totalPages < currentPage) totalPages = currentPage;
+    }
+
+    return ForumSearchPage(
+      hits: hits,
+      count: count > 0 ? count : hits.length,
+      currentPage: currentPage,
+      totalPages: totalPages,
+      pageHref: pageHref,
+    );
+  }
+
+  static ForumSearchHit? _parseForumSearchHit(String block) {
+    final tidMatch = RegExp(
+      r'thread-(\d+)-|(?:[?&]|&amp;)tid=(\d+)',
+      caseSensitive: false,
+    ).firstMatch(block);
+    final tid = tidMatch?.group(1) ?? tidMatch?.group(2) ?? '';
+    if (tid.isEmpty) return null;
+
+    final titleMatch = RegExp(
+      r'<h3[^>]*>\s*<a[^>]*>(.*?)</a>',
+      caseSensitive: false,
+      dotAll: true,
+    ).firstMatch(block);
+    final title = titleMatch != null
+        ? _stripHtml(titleMatch.group(1) ?? '')
+        : '';
+    if (title.isEmpty) return null;
+
+    final paragraphs = RegExp(
+      r'<p[^>]*>(.*?)</p>',
+      caseSensitive: false,
+      dotAll: true,
+    ).allMatches(block).map((m) => m.group(1) ?? '').toList();
+
+    var snippet = '';
+    var forumName = '';
+    var author = '';
+    var dateline = '';
+
+    if (paragraphs.isNotEmpty) {
+      // 末段通常含版块 / 作者 / 时间；中间段为摘要。
+      final metaHtml = paragraphs.last;
+      final metaText = _stripHtml(metaHtml);
+      final parts = metaText
+          .split(RegExp(r'\s*-\s*'))
+          .map((e) => e.trim())
+          .where((e) => e.isNotEmpty)
+          .toList();
+      if (parts.isNotEmpty) forumName = parts[0];
+      if (parts.length >= 2) author = parts[1];
+      if (parts.length >= 3) dateline = parts.sublist(2).join(' - ');
+
+      for (var i = 0; i < paragraphs.length - 1; i++) {
+        final text = _stripHtml(paragraphs[i]);
+        if (text.isEmpty) continue;
+        if (text.startsWith('本帖最后由')) continue;
+        snippet = text;
+        break;
+      }
+    }
+
+    return ForumSearchHit(
+      tid: tid,
+      title: title,
+      snippet: snippet,
+      forumName: forumName,
+      author: author,
+      dateline: dateline,
+    );
+  }
+
+  /// 解析用户搜索 HTML（对齐 S1-Next `UserSearchWrapper`）。
+  static UserSearchPage parseUserSearchHtml(String html) {
+    if (html.contains('id="loginform_') || html.contains('name="login"')) {
+      throw LoginRequiredException();
+    }
+
+    final messageError = _extractMessagetextError(html);
+    if (messageError != null && messageError.isNotEmpty) {
+      return UserSearchPage(error: messageError);
+    }
+
+    final doc = parse(html);
+    final hits = <UserSearchHit>[];
+    for (final li in doc.querySelectorAll('li.bbda.cl, li.bbda')) {
+      final hit = _parseUserSearchHit(li.outerHtml);
+      if (hit != null) hits.add(hit);
+    }
+    return UserSearchPage(hits: hits);
+  }
+
+  static UserSearchHit? _parseUserSearchHit(String block) {
+    final uidMatch = RegExp(
+      r'space-uid-(\d+)|[?&]uid=(\d+)|uid[=/](\d+)',
+      caseSensitive: false,
+    ).firstMatch(block);
+    final uid = uidMatch?.group(1) ??
+        uidMatch?.group(2) ??
+        uidMatch?.group(3) ??
+        '';
+    if (uid.isEmpty) return null;
+
+    // 优先取用户名链接文本（跳过头像链接内的空/img）。
+    final nameMatches = RegExp(
+      r'<a[^>]*href="[^"]*(?:space-uid-|uid=)[^"]*"[^>]*>(.*?)</a>',
+      caseSensitive: false,
+      dotAll: true,
+    ).allMatches(block);
+    var name = '';
+    for (final match in nameMatches) {
+      final text = _stripHtml(match.group(1) ?? '');
+      if (text.isNotEmpty) {
+        name = text;
+        break;
+      }
+    }
+    if (name.isEmpty) return null;
+    return UserSearchHit(uid: uid, name: name);
   }
 }
 

@@ -37,4 +37,13 @@ class ApiConfig {
   static const String moduleFavThread = 'favthread';
   static const String moduleFavForum = 'favforum';
   static const String moduleSendReply = 'sendreply';
+
+  /// Discuz 搜索（HTML）：主题 / 用户。
+  static String searchForumUrl({int? page}) {
+    final pageQuery = page == null ? '' : '&page=$page';
+    return '$baseUrl/search.php?searchsubmit=yes&mod=forum$pageQuery';
+  }
+
+  static String searchUserUrl() =>
+      '$baseUrl/search.php?searchsubmit=yes&mod=user';
 }

@@ -14,8 +14,9 @@ import '../widgets/app_bar_more_menu.dart';
 import '../widgets/s1_error_view.dart';
 import '../utils/compact_label.dart';
 import '../utils/format_utils.dart';
-import 'profile_screen.dart';
 import 'messages_screen.dart';
+import 'search_screen.dart';
+import 'profile_screen.dart';
 
 class HomeScreen extends ConsumerStatefulWidget {
   const HomeScreen({super.key});
@@ -109,7 +110,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
           ? tabIndex == 0
               ? const _ForumTab()
               : tabIndex == 1
-                  ? const Center(child: Text('搜索'))
+                  ? const SearchScreen()
                   : tabIndex == 2
                       ? const MessagesScreen()
                       : const ProfileBody(

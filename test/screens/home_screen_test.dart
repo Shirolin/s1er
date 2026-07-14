@@ -100,7 +100,8 @@ void main() {
 
     await tester.tap(find.text('搜索'));
     await tester.pumpAndSettle();
-    expect(find.text('搜索'), findsNWidgets(2));
+    expect(find.text('搜索'), findsOneWidget);
+    expect(find.text('搜索主题与帖子'), findsOneWidget);
     expect(find.text('Search'), findsNothing);
 
     await tester.tap(find.text('消息'));

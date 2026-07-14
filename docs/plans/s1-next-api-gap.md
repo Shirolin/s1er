@@ -2,7 +2,7 @@
 
 > 对照源：[S1-Next](https://github.com/ykrank/S1-Next) `v3.0.87-alpha` 的 `S1Service` / `ApiForum` / `ApiHome` / `ApiMember`  
 > 我方以 `lib/services/api_service.dart` + [`docs/api_reference.md`](../api_reference.md) 为准  
-> 上次更新：2026-07-14
+> 上次更新：2026-07-14（搜索 Tab MVP 落地）
 
 对话旁的 Cursor Canvas 副本在本机：
 `~/.cursor/projects/d-Project-s1-app/canvases/s1-next-api-gap.canvas.tsx`  
@@ -12,8 +12,8 @@
 
 | 状态 | 含义 | 约数 |
 |------|------|------|
-| 已实现 | 功能等价 | 17 |
-| 部分 | 有替代路径但不完整 | 2 |
+| 已实现 | 功能等价 | 18 |
+| 部分 | 有替代路径但不完整 | 3 |
 | 未实现 | 无客户端能力 | 8 |
 | 不做/边缘 | 可不跟 | 1 + App API 整组 |
 
@@ -28,7 +28,6 @@ S1-Next 同时打 Discuz Mobile / `forum.php`，以及独立 App API（`https://
 |------|---------|------|------|
 | 发新主题 | `module=newthread` + 预取页面 | — | docs 实测可用；写操作暂缓 |
 | 编辑帖子 | `forum.php action=edit` | — | Mobile `editpost` 禁用，只能走 Web |
-| 搜索（版块/用户） | `search.php mod=forum\|user` | — | 适合只读阶段 |
 | 举报 | `misc.php?mod=report` | — | 次常用写操作 |
 | 发私信 | `module=sendpm` | — | docs 实测可用 |
 | 好友列表 | `module=friend` | 仅 friends 计数 | 周边 |
@@ -55,7 +54,7 @@ S1-Next 同时打 Discuz Mobile / `forum.php`，以及独立 App API（`https://
 | 定位楼层页码 | `forum.php redirect=findpost` | `locatePostPage()` | 已实现 |
 | 发新主题 | `module=newthread` + 预取页面 | — | 未实现 |
 | 编辑帖子 | `forum.php action=edit` | — | 未实现 |
-| 搜索（版块/用户） | `search.php mod=forum\|user` | — | 未实现 |
+| 搜索（版块/用户） | `search.php mod=forum\|user` | `searchForum()` / `searchUser()` + 搜索 Tab | 已实现 |
 | 投票 | `forum.php action=votepoll` | `votePoll()` | 已实现 |
 | 评分 / 评分日志 | `action=rate` + `viewratings` | `fetchRateForm` / `submitRate` / RateLogService | 已实现 |
 | 举报 | `misc.php?mod=report` | — | 未实现 |
@@ -84,7 +83,7 @@ S1-Next 同时打 Discuz Mobile / `forum.php`，以及独立 App API（`https://
 ## 建议落地顺序
 
 1. **只读/本地（适合 S1 繁忙或暂缓写操作时）**  
-   搜索、私信会话详情、通知体验（本地黑名单 UI+过滤已部分落地）
+   ~~搜索~~（已落地）→ 私信会话详情、通知体验（本地黑名单 UI+过滤已部分落地）
 2. **写操作（等论坛稳定后再开）**  
    发新帖 `newthread` → 发私信 `sendpm` → 编辑 / 举报
 3. **社交周边（可后置）**  
@@ -93,6 +92,7 @@ S1-Next 同时打 Discuz Mobile / `forum.php`，以及独立 App API（`https://
 ## 实现差异备注
 
 - **回复端点**：已与 S1-Next 对齐为 `module=sendreply`；旧 `forum.php` reply 仅作遗留对照。
+- **搜索**：对齐 `search.php` HTML；主题结果结构化提取（非整段 HTML 渲染）；客户端 30s 提交冷却。
 - **收藏**：他们偏 Mobile `favthread`；我们主路径是 `home.php` HTML，并多了收藏版块。
 - **通知**：他们用 `mynotelist` JSON；我们用 notice HTML 列表（可读已可用）。
 - **登出**：双方都是清 Cookie/会话，无独立 Discuz logout module 依赖。

@@ -126,6 +126,8 @@ abstract class S1Alpha {
 }
 
 class AppTheme {
+  static const defaultThemeColorKey = 'purple';
+
   static const Map<String, Color> themeSeeds = {
     'blue': Color(0xFF1A73E8),
     'purple': Color(0xFF6750A4),
@@ -134,32 +136,18 @@ class AppTheme {
     'orange': Color(0xFFF57C00),
   };
 
-  static Color? _parseHexColor(String hexStr) {
-    final cleanHex = hexStr.replaceAll('#', '').trim();
-    if (cleanHex.length == 6) {
-      final value = int.tryParse('0xFF$cleanHex');
-      return value == null ? null : Color(value);
-    }
-    if (cleanHex.length == 8) {
-      final value = int.tryParse('0x$cleanHex');
-      return value == null ? null : Color(value);
-    }
-    return null;
-  }
+  static String normalizeThemeColorKey(String? key) =>
+      themeSeeds.containsKey(key) ? key! : defaultThemeColorKey;
 
   static ThemeData lightTheme(String themeColorKey) {
-    final seedColor = _parseHexColor(themeColorKey) ??
-        themeSeeds[themeColorKey] ??
-        themeSeeds['purple']!;
+    final seedColor = themeSeeds[normalizeThemeColorKey(themeColorKey)]!;
     return fromColorScheme(
       ColorScheme.fromSeed(seedColor: seedColor, brightness: Brightness.light),
     );
   }
 
   static ThemeData darkTheme(String themeColorKey) {
-    final seedColor = _parseHexColor(themeColorKey) ??
-        themeSeeds[themeColorKey] ??
-        themeSeeds['purple']!;
+    final seedColor = themeSeeds[normalizeThemeColorKey(themeColorKey)]!;
     return fromColorScheme(
       ColorScheme.fromSeed(seedColor: seedColor, brightness: Brightness.dark),
     );

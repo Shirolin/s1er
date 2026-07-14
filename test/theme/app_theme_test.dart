@@ -54,6 +54,16 @@ void main() {
       expect(AppTheme.themeSeeds.keys, containsAll(['blue', 'purple', 'sage', 'indigo', 'orange']));
     });
 
+    test('custom and unknown theme colors fall back to the default preset', () {
+      expect(AppTheme.normalizeThemeColorKey('#2B2930'), 'purple');
+      expect(AppTheme.normalizeThemeColorKey('unknown'), 'purple');
+      expect(AppTheme.normalizeThemeColorKey('sage'), 'sage');
+      expect(
+        AppTheme.lightTheme('#2B2930').colorScheme,
+        AppTheme.lightTheme('purple').colorScheme,
+      );
+    });
+
     test('dark theme preserves M3 settings', () {
       final theme = AppTheme.darkTheme('blue');
       expect(theme.useMaterial3, isTrue);

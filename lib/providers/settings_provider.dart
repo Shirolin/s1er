@@ -10,7 +10,7 @@ import '../theme/app_theme.dart';
 class AppSettings {
   const AppSettings({
     this.themeMode = 'system',
-    this.themeColor = 'purple',
+    this.themeColor = AppTheme.defaultThemeColorKey,
     this.showImages = true,
     this.imageLoadPolicy = ImageLoadPolicy.always,
     this.avatarLoadPolicy = ImageLoadPolicy.always,
@@ -150,12 +150,18 @@ class SettingsNotifier extends Notifier<AppSettings> {
       themeMode = oldDarkMode ? 'dark' : 'system';
       settingsStore.put('themeMode', themeMode);
     }
+    final storedThemeColor = settingsStore.get<String>(
+      'themeColor',
+      defaultValue: AppTheme.defaultThemeColorKey,
+    );
+    final themeColor = AppTheme.normalizeThemeColorKey(storedThemeColor);
+    if (themeColor != storedThemeColor) {
+      settingsStore.put('themeColor', themeColor);
+    }
 
     return AppSettings(
       themeMode: themeMode,
-      themeColor:
-          settingsStore.get<String>('themeColor', defaultValue: 'purple') ??
-              'purple',
+      themeColor: themeColor,
       showImages:
           settingsStore.get<bool>('showImages', defaultValue: true) ?? true,
       imageLoadPolicy: ImageLoadPolicy.fromStored(
@@ -197,8 +203,9 @@ class SettingsNotifier extends Notifier<AppSettings> {
   }
 
   void setThemeColor(String value) {
-    _commit(state.copyWith(themeColor: value));
-    _persist('themeColor', value);
+    final themeColor = AppTheme.normalizeThemeColorKey(value);
+    _commit(state.copyWith(themeColor: themeColor));
+    _persist('themeColor', themeColor);
   }
 
   void setShowImages(bool value) {

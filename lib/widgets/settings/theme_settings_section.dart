@@ -1,4 +1,3 @@
-import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
@@ -40,110 +39,9 @@ class ThemeSettingsSection extends ConsumerWidget {
               selectedKey: settings.themeColor,
               onChanged: notifier.setThemeColor,
             ),
-            if (kDebugMode) const _CustomColorDebugger(),
           ],
         ),
       ),
-    );
-  }
-}
-
-class _CustomColorDebugger extends ConsumerStatefulWidget {
-  const _CustomColorDebugger();
-
-  @override
-  ConsumerState<_CustomColorDebugger> createState() =>
-      _CustomColorDebuggerState();
-}
-
-class _CustomColorDebuggerState extends ConsumerState<_CustomColorDebugger> {
-  late final TextEditingController _controller;
-  String? _errorText;
-
-  @override
-  void initState() {
-    super.initState();
-    final themeColor = ref.read(settingsProvider).themeColor;
-    final isPreset = const ['blue', 'purple', 'sage', 'indigo', 'orange']
-        .contains(themeColor);
-    _controller = TextEditingController(text: isPreset ? '' : themeColor);
-  }
-
-  @override
-  void dispose() {
-    _controller.dispose();
-    super.dispose();
-  }
-
-  void _applyColor(String val) {
-    if (val.trim().isEmpty) {
-      setState(() => _errorText = null);
-      return;
-    }
-    final cleanHex = val.replaceAll('#', '').trim();
-    if (cleanHex.length != 6 && cleanHex.length != 8) {
-      setState(() => _errorText = '请输入 6 位或 8 位十六进制颜色，如 #2B2930');
-      return;
-    }
-    if (int.tryParse(cleanHex, radix: 16) == null) {
-      setState(() => _errorText = '格式错误');
-      return;
-    }
-    setState(() => _errorText = null);
-    ref.read(settingsProvider.notifier).setThemeColor(val.trim());
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    final scheme = Theme.of(context).colorScheme;
-
-    ref.listen(settingsProvider.select((s) => s.themeColor), (_, next) {
-      final isNextPreset =
-          const ['blue', 'purple', 'sage', 'indigo', 'orange'].contains(next);
-      if (isNextPreset) {
-        _controller.text = '';
-      } else {
-        if (_controller.text != next) {
-          _controller.text = next;
-        }
-      }
-    });
-
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        const SizedBox(height: 16),
-        Row(
-          children: [
-            Expanded(
-              child: TextFormField(
-                controller: _controller,
-                decoration: InputDecoration(
-                  labelText: '自定义调试种子色 (Hex)',
-                  hintText: '如 #2B2930 或 #141218',
-                  errorText: _errorText,
-                  prefixIcon: const Icon(Icons.colorize_outlined),
-                  isDense: true,
-                  border: const OutlineInputBorder(),
-                ),
-                onFieldSubmitted: _applyColor,
-              ),
-            ),
-            const SizedBox(width: 12),
-            FilledButton(
-              onPressed: () => _applyColor(_controller.text),
-              child: const Text('应用'),
-            ),
-          ],
-        ),
-        const SizedBox(height: 12),
-        Text(
-          '调试：可直接输入自定义种子色，便于验证浅色 / 深色主题效果。',
-          style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                color: scheme.onSurfaceVariant,
-              ),
-        ),
-      ],
     );
   }
 }

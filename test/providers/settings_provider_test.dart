@@ -74,6 +74,22 @@ void main() {
     expect(store.get<bool>('recordReadingHistory'), isFalse);
   });
 
+  test('legacy custom theme colors are normalized to the default preset', () {
+    store.put('themeColor', '#2B2930');
+    final container = ProviderContainer(
+      overrides: [
+        settingsProvider.overrideWith(() => SettingsNotifier(store: store)),
+      ],
+    );
+    addTearDown(container.dispose);
+
+    expect(container.read(settingsProvider).themeColor, 'purple');
+    expect(store.get<String>('themeColor'), 'purple');
+
+    container.read(settingsProvider.notifier).setThemeColor('#141218');
+    expect(container.read(settingsProvider).themeColor, 'purple');
+  });
+
   test('setImageLoadPolicy persists to settings store', () async {
     final container = ProviderContainer(
       overrides: [

@@ -29,7 +29,17 @@ void main() {
 
     test('segmentedButtonTheme is configured', () {
       final theme = AppTheme.lightTheme('purple');
-      expect(theme.segmentedButtonTheme.style, isNotNull);
+      final style = theme.segmentedButtonTheme.style;
+      expect(style, isNotNull);
+      expect(style!.tapTargetSize, MaterialTapTargetSize.padded);
+      expect(
+        style.shape?.resolve(<WidgetState>{}),
+        isA<RoundedRectangleBorder>().having(
+          (shape) => shape.borderRadius,
+          'borderRadius',
+          S1Shape.full,
+        ),
+      );
     });
 
     test('tabBarTheme uses colorScheme tokens', () {

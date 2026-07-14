@@ -55,7 +55,8 @@ abstract class S1SegmentedButtonStyle {
   static ButtonStyle forScheme(ColorScheme scheme) {
     return ButtonStyle(
       visualDensity: VisualDensity.standard,
-      tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+      // 保留 M3 视觉高度之外的 48dp 触控目标，避免紧凑布局牺牲可访问性。
+      tapTargetSize: MaterialTapTargetSize.padded,
       backgroundColor: WidgetStateProperty.resolveWith((states) {
         if (states.contains(WidgetState.selected)) {
           return scheme.secondaryContainer;
@@ -70,7 +71,7 @@ abstract class S1SegmentedButtonStyle {
         return scheme.onSurfaceVariant;
       }),
       shape: WidgetStateProperty.all(
-        const RoundedRectangleBorder(borderRadius: S1Shape.medium),
+        const RoundedRectangleBorder(borderRadius: S1Shape.full),
       ),
     );
   }

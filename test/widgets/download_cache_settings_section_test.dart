@@ -11,8 +11,9 @@ void main() {
   Future<void> pumpSection(
     WidgetTester tester, {
     Future<int> Function(Ref ref)? cacheSize,
+    double width = 800,
   }) async {
-    tester.view.physicalSize = const Size(800, 2000);
+    tester.view.physicalSize = Size(width, 2000);
     tester.view.devicePixelRatio = 1;
     addTearDown(tester.view.resetPhysicalSize);
     addTearDown(tester.view.resetDevicePixelRatio);
@@ -76,6 +77,18 @@ void main() {
       await tester.pumpAndSettle();
 
       expect(find.textContaining('0 B'), findsOneWidget);
+    });
+
+    testWidgets('keeps five-option image limit compact without selected icon',
+        (tester) async {
+      await pumpSection(tester, width: 320);
+
+      final imageLimitButton = tester
+          .widgetList<SegmentedButton<int>>(find.byType(SegmentedButton<int>))
+          .singleWhere((button) => button.segments.length == 5);
+
+      expect(imageLimitButton.showSelectedIcon, isFalse);
+      expect(tester.takeException(), isNull);
     });
   });
 }

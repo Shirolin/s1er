@@ -263,6 +263,9 @@ class _DownloadCacheSettingsSectionState
                       ButtonSegment(value: 50, label: Text('50')),
                     ],
                     selected: {settings.maxImagesPerPost},
+                    // 五段已达紧凑屏横向上限；由容器色表达选中态，
+                    // 避免默认勾号挤压两位数标签并触发换行。
+                    showSelectedIcon: false,
                     onSelectionChanged: (selection) {
                       notifier.setMaxImagesPerPost(selection.first);
                     },

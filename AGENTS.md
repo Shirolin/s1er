@@ -51,6 +51,8 @@
   - **禁止**：裸写 `fontSize: 14` 等常量（头像 fallback 用 `FittedBox` + `textTheme`）
 - **组件映射**：`NavigationBar` / `FilledButton` / `SegmentedButton` / 原生 `Badge`
   - 计数/楼层 → `Badge`；可点击标签/分页 → `Chip` / `ActionChip`
+  - `SegmentedButton` 仅用于 2–5 个彼此相关、需要并列比较的选项，并保持至少 48dp 触控目标
+  - 紧凑屏上的五段短标签应设 `showSelectedIcon: false`，以容器色表达选中态；文案仍放不下时响应式改用下拉选择，禁止压缩字号或触控区域
 - **层级**：`Card` / `AppBar` 必须显式 `elevation: 0`（含继承主题处也应写明）；浮层 Menu/PopupMenu 可按 M3 使用低 elevation
 - **透明度**：一律用 `S1Alpha.*` token，禁止内联 `withValues(alpha: 0.x)`
 - **排版常量**：`S1Typography.defaultBodySize` 为字号设置标准档，HTML 渲染通过 `S1Typography.bodySize(textTheme)` 桥接

@@ -190,9 +190,14 @@ Future<void> _handleRequest(HttpRequest req) async {
     upReq.add(body);
   }
 
+  // 图床上传需更长超时：Web 先收齐字节再转发，大图 + Cloudflare 易超过 API 默认 30s。
+  final upstreamTimeoutSeconds = isExtUpload
+      ? EnvConfig.imageUploadTimeoutSeconds
+      : EnvConfig.receiveTimeoutSeconds;
+
   print('>>> ${req.method} $target');
   final upRes = await upReq.close().timeout(
-    const Duration(seconds: EnvConfig.receiveTimeoutSeconds),
+    Duration(seconds: upstreamTimeoutSeconds),
     onTimeout: () {
       client.close(force: true);
       throw TimeoutException('Upstream response timed out: $target');
@@ -203,7 +208,7 @@ Future<void> _handleRequest(HttpRequest req) async {
   _storeCookies(upRes.headers['set-cookie']);
 
   final bytes = await upRes.fold<List<int>>([], (a, b) => a..addAll(b)).timeout(
-    const Duration(seconds: EnvConfig.receiveTimeoutSeconds),
+    Duration(seconds: upstreamTimeoutSeconds),
     onTimeout: () {
       client.close(force: true);
       throw TimeoutException('Upstream body timed out: $target');
@@ -275,7 +280,7 @@ bool _applyCors(HttpRequest req, HttpResponse res) {
         .set('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS');
     res.headers.set(
       'Access-Control-Allow-Headers',
-      'Content-Type, Cookie, X-Requested-With, $proxyAuthHeader',
+      'Content-Type, Content-Length, Cookie, X-Requested-With, $proxyAuthHeader',
     );
     res.headers.set('Access-Control-Allow-Credentials', 'true');
     return true;

@@ -55,6 +55,12 @@ class EnvConfig {
     defaultValue: 30,
   );
 
+  /// 外链图床上传超时（秒，默认 120；经代理双跳 + 大图更易超过 API 默认 30s）
+  static const int imageUploadTimeoutSeconds = int.fromEnvironment(
+    'IMAGE_UPLOAD_TIMEOUT',
+    defaultValue: 120,
+  );
+
   // ── 便捷判断 ──────────────────────────────────────────
 
   static bool get talkerLogAll => talkerLogLevel == 'all';

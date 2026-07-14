@@ -19,16 +19,19 @@ class ExternalImageUploadService {
                   seconds: EnvConfig.connectTimeoutSeconds,
                 ),
                 sendTimeout: const Duration(
-                  seconds: EnvConfig.sendTimeoutSeconds,
+                  seconds: EnvConfig.imageUploadTimeoutSeconds,
                 ),
                 receiveTimeout: const Duration(
-                  seconds: EnvConfig.receiveTimeoutSeconds,
+                  seconds: EnvConfig.imageUploadTimeoutSeconds,
                 ),
                 responseType: ResponseType.plain,
               ),
             );
 
   final Dio _dio;
+
+  /// 流浪图床单文件上限（官网文案 5 MB）。
+  static const int maxBytes = 5 * 1024 * 1024;
 
   /// 解析实际上传 URL（Web → 本地代理）。
   static String resolveUploadUrl({
@@ -49,12 +52,24 @@ class ExternalImageUploadService {
     required String filename,
   }) async {
     final safeName = filename.trim().isEmpty ? 'image.jpg' : filename.trim();
+    if (bytes.isEmpty) {
+      throw const ExternalImageUploadException('图片内容为空');
+    }
+    if (bytes.length > maxBytes) {
+      throw ExternalImageUploadException(
+        '图片过大（${(bytes.length / (1024 * 1024)).toStringAsFixed(1)} MB），'
+        '图床上限 ${maxBytes ~/ (1024 * 1024)} MB，请压缩后再试',
+      );
+    }
+
     final url = resolveUploadUrl(filename: safeName);
 
     try {
-      final headers = <String, dynamic>{
-        Headers.contentLengthHeader: bytes.length,
-      };
+      final headers = <String, dynamic>{};
+      // 浏览器禁止设置 Content-Length；强写会搞乱 Web 请求/CORS 预检。
+      if (!kIsWeb) {
+        headers[Headers.contentLengthHeader] = bytes.length;
+      }
       if (kIsWeb && EnvConfig.proxyAuthToken.isNotEmpty) {
         headers[proxyAuthHeader] = EnvConfig.proxyAuthToken;
       }
@@ -65,6 +80,12 @@ class ExternalImageUploadService {
         options: Options(
           contentType: _contentTypeFor(safeName),
           headers: headers,
+          sendTimeout: const Duration(
+            seconds: EnvConfig.imageUploadTimeoutSeconds,
+          ),
+          receiveTimeout: const Duration(
+            seconds: EnvConfig.imageUploadTimeoutSeconds,
+          ),
         ),
       );
 
@@ -90,9 +111,35 @@ class ExternalImageUploadService {
       return imageUrl;
     } on ExternalImageUploadException {
       rethrow;
+    } on DioException catch (e, st) {
+      talker.handle(e, st, 'External image upload failed');
+      throw ExternalImageUploadException(_messageForDio(e));
     } catch (e, st) {
       talker.handle(e, st, 'External image upload failed');
       throw const ExternalImageUploadException('图片上传失败，请稍后重试');
+    }
+  }
+
+  static String _messageForDio(DioException e) {
+    switch (e.type) {
+      case DioExceptionType.connectionTimeout:
+      case DioExceptionType.sendTimeout:
+      case DioExceptionType.receiveTimeout:
+        return '图片上传超时，请换较小文件或稍后重试';
+      case DioExceptionType.connectionError:
+        return '无法连接图床，请检查网络或本时代理是否已启动';
+      case DioExceptionType.badResponse:
+        final code = e.response?.statusCode;
+        if (code == 504 || code == 502) {
+          return '图床代理超时，请稍后重试';
+        }
+        return '图片上传失败（HTTP ${code ?? 'error'}）';
+      case DioExceptionType.cancel:
+        return '图片上传已取消';
+      case DioExceptionType.badCertificate:
+      case DioExceptionType.transformTimeout:
+      case DioExceptionType.unknown:
+        return '图片上传失败，请稍后重试';
     }
   }
 

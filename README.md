@@ -121,6 +121,8 @@ flutter run -d chrome --dart-define=PROXY_AUTH_TOKEN=replace_with_a_random_value
 | `PROXY_AUTH_TOKEN` | 空 | 非空时启用本地代理 token 校验 |
 | `CONNECT_TIMEOUT` | `20` | 连接超时，单位为秒 |
 | `RECEIVE_TIMEOUT` | `30` | 响应超时，单位为秒 |
+| `SEND_TIMEOUT` | `30` | 发送超时，单位为秒 |
+| `IMAGE_UPLOAD_TIMEOUT` | `120` | 外链图床上传超时（Web `/ext-upload` 同步），单位为秒 |
 
 示例：
 

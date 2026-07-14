@@ -165,6 +165,8 @@ flutter run -d chrome --dart-define=TALKER_LOG_LEVEL=all --dart-define=TALKER_MA
 | `PROXY_PORT` | int | `19080` | Web CORS 代理端口 |
 | `CONNECT_TIMEOUT` | int | `20` | Dio 连接超时（秒） |
 | `RECEIVE_TIMEOUT` | int | `30` | Dio 响应超时（秒） |
+| `SEND_TIMEOUT` | int | `30` | Dio 发送超时（秒） |
+| `IMAGE_UPLOAD_TIMEOUT` | int | `120` | 外链图床上传 send/receive 超时（秒；Web 代理 `/ext-upload` 同上限） |
 
 新增配置项规则：
 1. 在 `EnvConfig` 中添加 `static const` 字段，使用 `Xxx.fromEnvironment('KEY', defaultValue: ...)` 

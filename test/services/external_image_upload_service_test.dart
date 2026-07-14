@@ -64,7 +64,66 @@ void main() {
         throwsA(isA<ExternalImageUploadException>()),
       );
     });
+
+    test('rejects files larger than maxBytes', () async {
+      final service = ExternalImageUploadService(dio: Dio());
+      final huge = Uint8List(ExternalImageUploadService.maxBytes + 1);
+
+      await expectLater(
+        () => service.upload(bytes: huge, filename: 'huge.jpg'),
+        throwsA(
+          isA<ExternalImageUploadException>().having(
+            (e) => e.message,
+            'message',
+            contains('图片过大'),
+          ),
+        ),
+      );
+    });
+
+    test('maps Dio sendTimeout to timeout message', () async {
+      final dio = Dio()
+        ..httpClientAdapter = _FailingAdapter(
+          DioException(
+            requestOptions: RequestOptions(path: '/'),
+            type: DioExceptionType.sendTimeout,
+          ),
+        );
+      final service = ExternalImageUploadService(dio: dio);
+
+      await expectLater(
+        () => service.upload(
+          bytes: Uint8List.fromList([1]),
+          filename: 'a.png',
+        ),
+        throwsA(
+          isA<ExternalImageUploadException>().having(
+            (e) => e.message,
+            'message',
+            contains('超时'),
+          ),
+        ),
+      );
+    });
   });
+}
+
+class _FailingAdapter implements HttpClientAdapter {
+  _FailingAdapter(this.error);
+
+  final DioException error;
+
+  @override
+  void close({bool force = false}) {}
+
+  @override
+  Future<ResponseBody> fetch(
+    RequestOptions options,
+    Stream<Uint8List>? requestStream,
+    Future<void>? cancelFuture,
+  ) async {
+    throw error;
+  }
 }
 
 class _UploadAdapter implements HttpClientAdapter {

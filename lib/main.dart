@@ -1,15 +1,31 @@
+import 'dart:convert';
+
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:talker_dio_logger/talker_dio_logger.dart';
 import 'app.dart';
 import 'config/env_config.dart';
-import 'models/emoticon.dart';
+import 'models/emoticon_catalog.dart';
 import 'providers/settings_provider.dart';
 import 'services/app_database.dart';
 import 'services/app_local_data.dart';
 import 'services/http_client.dart';
 import 'services/talker.dart';
+
+Future<void> _loadEmoticonManifest() async {
+  try {
+    final raw =
+        await rootBundle.loadString('assets/emoticons/manifest.json');
+    final decoded = jsonDecode(raw);
+    if (decoded is Map<String, dynamic>) {
+      EmoticonCatalog.applyManifest(decoded);
+    }
+  } catch (e, st) {
+    talker.handle(e, st, 'Emoticon manifest load skipped');
+  }
+}
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -19,7 +35,9 @@ void main() async {
     FlutterError.onError = (details) {
       final exception = details.exception;
       if (exception is AssertionError &&
-          exception.message.toString().contains('ViewInsets cannot be negative')) {
+          exception.message
+              .toString()
+              .contains('ViewInsets cannot be negative')) {
         return;
       }
       if (originalOnError != null) {
@@ -41,6 +59,7 @@ void main() async {
   final db = AppDatabase();
   final localData = AppLocalData(db);
   await localData.loadEssentials();
+  await _loadEmoticonManifest();
 
   final container = ProviderContainer(
     overrides: [
@@ -63,8 +82,6 @@ void main() async {
       ),
     ),
   );
-
-  EmoticonMap.initialize();
 
   runApp(
     UncontrolledProviderScope(

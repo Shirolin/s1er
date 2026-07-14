@@ -1,7 +1,10 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:s1_app/models/emoticon_catalog.dart';
+import 'package:s1_app/utils/platform_image_url.dart';
 
 void main() {
+  tearDown(EmoticonCatalog.clearManifest);
+
   group('EmoticonCatalog', () {
     test('exposes six packs matching S1-Next order and sizes', () {
       expect(EmoticonCatalog.packs.map((p) => p.entityPrefix).toList(), [
@@ -22,25 +25,52 @@ void main() {
       ]);
     });
 
-    test('builds entity and network urls', () {
-      final face = EmoticonCatalog.packs.first;
-      final item = EmoticonCatalog.itemsFor(face).first;
-      expect(item.entity, '[f:001]');
+    test('applyManifest sets exact ext and asset path', () {
+      EmoticonCatalog.applyManifest({
+        'f:001': 'face2017/001.gif',
+        'c:010': 'carton2017/010.png',
+      });
+      final face = EmoticonCatalog.findByCode('[f:001]')!;
+      expect(face.resolvedExt, 'gif');
+      expect(face.assetPath, 'assets/emoticons/face2017/001.gif');
       expect(
-        item.pngUrl,
-        'https://static.stage1st.com/image/smiley/face2017/001.png',
-      );
-      expect(
-        item.gifUrl,
+        face.networkUrl,
         'https://static.stage1st.com/image/smiley/face2017/001.gif',
       );
+
+      final carton = EmoticonCatalog.findByCode('c:10')!;
+      expect(carton.resolvedExt, 'png');
+      expect(carton.relativePath, 'carton2017/010.png');
     });
 
-    test('findByCode accepts bracketed and raw forms', () {
-      expect(EmoticonCatalog.findByCode('[c:010]')?.entity, '[c:010]');
-      expect(EmoticonCatalog.findByCode('a:3')?.entity, '[a:003]');
+    test('fromSmileyUrl parses CDN paths', () {
+      final item = EmoticonCatalog.fromSmileyUrl(
+        'https://static.stage1st.com/image/smiley/face2017/004.gif',
+      );
+      expect(item?.entity, '[f:004]');
+      expect(item?.resolvedExt, 'gif');
+    });
+
+    test('findByCode rejects unknown codes', () {
       expect(EmoticonCatalog.findByCode('[f:999]'), isNull);
       expect(EmoticonCatalog.findByCode('[x:001]'), isNull);
+    });
+  });
+
+  group('platformImageUrl', () {
+    test('rewrites on web', () {
+      final url = platformImageUrl(
+        'https://static.stage1st.com/image/smiley/face2017/001.png',
+        isWeb: true,
+      );
+      expect(url, contains('/img-proxy?url='));
+      expect(url, contains(Uri.encodeComponent('https://static.stage1st.com')));
+    });
+
+    test('keeps original off web', () {
+      const original =
+          'https://static.stage1st.com/image/smiley/face2017/001.png';
+      expect(platformImageUrl(original, isWeb: false), original);
     });
   });
 }

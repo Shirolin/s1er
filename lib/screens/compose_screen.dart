@@ -43,6 +43,7 @@ class _ComposeUploadedImage {
 
 class _ComposeScreenState extends ConsumerState<ComposeScreen> {
   final _messageController = TextEditingController();
+  final _messageFocusNode = FocusNode();
   bool _isSubmitting = false;
   bool _isUploadingImage = false;
   bool _redirectedToLogin = false;
@@ -134,13 +135,6 @@ class _ComposeScreenState extends ConsumerState<ComposeScreen> {
     });
   }
 
-  @override
-  void dispose() {
-    _messageController.removeListener(_onMessageChanged);
-    _messageController.dispose();
-    super.dispose();
-  }
-
   String get _title {
     if (!_hasValidTid) return '无法回复';
     if (_draft != null && _draft!.displayFloor > 0) {
@@ -163,12 +157,26 @@ class _ComposeScreenState extends ConsumerState<ComposeScreen> {
   }
 
   void _toggleEmoticonPanel() {
-    FocusScope.of(context).unfocus();
-    setState(() => _showEmoticonPanel = !_showEmoticonPanel);
+    setState(() {
+      _showEmoticonPanel = !_showEmoticonPanel;
+      if (_showEmoticonPanel) {
+        _messageFocusNode.unfocus();
+      } else {
+        _messageFocusNode.requestFocus();
+      }
+    });
   }
 
   void _insertEmoticon(String entity) {
     _insertAtCursor(entity);
+  }
+
+  @override
+  void dispose() {
+    _messageController.removeListener(_onMessageChanged);
+    _messageController.dispose();
+    _messageFocusNode.dispose();
+    super.dispose();
   }
 
   void _removeUploadedImage(_ComposeUploadedImage image) {
@@ -369,6 +377,7 @@ class _ComposeScreenState extends ConsumerState<ComposeScreen> {
             Expanded(
               child: TextField(
                 controller: _messageController,
+                focusNode: _messageFocusNode,
                 maxLines: null,
                 expands: true,
                 textAlignVertical: TextAlignVertical.top,

@@ -143,9 +143,6 @@ Pods/
 # CORS 代理日志
 proxy_server.log
 
-# 表情包资源（通过 scripts/download_emoticons.dart 下载，不入库）
-assets/emoticons/
-
 # 临时脚本（非项目正式代码）
 scripts/fix-repos.js
 scripts/maven-proxy.js

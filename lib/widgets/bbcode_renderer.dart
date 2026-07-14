@@ -3,6 +3,7 @@ import 'package:flutter_html/flutter_html.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:url_launcher/url_launcher.dart';
 import '../config/constants.dart';
+import '../models/emoticon_catalog.dart';
 import '../providers/settings_provider.dart';
 import '../theme/app_theme.dart';
 import '../utils/bbcode_cache.dart';
@@ -346,6 +347,17 @@ class _MemoizedHtmlBlockState extends State<_MemoizedHtmlBlock> {
                 if (element.classes.contains('emoticon')) {
                   final src =
                       _unescapeHtml(element.attributes['data-src'] ?? '');
+                  final code = element.attributes['data-code'] ?? '';
+                  final fromUrl =
+                      src.isNotEmpty ? EmoticonCatalog.fromSmileyUrl(src) : null;
+                  final item =
+                      fromUrl ?? EmoticonCatalog.findByCode(code);
+                  if (item != null) {
+                    return Padding(
+                      padding: const EdgeInsets.symmetric(horizontal: 2),
+                      child: EmoticonImage(item: item, size: 24),
+                    );
+                  }
                   if (src.isNotEmpty) {
                     return ImageViewer(
                       imageUrl: src,
@@ -353,7 +365,6 @@ class _MemoizedHtmlBlockState extends State<_MemoizedHtmlBlock> {
                       margin: const EdgeInsets.symmetric(horizontal: 2),
                     );
                   }
-                  final code = element.attributes['data-code'] ?? '';
                   return EmoticonWidget(code: code);
                 }
 
@@ -368,6 +379,13 @@ class _MemoizedHtmlBlockState extends State<_MemoizedHtmlBlock> {
                 if (src.isEmpty) return const SizedBox.shrink();
 
                 if (S1Constants.isEmoticon(src)) {
+                  final item = EmoticonCatalog.fromSmileyUrl(src);
+                  if (item != null) {
+                    return Padding(
+                      padding: const EdgeInsets.symmetric(horizontal: 2),
+                      child: EmoticonImage(item: item, size: 24),
+                    );
+                  }
                   return ImageViewer(
                     imageUrl: src,
                     isEmoticon: true,

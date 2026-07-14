@@ -44,3 +44,11 @@ dev_dependencies:
   http: ^1.6.0
 flutter:
   uses-material-design: true
+  assets:
+    - assets/emoticons/
+    - assets/emoticons/face2017/
+    - assets/emoticons/carton2017/
+    - assets/emoticons/animal2017/
+    - assets/emoticons/device2017/
+    - assets/emoticons/goose2017/
+    - assets/emoticons/bundam2017/

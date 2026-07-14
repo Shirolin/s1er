@@ -25,6 +25,7 @@
 | 网络状态 | connectivity_plus | ^6.1.4 |
 | 备份（L1 ZIP） | archive / file_selector / share_plus | ^4.0.9 / ^1.1.0 / ^13.2.0 |
 | 回复插图 | file_selector + p.sda1.dev 外链图床 | 已有 file_selector；不做 Discuz attach |
+| 麻将脸表情 | `assets/emoticons/{*2017}/` 原 png/gif 入库打包 | 对齐 S1-Next；不转 WebP；脚本仅生成/更新 |
 | WebView | webview_flutter | ^4.7.0 |
 | HTML 渲染 | flutter_html | ^3.0.0 |
 | Cookie 管理 | dio_cookie_manager / cookie_jar | ^3.1.1 / ^4.0.8 |
@@ -196,7 +197,7 @@ flutter run -d chrome --dart-define=TALKER_LOG_LEVEL=all --dart-define=TALKER_MA
 - Native 图片使用 `flutter_cache_manager` 磁盘缓存；Web 主要依赖浏览器缓存。备份**禁止**包含图片缓存
 - 跨客户端备份格式：`docs/backup-format-v1.md`（默认仅 L1 JSON ZIP；`native/` L2 可选且未作为默认导出）
 - 黑名单：仅 Drift 表 + 备份字段预留，产品 UI 尚未实现
-- 表情包资源通过脚本从 GitHub 下载（`scripts/download_emoticons.dart`），未内置到仓库
+- 麻将脸：对齐 S1-Next，原 png/gif **入库**于 `assets/emoticons/{face2017|carton2017|…}/` 并随客户端打包；不转 WebP。`scripts/download_emoticons.dart` 仅用于生成/增量更新资源与 `manifest.json` 后提交，不是「clone 后必跑才能构建」的前置。读帖/面板 **local-first**，缺失时再 CDN（Web 走 `/img-proxy`）。
 - test 目录覆盖率仍不足，尤其是 screens 和 widgets 层
 - 技术栈现代化定案与拆分：`docs/plans/2026-07-12-tech-stack-modernization.md`（P0–P6 已落地后以本文件锁定表为准）
 - flutter_riverpod 临时固定为 `3.2.1`：`3.3.2` 存在上游 [#4765](https://github.com/rrousselGit/riverpod/issues/4765) 的 Provider 订阅恢复期 `markNeedsBuild` 回归；升级前必须先通过路由 Provider 链回归测试。

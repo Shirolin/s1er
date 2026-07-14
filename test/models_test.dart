@@ -3,7 +3,7 @@ import 'package:s1_app/models/thread.dart';
 import 'package:s1_app/models/post.dart';
 import 'package:s1_app/models/forum_category.dart';
 import 'package:s1_app/models/user.dart';
-import 'package:s1_app/models/emoticon.dart';
+import 'package:s1_app/models/emoticon_catalog.dart';
 
 void main() {
   group('Thread', () {
@@ -167,36 +167,12 @@ void main() {
     });
   });
 
-  group('Emoticon', () {
-    test('creates emoticon with code and path', () {
-      final emoticon = Emoticon(
-        code: '[f:001]',
-        assetPath: 'assets/emoticons/001.png',
-      );
-      expect(emoticon.code, '[f:001]');
-      expect(emoticon.assetPath, 'assets/emoticons/001.png');
-    });
-
-    test('EmoticonMap initializes with 100 entries', () {
-      EmoticonMap.initialize();
-      expect(EmoticonMap.all.length, 100);
-    });
-
-    test('EmoticonMap returns correct asset path', () {
-      EmoticonMap.initialize();
-      expect(
-        EmoticonMap.getAssetPath('[f:001]'),
-        'assets/emoticons/001.png',
-      );
-      expect(
-        EmoticonMap.getAssetPath('[f:100]'),
-        'assets/emoticons/100.png',
-      );
-    });
-
-    test('EmoticonMap returns null for unknown code', () {
-      EmoticonMap.initialize();
-      expect(EmoticonMap.getAssetPath('[f:999]'), null);
+  group('EmoticonCatalog smoke', () {
+    test('face pack first item defaults without manifest', () {
+      EmoticonCatalog.clearManifest();
+      final item = EmoticonCatalog.findByCode('[f:001]');
+      expect(item?.assetPath, 'assets/emoticons/face2017/001.png');
+      expect(item?.networkUrl, contains('face2017/001.png'));
     });
   });
 }

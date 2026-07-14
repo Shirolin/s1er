@@ -1,9 +1,8 @@
-import 'package:cached_network_image/cached_network_image.dart';
-import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart';
 
 import '../models/emoticon_catalog.dart';
 import '../theme/app_theme.dart';
+import 'emoticon_widget.dart';
 
 /// 回复页表情面板：分类 Tab + 网格，点击回传实体码（如 `[f:001]`）。
 class ComposeEmoticonPanel extends StatefulWidget {
@@ -91,7 +90,6 @@ class _EmoticonGrid extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final items = EmoticonCatalog.itemsFor(pack);
-    final scheme = Theme.of(context).colorScheme;
 
     return GridView.builder(
       padding: const EdgeInsets.fromLTRB(8, 8, 8, 4),
@@ -109,74 +107,11 @@ class _EmoticonGrid extends StatelessWidget {
           child: Tooltip(
             message: item.entity,
             child: Center(
-              child: _EmoticonThumb(
-                primaryUrl: item.pngUrl,
-                fallbackUrl: item.gifUrl,
-                color: scheme.onSurfaceVariant,
-              ),
+              child: EmoticonImage(item: item, size: 32),
             ),
           ),
         );
       },
-    );
-  }
-}
-
-class _EmoticonThumb extends StatelessWidget {
-  const _EmoticonThumb({
-    required this.primaryUrl,
-    required this.fallbackUrl,
-    required this.color,
-  });
-
-  final String primaryUrl;
-  final String fallbackUrl;
-  final Color color;
-
-  static const double _size = 32;
-
-  @override
-  Widget build(BuildContext context) {
-    if (kIsWeb) {
-      return Image.network(
-        primaryUrl,
-        width: _size,
-        height: _size,
-        fit: BoxFit.contain,
-        errorBuilder: (_, __, ___) => Image.network(
-          fallbackUrl,
-          width: _size,
-          height: _size,
-          fit: BoxFit.contain,
-          errorBuilder: (_, __, ___) => Icon(
-            Icons.broken_image_outlined,
-            size: 20,
-            color: color,
-          ),
-        ),
-      );
-    }
-
-    return CachedNetworkImage(
-      imageUrl: primaryUrl,
-      width: _size,
-      height: _size,
-      fit: BoxFit.contain,
-      fadeInDuration: Duration.zero,
-      fadeOutDuration: Duration.zero,
-      errorWidget: (_, __, ___) => CachedNetworkImage(
-        imageUrl: fallbackUrl,
-        width: _size,
-        height: _size,
-        fit: BoxFit.contain,
-        fadeInDuration: Duration.zero,
-        fadeOutDuration: Duration.zero,
-        errorWidget: (_, __, ___) => Icon(
-          Icons.broken_image_outlined,
-          size: 20,
-          color: color,
-        ),
-      ),
     );
   }
 }

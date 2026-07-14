@@ -1,6 +1,7 @@
 import 'package:html/dom.dart';
 import 'package:html/parser.dart' show parseFragment;
 import '../config/constants.dart';
+import '../models/emoticon_catalog.dart';
 import 'post_image_index_counter.dart';
 import 'post_image_urls.dart';
 
@@ -182,6 +183,10 @@ class BbcodeParser {
     final span = Element.tag('span');
     span.classes.add('emoticon');
     span.attributes['data-src'] = src;
+    final item = EmoticonCatalog.fromSmileyUrl(src);
+    if (item != null) {
+      span.attributes['data-code'] = item.dataCode;
+    }
     span.text = '[emoticon]';
     return span;
   }

@@ -2,86 +2,80 @@ import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart';
 
-import '../models/emoticon.dart';
 import '../models/emoticon_catalog.dart';
+import '../utils/platform_image_url.dart';
 
+/// 显示 `[f:001]` / `f:001`：本地 asset 优先，失败再 CDN（Web 经代理）。
 class EmoticonWidget extends StatelessWidget {
-  const EmoticonWidget({super.key, required this.code});
-  final String code;
+  const EmoticonWidget({
+    super.key,
+    required this.code,
+    this.size = 24,
+  });
 
-  static const double _size = 24;
+  final String code;
+  final double size;
 
   @override
   Widget build(BuildContext context) {
-    final textTheme = Theme.of(context).textTheme;
-    final assetPath = EmoticonMap.getAssetPath(_normalizeEntity(code));
-    if (assetPath != null) {
-      return Image.asset(
-        assetPath,
-        width: _size,
-        height: _size,
-        fit: BoxFit.contain,
-        errorBuilder: (context, error, stackTrace) =>
-            _networkOrText(context, textTheme),
-      );
-    }
-    return _networkOrText(context, textTheme);
-  }
-
-  Widget _networkOrText(BuildContext context, TextTheme textTheme) {
     final item = EmoticonCatalog.findByCode(code);
+    final textTheme = Theme.of(context).textTheme;
     if (item == null) {
-      return Text(_displayCode(code), style: textTheme.bodySmall);
+      return Text(code, style: textTheme.bodySmall);
     }
+    return EmoticonImage(item: item, size: size);
+  }
+}
 
-    if (kIsWeb) {
-      return Image.network(
-        item.pngUrl,
-        width: _size,
-        height: _size,
-        fit: BoxFit.contain,
-        errorBuilder: (_, __, ___) => Image.network(
-          item.gifUrl,
-          width: _size,
-          height: _size,
-          fit: BoxFit.contain,
-          errorBuilder: (_, __, ___) =>
-              Text(item.entity, style: textTheme.bodySmall),
-        ),
-      );
-    }
+/// 面板与正文共用的表情图（asset → network）。
+class EmoticonImage extends StatelessWidget {
+  const EmoticonImage({
+    super.key,
+    required this.item,
+    this.size = 32,
+  });
 
-    return CachedNetworkImage(
-      imageUrl: item.pngUrl,
-      width: _size,
-      height: _size,
+  final EmoticonItem item;
+  final double size;
+
+  @override
+  Widget build(BuildContext context) {
+    final scheme = Theme.of(context).colorScheme;
+    final textTheme = Theme.of(context).textTheme;
+    final network = platformImageUrl(item.networkUrl, isWeb: kIsWeb);
+
+    return Image.asset(
+      item.assetPath,
+      width: size,
+      height: size,
       fit: BoxFit.contain,
-      fadeInDuration: Duration.zero,
-      fadeOutDuration: Duration.zero,
-      errorWidget: (_, __, ___) => CachedNetworkImage(
-        imageUrl: item.gifUrl,
-        width: _size,
-        height: _size,
-        fit: BoxFit.contain,
-        fadeInDuration: Duration.zero,
-        fadeOutDuration: Duration.zero,
-        errorWidget: (_, __, ___) =>
-            Text(item.entity, style: textTheme.bodySmall),
-      ),
+      errorBuilder: (_, __, ___) {
+        if (kIsWeb) {
+          return Image.network(
+            network,
+            width: size,
+            height: size,
+            fit: BoxFit.contain,
+            errorBuilder: (_, __, ___) => Icon(
+              Icons.broken_image_outlined,
+              size: size * 0.7,
+              color: scheme.onSurfaceVariant,
+            ),
+          );
+        }
+        return CachedNetworkImage(
+          imageUrl: network,
+          width: size,
+          height: size,
+          fit: BoxFit.contain,
+          fadeInDuration: Duration.zero,
+          fadeOutDuration: Duration.zero,
+          errorWidget: (_, __, ___) => Text(
+            item.entity,
+            style: textTheme.bodySmall,
+          ),
+        );
+      },
     );
-  }
-
-  static String _normalizeEntity(String raw) {
-    final trimmed = raw.trim();
-    if (trimmed.startsWith('[') && trimmed.endsWith(']')) return trimmed;
-    if (RegExp(r'^[facdgb]:\d+$', caseSensitive: false).hasMatch(trimmed)) {
-      return '[$trimmed]';
-    }
-    return trimmed;
-  }
-
-  static String _displayCode(String raw) {
-    final item = EmoticonCatalog.findByCode(raw);
-    return item?.entity ?? raw;
   }
 }

@@ -120,4 +120,115 @@ abstract class ScrollFloorNavigator {
 
     await S1ScrollMotion.animateTo(position, targetScroll);
   }
+
+  /// 将 [postKeys] 中 [index] 对应楼滚至 [revealAlignment]。
+  ///
+  /// 目标尚未被懒列表构建时：先估算滚动拉入视口，再校正。
+  static Future<bool> scrollToIndex({
+    required List<GlobalKey> postKeys,
+    required int index,
+    double alignment = revealAlignment,
+  }) async {
+    if (postKeys.isEmpty || index < 0 || index >= postKeys.length) {
+      return false;
+    }
+
+    BuildContext? anchorContext;
+    for (final key in postKeys) {
+      if (key.currentContext != null) {
+        anchorContext = key.currentContext;
+        break;
+      }
+    }
+    // 全未构建：尝试用 index 0 的 key 所在 Scrollable 不可用时，直接失败由调用方重试。
+    anchorContext ??= postKeys[index].currentContext;
+    if (anchorContext == null) {
+      // 强制触发离屏项：找任一已附着的 Scrollable（经 postKeys 外部传入的 ancestor）。
+      return false;
+    }
+
+    final scrollable = Scrollable.maybeOf(anchorContext);
+    if (scrollable == null) return false;
+
+    final position = scrollable.position;
+    final viewportDimension = position.viewportDimension;
+    if (viewportDimension <= 0) return false;
+
+    var targetContext = postKeys[index].currentContext;
+    if (targetContext == null) {
+      // 估算：按近似行高推进到目标附近。
+      final estimated =
+          (position.pixels + index * viewportDimension * 0.45).clamp(
+        position.minScrollExtent,
+        position.maxScrollExtent,
+      );
+      await S1ScrollMotion.animateTo(position, estimated);
+      await WidgetsBinding.instance.endOfFrame;
+      targetContext = postKeys[index].currentContext;
+      if (targetContext == null) {
+        await S1ScrollMotion.correctSilentlyIfNeeded(position, estimated);
+        await WidgetsBinding.instance.endOfFrame;
+        targetContext = postKeys[index].currentContext;
+      }
+      if (targetContext == null) return false;
+    }
+
+    if (!targetContext.mounted) return false;
+    final render = targetContext.findRenderObject();
+    if (render == null || !render.attached) return false;
+    final viewport = RenderAbstractViewport.maybeOf(render);
+    if (viewport == null) return false;
+
+    final targetScroll = viewport
+        .getOffsetToReveal(render, alignment)
+        .offset
+        .clamp(position.minScrollExtent, position.maxScrollExtent);
+
+    final delta = (targetScroll - position.pixels).abs();
+    if (delta > alignSkipTolerance) {
+      await S1ScrollMotion.animateTo(position, targetScroll);
+    }
+    return true;
+  }
+
+  /// 根据 [_postKeys] 与视口，解析当前“靠上可见”的页内楼层索引（0-based）。
+  static int? findLeadingVisiblePostIndex({
+    required List<GlobalKey> postKeys,
+  }) {
+    if (postKeys.isEmpty) return null;
+
+    BuildContext? anchorContext;
+    for (final key in postKeys) {
+      if (key.currentContext != null) {
+        anchorContext = key.currentContext;
+        break;
+      }
+    }
+    if (anchorContext == null) return null;
+
+    final scrollable = Scrollable.maybeOf(anchorContext);
+    if (scrollable == null) return null;
+    final position = scrollable.position;
+    final viewportDimension = position.viewportDimension;
+    if (viewportDimension <= 0) return null;
+
+    final anchorContentY =
+        position.pixels + viewportDimension * revealAlignment;
+
+    var currentIndex = -1;
+    for (var i = 0; i < postKeys.length; i++) {
+      final ctx = postKeys[i].currentContext;
+      if (ctx == null) continue;
+      final renderObject = ctx.findRenderObject();
+      if (renderObject == null || !renderObject.attached) continue;
+      final viewport = RenderAbstractViewport.maybeOf(renderObject);
+      if (viewport == null) continue;
+      final itemTop = viewport.getOffsetToReveal(renderObject, 0).offset;
+      if (itemTop <= anchorContentY + 0.5) {
+        currentIndex = i;
+      }
+    }
+    if (currentIndex < 0) return 0;
+    return currentIndex;
+  }
 }

@@ -5,6 +5,7 @@ import 'dart:typed_data';
 import 'package:dio/dio.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:s1_app/models/open_scroll_target.dart';
 import 'package:s1_app/models/reading_record.dart';
 import 'package:s1_app/models/thread_open_intent.dart';
 import 'package:s1_app/providers/post_provider.dart';
@@ -43,11 +44,11 @@ void main() {
       container.dispose();
     });
 
-    test('A2 initialPage=5 loads page 5 on first request', () async {
+    test('page mode loads explicit page on first request', () async {
       container = buildContainer(
         extraOverrides: [
           threadOpenIntentProvider('100').overrideWithValue(
-            const ThreadOpenIntent(initialPage: 5),
+            const ThreadOpenIntent.page(5),
           ),
         ],
       );
@@ -57,14 +58,46 @@ void main() {
       expect(state.currentPage, 5);
       expect(adapter.requestedPages, [5]);
       expect(adapter.requestedPages, isNot(contains(1)));
+      expect(state.openScrollTarget, isA<ScrollToPageTop>());
     });
 
-    test('A5/A6 targetPid locates page before loading detail', () async {
+    test('page=1 forces first page over resume record', () async {
+      container = buildContainer(
+        extraOverrides: [
+          threadOpenIntentProvider('100').overrideWithValue(
+            const ThreadOpenIntent.page(1),
+          ),
+          readingRecordProvider('100').overrideWithValue(
+            ReadingRecord(
+              tid: '100',
+              subject: 't',
+              author: 'a',
+              fid: '4',
+              lastReadPage: 4,
+              lastReadFloor: 120,
+              totalPages: 8,
+              totalReplies: 0,
+              perPage: 40,
+              lastReadAt: 1,
+              firstReadAt: 1,
+              readCount: 1,
+            ),
+          ),
+        ],
+      );
+
+      final state = await container.read(postProvider('100').future);
+      expect(state.currentPage, 1);
+      expect(adapter.requestedPages, [1]);
+      expect(state.openScrollTarget, isA<ScrollToPageTop>());
+    });
+
+    test('post mode locates page before loading detail', () async {
       adapter.locatePageForPid['999'] = 187;
       container = buildContainer(
         extraOverrides: [
           threadOpenIntentProvider('100').overrideWithValue(
-            const ThreadOpenIntent(targetPid: '999'),
+            const ThreadOpenIntent.post('999'),
           ),
         ],
       );
@@ -77,9 +110,28 @@ void main() {
       expect(adapter.locateRequests, contains('100:999'));
       expect(adapter.requestedPages, [187]);
       expect(adapter.requestedPages, isNot(contains(1)));
+      expect(state.openScrollTarget, isA<ScrollToPid>());
+      expect((state.openScrollTarget as ScrollToPid).pid, '999');
+      expect(state.locateError, isNull);
     });
 
-    test('reading record resume loads lastReadPage without page=1 flash',
+    test('post mode sets locateError when pid missing on page', () async {
+      adapter.locatePageForPid['999'] = 2;
+      adapter.omitPidFromPostlist = true;
+      container = buildContainer(
+        extraOverrides: [
+          threadOpenIntentProvider('100').overrideWithValue(
+            const ThreadOpenIntent.post('999'),
+          ),
+        ],
+      );
+
+      final state = await container.read(postProvider('100').future);
+      expect(state.locateError, '未找到目标楼层');
+      expect(state.openScrollTarget, isA<ScrollToPageTop>());
+    });
+
+    test('reading record resume loads lastReadPage with ScrollToFloor',
         () async {
       container = buildContainer(
         extraOverrides: [
@@ -90,7 +142,7 @@ void main() {
               author: 'a',
               fid: '4',
               lastReadPage: 3,
-              lastReadFloor: 1,
+              lastReadFloor: 85,
               totalPages: 8,
               totalReplies: 0,
               perPage: 40,
@@ -106,6 +158,37 @@ void main() {
 
       expect(state.currentPage, 3);
       expect(adapter.requestedPages, [3]);
+      expect(state.openScrollTarget, isA<ScrollToFloor>());
+      expect((state.openScrollTarget as ScrollToFloor).absoluteFloor, 85);
+    });
+
+    test('B3 finished with new pages opens new page at top', () async {
+      container = buildContainer(
+        extraOverrides: [
+          readingRecordProvider('100').overrideWithValue(
+            ReadingRecord(
+              tid: '100',
+              subject: 't',
+              author: 'a',
+              fid: '4',
+              lastReadPage: 2,
+              lastReadFloor: 80,
+              totalPages: 2,
+              totalReplies: 79,
+              perPage: 40,
+              lastReadAt: 1,
+              firstReadAt: 1,
+              readCount: 1,
+            ),
+          ),
+        ],
+      );
+      // adapter replies=159 → totalPages = ceil(160/40)=4
+      final state = await container.read(postProvider('100').future);
+
+      expect(state.currentPage, 3);
+      expect(state.openScrollTarget, isA<ScrollToPageTop>());
+      expect(adapter.requestedPages, contains(3));
     });
 
     test('fetches rate logs when commentcount is zero', () async {
@@ -202,6 +285,8 @@ class _ThreadDetailAdapter implements HttpClientAdapter {
   final rateLogRequests = <Uri>[];
   Map<String, int>? commentCount;
   String rateLogHtml = '<html></html>';
+  bool omitPidFromPostlist = false;
+  String? _lastLocatedPid;
 
   @override
   void close({bool force = false}) {}
@@ -218,6 +303,7 @@ class _ThreadDetailAdapter implements HttpClientAdapter {
       final ptid = uri.queryParameters['ptid'] ?? '';
       final pid = uri.queryParameters['pid'] ?? '';
       locateRequests.add('$ptid:$pid');
+      _lastLocatedPid = pid;
       final page = locatePageForPid[pid] ?? 1;
       return ResponseBody.fromString(
         '',
@@ -233,6 +319,9 @@ class _ThreadDetailAdapter implements HttpClientAdapter {
     if (uri.query.contains('module=viewthread')) {
       final page = int.tryParse(uri.queryParameters['page'] ?? '1') ?? 1;
       requestedPages.add(page);
+      final pid = omitPidFromPostlist
+          ? '1'
+          : (_lastLocatedPid ?? '1');
       final variables = <String, dynamic>{
         'ppp': '40',
         'thread': {
@@ -243,7 +332,7 @@ class _ThreadDetailAdapter implements HttpClientAdapter {
         },
         'postlist': [
           {
-            'pid': '1',
+            'pid': pid,
             'author': 'user',
             'authorid': '1',
             'message': 'body',

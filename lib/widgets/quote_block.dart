@@ -1,8 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
+import '../models/thread_destination.dart';
 import '../theme/app_theme.dart';
 import '../utils/post_image_index_counter.dart';
 import '../utils/quote_jump.dart';
+import '../utils/thread_navigation.dart';
 import 'bbcode_renderer.dart';
 
 class QuoteBlock extends StatelessWidget {
@@ -204,10 +206,9 @@ class QuoteBlock extends StatelessWidget {
     BuildContext context,
     ({String tid, String? pid}) link,
   ) {
-    if (link.pid != null) {
-      context.push('/thread/${link.tid}?pid=${link.pid}');
-    } else {
-      context.push('/thread/${link.tid}');
-    }
+    final destination = link.pid != null
+        ? ThreadPost(link.tid, link.pid!)
+        : ResumeThread(link.tid);
+    context.push(ThreadRouteCodec.encodePath(destination));
   }
 }

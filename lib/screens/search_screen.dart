@@ -3,10 +3,12 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import '../models/search_result.dart';
+import '../models/thread_destination.dart';
 import '../models/user.dart';
 import '../providers/search_provider.dart';
 import '../providers/user_profile_provider.dart';
 import '../theme/app_theme.dart';
+import '../utils/thread_navigation.dart';
 import '../widgets/s1_error_view.dart';
 import '../widgets/pagination_bar.dart';
 import '../widgets/user_profile_sheet.dart';
@@ -353,7 +355,9 @@ class _ForumHitTile extends StatelessWidget {
         ],
       ),
       isThreeLine: hit.snippet.isNotEmpty,
-      onTap: () => context.push('/thread/${hit.tid}'),
+      onTap: () => context.push(
+            ThreadRouteCodec.encodePath(ResumeThread(hit.tid)),
+          ),
     );
   }
 }

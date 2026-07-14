@@ -2,8 +2,10 @@ import 'dart:async';
 
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../config/constants.dart';
+import '../models/open_scroll_target.dart';
 import '../models/post.dart';
 import '../models/poll.dart';
+import '../models/thread_open_intent.dart';
 import '../services/api_service.dart';
 import '../services/http_client.dart';
 import '../services/poll_vote_cache.dart';
@@ -28,6 +30,8 @@ class PostListState {
     this.filterAuthorId,
     this.filterAuthorName,
     this.allowReply = true,
+    this.openScrollTarget,
+    this.locateError,
   });
 
   final List<Post> posts;
@@ -41,6 +45,12 @@ class PostListState {
   final String? filterAuthorId;
   final String? filterAuthorName;
   final bool allowReply;
+
+  /// 首屏一次性滚动落点；Screen 消费后应通过 [clearOpenScrollTarget] 清除。
+  final OpenScrollTarget? openScrollTarget;
+
+  /// pid 定位失败时的用户可读说明（加载仍可能落到某一页）。
+  final String? locateError;
 
   bool get isFiltering => filterAuthorId != null;
 
@@ -57,6 +67,10 @@ class PostListState {
     String? filterAuthorName,
     bool clearFilter = false,
     bool? allowReply,
+    OpenScrollTarget? openScrollTarget,
+    bool clearOpenScrollTarget = false,
+    String? locateError,
+    bool clearLocateError = false,
   }) {
     return PostListState(
       posts: posts ?? this.posts,
@@ -72,6 +86,11 @@ class PostListState {
       filterAuthorName:
           clearFilter ? null : (filterAuthorName ?? this.filterAuthorName),
       allowReply: allowReply ?? this.allowReply,
+      openScrollTarget: clearOpenScrollTarget
+          ? null
+          : (openScrollTarget ?? this.openScrollTarget),
+      locateError:
+          clearLocateError ? null : (locateError ?? this.locateError),
     );
   }
 }
@@ -98,20 +117,68 @@ class PostNotifier extends AsyncNotifier<PostListState> {
   @override
   Future<PostListState> build() async {
     final intent = ref.read(threadOpenIntentProvider(tid));
+    final mode = intent?.mode ?? ThreadOpenMode.resume;
 
-    if (intent?.targetPid != null && intent!.targetPid!.isNotEmpty) {
-      final page = await _apiService.locatePostPage(tid, intent.targetPid!);
-      return _loadPage(page);
+    if (mode == ThreadOpenMode.post) {
+      final pid = intent?.pid;
+      if (pid != null && pid.isNotEmpty) {
+        return _openByPid(pid);
+      }
     }
 
-    final explicitPage = intent?.initialPage;
-    if (explicitPage != null && explicitPage > 1) {
-      return _loadPage(explicitPage);
+    if (mode == ThreadOpenMode.page) {
+      final page = resolveThreadInitialPage(intent: intent, record: null);
+      final loaded = await _loadPage(page);
+      return loaded.copyWith(openScrollTarget: const ScrollToPageTop());
     }
 
+    // resume
     final record = ref.read(readingRecordProvider(tid));
-    final page = resolveThreadInitialPage(intent: intent, record: record);
-    return _loadPage(page);
+    var page = resolveThreadInitialPage(intent: intent, record: record);
+    var loaded = await _loadPage(page);
+
+    // B3：在首屏暴露前用 API 总页数再校正
+    if (record != null &&
+        record.isFinished &&
+        record.hasNewPages(loaded.totalPages)) {
+      final targetPage =
+          (record.totalPages + 1).clamp(1, loaded.totalPages);
+      if (loaded.currentPage < targetPage) {
+        loaded = await _loadPage(targetPage);
+        return loaded.copyWith(openScrollTarget: const ScrollToPageTop());
+      }
+    }
+
+    final scrollTarget = resolveResumeScrollTarget(
+      record: record,
+      loadedPage: loaded.currentPage,
+      totalPages: loaded.totalPages,
+    );
+    return loaded.copyWith(openScrollTarget: scrollTarget);
+  }
+
+  Future<PostListState> _openByPid(String pid) async {
+    try {
+      final page = await _apiService.locatePostPage(tid, pid);
+      final loaded = await _loadPage(page);
+      final found = loaded.posts.any((p) => p.pid == pid);
+      if (!found) {
+        return loaded.copyWith(
+          openScrollTarget: const ScrollToPageTop(),
+          locateError: '未找到目标楼层',
+        );
+      }
+      return loaded.copyWith(
+        openScrollTarget: ScrollToPid(pid),
+        clearLocateError: true,
+      );
+    } catch (e) {
+      final loaded = await _loadPage(1);
+      return loaded.copyWith(
+        openScrollTarget: const ScrollToPageTop(),
+        locateError: '定位楼层失败',
+      );
+    }
   }
 
   ThreadPoll? _pollWithUserVotes(
@@ -170,16 +237,27 @@ class PostNotifier extends AsyncNotifier<PostListState> {
 
   Future<void> locatePid(String pid) async {
     state = const AsyncValue.loading();
-    final page = await _apiService.locatePostPage(tid, pid);
-    state = await AsyncValue.guard(() => _loadPage(page));
+    state = await AsyncValue.guard(() => _openByPid(pid));
   }
 
   Future<void> goToPage(int page) async {
     final previous = state.asData?.value;
-    state = await AsyncValue.guard(() => _loadPage(page));
+    state = await AsyncValue.guard(() async {
+      final loaded = await _loadPage(page);
+      return loaded.copyWith(
+        openScrollTarget: const ScrollToPageTop(),
+        clearLocateError: true,
+      );
+    });
     if (state.hasError && previous != null) {
       state = AsyncValue.data(previous);
     }
+  }
+
+  void clearOpenScrollTarget() {
+    final current = state.asData?.value;
+    if (current == null || current.openScrollTarget == null) return;
+    state = AsyncValue.data(current.copyWith(clearOpenScrollTarget: true));
   }
 
   Future<void> filterByAuthor(String authorId, String authorName) async {

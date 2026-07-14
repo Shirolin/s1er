@@ -24,8 +24,11 @@ import '../widgets/s1_confirm_dialog.dart';
 import '../widgets/s1_error_view.dart';
 import '../widgets/s1_fab_layout.dart';
 import '../widgets/s1_swipe_pagination.dart';
+import '../models/open_scroll_target.dart';
+import '../models/thread_destination.dart';
 import '../utils/scroll_floor.dart';
 import '../utils/s1_snack_bar.dart';
+import '../utils/thread_navigation.dart';
 import '../theme/app_theme.dart';
 
 bool shouldRecordReadingProgress(AppSettings settings, AuthState auth) {
@@ -38,14 +41,17 @@ bool shouldRecordReadingProgress(AppSettings settings, AuthState auth) {
   return true;
 }
 
-/// 仅在首访或翻页时写库；同页非进度更新（如评分日志合并）跳过。
+/// 仅在首访、翻页或页内可见楼变化时写库。
 bool shouldWriteReadingProgressUpdate({
   required bool hasRecordedInitialVisit,
   required int? lastRecordedPage,
+  required int? lastRecordedFloorInPage,
   required int currentPage,
+  required int currentFloorInPage,
 }) {
   if (!hasRecordedInitialVisit) return true;
-  return lastRecordedPage != currentPage;
+  if (lastRecordedPage != currentPage) return true;
+  return lastRecordedFloorInPage != currentFloorInPage;
 }
 
 /// 滚动 FAB 显隐状态（用 [ValueNotifier] 更新，避免重建列表）。
@@ -65,12 +71,8 @@ class ThreadDetailScreen extends ConsumerStatefulWidget {
   const ThreadDetailScreen({
     super.key,
     required this.tid,
-    this.initialPage,
-    this.targetPid,
   });
   final String tid;
-  final int? initialPage;
-  final String? targetPid;
 
   @override
   ConsumerState<ThreadDetailScreen> createState() => _ThreadDetailScreenState();
@@ -79,14 +81,15 @@ class ThreadDetailScreen extends ConsumerStatefulWidget {
 class _ThreadDetailScreenState extends ConsumerState<ThreadDetailScreen> {
   final _swipeKey = GlobalKey<S1SwipePaginationState>();
   final _scrollFabVisibility = ValueNotifier(const _ScrollFabVisibility());
-  String? _scrollOncePid;
   bool _hasRecordedInitialVisit = false;
   int? _lastRecordedPage;
+  int? _lastRecordedFloorInPage;
   bool _pendingInitialNavigation = false;
-  bool _b3CorrectionDone = false;
+  bool _openScrollConsumed = false;
   String? _highlightPid;
+  String? _shownLocateError;
 
-  /// 用户手动翻页后为 true，此时不再对 targetPid / highlight 做 ensureVisible。
+  /// 用户手动翻页后为 true，此时不再消费 openScrollTarget。
   bool _manualPageChange = false;
 
   /// 当前页各楼 PostItem 的 key（不含 PollCard），翻页时重建。
@@ -98,6 +101,9 @@ class _ThreadDetailScreenState extends ConsumerState<ThreadDetailScreen> {
   /// 防止连点叠加滚动动画。
   bool _scrollAnimating = false;
 
+  /// 楼级进度回写节流。
+  DateTime? _lastFloorProgressAt;
+
   @override
   void dispose() {
     _scrollFabVisibility.dispose();
@@ -106,7 +112,7 @@ class _ThreadDetailScreenState extends ConsumerState<ThreadDetailScreen> {
 
   /// 记录阅读进度：写库 + 刷新历史列表（使列表卡片/历史页/资料计数实时更新）。
   /// readCount 只在本次进入详情页首帧 +1（isNewVisit 由 _hasRecordedInitialVisit 守卫）。
-  void _recordProgress(PostListState state) {
+  void _recordProgress(PostListState state, {int? floorInPage}) {
     if (_pendingInitialNavigation) {
       return;
     }
@@ -115,17 +121,22 @@ class _ThreadDetailScreenState extends ConsumerState<ThreadDetailScreen> {
     if (!shouldRecordReadingProgress(settings, auth)) {
       return;
     }
+    // Prefer the caller-provided / last visible floor. Never fall back to
+    // `posts.length` (that permanently wrote "page end" as fake progress).
+    final resolvedFloor = floorInPage ?? _lastRecordedFloorInPage ?? 1;
     if (!shouldWriteReadingProgressUpdate(
       hasRecordedInitialVisit: _hasRecordedInitialVisit,
       lastRecordedPage: _lastRecordedPage,
+      lastRecordedFloorInPage: _lastRecordedFloorInPage,
       currentPage: state.currentPage,
+      currentFloorInPage: resolvedFloor,
     )) {
       return;
     }
     ref.read(readingHistoryServiceProvider).updateProgress(
           tid: widget.tid,
           page: state.currentPage,
-          floorInPage: state.posts.length,
+          floorInPage: resolvedFloor,
           subject: state.threadSubject ?? '',
           author: state.posts.isNotEmpty ? state.posts.first.author : '',
           fid: state.threadFid ?? '',
@@ -136,6 +147,7 @@ class _ThreadDetailScreenState extends ConsumerState<ThreadDetailScreen> {
         );
     _hasRecordedInitialVisit = true;
     _lastRecordedPage = state.currentPage;
+    _lastRecordedFloorInPage = resolvedFloor;
     final record =
         ref.read(readingHistoryServiceProvider).getRecord(widget.tid);
     if (record != null) {
@@ -143,35 +155,101 @@ class _ThreadDetailScreenState extends ConsumerState<ThreadDetailScreen> {
     }
   }
 
-  /// B3 边缘：无 URL 参数且本地 record 落后于 API 总页数时，静默跳到新回复页。
-  void _maybeCorrectNewReplyPage(PostListState state) {
-    if (_b3CorrectionDone) return;
-    _b3CorrectionDone = true;
+  void _maybeRecordVisibleFloor(PostListState state) {
+    final now = DateTime.now();
+    if (_lastFloorProgressAt != null &&
+        now.difference(_lastFloorProgressAt!) <
+            const Duration(milliseconds: 400)) {
+      return;
+    }
+    final index = ScrollFloorNavigator.findLeadingVisiblePostIndex(
+      postKeys: _postKeys,
+    );
+    if (index == null) return;
+    _lastFloorProgressAt = now;
+    _recordProgress(state, floorInPage: index + 1);
+  }
 
-    if (widget.initialPage != null || widget.targetPid != null) {
-      return;
-    }
-
-    final record = ref.read(readingRecordProvider(widget.tid));
-    if (record == null || !record.isFinished) {
-      return;
-    }
-    if (!record.hasNewPages(state.totalPages)) {
-      return;
-    }
-
-    final targetPage = (record.totalPages + 1).clamp(1, state.totalPages);
-    if (state.currentPage >= targetPage) {
-      return;
-    }
+  Future<void> _consumeOpenScrollTarget(PostListState state) async {
+    if (_manualPageChange || _openScrollConsumed) return;
+    final target = state.openScrollTarget;
+    if (target == null) return;
 
     _pendingInitialNavigation = true;
-    WidgetsBinding.instance.addPostFrameCallback((_) async {
+    if (_postKeys.length != state.posts.length) {
+      setState(() {
+        _postKeys = List.generate(state.posts.length, (_) => GlobalKey());
+      });
+    } else if (mounted) {
+      setState(() {});
+    }
+    await WidgetsBinding.instance.endOfFrame;
+
+    final ok = await _applyOpenScrollTarget(state, target);
+    if (!mounted) return;
+
+    if (ok) {
+      _openScrollConsumed = true;
+      // Clear the progress gate before notifying listeners (clearOpenScrollTarget).
+      _pendingInitialNavigation = false;
+      if (mounted) setState(() {});
+      ref.read(postProvider(widget.tid).notifier).clearOpenScrollTarget();
+      _maybeRecordVisibleFloor(state);
+    } else {
+      // 懒列表尚未构建目标楼：短暂等待后重试。
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (!mounted || _openScrollConsumed) return;
+        unawaited(_consumeOpenScrollTarget(state));
+      });
+    }
+  }
+
+  Future<bool> _applyOpenScrollTarget(
+    PostListState state,
+    OpenScrollTarget target,
+  ) async {
+    switch (target) {
+      case ScrollToPageTop():
+        await _scrollToTopImpl();
+        return true;
+      case ScrollToPid(:final pid, :final highlight):
+        if (highlight) {
+          setState(() => _highlightPid = pid);
+        }
+        final index = state.posts.indexWhere((p) => p.pid == pid);
+        if (index < 0) return true;
+        _scheduleEnsurePostKeys(state.posts.length);
+        await WidgetsBinding.instance.endOfFrame;
+        return ScrollFloorNavigator.scrollToIndex(
+          postKeys: _postKeys,
+          index: index,
+          alignment: 0.15,
+        );
+      case ScrollToFloor(:final absoluteFloor):
+        final index = floorToPageIndex(
+          absoluteFloor: absoluteFloor,
+          page: state.currentPage,
+          perPage: state.perPage,
+          postCount: state.posts.length,
+        );
+        _scheduleEnsurePostKeys(state.posts.length);
+        await WidgetsBinding.instance.endOfFrame;
+        return ScrollFloorNavigator.scrollToIndex(
+          postKeys: _postKeys,
+          index: index,
+          alignment: 0.15,
+        );
+    }
+  }
+
+  void _maybeShowLocateError(PostListState state) {
+    final message = state.locateError;
+    if (message == null || message.isEmpty) return;
+    if (_shownLocateError == message) return;
+    _shownLocateError = message;
+    WidgetsBinding.instance.addPostFrameCallback((_) {
       if (!mounted) return;
-      await ref.read(postProvider(widget.tid).notifier).goToPage(targetPage);
-      if (mounted) {
-        setState(() => _pendingInitialNavigation = false);
-      }
+      S1SnackBar.show(context, message: message);
     });
   }
 
@@ -197,6 +275,11 @@ class _ThreadDetailScreenState extends ConsumerState<ThreadDetailScreen> {
         showScrollDown: showDown,
         atPageBottom: atBottom,
       );
+    }
+
+    final data = ref.read(postProvider(widget.tid)).asData?.value;
+    if (data != null) {
+      _maybeRecordVisibleFloor(data);
     }
   }
 
@@ -256,9 +339,20 @@ class _ThreadDetailScreenState extends ConsumerState<ThreadDetailScreen> {
     _scrollFabVisibility.value = const _ScrollFabVisibility();
     setState(() {
       _manualPageChange = true;
+      _openScrollConsumed = true;
+      _highlightPid = null;
       _postKeys = [];
     });
     await ref.read(postProvider(widget.tid).notifier).goToPage(page);
+    if (!mounted) return;
+    context.replace(
+      ThreadRouteCodec.encodePath(ThreadPage(widget.tid, page)),
+    );
+    final loaded = ref.read(postProvider(widget.tid)).asData?.value;
+    if (loaded != null) {
+      // Page changes land at top; keys rebuild after the next frame.
+      _recordProgress(loaded, floorInPage: 1);
+    }
   }
 
   bool _showsPollOnPage(PostListState state) =>
@@ -335,8 +429,11 @@ class _ThreadDetailScreenState extends ConsumerState<ThreadDetailScreen> {
     PostListState state,
   ) async {
     final notifier = ref.read(postProvider(widget.tid).notifier);
+    setState(() {
+      _manualPageChange = false;
+      _openScrollConsumed = false;
+    });
     if (result.pid != null && result.pid!.isNotEmpty) {
-      setState(() => _highlightPid = result.pid);
       await notifier.locatePid(result.pid!);
     } else {
       await notifier.goToPage(state.totalPages);
@@ -357,25 +454,13 @@ class _ThreadDetailScreenState extends ConsumerState<ThreadDetailScreen> {
 
     final postIndex = _showsPollOnPage(state) && index > 1 ? index - 1 : index;
     final post = state.posts[postIndex];
-    final highlightPid = widget.targetPid ?? _highlightPid;
-    final isTarget = highlightPid != null && post.pid == highlightPid;
+    final highlightPid = _highlightPid ??
+        switch (state.openScrollTarget) {
+          ScrollToPid(:final pid, :final highlight) when highlight => pid,
+          _ => null,
+        };
 
     final postKey = postIndex < _postKeys.length ? _postKeys[postIndex] : null;
-
-    if (isTarget && !_manualPageChange && _scrollOncePid != post.pid) {
-      _scrollOncePid = post.pid;
-      WidgetsBinding.instance.addPostFrameCallback((_) {
-        if (!mounted) return;
-        final ctx = postKey?.currentContext;
-        if (ctx != null) {
-          Scrollable.ensureVisible(
-            ctx,
-            alignment: 0.15,
-            duration: const Duration(milliseconds: 300),
-          );
-        }
-      });
-    }
 
     final floorOffset = (state.currentPage - 1) * state.perPage;
     final displayFloor = floorOffset + postIndex + 1;
@@ -418,7 +503,7 @@ class _ThreadDetailScreenState extends ConsumerState<ThreadDetailScreen> {
         displayFloor: displayFloor,
         tid: widget.tid,
         currentPage: state.currentPage,
-        isHighlighted: post.pid == highlightPid,
+        isHighlighted: highlightPid != null && post.pid == highlightPid,
         onFilterByAuthor: () {
           ref.read(postProvider(widget.tid).notifier).filterByAuthor(
                 post.authorId,
@@ -503,8 +588,12 @@ class _ThreadDetailScreenState extends ConsumerState<ThreadDetailScreen> {
     ref.listen<AsyncValue<PostListState>>(postProvider(widget.tid),
         (previous, next) {
       next.whenData((state) {
-        _maybeCorrectNewReplyPage(state);
-        _recordProgress(state);
+        _maybeShowLocateError(state);
+        if (!_openScrollConsumed && state.openScrollTarget != null) {
+          unawaited(_consumeOpenScrollTarget(state));
+        } else if (!_pendingInitialNavigation) {
+          _maybeRecordVisibleFloor(state);
+        }
       });
     });
 
@@ -541,148 +630,143 @@ class _ThreadDetailScreenState extends ConsumerState<ThreadDetailScreen> {
           ),
         ],
       ),
-      body: _pendingInitialNavigation
-          ? _buildLoadingBody()
-          : postsAsync.when(
-              loading: _buildLoadingBody,
-              error: (e, st) => S1ErrorView(
-                error: e,
-                onRetry: () =>
-                    ref.read(postProvider(widget.tid).notifier).refresh(),
-                onLogin: () => context.push('/login'),
-              ),
-              data: (state) {
-                _scheduleEnsurePostKeys(state.posts.length);
-                final showPrimary = isLoggedIn && state.allowReply;
-                final hasNextPage = state.currentPage < state.totalPages;
-                final scheme = Theme.of(context).colorScheme;
+      // Keep the post list mounted while consuming OpenScrollTarget so
+      // index-based scroll (pid / floor) can run against live GlobalKeys.
+      // `_pendingInitialNavigation` only gates progress writeback.
+      body: postsAsync.when(
+        loading: _buildLoadingBody,
+        error: (e, st) => S1ErrorView(
+          error: e,
+          onRetry: () => ref.read(postProvider(widget.tid).notifier).refresh(),
+          onLogin: () => context.push('/login'),
+        ),
+        data: (state) {
+          _scheduleEnsurePostKeys(state.posts.length);
+          final showPrimary = isLoggedIn && state.allowReply;
+          final hasNextPage = state.currentPage < state.totalPages;
+          final scheme = Theme.of(context).colorScheme;
 
-                return Column(
-                  children: [
-                    if (state.isFiltering)
-                      Container(
-                        width: double.infinity,
-                        padding: const EdgeInsets.symmetric(
-                          horizontal: 16,
-                          vertical: 10,
-                        ),
-                        color: scheme.primaryContainer,
-                        child: Row(
-                          children: [
-                            Icon(
-                              Icons.filter_alt,
-                              size: 18,
-                              color: scheme.onPrimaryContainer,
-                            ),
-                            const SizedBox(width: 8),
-                            Expanded(
-                              child: Text(
-                                '只看「${state.filterAuthorName}」的帖子',
-                                style: Theme.of(context)
-                                    .textTheme
-                                    .bodyMedium
-                                    ?.copyWith(
-                                      color: scheme.onPrimaryContainer,
-                                      fontWeight: FontWeight.w500,
-                                    ),
-                              ),
-                            ),
-                            TextButton.icon(
-                              onPressed: () => ref
-                                  .read(postProvider(widget.tid).notifier)
-                                  .clearFilter(),
-                              icon: Icon(
-                                Icons.close,
-                                size: 18,
-                                color: scheme.onPrimaryContainer,
-                              ),
-                              label: Text(
-                                '取消',
-                                style: Theme.of(context)
-                                    .textTheme
-                                    .labelLarge
-                                    ?.copyWith(
-                                      color: scheme.onPrimaryContainer,
-                                    ),
-                              ),
-                            ),
-                          ],
-                        ),
+          return Column(
+            children: [
+              if (state.isFiltering)
+                Container(
+                  width: double.infinity,
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 16,
+                    vertical: 10,
+                  ),
+                  color: scheme.primaryContainer,
+                  child: Row(
+                    children: [
+                      Icon(
+                        Icons.filter_alt,
+                        size: 18,
+                        color: scheme.onPrimaryContainer,
                       ),
-                    Expanded(
-                      child: S1ContentFabOverlay(
-                        fab: ValueListenableBuilder<_ScrollFabVisibility>(
-                          valueListenable: _scrollFabVisibility,
-                          builder: (context, fab, _) {
-                            final showScrollAdvance = fab.showScrollDown ||
-                                (fab.atPageBottom && hasNextPage);
-                            final advanceMode = fab.atPageBottom && hasNextPage
-                                ? ScrollNavAdvanceMode.nextPage
-                                : ScrollNavAdvanceMode.nextFloor;
-                            return S1FabStack(
-                              scrollNav: S1ScrollNavConfig(
-                                showScrollToTop: fab.showScrollToTop,
-                                showScrollAdvance: showScrollAdvance,
-                                advanceMode: advanceMode,
-                                onScrollToTop: _scrollToTop,
-                                onScrollToNextFloor: _scrollToNextFloor,
-                                onScrollToBottom: _scrollToBottom,
-                                onGoToNextPage: hasNextPage
-                                    ? () => _goToPage(state.currentPage + 1)
-                                    : null,
-                              ),
-                              primary: showPrimary
-                                  ? S1FabItem(
-                                      heroTag: 'replyDetail',
-                                      icon: Icons.edit_outlined,
-                                      tooltip: '回复',
-                                      onPressed: () => _openCompose(state),
-                                    )
-                                  : null,
-                            );
-                          },
-                        ),
-                        child: S1SwipePagination(
-                          key: _swipeKey,
-                          currentPage: state.currentPage,
-                          totalPages: state.totalPages,
-                          onScrollMetricsChanged: _onScrollMetricsChanged,
-                          onPageChanged: _goToPage,
-                          pageBuilder: (context, scrollController) => Scrollbar(
-                            controller: scrollController,
-                            child: state.posts.isEmpty
-                                ? const Center(child: Text('暂无回复'))
-                                : ListView.builder(
-                                    controller: scrollController,
-                                    padding: S1FabLayout
-                                        .threadDetailScrollBottomPadding,
-                                    itemCount: _detailItemCount(state),
-                                    itemBuilder: (context, index) =>
-                                        _buildDetailItem(
-                                      context,
-                                      state,
-                                      index,
-                                    ),
+                      const SizedBox(width: 8),
+                      Expanded(
+                        child: Text(
+                          '只看「${state.filterAuthorName}」的帖子',
+                          style:
+                              Theme.of(context).textTheme.bodyMedium?.copyWith(
+                                    color: scheme.onPrimaryContainer,
+                                    fontWeight: FontWeight.w500,
                                   ),
-                          ),
                         ),
                       ),
+                      TextButton.icon(
+                        onPressed: () => ref
+                            .read(postProvider(widget.tid).notifier)
+                            .clearFilter(),
+                        icon: Icon(
+                          Icons.close,
+                          size: 18,
+                          color: scheme.onPrimaryContainer,
+                        ),
+                        label: Text(
+                          '取消',
+                          style:
+                              Theme.of(context).textTheme.labelLarge?.copyWith(
+                                    color: scheme.onPrimaryContainer,
+                                  ),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              Expanded(
+                child: S1ContentFabOverlay(
+                  fab: ValueListenableBuilder<_ScrollFabVisibility>(
+                    valueListenable: _scrollFabVisibility,
+                    builder: (context, fab, _) {
+                      final showScrollAdvance = fab.showScrollDown ||
+                          (fab.atPageBottom && hasNextPage);
+                      final advanceMode = fab.atPageBottom && hasNextPage
+                          ? ScrollNavAdvanceMode.nextPage
+                          : ScrollNavAdvanceMode.nextFloor;
+                      return S1FabStack(
+                        scrollNav: S1ScrollNavConfig(
+                          showScrollToTop: fab.showScrollToTop,
+                          showScrollAdvance: showScrollAdvance,
+                          advanceMode: advanceMode,
+                          onScrollToTop: _scrollToTop,
+                          onScrollToNextFloor: _scrollToNextFloor,
+                          onScrollToBottom: _scrollToBottom,
+                          onGoToNextPage: hasNextPage
+                              ? () => _goToPage(state.currentPage + 1)
+                              : null,
+                        ),
+                        primary: showPrimary
+                            ? S1FabItem(
+                                heroTag: 'replyDetail',
+                                icon: Icons.edit_outlined,
+                                tooltip: '回复',
+                                onPressed: () => _openCompose(state),
+                              )
+                            : null,
+                      );
+                    },
+                  ),
+                  child: S1SwipePagination(
+                    key: _swipeKey,
+                    currentPage: state.currentPage,
+                    totalPages: state.totalPages,
+                    onScrollMetricsChanged: _onScrollMetricsChanged,
+                    onPageChanged: _goToPage,
+                    pageBuilder: (context, scrollController) => Scrollbar(
+                      controller: scrollController,
+                      child: state.posts.isEmpty
+                          ? const Center(child: Text('暂无回复'))
+                          : ListView.builder(
+                              controller: scrollController,
+                              padding:
+                                  S1FabLayout.threadDetailScrollBottomPadding,
+                              itemCount: _detailItemCount(state),
+                              itemBuilder: (context, index) => _buildDetailItem(
+                                context,
+                                state,
+                                index,
+                              ),
+                            ),
                     ),
-                    PaginationBar(
-                      currentPage: state.currentPage,
-                      totalPages: state.totalPages,
-                      sheetSubtitle: state.threadSubject,
-                      pageItemLabelBuilder: (page) {
-                        final start = (page - 1) * state.perPage + 1;
-                        final end = page * state.perPage;
-                        return '第 $start - $end 楼';
-                      },
-                      onPageChanged: _goToPage,
-                    ),
-                  ],
-                );
-              },
-            ),
+                  ),
+                ),
+              ),
+              PaginationBar(
+                currentPage: state.currentPage,
+                totalPages: state.totalPages,
+                sheetSubtitle: state.threadSubject,
+                pageItemLabelBuilder: (page) {
+                  final start = (page - 1) * state.perPage + 1;
+                  final end = page * state.perPage;
+                  return '第 $start - $end 楼';
+                },
+                onPageChanged: _goToPage,
+              ),
+            ],
+          );
+        },
+      ),
     );
   }
 }

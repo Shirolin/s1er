@@ -1,11 +1,15 @@
 import 'package:flutter_test/flutter_test.dart';
+import 'package:s1_app/models/open_scroll_target.dart';
 import 'package:s1_app/models/reading_record.dart';
+import 'package:s1_app/models/thread_destination.dart';
 import 'package:s1_app/models/thread_open_intent.dart';
 import 'package:s1_app/utils/thread_navigation.dart';
 
 ReadingRecord _record({
   int lastReadPage = 1,
   int totalPages = 1,
+  int lastReadFloor = 1,
+  int perPage = 40,
 }) {
   return ReadingRecord(
     tid: '100',
@@ -13,10 +17,10 @@ ReadingRecord _record({
     author: 'author',
     fid: '4',
     lastReadPage: lastReadPage,
-    lastReadFloor: 1,
+    lastReadFloor: lastReadFloor,
     totalPages: totalPages,
     totalReplies: 0,
-    perPage: 40,
+    perPage: perPage,
     lastReadAt: 1,
     firstReadAt: 1,
     readCount: 1,
@@ -24,11 +28,76 @@ ReadingRecord _record({
 }
 
 void main() {
+  group('ThreadRouteCodec', () {
+    test('resume round-trip is bare path', () {
+      const dest = ResumeThread('100');
+      final uri = ThreadRouteCodec.encode(dest);
+      expect(uri.toString(), '/thread/100');
+      expect(ThreadRouteCodec.decode(uri, tid: '100'), isA<ResumeThread>());
+    });
+
+    test('page=1 encodes and decodes as forced page', () {
+      const dest = ThreadPage('100', 1);
+      final uri = ThreadRouteCodec.encode(dest);
+      expect(uri.toString(), '/thread/100?page=1');
+      final decoded = ThreadRouteCodec.decode(uri, tid: '100');
+      expect(decoded, isA<ThreadPage>());
+      expect((decoded as ThreadPage).page, 1);
+    });
+
+    test('page=N round-trip', () {
+      final uri = ThreadRouteCodec.encode(const ThreadPage('100', 5));
+      expect(uri.toString(), '/thread/100?page=5');
+      expect(
+        (ThreadRouteCodec.decode(uri, tid: '100') as ThreadPage).page,
+        5,
+      );
+    });
+
+    test('pid round-trip', () {
+      final uri = ThreadRouteCodec.encode(const ThreadPost('100', '999'));
+      expect(uri.toString(), '/thread/100?pid=999');
+      expect(
+        (ThreadRouteCodec.decode(uri, tid: '100') as ThreadPost).pid,
+        '999',
+      );
+    });
+
+    test('pid wins over page when both present', () {
+      final uri = Uri.parse('/thread/100?page=3&pid=999');
+      final decoded = ThreadRouteCodec.decode(uri, tid: '100');
+      expect(decoded, isA<ThreadPost>());
+      expect((decoded as ThreadPost).pid, '999');
+    });
+
+    test('page with resume=1 stays resume destination', () {
+      final uri = Uri.parse('/thread/100?page=3&resume=1');
+      expect(ThreadRouteCodec.decode(uri, tid: '100'), isA<ResumeThread>());
+      final intent = ThreadRouteCodec.intentFromUri(uri, tid: '100');
+      expect(intent.mode, ThreadOpenMode.resume);
+      expect(intent.page, 3);
+    });
+
+    test('illegal page falls back to resume', () {
+      final uri = Uri.parse('/thread/100?page=abc');
+      expect(ThreadRouteCodec.decode(uri, tid: '100'), isA<ResumeThread>());
+    });
+
+    test('intentFromUri maps forced page=1', () {
+      final intent = ThreadRouteCodec.intentFromUri(
+        Uri.parse('/thread/100?page=1'),
+        tid: '100',
+      );
+      expect(intent.mode, ThreadOpenMode.page);
+      expect(intent.page, 1);
+    });
+  });
+
   group('resolveThreadInitialPage', () {
-    test('A2 explicit initialPage takes priority over reading record', () {
+    test('A2 explicit page takes priority over reading record', () {
       expect(
         resolveThreadInitialPage(
-          intent: const ThreadOpenIntent(initialPage: 5),
+          intent: const ThreadOpenIntent.page(5),
           record: _record(lastReadPage: 3, totalPages: 8),
         ),
         5,
@@ -48,7 +117,7 @@ void main() {
     test('B2 finished thread opens last page when live matches', () {
       expect(
         resolveThreadInitialPage(
-          intent: const ThreadOpenIntent(liveTotalPages: 5),
+          intent: const ThreadOpenIntent.resume(liveTotalPages: 5),
           record: _record(lastReadPage: 5, totalPages: 5),
         ),
         5,
@@ -58,7 +127,7 @@ void main() {
     test('B3 finished thread with new pages opens first new page', () {
       expect(
         resolveThreadInitialPage(
-          intent: const ThreadOpenIntent(liveTotalPages: 7),
+          intent: const ThreadOpenIntent.resume(liveTotalPages: 7),
           record: _record(lastReadPage: 5, totalPages: 5),
         ),
         6,
@@ -72,26 +141,94 @@ void main() {
       );
     });
 
-    test('initialPage 1 does not override record resume', () {
+    test('page=1 forces first page over record resume', () {
       expect(
         resolveThreadInitialPage(
-          intent: const ThreadOpenIntent(initialPage: 1),
+          intent: const ThreadOpenIntent.page(1),
           record: _record(lastReadPage: 4, totalPages: 8),
         ),
+        1,
+      );
+    });
+  });
+
+  group('floorToPageIndex / resolveResumeScrollTarget', () {
+    test('maps absolute floor to page-local index', () {
+      expect(
+        floorToPageIndex(
+          absoluteFloor: 45,
+          page: 2,
+          perPage: 40,
+          postCount: 40,
+        ),
         4,
+      );
+    });
+
+    test('clamps floor below page start to 0', () {
+      expect(
+        floorToPageIndex(
+          absoluteFloor: 1,
+          page: 2,
+          perPage: 40,
+          postCount: 40,
+        ),
+        0,
+      );
+    });
+
+    test('clamps floor past page end to last index', () {
+      expect(
+        floorToPageIndex(
+          absoluteFloor: 999,
+          page: 2,
+          perPage: 40,
+          postCount: 10,
+        ),
+        9,
+      );
+    });
+
+    test('resume with floor → ScrollToFloor', () {
+      final target = resolveResumeScrollTarget(
+        record: _record(lastReadPage: 2, totalPages: 5, lastReadFloor: 45),
+        loadedPage: 2,
+        totalPages: 5,
+      );
+      expect(target, isA<ScrollToFloor>());
+      expect((target as ScrollToFloor).absoluteFloor, 45);
+    });
+
+    test('B3 new page → ScrollToPageTop', () {
+      final target = resolveResumeScrollTarget(
+        record: _record(lastReadPage: 5, totalPages: 5, lastReadFloor: 200),
+        loadedPage: 6,
+        totalPages: 7,
+      );
+      expect(target, isA<ScrollToPageTop>());
+    });
+
+    test('no record → ScrollToPageTop', () {
+      expect(
+        resolveResumeScrollTarget(
+          record: null,
+          loadedPage: 1,
+          totalPages: 1,
+        ),
+        isA<ScrollToPageTop>(),
       );
     });
   });
 
   group('buildThreadDetailPath', () {
-    test('includes page query when target page > 1', () {
+    test('includes page+resume query when target page > 1', () {
       expect(
         buildThreadDetailPath(
           '100',
           record: _record(lastReadPage: 3, totalPages: 8),
           liveTotalPages: 8,
         ),
-        '/thread/100?page=3',
+        '/thread/100?page=3&resume=1',
       );
     });
 
@@ -99,6 +236,29 @@ void main() {
       expect(
         buildThreadDetailPath('100'),
         '/thread/100',
+      );
+    });
+  });
+
+  group('entry path fixtures', () {
+    test('thread_card forced page 1 encodes ?page=1', () {
+      expect(
+        ThreadRouteCodec.encodePath(const ThreadPage('100', 1)),
+        '/thread/100?page=1',
+      );
+    });
+
+    test('favorites/search resume is bare tid', () {
+      expect(
+        ThreadRouteCodec.encodePath(const ResumeThread('100')),
+        '/thread/100',
+      );
+    });
+
+    test('messages/quote/user reply use pid destination', () {
+      expect(
+        ThreadRouteCodec.encodePath(const ThreadPost('100', '55')),
+        '/thread/100?pid=55',
       );
     });
   });

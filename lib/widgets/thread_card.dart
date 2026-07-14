@@ -5,6 +5,7 @@ import '../config/constants.dart';
 import '../models/thread.dart';
 import '../providers/reading_history_provider.dart';
 import '../theme/app_theme.dart';
+import '../models/thread_destination.dart';
 import '../utils/compact_label.dart';
 import '../utils/format_utils.dart';
 import '../utils/thread_navigation.dart';
@@ -38,7 +39,9 @@ class ThreadCard extends ConsumerWidget {
   void _showPageSheet(BuildContext context) {
     final totalPages = _calcTotalPages(thread.replies);
     if (totalPages <= 1) {
-      context.push('/thread/${thread.tid}');
+      context.push(
+        ThreadRouteCodec.encodePath(ThreadPage(thread.tid, 1)),
+      );
       return;
     }
 
@@ -54,9 +57,7 @@ class ThreadCard extends ConsumerWidget {
       },
       onPageSelected: (page) {
         context.push(
-          page == 1
-              ? '/thread/${thread.tid}'
-              : '/thread/${thread.tid}?page=$page',
+          ThreadRouteCodec.encodePath(ThreadPage(thread.tid, page)),
         );
       },
     );

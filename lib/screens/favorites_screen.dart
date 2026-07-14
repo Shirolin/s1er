@@ -3,12 +3,14 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import '../config/api_config.dart';
 import '../models/favorite_item.dart';
+import '../models/thread_destination.dart';
 import '../providers/auth_provider.dart';
 import '../providers/favorite_list_provider.dart';
 import '../providers/favorite_membership_provider.dart';
 import '../widgets/favorite_confirm_dialog.dart';
 import '../utils/format_utils.dart';
 import '../utils/s1_snack_bar.dart';
+import '../utils/thread_navigation.dart';
 import '../widgets/app_bar_more_menu.dart';
 import '../widgets/pagination_bar.dart';
 import '../widgets/s1_error_view.dart';
@@ -260,7 +262,9 @@ class _FavoriteThreadTile extends StatelessWidget {
       elevation: 0,
       margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
       child: InkWell(
-        onTap: () => context.push('/thread/${item.id}'),
+        onTap: () => context.push(
+              ThreadRouteCodec.encodePath(ResumeThread(item.id)),
+            ),
         child: Padding(
           padding: const EdgeInsets.fromLTRB(16, 12, 8, 12),
           child: Row(

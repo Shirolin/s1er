@@ -21,10 +21,10 @@ import 'screens/favorites_screen.dart';
 import 'screens/image_viewer_screen.dart';
 import 'screens/user_space_screen.dart';
 import 'screens/pm_conversation_screen.dart';
-import 'models/thread_open_intent.dart';
 import 'providers/thread_open_intent_provider.dart';
 import 'services/talker.dart';
 import 'theme/app_theme.dart';
+import 'utils/thread_navigation.dart';
 
 ImageViewerScreen? _parseImageViewerRoute(GoRouterState state) {
   Map<String, dynamic>? args;
@@ -72,23 +72,17 @@ final _router = GoRouter(
     ),
     GoRoute(
       path: '/thread/:tid',
-      builder: (context, state) {
+      // Key only by tid so in-thread `?page=` replace syncs URL without remount.
+      pageBuilder: (context, state) {
         final tid = state.pathParameters['tid']!;
-        final pageStr = state.uri.queryParameters['page'];
-        final page = pageStr != null ? int.tryParse(pageStr) : null;
-        final pid = state.uri.queryParameters['pid'];
-        final intent = (page != null || pid != null)
-            ? ThreadOpenIntent(initialPage: page, targetPid: pid)
-            : null;
-        return ProviderScope(
-          overrides: [
-            if (intent != null)
+        final intent = ThreadRouteCodec.intentFromUri(state.uri, tid: tid);
+        return NoTransitionPage<void>(
+          key: ValueKey('thread-$tid'),
+          child: ProviderScope(
+            overrides: [
               threadOpenIntentProvider(tid).overrideWithValue(intent),
-          ],
-          child: ThreadDetailScreen(
-            tid: tid,
-            initialPage: page,
-            targetPid: pid,
+            ],
+            child: ThreadDetailScreen(tid: tid),
           ),
         );
       },

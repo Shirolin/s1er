@@ -7,18 +7,22 @@ void main() {
       shouldWriteReadingProgressUpdate(
         hasRecordedInitialVisit: false,
         lastRecordedPage: null,
+        lastRecordedFloorInPage: null,
         currentPage: 1,
+        currentFloorInPage: 1,
       ),
       isTrue,
     );
   });
 
-  test('same page after initial visit skips write', () {
+  test('same page and floor after initial visit skips write', () {
     expect(
       shouldWriteReadingProgressUpdate(
         hasRecordedInitialVisit: true,
         lastRecordedPage: 2,
+        lastRecordedFloorInPage: 5,
         currentPage: 2,
+        currentFloorInPage: 5,
       ),
       isFalse,
     );
@@ -29,7 +33,22 @@ void main() {
       shouldWriteReadingProgressUpdate(
         hasRecordedInitialVisit: true,
         lastRecordedPage: 2,
+        lastRecordedFloorInPage: 5,
         currentPage: 3,
+        currentFloorInPage: 1,
+      ),
+      isTrue,
+    );
+  });
+
+  test('floor change on same page writes progress', () {
+    expect(
+      shouldWriteReadingProgressUpdate(
+        hasRecordedInitialVisit: true,
+        lastRecordedPage: 2,
+        lastRecordedFloorInPage: 5,
+        currentPage: 2,
+        currentFloorInPage: 12,
       ),
       isTrue,
     );

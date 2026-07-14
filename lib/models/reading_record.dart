@@ -42,7 +42,7 @@ class ReadingRecord {
   /// 最后阅读页码（1-based）
   final int lastReadPage;
 
-  /// 最后阅读的绝对楼层（1-based，跨页累计）；仅用于展示，不参与判定。
+  /// 最后阅读的绝对楼层（1-based，跨页累计）；resume 时用于楼级落点。
   final int lastReadFloor;
 
   /// 帖子总页数（缓存）

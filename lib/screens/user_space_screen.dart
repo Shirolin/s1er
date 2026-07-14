@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import '../config/api_config.dart';
+import '../models/thread_destination.dart';
 import '../models/user_space_item.dart';
 import '../providers/reading_history_provider.dart';
 import '../providers/user_space_provider.dart';
@@ -374,13 +375,10 @@ class _ReplyCard extends StatelessWidget {
       shape: S1Shape.cardShape,
       child: InkWell(
         onTap: () {
-          final uri = Uri(
-            path: '/thread/${item.tid}',
-            queryParameters: {
-              if (item.pid != null) 'pid': item.pid,
-            },
-          );
-          context.push(uri.toString());
+          final destination = item.pid != null && item.pid!.isNotEmpty
+              ? ThreadPost(item.tid, item.pid!)
+              : ResumeThread(item.tid);
+          context.push(ThreadRouteCodec.encodePath(destination));
         },
         borderRadius: S1Shape.medium,
         child: Padding(

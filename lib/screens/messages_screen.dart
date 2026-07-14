@@ -2,10 +2,12 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import '../models/notice_item.dart';
+import '../models/thread_destination.dart';
 import '../providers/messages_segment_provider.dart';
 import '../providers/notice_list_provider.dart';
 import '../providers/pm_list_provider.dart';
 import '../theme/app_theme.dart';
+import '../utils/thread_navigation.dart';
 import '../widgets/notice_list_tile.dart';
 import '../widgets/pagination_bar.dart';
 import '../widgets/pm_list_tile.dart';
@@ -183,11 +185,13 @@ class _NoticeListBody extends ConsumerWidget {
                               onTap: () {
                                 if (!item.canNavigate) return;
                                 final pid = item.pid;
-                                if (pid != null && pid.isNotEmpty) {
-                                  context.push('/thread/${item.tid}?pid=$pid');
-                                } else {
-                                  context.push('/thread/${item.tid}');
-                                }
+                                final destination =
+                                    pid != null && pid.isNotEmpty
+                                        ? ThreadPost(item.tid, pid)
+                                        : ResumeThread(item.tid);
+                                context.push(
+                                  ThreadRouteCodec.encodePath(destination),
+                                );
                               },
                             ),
                           );

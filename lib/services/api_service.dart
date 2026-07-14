@@ -1459,46 +1459,68 @@ class ApiService {
   final Map<String, int> _pageCache = {};
 
   /// 定位特定回复所在的页码。
+  ///
+  /// 失败时抛出 [StateError]，不再静默回落为第 1 页。
   Future<int> locatePostPage(String tid, String pid) async {
     final cacheKey = '$tid:$pid';
     final cached = _pageCache[cacheKey];
     if (cached != null) return cached;
 
-    final url = '${ApiConfig.baseUrl}/forum.php'
-        '?mod=redirect&goto=findpost&ptid=$tid&pid=$pid';
-    try {
-      // 原生平台：只拿 302 header，不下 body
-      final response = await _httpClient.get(
-        url,
-        options: Options(
-          followRedirects: false,
-          validateStatus: (s) => s != null && s < 500,
-          responseType: ResponseType.plain,
-        ),
-      );
+    final uri = Uri.parse('${ApiConfig.baseUrl}/forum.php').replace(
+      queryParameters: {
+        'mod': 'redirect',
+        'goto': 'findpost',
+        'ptid': tid,
+        'pid': pid,
+      },
+    );
+    final url = uri.toString();
 
-      // 优先从 Location header 解析
-      final location = response.headers.value('location');
-      if (location != null) {
-        final uri = Uri.parse(location);
-        final page = int.tryParse(uri.queryParameters['page'] ?? '1') ?? 1;
+    // 原生平台：只拿 302 header，不下 body
+    final response = await _httpClient.get(
+      url,
+      options: Options(
+        followRedirects: false,
+        validateStatus: (s) => s != null && s < 500,
+        responseType: ResponseType.plain,
+      ),
+    );
+
+    // 优先从 Location header 解析
+    final location = response.headers.value('location');
+    if (location != null) {
+      final redirected = Uri.parse(location);
+      final page =
+          int.tryParse(redirected.queryParameters['page'] ?? '') ??
+              _pageFromPseudoStaticPath(redirected.path);
+      if (page != null && page >= 1) {
         _pageCache[cacheKey] = page;
         return page;
       }
+    }
 
-      // Web 代理已跟随重定向，从响应 HTML 解析
-      final html = response.data as String;
-      final pageMatch = RegExp(
-        r'<strong[^>]*>(\d+)</strong>|class="cur"[^>]*>(\d+)<',
-      ).firstMatch(html);
-      if (pageMatch != null) {
-        final p = pageMatch.group(1) ?? pageMatch.group(2) ?? '';
-        final page = int.tryParse(p) ?? 1;
+    // Web 代理已跟随重定向，从响应 HTML 解析
+    final html = response.data as String? ?? '';
+    final pageMatch = RegExp(
+      r'<strong[^>]*>(\d+)</strong>|class="cur"[^>]*>(\d+)<',
+    ).firstMatch(html);
+    if (pageMatch != null) {
+      final p = pageMatch.group(1) ?? pageMatch.group(2) ?? '';
+      final page = int.tryParse(p);
+      if (page != null && page >= 1) {
         _pageCache[cacheKey] = page;
         return page;
       }
-    } catch (_) {}
-    return 1;
+    }
+
+    throw StateError('locatePostPage failed for tid=$tid pid=$pid');
+  }
+
+  /// 解析 `thread-{tid}-{page}-1.html` 伪静态路径中的页码。
+  static int? _pageFromPseudoStaticPath(String path) {
+    final match = RegExp(r'thread-\d+-(\d+)-\d+\.html').firstMatch(path);
+    if (match == null) return null;
+    return int.tryParse(match.group(1) ?? '');
   }
 
   /// 获取私信会话列表（优先 Mobile API，失败时 HTML 兜底）。

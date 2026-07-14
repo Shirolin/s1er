@@ -89,10 +89,8 @@ class AuthNotifier extends Notifier<AuthState> {
   Future<void> refreshProfile() async {
     final user = await _authService.fetchProfile();
     if (user != null) {
-      try {
-        final next = state.copyWith(user: user, username: user.username);
-        if (next != state) state = next;
-      } catch (_) {}
+      final next = state.copyWith(user: user, username: user.username);
+      if (next != state) state = next;
     }
   }
 

@@ -34,7 +34,6 @@ void main() {
               showImages: false,
               recordReadingHistory: false,
               fontSize: 18,
-              useDynamicColor: true,
               collapsedForums: {'42'},
             ),
           ),
@@ -55,7 +54,6 @@ void main() {
     expect(state.imageCacheLimitMb, S1Constants.defaultImageCacheLimitMb);
     expect(state.recordReadingHistory, isTrue);
     expect(state.fontSize, S1Typography.defaultBodySize);
-    expect(state.useDynamicColor, isFalse);
     expect(state.collapsedForums, const {'42'});
   });
 
@@ -90,8 +88,10 @@ void main() {
         .read(settingsProvider.notifier)
         .setImageLoadPolicy(ImageLoadPolicy.manual);
 
-    expect(container.read(settingsProvider).imageLoadPolicy,
-        ImageLoadPolicy.manual,);
+    expect(
+      container.read(settingsProvider).imageLoadPolicy,
+      ImageLoadPolicy.manual,
+    );
     await Future<void>.delayed(const Duration(milliseconds: 50));
     expect(store.get<String>('imageLoadPolicy'), 'manual');
   });
@@ -112,8 +112,10 @@ void main() {
     container.read(settingsProvider.notifier).setMaxImagesPerPost(5);
     container.read(settingsProvider.notifier).setImageCacheLimitMb(512);
 
-    expect(container.read(settingsProvider).avatarLoadPolicy,
-        ImageLoadPolicy.wifiOnly,);
+    expect(
+      container.read(settingsProvider).avatarLoadPolicy,
+      ImageLoadPolicy.wifiOnly,
+    );
     expect(container.read(settingsProvider).maxImagesPerPost, 5);
     expect(container.read(settingsProvider).imageCacheLimitMb, 512);
 

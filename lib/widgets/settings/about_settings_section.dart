@@ -3,7 +3,6 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:talker_flutter/talker_flutter.dart';
 
 import '../../providers/talker_provider.dart';
-import '../../services/talker.dart' as t;
 import '../../theme/app_theme.dart';
 import 'settings_section_header.dart';
 
@@ -46,7 +45,7 @@ class _VersionTileState extends ConsumerState<_VersionTile> {
       if (context.mounted) {
         Navigator.of(context).push(
           MaterialPageRoute(
-            builder: (context) => TalkerScreen(talker: t.talker),
+            builder: (context) => TalkerScreen(talker: ref.read(talkerProvider)),
           ),
         );
       }

@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import '../services/api_service.dart';
+import '../models/app_exceptions.dart';
 import '../utils/error_handler.dart';
 
 class S1ErrorView extends StatelessWidget {

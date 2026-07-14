@@ -14,21 +14,14 @@ import '../models/notice_item.dart';
 import '../models/favorite_item.dart';
 import '../models/message_list_result.dart';
 import '../models/rate_form.dart';
+import '../models/app_exceptions.dart';
 import '../utils/error_handler.dart';
 import 'formhash_service.dart';
 import 'http_client.dart';
 
-class LoginRequiredException implements Exception {
-  @override
-  String toString() => '请先登录';
-}
-
-class ServerMaintenanceException implements Exception {
-  ServerMaintenanceException([this.message = '服务器维护中']);
-  final String message;
-  @override
-  String toString() => message;
-}
+export '../models/app_exceptions.dart' show
+    LoginRequiredException,
+    ServerMaintenanceException;
 
 class ApiService {
   ApiService(this._httpClient);

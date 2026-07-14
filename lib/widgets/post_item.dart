@@ -1,9 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../models/post.dart';
-import '../providers/api_service_provider.dart';
 import '../providers/auth_provider.dart';
 import '../providers/thread_rate_logs_provider.dart';
+import '../providers/user_profile_provider.dart';
 import '../theme/app_theme.dart';
 import '../utils/compact_label.dart';
 import '../utils/format_utils.dart';
@@ -61,8 +61,7 @@ class _PostItemState extends ConsumerState<PostItem> {
 
   void _showUserInfo(BuildContext context, WidgetRef ref) {
     final currentUid = ref.read(authStateProvider).user?.uid;
-    final future =
-        ref.read(apiServiceProvider).getUserProfileByUid(widget.post.authorId);
+    final future = ref.read(userProfileProvider(widget.post.authorId).future);
 
     showUserProfileSheet(
       context,
@@ -75,7 +74,6 @@ class _PostItemState extends ConsumerState<PostItem> {
   @override
   Widget build(BuildContext context) {
     final scheme = Theme.of(context).colorScheme;
-    final textTheme = Theme.of(context).textTheme;
     final timeStr = formatDateTime(widget.post.dateline);
     final floor = widget.displayFloor ?? widget.post.floor;
 
@@ -91,49 +89,7 @@ class _PostItemState extends ConsumerState<PostItem> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Row(
-              children: [
-                GestureDetector(
-                  onTap: () => _showUserInfo(context, ref),
-                  child: WebAvatar(
-                    url: widget.post.avatar,
-                    radius: 20,
-                    fallbackLetter: widget.post.author.isNotEmpty
-                        ? widget.post.author[0]
-                        : '?',
-                  ),
-                ),
-                const SizedBox(width: 8),
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        widget.post.author,
-                        style: Theme.of(context)
-                            .textTheme
-                            .bodyMedium
-                            ?.copyWith(fontWeight: FontWeight.bold),
-                      ),
-                      if (timeStr.isNotEmpty)
-                        Text(
-                          timeStr,
-                          style: textTheme.labelSmall?.copyWith(
-                            color: scheme.onSurfaceVariant,
-                          ),
-                        ),
-                    ],
-                  ),
-                ),
-                _FloorBadge(floor: floor),
-                const SizedBox(width: 2),
-                PostActionMenu(
-                  onFilterByAuthor: widget.onFilterByAuthor,
-                  onReply: widget.onReply,
-                  onRate: widget.onRate,
-                ),
-              ],
-            ),
+            _buildAuthorHeader(context, timeStr, floor),
             const Divider(height: 16),
             BbcodeRenderer(
               bbcode: widget.post.message,
@@ -150,6 +106,89 @@ class _PostItemState extends ConsumerState<PostItem> {
           ],
         ),
       ),
+    );
+  }
+
+  Widget _buildAuthorHeader(BuildContext context, String timeStr, int floor) {
+    final avatar = Semantics(
+      button: true,
+      label: '查看 ${widget.post.author} 的资料',
+      child: GestureDetector(
+        onTap: () => _showUserInfo(context, ref),
+        child: WebAvatar(
+          url: widget.post.avatar,
+          radius: 20,
+          fallbackLetter:
+              widget.post.author.isNotEmpty ? widget.post.author[0] : '?',
+        ),
+      ),
+    );
+    final authorDetails = Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          widget.post.author,
+          maxLines: 1,
+          overflow: TextOverflow.ellipsis,
+          style: Theme.of(context)
+              .textTheme
+              .bodyMedium
+              ?.copyWith(fontWeight: FontWeight.bold),
+        ),
+        if (timeStr.isNotEmpty)
+          Text(
+            timeStr,
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+            style: Theme.of(context)
+                .textTheme
+                .labelSmall
+                ?.copyWith(color: Theme.of(context).colorScheme.onSurfaceVariant),
+          ),
+      ],
+    );
+    final actions = Wrap(
+      spacing: 2,
+      runSpacing: 2,
+      children: [
+        _FloorBadge(floor: floor),
+        PostActionMenu(
+          onFilterByAuthor: widget.onFilterByAuthor,
+          onReply: widget.onReply,
+          onRate: widget.onRate,
+        ),
+      ],
+    );
+
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        if (constraints.maxWidth < 220) {
+          return Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              avatar,
+              const SizedBox(height: 8),
+              authorDetails,
+              if (constraints.maxWidth >= 80) actions,
+            ],
+          );
+        }
+
+        return Row(
+          children: [
+            avatar,
+            const SizedBox(width: 8),
+            Expanded(child: authorDetails),
+            _FloorBadge(floor: floor),
+            const SizedBox(width: 2),
+            PostActionMenu(
+              onFilterByAuthor: widget.onFilterByAuthor,
+              onReply: widget.onReply,
+              onRate: widget.onRate,
+            ),
+          ],
+        );
+      },
     );
   }
 }

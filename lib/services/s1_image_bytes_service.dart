@@ -12,10 +12,16 @@ class S1ImageBytesService {
   final S1HttpClient _httpClient;
 
   Future<Uint8List?> fetchBytes(String url) async {
+    Uint8List? disk;
     try {
-      final disk = await S1ImageCache.getBytes(url);
-      if (disk != null) return disk;
+      disk = await S1ImageCache.getBytes(url);
+    } catch (e, st) {
+      talker.handle(e, st, 'Read image cache failed: $url');
+    }
+    if (disk != null) return disk;
+    if (!_httpClient.isInitialized) return null;
 
+    try {
       final response = await _httpClient.get(
         url,
         options: Options(responseType: ResponseType.bytes),
@@ -32,7 +38,7 @@ class S1ImageBytesService {
       return bytes;
     } catch (e, st) {
       talker.handle(e, st, 'Fetch image bytes failed: $url');
-      return null;
+      rethrow;
     }
   }
 }

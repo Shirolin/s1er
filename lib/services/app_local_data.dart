@@ -6,6 +6,7 @@ import 'package:drift/drift.dart';
 import '../models/reading_record.dart';
 import 'app_database.dart';
 import 'settings_store.dart';
+import 'talker.dart';
 
 /// Local structured data: in-memory mirrors + Drift write-through.
 class AppLocalData {
@@ -97,7 +98,13 @@ class AppLocalData {
               .where((id) => id.isNotEmpty)
               .toList();
         }
-      } catch (_) {}
+      } on FormatException catch (e, st) {
+        talker.handle(
+          e,
+          st,
+          'Skip corrupted poll vote cache: ${row.uid}_${row.tid}',
+        );
+      }
     }
     _pollVotesLoaded = true;
   }
@@ -168,7 +175,8 @@ class AppLocalData {
       _pendingReadingRecords.remove(key);
       readingHistory.remove(key);
     }
-    await (db.delete(db.readingHistories)..where((t) => t.uid.equals(uid))).go();
+    await (db.delete(db.readingHistories)..where((t) => t.uid.equals(uid)))
+        .go();
   }
 
   void putPollVotes(String uid, String tid, List<String> optionIds) {
@@ -185,8 +193,7 @@ class AppLocalData {
   }
 
   Future<void> clearPollVotes(String uid) async {
-    final keys =
-        pollVotes.keys.where((k) => k.startsWith('${uid}_')).toList();
+    final keys = pollVotes.keys.where((k) => k.startsWith('${uid}_')).toList();
     for (final key in keys) {
       pollVotes.remove(key);
     }

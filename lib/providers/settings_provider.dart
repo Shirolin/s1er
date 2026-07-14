@@ -18,9 +18,7 @@ class AppSettings {
     this.imageCacheLimitMb = S1Constants.defaultImageCacheLimitMb,
     this.recordReadingHistory = true,
     this.fontSize = S1Typography.defaultBodySize,
-    this.useDynamicColor = false,
     this.collapsedForums = const {},
-    this.simulateDynamic = false,
   });
 
   final String themeMode;
@@ -32,9 +30,7 @@ class AppSettings {
   final int imageCacheLimitMb;
   final bool recordReadingHistory;
   final int fontSize;
-  final bool useDynamicColor;
   final Set<String> collapsedForums;
-  final bool simulateDynamic;
 
   double get textScaleFactor => fontSize / S1Typography.defaultBodySize;
 
@@ -48,9 +44,7 @@ class AppSettings {
     int? imageCacheLimitMb,
     bool? recordReadingHistory,
     int? fontSize,
-    bool? useDynamicColor,
     Set<String>? collapsedForums,
-    bool? simulateDynamic,
   }) {
     return AppSettings(
       themeMode: themeMode ?? this.themeMode,
@@ -60,12 +54,9 @@ class AppSettings {
       avatarLoadPolicy: avatarLoadPolicy ?? this.avatarLoadPolicy,
       maxImagesPerPost: maxImagesPerPost ?? this.maxImagesPerPost,
       imageCacheLimitMb: imageCacheLimitMb ?? this.imageCacheLimitMb,
-      recordReadingHistory:
-          recordReadingHistory ?? this.recordReadingHistory,
+      recordReadingHistory: recordReadingHistory ?? this.recordReadingHistory,
       fontSize: fontSize ?? this.fontSize,
-      useDynamicColor: useDynamicColor ?? this.useDynamicColor,
       collapsedForums: collapsedForums ?? this.collapsedForums,
-      simulateDynamic: simulateDynamic ?? this.simulateDynamic,
     );
   }
 
@@ -81,9 +72,7 @@ class AppSettings {
         other.imageCacheLimitMb == imageCacheLimitMb &&
         other.recordReadingHistory == recordReadingHistory &&
         other.fontSize == fontSize &&
-        other.useDynamicColor == useDynamicColor &&
-        _setEquals(other.collapsedForums, collapsedForums) &&
-        other.simulateDynamic == simulateDynamic;
+        _setEquals(other.collapsedForums, collapsedForums);
   }
 
   static bool _setEquals(Set<String> a, Set<String> b) =>
@@ -100,9 +89,7 @@ class AppSettings {
         imageCacheLimitMb,
         recordReadingHistory,
         fontSize,
-        useDynamicColor,
         Object.hashAllUnordered(collapsedForums),
-        simulateDynamic,
       );
 }
 
@@ -139,7 +126,7 @@ class SettingsNotifier extends Notifier<AppSettings> {
     if (store != null) return store;
     try {
       return ref.read(settingsStoreProvider);
-    } catch (_) {
+    } on Object {
       return null;
     }
   }
@@ -166,8 +153,9 @@ class SettingsNotifier extends Notifier<AppSettings> {
 
     return AppSettings(
       themeMode: themeMode,
-      themeColor: settingsStore.get<String>('themeColor', defaultValue: 'purple') ??
-          'purple',
+      themeColor:
+          settingsStore.get<String>('themeColor', defaultValue: 'purple') ??
+              'purple',
       showImages:
           settingsStore.get<bool>('showImages', defaultValue: true) ?? true,
       imageLoadPolicy: ImageLoadPolicy.fromStored(
@@ -196,20 +184,10 @@ class SettingsNotifier extends Notifier<AppSettings> {
             defaultValue: S1Typography.defaultBodySize,
           ) ??
           S1Typography.defaultBodySize,
-      useDynamicColor: settingsStore.get<bool>(
-            'useDynamicColor',
-            defaultValue: false,
-          ) ??
-          false,
       collapsedForums: Set<String>.from(
         (settingsStore.get<List<dynamic>>('collapsedForums'))?.cast<String>() ??
             [],
       ),
-      simulateDynamic: settingsStore.get<bool>(
-            'simulateDynamic',
-            defaultValue: false,
-          ) ??
-          false,
     );
   }
 
@@ -260,16 +238,6 @@ class SettingsNotifier extends Notifier<AppSettings> {
     _persist('fontSize', value);
   }
 
-  void setUseDynamicColor(bool value) {
-    _commit(state.copyWith(useDynamicColor: value));
-    _persist('useDynamicColor', value);
-  }
-
-  void setSimulateDynamic(bool value) {
-    _commit(state.copyWith(simulateDynamic: value));
-    _persist('simulateDynamic', value);
-  }
-
   void toggleForumCollapse(String fid) {
     final collapsed = Set<String>.from(state.collapsedForums);
     if (collapsed.contains(fid)) {
@@ -293,8 +261,6 @@ class SettingsNotifier extends Notifier<AppSettings> {
       imageCacheLimitMb: defaults.imageCacheLimitMb,
       recordReadingHistory: defaults.recordReadingHistory,
       fontSize: defaults.fontSize,
-      useDynamicColor: defaults.useDynamicColor,
-      simulateDynamic: defaults.simulateDynamic,
     );
     _commit(next);
     _persist('themeMode', defaults.themeMode);
@@ -307,20 +273,8 @@ class SettingsNotifier extends Notifier<AppSettings> {
     _applyImageCacheLimit(defaults.imageCacheLimitMb);
     _persist('recordReadingHistory', defaults.recordReadingHistory);
     _persist('fontSize', defaults.fontSize);
-    _persist('useDynamicColor', defaults.useDynamicColor);
-    _persist('simulateDynamic', defaults.simulateDynamic);
   }
 }
 
 final settingsProvider =
     NotifierProvider<SettingsNotifier, AppSettings>(SettingsNotifier.new);
-
-class DynamicColorAvailable extends Notifier<bool> {
-  @override
-  bool build() => false;
-
-  void setAvailable(bool value) => state = value;
-}
-
-final dynamicColorAvailableProvider =
-    NotifierProvider<DynamicColorAvailable, bool>(DynamicColorAvailable.new);

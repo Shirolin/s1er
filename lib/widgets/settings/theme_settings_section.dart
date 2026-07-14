@@ -15,9 +15,6 @@ class ThemeSettingsSection extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final settings = ref.watch(settingsProvider);
     final notifier = ref.read(settingsProvider.notifier);
-    final scheme = Theme.of(context).colorScheme;
-    final isDynamicAvailable = ref.watch(dynamicColorAvailableProvider);
-    final dynamicEnabled = settings.useDynamicColor && isDynamicAvailable;
 
     return Card(
       elevation: 0,
@@ -36,42 +33,14 @@ class ThemeSettingsSection extends ConsumerWidget {
             ),
             const SizedBox(height: 20),
             const Divider(height: 1),
-            const SizedBox(height: 12),
-            SwitchListTile(
-              secondary: Icon(Icons.palette_outlined, color: scheme.onSurfaceVariant),
-              title: const Text('Material You 动态取色'),
-              subtitle: Text(
-                !isDynamicAvailable
-                    ? '当前设备或平台不支持 Material You 动态取色，已回退到手动配色'
-                    : (dynamicEnabled
-                        ? '使用系统壁纸强调色（不支持时回退到下方配色）'
-                        : '关闭时使用下方手动配色'),
-                style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                      color: scheme.onSurfaceVariant,
-                    ),
-              ),
-              value: dynamicEnabled,
-              onChanged: isDynamicAvailable ? notifier.setUseDynamicColor : null,
-              contentPadding: const EdgeInsets.symmetric(horizontal: 8),
-              shape: const RoundedRectangleBorder(
-                borderRadius: S1Shape.small,
-              ),
-            ),
-            const SizedBox(height: 12),
-            const Divider(height: 1),
             const SizedBox(height: 20),
-            SettingsSubsectionLabel(
-              label: dynamicEnabled ? '回退配色' : '主题配色',
-            ),
+            const SettingsSubsectionLabel(label: '主题配色'),
             const SizedBox(height: 16),
-            Opacity(
-              opacity: dynamicEnabled ? 0.55 : 1,
-              child: ThemeColorPicker(
-                selectedKey: settings.themeColor,
-                onChanged: dynamicEnabled ? null : notifier.setThemeColor,
-              ),
+            ThemeColorPicker(
+              selectedKey: settings.themeColor,
+              onChanged: notifier.setThemeColor,
             ),
-            if (kDebugMode && !dynamicEnabled) const _CustomColorDebugger(),
+            if (kDebugMode) const _CustomColorDebugger(),
           ],
         ),
       ),
@@ -83,7 +52,8 @@ class _CustomColorDebugger extends ConsumerStatefulWidget {
   const _CustomColorDebugger();
 
   @override
-  ConsumerState<_CustomColorDebugger> createState() => _CustomColorDebuggerState();
+  ConsumerState<_CustomColorDebugger> createState() =>
+      _CustomColorDebuggerState();
 }
 
 class _CustomColorDebuggerState extends ConsumerState<_CustomColorDebugger> {
@@ -94,7 +64,8 @@ class _CustomColorDebuggerState extends ConsumerState<_CustomColorDebugger> {
   void initState() {
     super.initState();
     final themeColor = ref.read(settingsProvider).themeColor;
-    final isPreset = const ['blue', 'purple', 'sage', 'indigo', 'orange'].contains(themeColor);
+    final isPreset = const ['blue', 'purple', 'sage', 'indigo', 'orange']
+        .contains(themeColor);
     _controller = TextEditingController(text: isPreset ? '' : themeColor);
   }
 
@@ -114,22 +85,21 @@ class _CustomColorDebuggerState extends ConsumerState<_CustomColorDebugger> {
       setState(() => _errorText = '请输入 6 位或 8 位十六进制颜色，如 #2B2930');
       return;
     }
-    try {
-      int.parse(cleanHex, radix: 16);
-      setState(() => _errorText = null);
-      ref.read(settingsProvider.notifier).setThemeColor(val.trim());
-    } catch (_) {
+    if (int.tryParse(cleanHex, radix: 16) == null) {
       setState(() => _errorText = '格式错误');
+      return;
     }
+    setState(() => _errorText = null);
+    ref.read(settingsProvider.notifier).setThemeColor(val.trim());
   }
 
   @override
   Widget build(BuildContext context) {
-    final settings = ref.watch(settingsProvider);
     final scheme = Theme.of(context).colorScheme;
 
     ref.listen(settingsProvider.select((s) => s.themeColor), (_, next) {
-      final isNextPreset = const ['blue', 'purple', 'sage', 'indigo', 'orange'].contains(next);
+      final isNextPreset =
+          const ['blue', 'purple', 'sage', 'indigo', 'orange'].contains(next);
       if (isNextPreset) {
         _controller.text = '';
       } else {
@@ -167,18 +137,11 @@ class _CustomColorDebuggerState extends ConsumerState<_CustomColorDebugger> {
           ],
         ),
         const SizedBox(height: 12),
-        SwitchListTile(
-          secondary: Icon(Icons.bug_report_outlined, color: scheme.onSurfaceVariant),
-          title: const Text('模拟系统动态取色校正'),
-          subtitle: Text(
-            '开启时，该种子色将强行通过 `isDynamic = true` 色阶校正管线（模拟真机壁纸取色后的容器色拉伸），让您能在 Web 端调试实际对比度效果。',
-            style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                  color: scheme.onSurfaceVariant,
-                ),
-          ),
-          value: settings.simulateDynamic,
-          onChanged: ref.read(settingsProvider.notifier).setSimulateDynamic,
-          contentPadding: EdgeInsets.zero,
+        Text(
+          '调试：可直接输入自定义种子色，便于验证浅色 / 深色主题效果。',
+          style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                color: scheme.onSurfaceVariant,
+              ),
         ),
       ],
     );

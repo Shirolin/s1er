@@ -49,6 +49,12 @@ class EnvConfig {
     defaultValue: 30,
   );
 
+  /// 请求发送超时（秒，默认 30）
+  static const int sendTimeoutSeconds = int.fromEnvironment(
+    'SEND_TIMEOUT',
+    defaultValue: 30,
+  );
+
   // ── 便捷判断 ──────────────────────────────────────────
 
   static bool get talkerLogAll => talkerLogLevel == 'all';

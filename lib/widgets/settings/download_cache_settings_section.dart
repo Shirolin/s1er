@@ -8,7 +8,6 @@ import '../../config/constants.dart';
 import '../../models/image_load_policy.dart';
 import '../../providers/image_cache_provider.dart';
 import '../../providers/settings_provider.dart';
-import '../../services/s1_image_cache.dart';
 import '../../theme/app_theme.dart';
 import '../../utils/s1_snack_bar.dart';
 import '../s1_confirm_dialog.dart';
@@ -80,7 +79,7 @@ class _DownloadCacheSettingsSectionState
               if (kIsWeb) {
                 return '浏览器管理磁盘缓存；可清除应用内图片内存缓存';
               }
-              return '当前约占用 ${S1ImageCache.formatSize(bytes)}，上限 ${S1ImageCache.formatLimit()}';
+              return '当前约占用 ${formatImageCacheSize(bytes)}，上限 ${formatImageCacheSize(S1Constants.maxImageCacheBytes)}';
             },
             loading: () => '正在统计缓存占用…',
             error: (_, __) => '清除已下载的图片，释放本地空间',

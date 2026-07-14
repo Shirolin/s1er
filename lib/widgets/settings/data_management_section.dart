@@ -8,7 +8,6 @@ import '../../providers/auth_provider.dart';
 import '../../providers/backup_provider.dart';
 import '../../providers/reading_history_provider.dart';
 import '../../providers/settings_provider.dart';
-import '../../services/backup/s1_backup_codec.dart';
 import '../../theme/app_theme.dart';
 import '../../utils/s1_snack_bar.dart';
 import '../s1_confirm_dialog.dart';

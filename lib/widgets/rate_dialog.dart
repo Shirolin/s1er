@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../models/rate_form.dart';
-import '../providers/api_service_provider.dart';
+import '../providers/rate_action_provider.dart';
 import '../providers/thread_rate_logs_provider.dart';
 import '../theme/app_theme.dart';
 import '../utils/s1_snack_bar.dart';
@@ -57,10 +57,8 @@ class _RateDialogState extends ConsumerState<_RateDialog> {
 
   Future<void> _fetchForm() async {
     setState(() => _options = null);
-    final options = await ref.read(apiServiceProvider).fetchRateForm(
-          tid: widget.tid,
-          pid: widget.pid,
-        );
+    final options =
+        await ref.read(rateFormProvider((widget.tid, widget.pid)).future);
     if (!mounted) return;
 
     setState(() {
@@ -80,9 +78,9 @@ class _RateDialogState extends ConsumerState<_RateDialog> {
 
     setState(() => _submitting = true);
     try {
-      final error = await ref.read(apiServiceProvider).submitRate(
-            tid: widget.tid,
-            pid: widget.pid,
+      final error = await ref
+          .read(rateActionControllerProvider((widget.tid, widget.pid)))
+          .submit(
             score1: _score!,
             reason: _reasonController.text.trim(),
             notifyAuthor: _notifyAuthor,

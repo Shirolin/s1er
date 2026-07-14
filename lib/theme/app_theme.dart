@@ -18,7 +18,8 @@ abstract class S1Shape {
   );
   static const chipShape = RoundedRectangleBorder(borderRadius: small);
   static const menuShape = RoundedRectangleBorder(borderRadius: small);
-  static const inputShape = OutlineInputBorder(borderRadius: BorderRadius.all(Radius.circular(12)));
+  static const inputShape =
+      OutlineInputBorder(borderRadius: BorderRadius.all(Radius.circular(12)));
 }
 
 /// M3 底部固定栏（NavigationBar / PaginationBar）共用表面样式。
@@ -30,7 +31,8 @@ abstract class S1BottomBarStyle {
   static const double barVerticalPadding = 4;
 
   /// 分页栏内容行高（48dp 触控 + 上下 padding）。
-  static const double paginationBarHeight = minTouchTarget + barVerticalPadding * 2;
+  static const double paginationBarHeight =
+      minTouchTarget + barVerticalPadding * 2;
 
   static Color background(ColorScheme scheme) => scheme.surfaceContainer;
 
@@ -103,10 +105,13 @@ abstract class S1Alpha {
   static const half = 0.5;
   static const strong = 0.7;
   static const prominent = 0.9;
+
   /// 禁用图标前景（分页栏、IconButton disabled）。
   static const disabledIcon = 0.38;
+
   /// 图片查看器遮罩文案。
   static const viewerScrim = 0.54;
+
   /// 图片查看器底部控制栏背景。
   static const controlBar = 0.92;
 }
@@ -121,66 +126,39 @@ class AppTheme {
   };
 
   static Color? _parseHexColor(String hexStr) {
-    try {
-      final cleanHex = hexStr.replaceAll('#', '').trim();
-      if (cleanHex.length == 6) {
-        return Color(int.parse('0xFF$cleanHex'));
-      } else if (cleanHex.length == 8) {
-        return Color(int.parse('0x$cleanHex'));
-      }
-    } catch (_) {}
+    final cleanHex = hexStr.replaceAll('#', '').trim();
+    if (cleanHex.length == 6) {
+      final value = int.tryParse('0xFF$cleanHex');
+      return value == null ? null : Color(value);
+    }
+    if (cleanHex.length == 8) {
+      final value = int.tryParse('0x$cleanHex');
+      return value == null ? null : Color(value);
+    }
     return null;
   }
 
-  static ThemeData lightTheme(String themeColorKey, {bool isDynamic = false}) {
+  static ThemeData lightTheme(String themeColorKey) {
     final seedColor = _parseHexColor(themeColorKey) ??
         themeSeeds[themeColorKey] ??
         themeSeeds['purple']!;
     return fromColorScheme(
       ColorScheme.fromSeed(seedColor: seedColor, brightness: Brightness.light),
-      isDynamic: isDynamic,
     );
   }
 
-  static ThemeData darkTheme(String themeColorKey, {bool isDynamic = false}) {
+  static ThemeData darkTheme(String themeColorKey) {
     final seedColor = _parseHexColor(themeColorKey) ??
         themeSeeds[themeColorKey] ??
         themeSeeds['purple']!;
     return fromColorScheme(
       ColorScheme.fromSeed(seedColor: seedColor, brightness: Brightness.dark),
-      isDynamic: isDynamic,
     );
   }
 
-  static ThemeData fromColorScheme(ColorScheme rawColorScheme, {bool isDynamic = false}) {
-    // 仅当开启了自动取色（isDynamic = true）时，由于系统/插件的桥接问题，提取的 surfaceContainer* 与 surface 对比度过低，
-    // 我们强制使用 primary 种子重新生成标准的 M3 容器色进行覆盖。预设配色（isDynamic = false）则保持原装，避免影响精心调试的色阶。
-    final colorScheme = isDynamic
-        ? rawColorScheme.copyWith(
-            surface: ColorScheme.fromSeed(
-              seedColor: rawColorScheme.primary,
-              brightness: rawColorScheme.brightness,
-            ).surface,
-            surfaceContainerLow: ColorScheme.fromSeed(
-              seedColor: rawColorScheme.primary,
-              brightness: rawColorScheme.brightness,
-            ).surfaceContainerLow,
-            surfaceContainer: ColorScheme.fromSeed(
-              seedColor: rawColorScheme.primary,
-              brightness: rawColorScheme.brightness,
-            ).surfaceContainer,
-            surfaceContainerHigh: ColorScheme.fromSeed(
-              seedColor: rawColorScheme.primary,
-              brightness: rawColorScheme.brightness,
-            ).surfaceContainerHigh,
-            surfaceContainerHighest: ColorScheme.fromSeed(
-              seedColor: rawColorScheme.primary,
-              brightness: rawColorScheme.brightness,
-            ).surfaceContainerHighest,
-          )
-        : rawColorScheme;
-
-    final textTheme = ThemeData(useMaterial3: true, colorScheme: colorScheme).textTheme;
+  static ThemeData fromColorScheme(ColorScheme colorScheme) {
+    final textTheme =
+        ThemeData(useMaterial3: true, colorScheme: colorScheme).textTheme;
 
     return ThemeData(
       useMaterial3: true,
@@ -197,7 +175,8 @@ class AppTheme {
         margin: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
       ),
       dialogTheme: const DialogThemeData(shape: S1Shape.dialogShape),
-      bottomSheetTheme: const BottomSheetThemeData(shape: S1Shape.bottomSheetShape),
+      bottomSheetTheme:
+          const BottomSheetThemeData(shape: S1Shape.bottomSheetShape),
       chipTheme: const ChipThemeData(shape: S1Shape.chipShape),
       dividerTheme: DividerThemeData(
         color: colorScheme.outlineVariant,
@@ -220,14 +199,17 @@ class AppTheme {
               side: BorderSide(color: colorScheme.outlineVariant),
             ),
           ),
-          padding: const WidgetStatePropertyAll(EdgeInsets.symmetric(vertical: 8)),
+          padding:
+              const WidgetStatePropertyAll(EdgeInsets.symmetric(vertical: 8)),
         ),
       ),
       menuButtonTheme: const MenuButtonThemeData(
         style: ButtonStyle(
           minimumSize: WidgetStatePropertyAll(Size(168, 48)),
           maximumSize: WidgetStatePropertyAll(Size(280, double.infinity)),
-          padding: WidgetStatePropertyAll(EdgeInsetsDirectional.fromSTEB(12, 0, 16, 0)),
+          padding: WidgetStatePropertyAll(
+            EdgeInsetsDirectional.fromSTEB(12, 0, 16, 0),
+          ),
           alignment: AlignmentDirectional.centerStart,
           iconSize: WidgetStatePropertyAll(24),
           tapTargetSize: MaterialTapTargetSize.shrinkWrap,

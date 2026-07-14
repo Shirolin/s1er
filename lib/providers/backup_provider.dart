@@ -8,6 +8,8 @@ import '../providers/talker_provider.dart';
 import '../services/backup/s1_backup_io.dart';
 import '../services/backup/s1_backup_service.dart';
 
+export '../services/backup/s1_backup_codec.dart' show S1BackupException;
+
 final s1BackupServiceProvider = Provider<S1BackupService>((ref) {
   return S1BackupService(ref.watch(localDataProvider));
 });

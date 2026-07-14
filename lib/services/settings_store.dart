@@ -2,6 +2,7 @@ import 'dart:async';
 import 'dart:convert';
 
 import 'app_database.dart';
+import 'talker.dart';
 
 /// In-memory settings with async Drift persistence (sync reads).
 class SettingsStore {
@@ -16,7 +17,12 @@ class SettingsStore {
     for (final row in rows) {
       try {
         _cache[row.key] = jsonDecode(row.value);
-      } catch (_) {
+      } on FormatException catch (e, st) {
+        talker.handle(
+          e,
+          st,
+          'Decode settings cache failed for key: ${row.key}',
+        );
         _cache[row.key] = row.value;
       }
     }

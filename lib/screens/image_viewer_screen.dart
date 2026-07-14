@@ -4,7 +4,6 @@ import 'dart:typed_data';
 import 'dart:ui' as ui;
 
 import 'package:cached_network_image/cached_network_image.dart';
-import 'package:dio/dio.dart';
 import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -12,8 +11,8 @@ import 'package:gal/gal.dart';
 import 'package:go_router/go_router.dart';
 
 import '../config/resource_domains.dart';
-import '../services/http_client.dart';
-import '../services/s1_image_cache.dart';
+import '../providers/image_bytes_provider.dart';
+import '../providers/image_cache_provider.dart';
 import '../theme/app_theme.dart';
 import '../utils/s1_snack_bar.dart';
 import '../widgets/web_image_stub.dart'
@@ -62,13 +61,14 @@ class _ImageViewerScreenState extends ConsumerState<ImageViewerScreen> {
       if (widget.resourceType == ResourceType.publicAsset && !kIsWeb) {
         return CachedNetworkImageProvider(
           widget.imageUrl,
-          cacheManager: S1ImageCache.manager,
+          cacheManager: s1ImageCacheManager,
         );
       }
       return NetworkImage(widget.imageUrl);
     }
 
-    if (_cachedMemoryImage != null && identical(_cachedMemoryImage!.bytes, bytes)) {
+    if (_cachedMemoryImage != null &&
+        identical(_cachedMemoryImage!.bytes, bytes)) {
       return _cachedMemoryImage!;
     }
 
@@ -110,25 +110,20 @@ class _ImageViewerScreenState extends ConsumerState<ImageViewerScreen> {
       });
       frameInfo.image.dispose();
       codec.dispose();
-    } catch (_) {}
+    } catch (e, st) {
+      FlutterError.reportError(
+        FlutterErrorDetails(
+          exception: e,
+          stack: st,
+          library: 'image_viewer_screen',
+          context: ErrorDescription('decode image dimensions'),
+        ),
+      );
+    }
   }
 
   Future<Uint8List?> _tryFetchBytes() async {
-    try {
-      final disk = await S1ImageCache.getBytes(widget.imageUrl);
-      if (disk != null) return disk;
-
-      final httpClient = ref.read(httpClientProvider);
-      final response = await httpClient.get(
-        widget.imageUrl,
-        options: Options(responseType: ResponseType.bytes),
-      );
-      final bytes = Uint8List.fromList(response.data as List<int>);
-      await S1ImageCache.putBytes(widget.imageUrl, bytes);
-      return bytes;
-    } catch (_) {
-      return null;
-    }
+    return ref.read(imageBytesProvider(widget.imageUrl).future);
   }
 
   String get _fileName {
@@ -158,8 +153,7 @@ class _ImageViewerScreenState extends ConsumerState<ImageViewerScreen> {
     final scale = _transformController.value.getMaxScaleOnAxis();
     if ((scale - _currentScale).abs() > 0.01) {
       _currentScale = scale;
-      _scaleLabel.value =
-          '${(_currentScale * 100).round()}%';
+      _scaleLabel.value = '${(_currentScale * 100).round()}%';
     }
   }
 
@@ -280,7 +274,8 @@ class _ImageViewerScreenState extends ConsumerState<ImageViewerScreen> {
           errorBuilder: (_, __, ___) => Center(
             child: Icon(
               Icons.broken_image_outlined,
-              color: colorScheme.onInverseSurface.withValues(alpha: S1Alpha.viewerScrim),
+              color: colorScheme.onInverseSurface
+                  .withValues(alpha: S1Alpha.viewerScrim),
               size: 48,
             ),
           ),
@@ -317,7 +312,8 @@ class _ImageViewerScreenState extends ConsumerState<ImageViewerScreen> {
                 IconButton(
                   tooltip: kIsWeb ? '下载' : '保存到相册',
                   color: colorScheme.onSurface,
-                  onPressed: _downloading ? null : () => _downloadImage(context),
+                  onPressed:
+                      _downloading ? null : () => _downloadImage(context),
                   icon: _downloading
                       ? SizedBox(
                           width: 20,
@@ -340,7 +336,8 @@ class _ImageViewerScreenState extends ConsumerState<ImageViewerScreen> {
     final bottomPadding = MediaQuery.of(context).padding.bottom;
 
     return Material(
-      color: colorScheme.surfaceContainerHigh.withValues(alpha: S1Alpha.controlBar),
+      color: colorScheme.surfaceContainerHigh
+          .withValues(alpha: S1Alpha.controlBar),
       borderRadius: BorderRadius.vertical(top: S1Shape.large.topLeft),
       child: Padding(
         padding: EdgeInsets.fromLTRB(4, 4, 4, 4 + bottomPadding),
@@ -453,7 +450,8 @@ class _ImageViewerScreenState extends ConsumerState<ImageViewerScreen> {
                   width: 32,
                   height: 4,
                   decoration: BoxDecoration(
-                    color: colorScheme.onSurfaceVariant.withValues(alpha: S1Alpha.cardOverlay),
+                    color: colorScheme.onSurfaceVariant
+                        .withValues(alpha: S1Alpha.cardOverlay),
                     borderRadius: S1Shape.extraSmall,
                   ),
                 ),
@@ -466,7 +464,12 @@ class _ImageViewerScreenState extends ConsumerState<ImageViewerScreen> {
               if (_width != null && _height != null)
                 _infoRow('尺寸', '$_width × $_height px', textTheme, colorScheme),
               if (_effectiveBytes != null)
-                _infoRow('大小', _formatSize(_effectiveBytes!.length), textTheme, colorScheme),
+                _infoRow(
+                  '大小',
+                  _formatSize(_effectiveBytes!.length),
+                  textTheme,
+                  colorScheme,
+                ),
             ],
           ),
         );
@@ -474,7 +477,12 @@ class _ImageViewerScreenState extends ConsumerState<ImageViewerScreen> {
     );
   }
 
-  Widget _infoRow(String label, String value, TextTheme textTheme, ColorScheme colorScheme) {
+  Widget _infoRow(
+    String label,
+    String value,
+    TextTheme textTheme,
+    ColorScheme colorScheme,
+  ) {
     return Padding(
       padding: const EdgeInsets.only(bottom: 12),
       child: Column(

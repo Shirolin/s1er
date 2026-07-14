@@ -1,6 +1,5 @@
-import 'dart:typed_data';
-
 import 'package:drift/native.dart';
+import 'package:drift/drift.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:package_info_plus/package_info_plus.dart';
 import 'package:s1_app/models/reading_record.dart';
@@ -83,9 +82,13 @@ void main() {
       expect(backup['avatar_load_policy'], 'manual');
       expect(backup['max_images_per_post'], 20);
       expect(backup['image_cache_limit_mb'], 512);
+      expect(backup.containsKey('use_dynamic_color'), isFalse);
+      expect(backup.containsKey('simulate_dynamic'), isFalse);
 
       final app = S1BackupSettingsMapper.toApp({
         ...backup,
+        'use_dynamic_color': true,
+        'simulate_dynamic': true,
         'unknown_field': true,
       });
       expect(app['themeMode'], 'dark');
@@ -94,6 +97,8 @@ void main() {
       expect(app['avatarLoadPolicy'], 'manual');
       expect(app['maxImagesPerPost'], 20);
       expect(app['imageCacheLimitMb'], 512);
+      expect(app.containsKey('useDynamicColor'), isFalse);
+      expect(app.containsKey('simulateDynamic'), isFalse);
       expect(app.containsKey('unknown_field'), isFalse);
     });
   });
@@ -158,6 +163,8 @@ void main() {
       expect(local.settings.get<int>('fontSize'), 18);
       expect(local.readingHistory['u1_100']?['subject'], 'hello');
       expect(local.pollVotes['u1_100'], ['82381']);
+      expect(exported.payload.settings?['use_dynamic_color'], equals(null));
+      expect(exported.payload.settings?['simulate_dynamic'], equals(null));
     });
 
     test('import overwrites same reading history key', () async {
@@ -224,6 +231,27 @@ void main() {
       expect(decoded.settings?['theme_mode'], 'light');
       expect(decoded.readingHistory, isEmpty);
       expect(decoded.blacklist, isEmpty);
+    });
+
+    test('export rejects corrupted blacklist scope json', () async {
+      await db.into(db.blacklistEntries).insert(
+            BlacklistEntriesCompanion.insert(
+              uid: 'u1',
+              username: const Value('alice'),
+              createdAt: 1,
+              reason: const Value('bad data'),
+              scopeJson: const Value('{oops'),
+            ),
+          );
+
+      await expectLater(
+        service.exportL1(
+          uid: 'u1',
+          packageInfo: info(),
+          platform: 'test',
+        ),
+        throwsA(isA<S1BackupException>()),
+      );
     });
   });
 }

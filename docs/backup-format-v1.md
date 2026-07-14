@@ -94,7 +94,6 @@ v1 **不使用** JSONL；列表一律为 JSON 数组。
 | `image_cache_limit_mb` | int | 磁盘图片缓存上限（MB）；常见 `100` / `256` / `512` |
 | `record_reading_history` | bool | |
 | `font_size` | int | |
-| `use_dynamic_color` | bool | |
 | `collapsed_forums` | string[] | 版块 id |
 | `simulate_dynamic` | bool | 调试用，可忽略 |
 

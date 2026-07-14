@@ -1,7 +1,6 @@
 import 'dart:async';
 import 'dart:typed_data';
 
-import 'package:dynamic_color/dynamic_color.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
@@ -33,11 +32,12 @@ ImageViewerScreen? _parseImageViewerRoute(GoRouterState state) {
 
   final urlFromQuery = state.uri.queryParameters['url'];
   final fullFromQuery = state.uri.queryParameters['fullUrl'];
-  final imageUrl = args?['imageUrl'] as String? ?? fullFromQuery ?? urlFromQuery;
+  final imageUrl =
+      args?['imageUrl'] as String? ?? fullFromQuery ?? urlFromQuery;
   if (imageUrl == null || imageUrl.isEmpty) return null;
 
-  final typeStr = state.uri.queryParameters['type'] ??
-      args?['resourceType']?.toString();
+  final typeStr =
+      state.uri.queryParameters['type'] ?? args?['resourceType']?.toString();
   ResourceType resourceType = ResourceType.publicAsset;
   if (typeStr != null) {
     resourceType = ResourceType.values.firstWhere(
@@ -192,10 +192,6 @@ class _S1AppState extends ConsumerState<S1App> with WidgetsBindingObserver {
 
     final themeModeStr = ref.watch(settingsProvider.select((s) => s.themeMode));
     final themeColor = ref.watch(settingsProvider.select((s) => s.themeColor));
-    final useDynamicColor =
-        ref.watch(settingsProvider.select((s) => s.useDynamicColor));
-    final simulateDynamic =
-        ref.watch(settingsProvider.select((s) => s.simulateDynamic));
     final textScaleFactor =
         ref.watch(settingsProvider.select((s) => s.textScaleFactor));
 
@@ -205,45 +201,26 @@ class _S1AppState extends ConsumerState<S1App> with WidgetsBindingObserver {
       _ => ThemeMode.system,
     };
 
-    return DynamicColorBuilder(
-      builder: (lightDynamic, darkDynamic) {
-        final hasDynamic = lightDynamic != null && darkDynamic != null;
-
-        WidgetsBinding.instance.addPostFrameCallback((_) {
-          if (ref.read(dynamicColorAvailableProvider) != hasDynamic) {
-            ref.read(dynamicColorAvailableProvider.notifier).setAvailable(hasDynamic);
-          }
-        });
-
-        final lightTheme = useDynamicColor && hasDynamic
-            ? AppTheme.fromColorScheme(lightDynamic, isDynamic: true)
-            : AppTheme.lightTheme(themeColor, isDynamic: simulateDynamic);
-        final darkTheme = useDynamicColor && hasDynamic
-            ? AppTheme.fromColorScheme(darkDynamic, isDynamic: true)
-            : AppTheme.darkTheme(themeColor, isDynamic: simulateDynamic);
-
-        return TalkerWrapper(
-          talker: talker,
-          options: const TalkerWrapperOptions(
-            enableErrorAlerts: true,
-          ),
-          child: MaterialApp.router(
-            title: 'S1 Client',
-            theme: lightTheme,
-            darkTheme: darkTheme,
-            themeMode: themeMode,
-            routerConfig: _router,
-            builder: (context, child) {
-              return MediaQuery(
-                data: MediaQuery.of(context).copyWith(
-                  textScaler: TextScaler.linear(textScaleFactor),
-                ),
-                child: child!,
-              );
-            },
-          ),
-        );
-      },
+    return TalkerWrapper(
+      talker: talker,
+      options: const TalkerWrapperOptions(
+        enableErrorAlerts: true,
+      ),
+      child: MaterialApp.router(
+        title: 'S1 Client',
+        theme: AppTheme.lightTheme(themeColor),
+        darkTheme: AppTheme.darkTheme(themeColor),
+        themeMode: themeMode,
+        routerConfig: _router,
+        builder: (context, child) {
+          return MediaQuery(
+            data: MediaQuery.of(context).copyWith(
+              textScaler: TextScaler.linear(textScaleFactor),
+            ),
+            child: child!,
+          );
+        },
+      ),
     );
   }
 }

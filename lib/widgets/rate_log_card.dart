@@ -1,8 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../models/rate_log.dart';
-import '../providers/api_service_provider.dart';
 import '../providers/thread_rate_logs_provider.dart';
+import '../providers/user_profile_provider.dart';
 import '../theme/app_theme.dart';
 import '../utils/format_utils.dart';
 import 'user_profile_sheet.dart';
@@ -288,15 +288,17 @@ class _EntryRow extends ConsumerWidget {
               children: [
                 uid == null
                     ? username
-                    : GestureDetector(
-                        behavior: HitTestBehavior.opaque,
-                        onTap: () => showUserProfileSheet(
-                          context,
-                          future: ref
-                              .read(apiServiceProvider)
-                              .getUserProfileByUid(uid),
+                    : Semantics(
+                        button: true,
+                        label: '查看 ${entry.username} 的资料',
+                        child: GestureDetector(
+                          behavior: HitTestBehavior.opaque,
+                          onTap: () => showUserProfileSheet(
+                            context,
+                            future: ref.read(userProfileProvider(uid).future),
+                          ),
+                          child: username,
                         ),
-                        child: username,
                       ),
                 if (ratedAtText.isNotEmpty)
                   Text(

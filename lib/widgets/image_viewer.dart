@@ -8,16 +8,15 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import '../config/resource_domains.dart';
 import '../providers/connectivity_provider.dart';
+import '../providers/image_bytes_provider.dart';
 import '../providers/settings_provider.dart';
-import '../services/http_client.dart';
-import '../services/s1_image_cache.dart';
+import '../providers/image_cache_provider.dart';
 import '../theme/app_theme.dart';
 import '../utils/image_load_policy.dart';
 import '../utils/inline_image_decode.dart';
 import 'lazy_visibility_loader.dart';
 
 class ImageViewer extends ConsumerStatefulWidget {
-
   const ImageViewer({
     super.key,
     required this.imageUrl,
@@ -160,7 +159,7 @@ class _ImageViewerState extends ConsumerState<ImageViewer> {
 
   Future<void> _loadFromDiskOrNetwork(String url) async {
     try {
-      final disk = await S1ImageCache.getBytes(url);
+      final disk = await getCachedImageBytes(url);
       if (!mounted) return;
       if (disk != null) {
         _putInMemoryCache(url, disk);
@@ -173,7 +172,7 @@ class _ImageViewerState extends ConsumerState<ImageViewer> {
         });
         return;
       }
-    } catch (_) {
+    } on Object {
       // Disk cache miss; continue to policy / network.
     }
 
@@ -232,7 +231,7 @@ class _ImageViewerState extends ConsumerState<ImageViewer> {
   ImageProvider _publicNetworkProvider(String url) {
     return CachedNetworkImageProvider(
       url,
-      cacheManager: S1ImageCache.manager,
+      cacheManager: s1ImageCacheManager,
     );
   }
 
@@ -244,18 +243,14 @@ class _ImageViewerState extends ConsumerState<ImageViewer> {
     });
 
     try {
-      final httpClient = ref.read(httpClientProvider);
-      final response = await httpClient.get(
-        url,
-        options: Options(responseType: ResponseType.bytes),
-      );
+      final data = await ref.read(imageBytesProvider(url).future);
       if (!mounted) return;
-      final data = response.data as Uint8List;
+      if (data == null) {
+        setState(() => _loading = false);
+        return;
+      }
 
       _putInMemoryCache(url, data);
-      await S1ImageCache.putBytes(url, data);
-
-      if (!mounted) return;
       setState(() {
         _bytes = data;
         _imageProvider = _providerCache[url];
@@ -270,7 +265,7 @@ class _ImageViewerState extends ConsumerState<ImageViewer> {
       setState(() {
         _loading = false;
       });
-    } catch (e) {
+    } on Object {
       if (!mounted) return;
       setState(() {
         _loading = false;
@@ -417,7 +412,7 @@ class _ImageViewerState extends ConsumerState<ImageViewer> {
               gaplessPlayback: true,
               frameBuilder: (context, child, frame, wasSynchronouslyLoaded) {
                 if (frame != null) {
-                  S1ImageCache.evictIfNeeded();
+                  evictImageCacheIfNeeded();
                 }
                 if (wasSynchronouslyLoaded) return child;
                 return Stack(

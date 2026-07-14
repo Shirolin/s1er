@@ -5,7 +5,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../config/resource_domains.dart';
 import '../providers/connectivity_provider.dart';
 import '../providers/settings_provider.dart';
-import '../services/s1_image_cache.dart';
+import '../providers/image_cache_provider.dart';
 import '../utils/image_load_policy.dart';
 import 'avatar_fallback.dart';
 
@@ -60,7 +60,7 @@ class _WebAvatarState extends ConsumerState<WebAvatar> {
       if (mounted) setState(() => _hasDiskCache = false);
       return;
     }
-    final cached = await S1ImageCache.hasCachedFile(url);
+    final cached = await hasCachedImage(url);
     if (mounted) setState(() => _hasDiskCache = cached);
   }
 
@@ -116,7 +116,7 @@ class _WebAvatarState extends ConsumerState<WebAvatar> {
             )
           : CachedNetworkImage(
               imageUrl: imageUrl,
-              cacheManager: S1ImageCache.manager,
+              cacheManager: s1ImageCacheManager,
               width: size,
               height: size,
               fit: BoxFit.cover,

@@ -64,9 +64,7 @@ class S1BackupService {
     appSettings.putIfAbsent('imageCacheLimitMb', () => 256);
     appSettings.putIfAbsent('recordReadingHistory', () => true);
     appSettings.putIfAbsent('fontSize', () => 14);
-    appSettings.putIfAbsent('useDynamicColor', () => false);
     appSettings.putIfAbsent('collapsedForums', () => <String>[]);
-    appSettings.putIfAbsent('simulateDynamic', () => false);
 
     final settingsJson = S1BackupSettingsMapper.toBackup(appSettings);
 
@@ -106,20 +104,25 @@ class S1BackupService {
 
     final blacklistRows =
         await _local.db.select(_local.db.blacklistEntries).get();
-    final blacklist = blacklistRows.map((row) {
-      List<dynamic> scope = const [];
+    final blacklist = <Map<String, dynamic>>[];
+    for (final row in blacklistRows) {
+      dynamic decoded;
       try {
-        final decoded = jsonDecode(row.scopeJson);
-        if (decoded is List) scope = decoded;
-      } catch (_) {}
-      return {
+        decoded = jsonDecode(row.scopeJson);
+      } on FormatException {
+        throw S1BackupException('黑名单作用域数据损坏，无法导出备份');
+      }
+      if (decoded is! List) {
+        throw S1BackupException('黑名单作用域数据损坏，无法导出备份');
+      }
+      blacklist.add({
         'uid': row.uid,
         'username': row.username,
         'created_at': row.createdAt,
         'reason': row.reason,
-        'scope': scope,
-      };
-    }).toList();
+        'scope': decoded,
+      });
+    }
 
     const contents = <String>[
       'settings',

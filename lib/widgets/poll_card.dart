@@ -2,14 +2,13 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import '../models/poll.dart';
-import '../providers/api_service_provider.dart';
 import '../providers/auth_provider.dart';
+import '../providers/poll_vote_provider.dart';
 import '../providers/post_provider.dart';
 import '../theme/app_theme.dart';
 import '../utils/format_utils.dart';
 import '../utils/poll_bar_color.dart';
 import '../utils/s1_snack_bar.dart';
-
 
 class PollCard extends ConsumerStatefulWidget {
   const PollCard({
@@ -73,10 +72,9 @@ class _PollCardState extends ConsumerState<PollCard> {
 
     setState(() => _submitting = true);
     try {
-      final error = await ref.read(apiServiceProvider).votePoll(
-            tid: widget.tid,
-            optionIds: _selectedIds.toList(),
-          );
+      final error = await ref
+          .read(pollVoteControllerProvider(widget.tid))
+          .submit(_selectedIds.toList());
       if (!mounted) return;
 
       if (error != null) {
@@ -153,6 +151,7 @@ class _PollCardState extends ConsumerState<PollCard> {
                 canSelect: canInteract,
                 multiple: poll.multiple,
                 barColor: pollBarColor(option.colorHex, scheme),
+                semanticsLabel: '投票选项：${option.text}',
                 onTap: canInteract ? () => _toggleOption(option) : null,
               ),
             ),
@@ -233,6 +232,7 @@ class _PollOptionTile extends StatelessWidget {
     required this.canSelect,
     required this.multiple,
     required this.barColor,
+    required this.semanticsLabel,
     this.onTap,
   });
 
@@ -243,6 +243,7 @@ class _PollOptionTile extends StatelessWidget {
   final bool canSelect;
   final bool multiple;
   final Color barColor;
+  final String semanticsLabel;
   final VoidCallback? onTap;
 
   @override
@@ -253,119 +254,130 @@ class _PollOptionTile extends StatelessWidget {
 
     return Padding(
       padding: const EdgeInsets.only(bottom: 8),
-      child: Material(
-        color: highlight
-            ? scheme.primaryContainer.withValues(alpha: S1Alpha.light)
-            : Colors.transparent,
-        shape: RoundedRectangleBorder(
-          borderRadius: S1Shape.small,
-          side: isUserVote
-              ? BorderSide(color: scheme.primary, width: 1.5)
-              : BorderSide.none,
-        ),
-        child: InkWell(
-          onTap: onTap,
-          borderRadius: S1Shape.small,
-          child: Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 8),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Row(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    if (canSelect) ...[
-                      if (multiple)
-                        Checkbox(
-                          value: selected,
-                          onChanged: onTap == null ? null : (_) => onTap!(),
-                          visualDensity: VisualDensity.compact,
-                          materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
-                        )
-                      else
-                        Padding(
-                          padding: const EdgeInsets.only(right: 4, top: 2),
-                          child: Icon(
-                            selected
-                                ? Icons.radio_button_checked
-                                : Icons.radio_button_unchecked,
-                            size: 20,
-                            color: selected
-                                ? scheme.primary
-                                : scheme.onSurfaceVariant,
-                          ),
-                        ),
-                    ] else if (isUserVote) ...[
-                      Padding(
-                        padding: const EdgeInsets.only(right: 6, top: 2),
-                        child: Icon(
-                          Icons.how_to_vote,
-                          size: 18,
-                          color: scheme.primary,
-                        ),
-                      ),
-                    ],
-                    Expanded(
-                      child: Text(
-                        option.text,
-                        style: textTheme.bodyMedium?.copyWith(
-                          fontWeight: highlight ? FontWeight.w600 : null,
-                        ),
-                      ),
-                    ),
-                    if (isUserVote)
-                      Padding(
-                        padding: const EdgeInsets.only(left: 8, top: 2),
-                        child: Badge(
-                          label: Text(
-                            '我的投票',
-                            style: textTheme.labelSmall?.copyWith(
-                              color: scheme.onPrimaryContainer,
-                              fontWeight: FontWeight.w600,
+      child: Semantics(
+        button: onTap != null,
+        label: semanticsLabel,
+        selected: selected || isUserVote,
+        child: Material(
+          color: highlight
+              ? scheme.primaryContainer.withValues(alpha: S1Alpha.light)
+              : Colors.transparent,
+          shape: RoundedRectangleBorder(
+            borderRadius: S1Shape.small,
+            side: isUserVote
+                ? BorderSide(color: scheme.primary, width: 1.5)
+                : BorderSide.none,
+          ),
+          child: InkWell(
+            onTap: onTap,
+            borderRadius: S1Shape.small,
+            child: Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 8),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      if (canSelect) ...[
+                        if (multiple)
+                          Padding(
+                            padding: const EdgeInsets.only(right: 8, top: 2),
+                            child: IgnorePointer(
+                              child: Checkbox(
+                                value: selected,
+                                onChanged: null,
+                                visualDensity: VisualDensity.compact,
+                                materialTapTargetSize:
+                                    MaterialTapTargetSize.shrinkWrap,
+                              ),
+                            ),
+                          )
+                        else
+                          Padding(
+                            padding: const EdgeInsets.only(right: 4, top: 2),
+                            child: Icon(
+                              selected
+                                  ? Icons.radio_button_checked
+                                  : Icons.radio_button_unchecked,
+                              size: 20,
+                              color: selected
+                                  ? scheme.primary
+                                  : scheme.onSurfaceVariant,
                             ),
                           ),
-                          backgroundColor: scheme.primaryContainer,
-                          padding: const EdgeInsets.symmetric(
-                            horizontal: 4,
-                            vertical: 2,
+                      ] else if (isUserVote) ...[
+                        Padding(
+                          padding: const EdgeInsets.only(right: 6, top: 2),
+                          child: Icon(
+                            Icons.how_to_vote,
+                            size: 18,
+                            color: scheme.primary,
+                          ),
+                        ),
+                      ],
+                      Expanded(
+                        child: Text(
+                          option.text,
+                          style: textTheme.bodyMedium?.copyWith(
+                            fontWeight: highlight ? FontWeight.w600 : null,
                           ),
                         ),
                       ),
-                    if (showResults) ...[
-                      const SizedBox(width: 8),
-                      Text(
-                        '${option.percent.toStringAsFixed(option.percent == option.percent.roundToDouble() ? 0 : 1)}%',
+                      if (isUserVote)
+                        Padding(
+                          padding: const EdgeInsets.only(left: 8, top: 2),
+                          child: Badge(
+                            label: Text(
+                              '我的投票',
+                              style: textTheme.labelSmall?.copyWith(
+                                color: scheme.onPrimaryContainer,
+                                fontWeight: FontWeight.w600,
+                              ),
+                            ),
+                            backgroundColor: scheme.primaryContainer,
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 4,
+                              vertical: 2,
+                            ),
+                          ),
+                        ),
+                      if (showResults) ...[
+                        const SizedBox(width: 8),
+                        Text(
+                          '${option.percent.toStringAsFixed(option.percent == option.percent.roundToDouble() ? 0 : 1)}%',
+                          style: textTheme.labelSmall?.copyWith(
+                            color: scheme.onSurfaceVariant,
+                            fontWeight: FontWeight.w600,
+                          ),
+                        ),
+                      ],
+                    ],
+                  ),
+                  if (showResults) ...[
+                    const SizedBox(height: 8),
+                    ClipRRect(
+                      borderRadius: S1Shape.extraSmall,
+                      child: LinearProgressIndicator(
+                        value: (option.percent / 100).clamp(0.0, 1.0),
+                        minHeight: 6,
+                        backgroundColor: scheme.surfaceContainerHighest,
+                        valueColor: AlwaysStoppedAnimation<Color>(barColor),
+                      ),
+                    ),
+                    const SizedBox(height: 4),
+                    Align(
+                      alignment: Alignment.centerRight,
+                      child: Text(
+                        '${formatCount(option.votes)} 票',
                         style: textTheme.labelSmall?.copyWith(
                           color: scheme.onSurfaceVariant,
-                          fontWeight: FontWeight.w600,
                         ),
                       ),
-                    ],
+                    ),
                   ],
-                ),
-                if (showResults) ...[
-                  const SizedBox(height: 8),
-                  ClipRRect(
-                    borderRadius: S1Shape.extraSmall,
-                    child: LinearProgressIndicator(
-                      value: (option.percent / 100).clamp(0.0, 1.0),
-                      minHeight: 6,
-                      backgroundColor: scheme.surfaceContainerHighest,
-                      valueColor: AlwaysStoppedAnimation<Color>(barColor),
-                    ),
-                  ),
-                  const SizedBox(height: 4),
-                  Align(
-                    alignment: Alignment.centerRight,
-                    child: Text(
-                      '${formatCount(option.votes)} 票',
-                      style: textTheme.labelSmall?.copyWith(
-                        color: scheme.onSurfaceVariant,
-                      ),
-                    ),
-                  ),
                 ],
-              ],
+              ),
             ),
           ),
         ),

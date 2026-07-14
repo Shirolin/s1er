@@ -15,15 +15,16 @@ import 'encrypted_cookie_storage.dart';
 import 'talker.dart';
 
 class S1HttpClient {
-
   S1HttpClient(this._ref) : _testContainer = null;
 
   @visibleForTesting
   S1HttpClient.test(this._testContainer, Dio dio)
       : _ref = null,
-        _dio = dio;
+        _dio = dio,
+        _initialized = true;
 
   late Dio _dio;
+  bool _initialized = false;
   PersistCookieJar? _cookieJar;
   final List<DateTime> _requestTimestamps = [];
   final Ref? _ref;
@@ -34,6 +35,7 @@ class S1HttpClient {
 
   PersistCookieJar get cookieJar => _cookieJar!;
   Dio get dio => _dio;
+  bool get isInitialized => _initialized;
 
   Future<void> init() async {
     if (!_isWeb) {
@@ -44,18 +46,24 @@ class S1HttpClient {
     }
 
     final headers = <String, String>{
-      'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
+      'Accept':
+          'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
       'Accept-Language': 'zh-CN,zh;q=0.9,en;q=0.8',
     };
     if (!_isWeb) {
       headers['User-Agent'] = S1Constants.mobileUserAgent;
     }
 
-    _dio = Dio(BaseOptions(
-      connectTimeout: const Duration(seconds: EnvConfig.connectTimeoutSeconds),
-      receiveTimeout: const Duration(seconds: EnvConfig.receiveTimeoutSeconds),
-      headers: headers,
-    ),);
+    _dio = Dio(
+      BaseOptions(
+        connectTimeout:
+            const Duration(seconds: EnvConfig.connectTimeoutSeconds),
+        receiveTimeout:
+            const Duration(seconds: EnvConfig.receiveTimeoutSeconds),
+        sendTimeout: const Duration(seconds: EnvConfig.sendTimeoutSeconds),
+        headers: headers,
+      ),
+    );
 
     if (_isWeb) {
       _dio.options.extra['withCredentials'] = true;
@@ -65,83 +73,88 @@ class S1HttpClient {
       _dio.interceptors.add(CookieManager(_cookieJar!));
     }
 
-    _dio.interceptors.add(InterceptorsWrapper(
-      onRequest: (options, handler) async {
-        await _enforceRateLimit();
+    _dio.interceptors.add(
+      InterceptorsWrapper(
+        onRequest: (options, handler) async {
+          await _enforceRateLimit();
 
-        final currentFormhash = _read(formhashProvider);
-        if (currentFormhash.isNotEmpty &&
-            (options.method == 'POST' || options.method == 'PUT')) {
-          if (!options.path.contains('formhash=')) {
-            final separator = options.path.contains('?') ? '&' : '?';
-            options.path = '${options.path}${separator}formhash=$currentFormhash';
+          final currentFormhash = _read(formhashProvider);
+          if (currentFormhash.isNotEmpty &&
+              (options.method == 'POST' || options.method == 'PUT')) {
+            if (!options.path.contains('formhash=')) {
+              final separator = options.path.contains('?') ? '&' : '?';
+              options.path =
+                  '${options.path}${separator}formhash=$currentFormhash';
+            }
+
+            if (options.data is Map) {
+              final dataMap = options.data as Map;
+              if (!dataMap.containsKey('formhash')) {
+                dataMap['formhash'] = currentFormhash;
+              }
+            } else if (options.data is String) {
+              final dataStr = options.data as String;
+              if (!dataStr.contains('formhash=')) {
+                options.data = dataStr.isEmpty
+                    ? 'formhash=$currentFormhash'
+                    : '$dataStr&formhash=$currentFormhash';
+              }
+            } else {
+              options.data ??= {'formhash': currentFormhash};
+            }
           }
 
-          if (options.data is Map) {
-            final dataMap = options.data as Map;
-            if (!dataMap.containsKey('formhash')) {
-              dataMap['formhash'] = currentFormhash;
-            }
-          } else if (options.data is String) {
-            final dataStr = options.data as String;
-            if (!dataStr.contains('formhash=')) {
-              options.data = dataStr.isEmpty
-                  ? 'formhash=$currentFormhash'
-                  : '$dataStr&formhash=$currentFormhash';
-            }
-          } else {
-            options.data ??= {'formhash': currentFormhash};
-          }
-        }
+          _applyForumPostHeaders(options);
 
-        _applyForumPostHeaders(options);
+          if (_isWeb) {
+            final uri = Uri.parse(options.path);
+            final rule = ResourceDomains.match(uri.host);
 
-        if (_isWeb) {
-          final uri = Uri.parse(options.path);
-          final rule = ResourceDomains.match(uri.host);
-
-          if (!options.path.startsWith(_proxyUrl) &&
-              rule != null &&
-              ResourceDomains.requiresProxy(uri.host)) {
-            if (rule.type == ResourceType.authImage) {
+            if (!options.path.startsWith(_proxyUrl) &&
+                rule != null &&
+                ResourceDomains.requiresProxy(uri.host)) {
+              if (rule.type == ResourceType.authImage) {
+                options.path =
+                    '$_proxyUrl/img-proxy?url=${Uri.encodeComponent(options.path)}';
+              } else if (rule.type == ResourceType.api) {
+                final path = uri.path;
+                final queryParts = options.path.split('?');
+                final rawQuery = queryParts.length > 1
+                    ? queryParts.sublist(1).join('?')
+                    : '';
+                options.path =
+                    '$_proxyUrl$path${rawQuery.isNotEmpty ? '?$rawQuery' : ''}';
+              }
+            } else if (!options.path.startsWith(_proxyUrl) &&
+                options.method == 'GET' &&
+                options.responseType == ResponseType.bytes &&
+                ResourceDomains.isAllowedImgProxyTarget(uri)) {
               options.path =
                   '$_proxyUrl/img-proxy?url=${Uri.encodeComponent(options.path)}';
-            } else if (rule.type == ResourceType.api) {
-              final path = uri.path;
-              final queryParts = options.path.split('?');
-              final rawQuery =
-                  queryParts.length > 1 ? queryParts.sublist(1).join('?') : '';
-              options.path =
-                  '$_proxyUrl$path${rawQuery.isNotEmpty ? '?$rawQuery' : ''}';
             }
-          } else if (!options.path.startsWith(_proxyUrl) &&
-              options.method == 'GET' &&
-              options.responseType == ResponseType.bytes &&
-              ResourceDomains.isAllowedImgProxyTarget(uri)) {
-            options.path =
-                '$_proxyUrl/img-proxy?url=${Uri.encodeComponent(options.path)}';
+
+            // 代理请求注入访问令牌
+            if (options.path.startsWith(_proxyUrl) &&
+                EnvConfig.proxyAuthToken.isNotEmpty) {
+              options.headers[proxyAuthHeader] = EnvConfig.proxyAuthToken;
+            }
           }
 
-          // 代理请求注入访问令牌
-          if (options.path.startsWith(_proxyUrl) &&
-              EnvConfig.proxyAuthToken.isNotEmpty) {
-            options.headers[proxyAuthHeader] = EnvConfig.proxyAuthToken;
+          handler.next(options);
+        },
+        onResponse: (response, handler) {
+          final formhash = FormhashExtractor.fromApiResponse(response.data);
+          if (formhash != null) {
+            _read(formhashProvider.notifier).update(formhash);
           }
-        }
-
-        handler.next(options);
-      },
-      onResponse: (response, handler) {
-        final formhash = FormhashExtractor.fromApiResponse(response.data);
-        if (formhash != null) {
-          _read(formhashProvider.notifier).update(formhash);
-        }
-        handler.next(response);
-      },
-      onError: (error, handler) {
-        handler.next(error);
-      },
-    ),);
+          handler.next(response);
+        },
+        onError: (error, handler) {
+          handler.next(error);
+        },
+      ),
+    );
+    _initialized = true;
   }
 
   Future<void> _enforceRateLimit() async {
@@ -159,7 +172,11 @@ class S1HttpClient {
     _requestTimestamps.add(DateTime.now());
   }
 
-  Future<Response> get(String url, {Map<String, dynamic>? queryParameters, Options? options}) {
+  Future<Response> get(
+    String url, {
+    Map<String, dynamic>? queryParameters,
+    Options? options,
+  }) {
     return _dio.get(url, queryParameters: queryParameters, options: options);
   }
 
@@ -190,14 +207,14 @@ class S1HttpClient {
     if (tid != null && tid.isNotEmpty) {
       await _fetchFormhashFromMobileApi(
         '${ApiConfig.mobileApiUrl}'
-            '?module=${ApiConfig.moduleViewThread}&version=4&tid=$tid',
+        '?module=${ApiConfig.moduleViewThread}&version=4&tid=$tid',
       );
     }
     if (_read(formhashProvider).isNotEmpty) return true;
 
     await _fetchFormhashFromMobileApi(
       '${ApiConfig.mobileApiUrl}'
-          '?module=${ApiConfig.moduleForumIndex}&version=4',
+      '?module=${ApiConfig.moduleForumIndex}&version=4',
     );
     if (_read(formhashProvider).isNotEmpty) return true;
 
@@ -222,7 +239,7 @@ class S1HttpClient {
 
     await _fetchFormhashFromMobileApi(
       '${ApiConfig.mobileApiUrl}'
-          '?module=${ApiConfig.moduleForumIndex}&version=4',
+      '?module=${ApiConfig.moduleForumIndex}&version=4',
     );
   }
 
@@ -299,7 +316,6 @@ class S1HttpClient {
     }
     return Uri.parse('https://${ResourceDomains.apiHost}$path');
   }
-
 }
 
 final httpClientProvider = Provider<S1HttpClient>((ref) {

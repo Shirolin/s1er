@@ -49,7 +49,8 @@ class S1BackupCodec {
   static Uint8List encode(S1BackupPayload payload) {
     final archive = Archive();
     void addJson(String name, Object value) {
-      final bytes = _utf8.convert(const JsonEncoder.withIndent('  ').convert(value));
+      final bytes =
+          _utf8.convert(const JsonEncoder.withIndent('  ').convert(value));
       archive.addFile(ArchiveFile(name, bytes.length, bytes));
     }
 
@@ -61,10 +62,12 @@ class S1BackupCodec {
         payload.readingHistory.isNotEmpty) {
       addJson('reading_history.json', payload.readingHistory);
     }
-    if (payload.contents.contains('blacklist') || payload.blacklist.isNotEmpty) {
+    if (payload.contents.contains('blacklist') ||
+        payload.blacklist.isNotEmpty) {
       addJson('blacklist.json', payload.blacklist);
     }
-    if (payload.contents.contains('poll_votes') || payload.pollVotes.isNotEmpty) {
+    if (payload.contents.contains('poll_votes') ||
+        payload.pollVotes.isNotEmpty) {
       addJson('poll_votes.json', payload.pollVotes);
     }
 
@@ -149,9 +152,7 @@ class S1BackupSettingsMapper {
     'imageCacheLimitMb': 'image_cache_limit_mb',
     'recordReadingHistory': 'record_reading_history',
     'fontSize': 'font_size',
-    'useDynamicColor': 'use_dynamic_color',
     'collapsedForums': 'collapsed_forums',
-    'simulateDynamic': 'simulate_dynamic',
   };
 
   static Map<String, dynamic> toBackup(Map<String, Object?> appSettings) {

@@ -44,6 +44,50 @@ String friendlyLoginError({
   return '登录失败，请稍后重试';
 }
 
+/// 通用 Mobile API / Discuz 业务错误友好化（回复、发帖等）。
+String friendlyDiscuzApiError({
+  String? messageval,
+  String? messagestr,
+  String fallback = '操作失败，请稍后重试',
+}) {
+  final valKey = normalizeDiscuzMessageKey(messageval);
+  final str = messagestr?.trim() ?? '';
+  final strKey = normalizeDiscuzMessageKey(str);
+
+  if (str.isNotEmpty && !looksLikeDiscuzMessageKey(str)) {
+    if (_hasUnsubstitutedPlaceholder(str)) {
+      return formatDiscuzMessage(
+        _apiKeyMessages[valKey] ?? _apiKeyMessages[strKey] ?? fallback,
+      );
+    }
+    return formatDiscuzMessage(str);
+  }
+
+  final key = valKey.isNotEmpty ? valKey : strKey;
+  final mapped = _apiKeyMessages[key];
+  if (mapped != null) return formatDiscuzMessage(mapped);
+
+  if (str.isNotEmpty && !looksLikeDiscuzMessageKey(str)) {
+    return formatDiscuzMessage(str);
+  }
+
+  return fallback;
+}
+
+const Map<String, String> _apiKeyMessages = {
+  'post_reply_toofast': '您两次发表间隔过短，请稍候再试',
+  'post_reply_failed': '回复失败，请稍后重试',
+  'post_reply_nopermission': '您没有权限回复该主题',
+  'replyperm_login_nopermission': '请先登录后再回复',
+  'postperm_login_nopermission': '请先登录后再发帖',
+  'thread_nonexistence': '抱歉，指定的主题不存在或已被删除',
+  'post_nonexistence': '抱歉，指定的帖子不存在或已被删除',
+  'forum_nonexistence': '抱歉，指定的版块不存在',
+  'to_login': '请先登录',
+  'login_before_enter_home': '请先登录',
+};
+
+
 /// 去掉 `mobile:` 前缀，便于对照语言包 key。
 String normalizeDiscuzMessageKey(String? raw) {
   if (raw == null) return '';

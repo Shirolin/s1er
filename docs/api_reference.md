@@ -16,12 +16,14 @@ S1 论坛使用的 Discuz! Mobile API (version=4)。所有请求走 `ApiConfig.m
 | `newthread` | 发表新主题 | 待实现 | 📄 仅文档 | ✅ 已通过 |
 | `sendpm` | 发私信 | 未使用 | ❌ 未实现 | — |
 | `mypm` | 私信会话列表 | `getPmList()` | ✅ 已完成 | ✅ 已通过（未登录探测） |
-| `sendpost` | ⚠️ **S1 已禁用此模块** | — | ❌ 不存在 |
+| `sendreply` | **发回复（当前路径）** | `sendReply()` | ✅ 已完成 | ✅ 模块存在 |
+| `sendpost` | ⚠️ **S1 已禁用**（勿与 sendreply 混淆） | — | ❌ 不存在 | |
 | `editpost` | ⚠️ **S1 已禁用** | — | ❌ 不存在 |
 | `uploadattach` / `postattach` | ⚠️ **S1 已禁用** | — | ❌ 不存在 |
-| `forum.php?mod=post&action=reply` | **发回复（实际使用方式）** | `sendPost()` | ✅ 已完成 | ✅ 已验证 |
+| `forum.php?action=reply&repquote=` | 官方引用助手 | `fetchQuoteInfo()` | ✅ 已完成 | |
+| `forum.php?mod=post&action=reply` | 旧 Web 回复（已弃用） | `sendPost()` `@Deprecated` | ⚠️ 遗留 | |
 | `forum.php?mod=post&action=edit` | 编辑帖子 | 未实现 | 📄 仅文档 | — |
-| `misc.php?mod=swfupload` | 上传附件 | 未实现 | 📄 仅文档 | — |
+| 外链图床 `p.sda1.dev` | 回复插图 → `[img]url[/img]` | `ExternalImageUploadService` | ✅ 已完成 | |
 
 ---
 
@@ -418,7 +420,46 @@ POST 字段：
 
 ---
 
-## module=sendpost（发回复 / 编辑帖子 / 上传附件）
+## module=sendreply（发回复，当前实现）
+
+> 对齐 S1-Next：`POST api/mobile/index.php?module=sendreply&replysubmit=yes&version=4`。
+> **注意**：`module=sendpost` 在 S1 返回 `module_not_exists`，与 `sendreply` 不是同一模块。
+
+### POST 字段
+
+| 字段 | 必填 | 说明 |
+|------|------|------|
+| `formhash` | ✅ | 由 `S1HttpClient` 注入 |
+| `tid` | ✅ | 主题 ID |
+| `message` | ✅ | **仅用户正文**（可含 `[img]url[/img]`），不含客户端拼的 `[quote]` |
+| `noticeauthor` | 引用时 | 来自官方 quote helper（服务端编码 ID，非用户名） |
+| `noticetrimstr` | 引用时 | helper 返回的引用片段（含 findpost / 常带 `[post]`） |
+| `noticeauthormsg` | 引用时 | 用户正文缩写，上限约 100 字 |
+
+成功：`Message.messageval` 含 `succeed`（如 `post_reply_succeed`）。
+
+### 官方引用助手
+
+```
+GET forum.php?mod=post&action=reply&inajax=yes&tid={tid}&repquote={pid}
+```
+
+解析 hidden：`noticeauthor`、`noticetrimstr`。
+
+### 引用块跳转契约
+
+跳转读 **viewthread 展示 HTML**：`QuoteBlock` 从引用段提取 `goto=findpost` 且含 `ptid=`（缺省用当前帖 `currentTid` + `pid`）。
+勿依赖「发帖时客户端嵌进 message 的 BBCode 文本」作为跳转来源。
+
+### 插图
+
+上传至 `https://p.sda1.dev/api/v1/upload_external_noform?filename=`（原始字节，非 multipart），
+将返回的 `data.url` 以 `[img]…[/img]` 写入 `message`。不做 Discuz `aid` 附件。
+**Web**：浏览器直连图床会 CORS 失败，经开发代理 `POST /ext-upload?filename=` 转发到同上游 URL（`scripts/proxy_server.dart`）。Native 仍直连。
+
+---
+
+## module=sendpost（已禁用，历史说明）
 
 > Mobile API 方式（`api/mobile/index.php?module=sendpost`）用于**第三方客户端**，返回 JSON。
 > 以下浏览器端点（`forum.php`）仅供参考/调试，理解 Discuz! 内部运行机制。
@@ -430,17 +471,15 @@ POST 字段：
 
 **实测结果**：`api/mobile/index.php?module=sendpost` → `{"error":"module_not_exists"}`。
 
-**参考**：Stage1st-Reader（iOS 开源客户端）同样使用 `forum.php` 端点，未使用 Mobile API。
-
-S1 的 Discuz! 实例**没有启用** Mobile API 的发帖模块。所有写操作必须走 `forum.php` 端点（见下）。
+S1 **未启用** `sendpost`；当前回复请用 **`module=sendreply`**（见上一节）。
 
 ---
 
-### 浏览器端点参考（仅供调试）
+### 浏览器端点参考（历史 / 调试）
 
-以下端点来自浏览器真实请求，app 不使用但可用于理解 Discuz! 发帖机制。
+以下端点来自浏览器真实请求；**回复提交通道已切换到 sendreply**，下列 XML 回复路径仅作遗留对照。
 
-#### 1. 上传附件
+#### 1. 上传附件（Discuz 原生，本期不做）
 
 请求：
 - URL: `$baseUrl/misc.php`
@@ -826,6 +865,7 @@ Mobile API 无可用 `notice` / `mynotelist`（version=4）列表模块，需解
 | `sendpm` | 返回 JSON，未登录时提示 `to_login` | ✅ 可用（发私信） |
 | `mypm` | 返回 JSON，`list` 字段；未登录 `login_before_enter_home` | ✅ 可用（私信列表） |
 | `mynotelist` | 返回 JSON（version=3 探测）；S1 客户端用 HTML 解析提醒 | ⚠️ 存在但未采用 |
+| `sendreply` | 游客探测可进入 `api/4/sendreply.php`；正式回复需登录 | ✅ 可用（发回复） |
 | `sendpost` | `{"error":"module_not_exists"}` | ❌ S1 已禁用 |
 | `editpost` | `{"error":"module_not_exists"}` | ❌ S1 已禁用 |
 | `uploadattach` | `{"error":"module_not_exists"}` | ❌ S1 已禁用 |
@@ -833,7 +873,7 @@ Mobile API 无可用 `notice` / `mynotelist`（version=4）列表模块，需解
 | `checkpostrule` | `{"error":"module_not_exists"}` | ❌ S1 已禁用 |
 | 其余 20+ 模块 | `{"error":"module_not_exists"}` | ❌ 均不可用 |
 
-结论：S1 的 Mobile API **开放能力会受当前论坛登录策略影响**。客户端应允许未登录进入只读入口，但任何读接口返回 `to_login` 时都必须降级为登录提示。所有回复、编辑、附件功能必须走浏览器端点。用户空间列表的回复摘要数据也需走 HTML 解析。
+结论：S1 的 Mobile API **开放能力会受当前论坛登录策略影响**。客户端应允许未登录进入只读入口，但任何读接口返回 `to_login` 时都必须降级为登录提示。**发回复走 `module=sendreply`**；`sendpost`/编辑/附件上传模块仍禁用。用户空间列表的回复摘要数据也需走 HTML 解析。
 
 ---
 

@@ -36,4 +36,5 @@ class ApiConfig {
   static const String moduleMyFavForum = 'myfavforum';
   static const String moduleFavThread = 'favthread';
   static const String moduleFavForum = 'favforum';
+  static const String moduleSendReply = 'sendreply';
 }

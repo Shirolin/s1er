@@ -102,6 +102,7 @@ final _router = GoRouter(
         fid: state.uri.queryParameters['fid'],
         draftId: state.uri.queryParameters['draftId'],
         reppost: state.uri.queryParameters['reppost'],
+        subject: state.uri.queryParameters['subject'],
       ),
     ),
     GoRoute(

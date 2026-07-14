@@ -24,6 +24,7 @@
 | 图片磁盘缓存 | flutter_cache_manager / cached_network_image | ^3.4.1 / ^3.4.1 |
 | 网络状态 | connectivity_plus | ^6.1.4 |
 | 备份（L1 ZIP） | archive / file_selector / share_plus | ^4.0.9 / ^1.1.0 / ^13.2.0 |
+| 回复插图 | file_selector + p.sda1.dev 外链图床 | 已有 file_selector；不做 Discuz attach |
 | WebView | webview_flutter | ^4.7.0 |
 | HTML 渲染 | flutter_html | ^3.0.0 |
 | Cookie 管理 | dio_cookie_manager / cookie_jar | ^3.1.1 / ^4.0.8 |

@@ -3,7 +3,10 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:go_router/go_router.dart';
 import 'package:s1_app/models/post.dart';
+import 'package:s1_app/models/quote_info.dart';
+import 'package:s1_app/models/reply_submit_result.dart';
 import 'package:s1_app/providers/auth_provider.dart';
+import 'package:s1_app/providers/compose_provider.dart';
 import 'package:s1_app/screens/compose_screen.dart';
 import 'package:s1_app/theme/app_theme.dart';
 import 'package:s1_app/utils/compose_draft_store.dart';
@@ -18,13 +21,17 @@ void main() {
     floor: 3,
   );
 
-  testWidgets('ComposeScreen shows quote preview when draft is provided', (tester) async {
+  testWidgets('ComposeScreen shows quote preview when draft is provided',
+      (tester) async {
     final draftId = ComposeDraftStore.put(samplePost, displayFloor: 5);
 
     await tester.pumpWidget(
       ProviderScope(
         overrides: [
           authStateProvider.overrideWith(_LoggedInAuthNotifier.new),
+          composeControllerProvider.overrideWith(
+            (ref) => _StubComposeController(ref),
+          ),
         ],
         child: MaterialApp(
           theme: AppTheme.lightTheme('purple'),
@@ -33,6 +40,7 @@ void main() {
             fid: '4',
             draftId: draftId,
             reppost: '42',
+            subject: '示例主题标题',
           ),
         ),
       ),
@@ -43,9 +51,81 @@ void main() {
     expect(find.textContaining('引用 #5 楼'), findsOneWidget);
     expect(find.textContaining('alice'), findsWidgets);
     expect(find.textContaining('quoted content'), findsOneWidget);
+    expect(find.textContaining('主题 · 示例主题标题'), findsOneWidget);
+    expect(find.text('发送'), findsOneWidget);
+    expect(find.text('图片'), findsOneWidget);
+    expect(find.byIcon(Icons.image_outlined), findsOneWidget);
+    expect(find.byType(FilledButton), findsOneWidget);
   });
 
-  testWidgets('ComposeScreen redirects to login when not authenticated', (tester) async {
+  testWidgets('ComposeScreen places send and image in bottom bar',
+      (tester) async {
+    await tester.pumpWidget(
+      ProviderScope(
+        overrides: [
+          authStateProvider.overrideWith(_LoggedInAuthNotifier.new),
+          composeControllerProvider.overrideWith(
+            (ref) => _StubComposeController(ref),
+          ),
+        ],
+        child: MaterialApp(
+          theme: AppTheme.lightTheme('purple'),
+          home: const ComposeScreen(
+            tid: '100',
+            fid: '4',
+            subject: '另一个主题',
+          ),
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    expect(find.byType(AppBar), findsOneWidget);
+    final appBar = tester.widget<AppBar>(find.byType(AppBar));
+    expect(appBar.actions, isNull);
+
+    expect(find.textContaining('主题 · 另一个主题'), findsOneWidget);
+    expect(find.text('发送'), findsOneWidget);
+    expect(find.text('图片'), findsOneWidget);
+    expect(find.byIcon(Icons.image_outlined), findsOneWidget);
+  });
+
+  testWidgets('ComposeScreen disables send when message is empty',
+      (tester) async {
+    await tester.pumpWidget(
+      ProviderScope(
+        overrides: [
+          authStateProvider.overrideWith(_LoggedInAuthNotifier.new),
+          composeControllerProvider.overrideWith(
+            (ref) => _StubComposeController(ref),
+          ),
+        ],
+        child: MaterialApp(
+          theme: AppTheme.lightTheme('purple'),
+          home: const ComposeScreen(tid: '100', fid: '4'),
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    final emptySend = tester.widget<FilledButton>(find.byType(FilledButton));
+    expect(emptySend.onPressed, isNull);
+
+    await tester.enterText(find.byType(TextField), 'hello');
+    await tester.pump();
+
+    final filledSend = tester.widget<FilledButton>(find.byType(FilledButton));
+    expect(filledSend.onPressed, isNotNull);
+
+    await tester.enterText(find.byType(TextField), '   ');
+    await tester.pump();
+
+    final clearedSend = tester.widget<FilledButton>(find.byType(FilledButton));
+    expect(clearedSend.onPressed, isNull);
+  });
+
+  testWidgets('ComposeScreen redirects to login when not authenticated',
+      (tester) async {
     final router = GoRouter(
       initialLocation: '/compose',
       routes: [
@@ -69,6 +149,9 @@ void main() {
       ProviderScope(
         overrides: [
           authStateProvider.overrideWith(_LoggedOutAuthNotifier.new),
+          composeControllerProvider.overrideWith(
+            (ref) => _StubComposeController(ref),
+          ),
         ],
         child: MaterialApp.router(
           theme: AppTheme.lightTheme('purple'),
@@ -86,6 +169,9 @@ void main() {
       ProviderScope(
         overrides: [
           authStateProvider.overrideWith(_LoggedInAuthNotifier.new),
+          composeControllerProvider.overrideWith(
+            (ref) => _StubComposeController(ref),
+          ),
         ],
         child: MaterialApp(
           theme: AppTheme.lightTheme('purple'),
@@ -98,6 +184,32 @@ void main() {
     expect(find.text('无法回复'), findsOneWidget);
     expect(find.textContaining('仅支持回复已有主题'), findsOneWidget);
   });
+}
+
+class _StubComposeController extends ComposeController {
+  _StubComposeController(super.ref);
+
+  @override
+  Future<QuoteInfo?> prefetchQuote({
+    required String tid,
+    required String pid,
+  }) async {
+    return const QuoteInfo(
+      noticeAuthor: 'encoded',
+      noticeTrimStr:
+          '[post][url=forum.php?mod=redirect&goto=findpost&pid=42&ptid=100]x[/url][/post]',
+    );
+  }
+
+  @override
+  Future<ReplySubmitResult> submitReply({
+    required String tid,
+    required String fid,
+    required String message,
+    QuoteInfo? quoteInfo,
+  }) async {
+    return ReplySubmitResult(pid: '1', tid: tid);
+  }
 }
 
 class _LoggedInAuthNotifier extends AuthNotifier {

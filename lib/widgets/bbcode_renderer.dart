@@ -9,6 +9,7 @@ import '../utils/bbcode_cache.dart';
 import '../utils/bbcode_parser.dart';
 import '../utils/post_image_index_counter.dart';
 import '../utils/post_image_urls.dart';
+import '../utils/quote_jump.dart';
 import 'emoticon_widget.dart';
 import 'quote_block.dart';
 import 'image_viewer.dart';
@@ -95,7 +96,7 @@ class BbcodeRenderer extends ConsumerWidget {
     required int maxImagesPerPost,
   }) {
     final widgets = <Widget>[];
-    final segments = _splitQuotes(text);
+    final segments = BbcodeQuoteSplitter.split(text);
 
     for (final segment in segments) {
       if (segment.isQuote) {
@@ -170,31 +171,6 @@ class BbcodeRenderer extends ConsumerWidget {
     for (var i = 0; i < count; i++) {
       imageIndexCounter.assign();
     }
-  }
-
-  List<_Segment> _splitQuotes(String text) {
-    final segments = <_Segment>[];
-    final regex = RegExp(
-      r'\[quote\](.*?)\[/quote\]|<div\s+class="reply_wrap">(.*?)</div>',
-      dotAll: true,
-      caseSensitive: false,
-    );
-    int lastEnd = 0;
-
-    for (final match in regex.allMatches(text)) {
-      if (match.start > lastEnd) {
-        segments.add(_Segment(text.substring(lastEnd, match.start), false));
-      }
-      final content = match.group(1) ?? match.group(2) ?? '';
-      segments.add(_Segment(content, true));
-      lastEnd = match.end;
-    }
-
-    if (lastEnd < text.length) {
-      segments.add(_Segment(text.substring(lastEnd), false));
-    }
-
-    return segments;
   }
 }
 
@@ -415,10 +391,4 @@ class _MemoizedHtmlBlockState extends State<_MemoizedHtmlBlock> {
           ],
         );
   }
-}
-
-class _Segment {
-  const _Segment(this.text, this.isQuote);
-  final String text;
-  final bool isQuote;
 }

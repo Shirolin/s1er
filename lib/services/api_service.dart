@@ -6,6 +6,7 @@ import '../models/thread.dart';
 import '../models/post.dart';
 import '../models/user_space_item.dart';
 import '../models/poll.dart';
+import '../models/quote_info.dart';
 import '../models/reply_submit_result.dart';
 import '../models/forum_category.dart';
 import '../models/user.dart';
@@ -16,9 +17,10 @@ import '../models/message_list_result.dart';
 import '../models/rate_form.dart';
 import '../models/app_exceptions.dart';
 import '../utils/error_handler.dart';
-import 'formhash_service.dart';
 import '../utils/discuz_message.dart';
+import 'formhash_service.dart';
 import 'http_client.dart';
+import 'talker.dart';
 
 export '../models/app_exceptions.dart' show
     LoginRequiredException,
@@ -473,7 +475,154 @@ class ApiService {
     return value != null && value.isNotEmpty ? value : null;
   }
 
-  /// 发回复。成功时 [ReplySubmitResult.error] 为 null。
+  /// 官方引用助手：拉取 `noticeauthor` / `noticetrimstr`。
+  Future<QuoteInfo?> fetchQuoteInfo({
+    required String tid,
+    required String pid,
+  }) async {
+    final url = '${ApiConfig.forumPostUrl}'
+        '?mod=post&action=reply&inajax=yes'
+        '&tid=${Uri.encodeQueryComponent(tid)}'
+        '&repquote=${Uri.encodeQueryComponent(pid)}';
+    try {
+      final response = await _httpClient.get(
+        url,
+        options: Options(
+          responseType: ResponseType.plain,
+          headers: {'X-Requested-With': 'XMLHttpRequest'},
+        ),
+      );
+      return QuoteInfo.tryParse(response.data?.toString() ?? '');
+    } catch (e, st) {
+      talker.handle(e, st, 'fetchQuoteInfo failed');
+      return null;
+    }
+  }
+
+  /// Mobile API 发回复（`module=sendreply`）。
+  ///
+  /// [message] 仅为用户正文；引用时传入 [quoteInfo]，并由调用方决定
+  /// [noticeAuthorMsg]（通常为用户正文缩写，上限 100）。
+  Future<ReplySubmitResult> sendReply({
+    required String tid,
+    required String fid,
+    required String message,
+    QuoteInfo? quoteInfo,
+    String? noticeAuthorMsg,
+  }) async {
+    final hasFormhash = await _httpClient.ensureFormhash(
+      tid: tid,
+      fid: fid,
+      force: true,
+    );
+    if (!hasFormhash) {
+      return const ReplySubmitResult(
+        error: '无法获取表单验证串，请刷新主题页后重试',
+      );
+    }
+
+    final url = buildApiUrl(
+      module: ApiConfig.moduleSendReply,
+      params: {'replysubmit': 'yes'},
+    );
+
+    final data = <String, String>{
+      'tid': tid,
+      'message': message,
+    };
+    if (quoteInfo != null) {
+      data['noticeauthor'] = quoteInfo.noticeAuthor;
+      data['noticetrimstr'] = quoteInfo.noticeTrimStr;
+      final abbr = (noticeAuthorMsg ?? message).trim();
+      data['noticeauthormsg'] = abbr.length <= 100
+          ? abbr
+          : '${abbr.substring(0, 100)}…';
+    }
+
+    try {
+      final response = await _httpClient.post(
+        url,
+        data: data,
+        options: Options(contentType: Headers.formUrlEncodedContentType),
+      );
+      return parseSendReplyResponse(response.data);
+    } catch (e, st) {
+      return ReplySubmitResult(error: friendlyError(e, '回复', st));
+    }
+  }
+
+  /// 解析 `module=sendreply` JSON（或偶发裸 key / XML 回落）。
+  static ReplySubmitResult parseSendReplyResponse(dynamic data) {
+    if (data is String) {
+      final trimmed = data.trimLeft();
+      if (trimmed.startsWith('{')) {
+        try {
+          return parseSendReplyResponse(jsonDecode(trimmed));
+        } catch (_) {
+          // fall through to XML legacy / key
+        }
+      }
+      if (trimmed.startsWith('<') ||
+          trimmed.contains('succeedhandle_') ||
+          trimmed.contains('errorhandle_')) {
+        return parseReplyResponse(data);
+      }
+      if (looksLikeDiscuzMessageKey(trimmed) ||
+          trimmed.startsWith('mobile:')) {
+        return ReplySubmitResult(
+          error: friendlyDiscuzApiError(messageval: trimmed),
+        );
+      }
+      return const ReplySubmitResult(error: '服务器返回异常');
+    }
+
+    if (data is! Map) {
+      return const ReplySubmitResult(error: '服务器返回异常');
+    }
+    final map = Map<String, dynamic>.from(data);
+
+    if (map['error'] != null) {
+      return ReplySubmitResult(
+        error: friendlyDiscuzApiError(
+          messageval: map['error']?.toString(),
+          messagestr: map['error']?.toString(),
+        ),
+      );
+    }
+
+    final message = map['Message'];
+    String? messageval;
+    String? messagestr;
+    if (message is Map) {
+      messageval = message['messageval']?.toString();
+      messagestr = message['messagestr']?.toString();
+    }
+
+    final val = messageval ?? '';
+    if (val.contains('succeed')) {
+      String? pid;
+      String? tid;
+      final variables = map['Variables'];
+      if (variables is Map) {
+        pid = variables['pid']?.toString();
+        tid = variables['tid']?.toString();
+        if (pid != null && pid.isEmpty) pid = null;
+        if (tid != null && tid.isEmpty) tid = null;
+      }
+      return ReplySubmitResult(pid: pid, tid: tid);
+    }
+
+    return ReplySubmitResult(
+      error: friendlyDiscuzApiError(
+        messageval: messageval,
+        messagestr: messagestr,
+        fallback: '回复失败，请稍后重试',
+      ),
+    );
+  }
+
+  /// 发回复（旧 Web XML 路径）。请改用 [sendReply]。
+  @Deprecated('Use sendReply (module=sendreply) instead')
   Future<ReplySubmitResult> sendPost({
     required String fid,
     required String tid,

@@ -43,7 +43,9 @@ void main() {
       expect(QuoteBuilder.stripHtmlTags(input), 'bold & plain');
     });
 
+    // ignore: deprecated_member_use_from_same_package
     test('buildMessageWithQuote prepends quote before user text', () {
+      // ignore: deprecated_member_use_from_same_package
       final message = QuoteBuilder.buildMessageWithQuote(
         post: samplePost,
         tid: '456',
@@ -54,7 +56,9 @@ void main() {
       expect(message, endsWith('my reply'));
     });
 
+    // ignore: deprecated_member_use_from_same_package
     test('buildMessageWithQuote without quote returns trimmed user text', () {
+      // ignore: deprecated_member_use_from_same_package
       final message = QuoteBuilder.buildMessageWithQuote(
         post: samplePost,
         tid: '456',

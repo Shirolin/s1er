@@ -136,4 +136,12 @@ class ResourceDomains {
 
     return true;
   }
+
+  /// 外链图床（回复插图），Web 经代理 `/ext-upload` 转发。
+  static const String externalImageHost = 'p.sda1.dev';
+  static const String externalImageUploadPath =
+      '/api/v1/upload_external_noform';
+
+  static String get externalImageUploadUrl =>
+      'https://$externalImageHost$externalImageUploadPath';
 }

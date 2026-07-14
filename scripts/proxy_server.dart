@@ -100,10 +100,25 @@ Future<void> _handleRequest(HttpRequest req) async {
   }
 
   final isImgProxy = req.uri.path.startsWith('/img-proxy');
+  // Web 端外链图床上传（浏览器无法直连 p.sda1.dev，CORS）
+  final isExtUpload = req.uri.path == '/ext-upload';
 
   Uri target;
   ResourceType? imgResourceType;
-  if (isImgProxy) {
+  if (isExtUpload) {
+    if (req.method != 'POST') {
+      _applyCors(req, res);
+      res.statusCode = 405;
+      res.write('Method not allowed');
+      await res.close();
+      return;
+    }
+    final filename = req.uri.queryParameters['filename'] ?? 'image.jpg';
+    target = Uri.parse(
+      '${ResourceDomains.externalImageUploadUrl}'
+      '?filename=${Uri.encodeQueryComponent(filename)}',
+    );
+  } else if (isImgProxy) {
     final targetUrl = req.uri.queryParameters['url'];
     if (targetUrl == null) {
       _applyCors(req, res);
@@ -150,6 +165,12 @@ Future<void> _handleRequest(HttpRequest req) async {
     if (imgResourceType == ResourceType.authImage) {
       _attachCookies(upReq);
     }
+  } else if (isExtUpload) {
+    final ct = req.headers.contentType;
+    if (ct != null) upReq.headers.set('Content-Type', ct.toString());
+    upReq.headers.set('Host', target.host);
+    upReq.headers.set('User-Agent', mobileUserAgent);
+    upReq.headers.set('Accept', 'application/json,*/*;q=0.8');
   } else {
     final ct = req.headers.contentType;
     if (ct != null) upReq.headers.set('Content-Type', ct.toString());

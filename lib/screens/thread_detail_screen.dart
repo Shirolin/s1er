@@ -283,6 +283,10 @@ class _ThreadDetailScreenState extends ConsumerState<ThreadDetailScreen> {
     final query = StringBuffer(
       '/compose?tid=${widget.tid}&fid=${state.threadFid ?? ''}',
     );
+    final subject = state.threadSubject?.trim();
+    if (subject != null && subject.isNotEmpty) {
+      query.write('&subject=${Uri.encodeQueryComponent(subject)}');
+    }
     if (draftId != null) {
       query.write('&draftId=$draftId');
     }

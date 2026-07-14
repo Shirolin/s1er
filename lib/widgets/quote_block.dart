@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import '../theme/app_theme.dart';
 import '../utils/post_image_index_counter.dart';
+import '../utils/quote_jump.dart';
 import 'bbcode_renderer.dart';
 
 class QuoteBlock extends StatelessWidget {
@@ -43,10 +44,12 @@ class QuoteBlock extends StatelessWidget {
             : scheme.outlineVariant;
 
     final author = _extractAuthor(content);
-    final link = _extractLink(content);
+    final link = QuoteJumpParser.extractLink(content);
     final bodyContent = _removeHeader(content);
 
-    final parsedLink = link != null ? _parsePostLink(link) : null;
+    final parsedLink = link != null
+        ? QuoteJumpParser.parsePostLink(link, fallbackTid: currentTid)
+        : null;
 
     return Container(
       margin: const EdgeInsets.symmetric(vertical: 8),
@@ -65,44 +68,44 @@ class QuoteBlock extends StatelessWidget {
                 button: parsedLink != null,
                 label: parsedLink != null ? '跳转到引用帖子' : null,
                 child: InkWell(
-                borderRadius: S1Shape.small,
-                onTap: parsedLink != null
-                    ? () => _navigateToPost(context, parsedLink)
-                    : null,
-                child: Padding(
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 12,
-                    vertical: 8,
-                  ),
-                  child: Row(
-                    children: [
-                      Icon(
-                        Icons.format_quote,
-                        size: 15,
-                        color: scheme.primary,
-                      ),
-                      const SizedBox(width: 4),
-                      Expanded(
-                        child: Text(
-                          author ?? '引用',
-                          style: textTheme.bodySmall?.copyWith(
-                            fontWeight: FontWeight.w600,
-                            color: scheme.primary,
-                          ),
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
-                        ),
-                      ),
-                      if (parsedLink != null)
+                  borderRadius: S1Shape.small,
+                  onTap: parsedLink != null
+                      ? () => _navigateToPost(context, parsedLink)
+                      : null,
+                  child: Padding(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 12,
+                      vertical: 8,
+                    ),
+                    child: Row(
+                      children: [
                         Icon(
-                          Icons.open_in_new,
-                          size: 13,
-                          color: scheme.onSurfaceVariant,
+                          Icons.format_quote,
+                          size: 15,
+                          color: scheme.primary,
                         ),
-                    ],
+                        const SizedBox(width: 4),
+                        Expanded(
+                          child: Text(
+                            author ?? '引用',
+                            style: textTheme.bodySmall?.copyWith(
+                              fontWeight: FontWeight.w600,
+                              color: scheme.primary,
+                            ),
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                        ),
+                        if (parsedLink != null)
+                          Icon(
+                            Icons.open_in_new,
+                            size: 13,
+                            color: scheme.onSurfaceVariant,
+                          ),
+                      ],
+                    ),
                   ),
                 ),
-              ),
               ),
             ),
           Padding(
@@ -119,19 +122,6 @@ class QuoteBlock extends StatelessWidget {
         ],
       ),
     );
-  }
-
-  String? _extractLink(String text) {
-    final match = RegExp(
-      r'<a\s+href="([^"]*)"',
-      caseSensitive: false,
-    ).firstMatch(text);
-    if (match != null) {
-      var url = match.group(1) ?? '';
-      url = url.replaceAll('&amp;', '&').replaceAll('&amp;amp;', '&');
-      return url;
-    }
-    return null;
   }
 
   String? _extractAuthor(String text) {
@@ -199,24 +189,16 @@ class QuoteBlock extends StatelessWidget {
       result = result.substring(authorLine.end);
     }
 
-    // 清理头部和尾部残余的 <br/> 标签以及空白换行
-    result = result.replaceFirst(RegExp(r'^(?:\s*|<br\s*/?>)+', caseSensitive: false), '');
-    result = result.replaceFirst(RegExp(r'(?:\s*|<br\s*/?>)+$', caseSensitive: false), '');
+    result = result.replaceFirst(
+      RegExp(r'^(?:\s*|<br\s*/?>)+', caseSensitive: false),
+      '',
+    );
+    result = result.replaceFirst(
+      RegExp(r'(?:\s*|<br\s*/?>)+$', caseSensitive: false),
+      '',
+    );
 
     return result;
-  }
-
-  ({String tid, String? pid})? _parsePostLink(String url) {
-    final pidMatch = RegExp(r'pid=(\d+)').firstMatch(url);
-    final ptidMatch = RegExp(r'ptid=(\d+)').firstMatch(url);
-
-    if (ptidMatch != null) {
-      return (
-        tid: ptidMatch.group(1)!,
-        pid: pidMatch?.group(1),
-      );
-    }
-    return null;
   }
 
   void _navigateToPost(

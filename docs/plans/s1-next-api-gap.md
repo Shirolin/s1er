@@ -34,7 +34,8 @@ S1-Next 同时打 Discuz Mobile / `forum.php`，以及独立 App API（`https://
 | 好友列表 | `module=friend` | 仅 friends 计数 | 周边 |
 | 每日签到 | `study_daily_attendance…` | — | 周边 |
 | 小黑屋 | `forum.php showdarkroom ajax` | — | 周边 |
-| 服务端黑名单 | `home.php friend&view=blacklist` | Drift 表预留，无 UI/同步 | 周边 |
+| 服务端黑名单 | `home.php friend&view=blacklist` | 本地黑名单 MVP（无服务端同步） | 周边 |
+| 本地黑名单 | 本地库 hide/del | UI + `thread`/`post` 过滤；`pm` 预留 | 部分 |
 | 私信会话详情 | `mypm&subop=view` | 仅列表 / WebView 入口 | 部分 |
 | 提醒/通知 | `module=mynotelist` | `home.php do=notice` HTML | 部分；未用 JSON |
 
@@ -69,7 +70,8 @@ S1-Next 同时打 Discuz Mobile / `forum.php`，以及独立 App API（`https://
 | 用户主题/回复 | `home.php space thread/reply` | `getUserSpaceList` / `getMySpaceList` | 已实现 |
 | 每日签到 | `study_daily_attendance…` | — | 未实现 |
 | 小黑屋 | `forum.php showdarkroom ajax` | — | 未实现 |
-| 服务端黑名单 | `home.php friend&view=blacklist` | Drift 表预留，无 UI/同步 | 未实现 |
+| 服务端黑名单 | `home.php friend&view=blacklist` | —（不同步网页黑名单） | 未实现 |
+| 本地黑名单 | 本地库 hide/del | Drift + `/blacklist` UI；`thread` 滤列表、`post` 折叠楼层；`pm` 可存不筛 | 部分 |
 | 交易贴信息 | `viewthread&do=tradeinfo` | — | 不做/边缘 |
 
 ## S1-Next App API（跳过）
@@ -82,7 +84,7 @@ S1-Next 同时打 Discuz Mobile / `forum.php`，以及独立 App API（`https://
 ## 建议落地顺序
 
 1. **只读/本地（适合 S1 繁忙或暂缓写操作时）**  
-   搜索、私信会话详情、通知体验、本地黑名单 UI
+   搜索、私信会话详情、通知体验（本地黑名单 UI+过滤已部分落地）
 2. **写操作（等论坛稳定后再开）**  
    发新帖 `newthread` → 发私信 `sendpm` → 编辑 / 举报
 3. **社交周边（可后置）**  
@@ -94,3 +96,4 @@ S1-Next 同时打 Discuz Mobile / `forum.php`，以及独立 App API（`https://
 - **收藏**：他们偏 Mobile `favthread`；我们主路径是 `home.php` HTML，并多了收藏版块。
 - **通知**：他们用 `mynotelist` JSON；我们用 notice HTML 列表（可读已可用）。
 - **登出**：双方都是清 Cookie/会话，无独立 Discuz logout module 依赖。
+- **本地黑名单**：设备级（主键为被拉黑 `uid`）；`scope`=`thread`/`post`/`pm`（`pm` 预留）；楼层默认折叠可展开，非硬删；与 `blacklist.json` 备份往返兼容。不接网页好友黑名单同步。

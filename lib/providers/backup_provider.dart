@@ -2,6 +2,7 @@ import 'package:flutter/foundation.dart' show defaultTargetPlatform, kIsWeb;
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../providers/auth_provider.dart';
+import '../providers/blacklist_provider.dart';
 import '../providers/reading_history_provider.dart';
 import '../providers/settings_provider.dart';
 import '../providers/talker_provider.dart';
@@ -41,5 +42,6 @@ Future<S1BackupImportResult?> importS1Backup(WidgetRef ref) async {
   final result = await ref.read(s1BackupServiceProvider).importL1(bytes);
   ref.invalidate(settingsProvider);
   ref.invalidate(readingHistoryProvider);
+  ref.invalidate(blacklistProvider);
   return result;
 }

@@ -3,6 +3,7 @@ import 'dart:convert';
 
 import 'package:drift/drift.dart';
 
+import '../models/blacklist_record.dart';
 import '../models/reading_record.dart';
 import 'app_database.dart';
 import 'settings_store.dart';
@@ -23,12 +24,18 @@ class AppLocalData {
   /// key = `{uid}_{tid}` → option ids
   final Map<String, List<String>> pollVotes = {};
 
+  /// key = blocked user uid → entry
+  final Map<String, BlacklistRecord> blacklist = {};
+
   bool _readingHistoryLoaded = false;
   bool _pollVotesLoaded = false;
+  bool _blacklistLoaded = false;
   Future<void>? _readingHistoryLoad;
   Future<void>? _pollVotesLoad;
+  Future<void>? _blacklistLoad;
   final Map<String, Timer> _pendingReadingWrites = {};
   final Map<String, ReadingRecord> _pendingReadingRecords = {};
+  final List<Future<void>> _pendingBlacklistWrites = [];
 
   /// Settings only — used at cold start.
   Future<void> loadEssentials() async {
@@ -40,8 +47,10 @@ class AppLocalData {
     await loadEssentials();
     _readingHistoryLoaded = false;
     _pollVotesLoaded = false;
+    _blacklistLoaded = false;
     _readingHistoryLoad = null;
     _pollVotesLoad = null;
+    _blacklistLoad = null;
     await ensureAllLoaded();
   }
 
@@ -57,10 +66,17 @@ class AppLocalData {
     await _pollVotesLoad;
   }
 
+  Future<void> ensureBlacklistLoaded() async {
+    if (_blacklistLoaded) return;
+    _blacklistLoad ??= _loadBlacklist();
+    await _blacklistLoad;
+  }
+
   Future<void> ensureAllLoaded() async {
     await Future.wait([
       ensureReadingHistoryLoaded(),
       ensurePollVotesLoaded(),
+      ensureBlacklistLoaded(),
     ]);
   }
 
@@ -109,6 +125,58 @@ class AppLocalData {
     _pollVotesLoaded = true;
   }
 
+  Future<void> _loadBlacklist() async {
+    blacklist.clear();
+    final rows = await db.select(db.blacklistEntries).get();
+    for (final row in rows) {
+      try {
+        final decoded = jsonDecode(row.scopeJson);
+        final scopeRaw = decoded is List ? decoded : const <Object?>[];
+        final entry = BlacklistRecord.fromStorage(
+          uid: row.uid,
+          username: row.username,
+          createdAt: row.createdAt,
+          reason: row.reason,
+          scopeRaw: scopeRaw,
+        );
+        if (entry.uid.isEmpty) continue;
+        blacklist[entry.uid] = entry;
+      } on FormatException catch (e, st) {
+        talker.handle(e, st, 'Skip corrupted blacklist cache: ${row.uid}');
+      }
+    }
+    _blacklistLoaded = true;
+  }
+
+  void putBlacklistRecord(BlacklistRecord entry) {
+    if (entry.uid.isEmpty) return;
+    blacklist[entry.uid] = entry;
+    final future = db.into(db.blacklistEntries).insertOnConflictUpdate(
+          BlacklistEntriesCompanion.insert(
+            uid: entry.uid,
+            username: Value(entry.username),
+            createdAt: entry.createdAt,
+            reason: Value(entry.reason),
+            scopeJson: Value(jsonEncode(entry.scope)),
+          ),
+        );
+    _pendingBlacklistWrites.add(future);
+  }
+
+  void deleteBlacklistRecord(String uid) {
+    if (uid.isEmpty) return;
+    blacklist.remove(uid);
+    final future =
+        (db.delete(db.blacklistEntries)..where((t) => t.uid.equals(uid))).go();
+    _pendingBlacklistWrites.add(future.then((_) {}));
+  }
+
+  Future<void> clearBlacklist() async {
+    blacklist.clear();
+    await _awaitPendingBlacklistWrites();
+    await db.delete(db.blacklistEntries).go();
+  }
+
   void putReadingRecord(String uid, ReadingRecord record) {
     final key = '${uid}_${record.tid}';
     final json = record.toJson();
@@ -152,6 +220,14 @@ class AppLocalData {
       final uid = key.substring(0, sep);
       await _flushReadingRecordKey(key, uid);
     }
+    await _awaitPendingBlacklistWrites();
+  }
+
+  Future<void> _awaitPendingBlacklistWrites() async {
+    if (_pendingBlacklistWrites.isEmpty) return;
+    final pending = List<Future<void>>.of(_pendingBlacklistWrites);
+    _pendingBlacklistWrites.clear();
+    await Future.wait(pending);
   }
 
   void deleteReadingRecord(String uid, String tid) {

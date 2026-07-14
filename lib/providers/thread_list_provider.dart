@@ -1,6 +1,8 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import '../models/blacklist_record.dart';
 import '../models/thread.dart';
 import 'api_service_provider.dart';
+import 'blacklist_provider.dart';
 import '../services/api_service.dart';
 
 class ThreadListState {
@@ -37,16 +39,29 @@ class ThreadListNotifier extends AsyncNotifier<ThreadListState> {
   final String fid;
 
   @override
-  Future<ThreadListState> build() => _loadPage(1);
+  Future<ThreadListState> build() {
+    // 黑名单变更时重新过滤当前页。
+    ref.watch(blacklistProvider);
+    return _loadPage(1);
+  }
 
   ApiService get _apiService => ref.watch(apiServiceProvider);
 
   Future<ThreadListState> _loadPage(int page) async {
     final result = await _apiService.getThreadListRaw(fid, page: page);
     final threads = ApiService.parseThreadList(result);
+    final filtered = threads
+        .where(
+          (t) =>
+              t.authorId.isEmpty ||
+              !ref
+                  .read(blacklistServiceProvider)
+                  .hasScope(t.authorId, BlacklistRecord.scopeThread),
+        )
+        .toList();
     final totalPages = _extractTotalPages(result);
     return ThreadListState(
-      threads: threads,
+      threads: filtered,
       currentPage: page,
       totalPages: totalPages,
       forumName: ApiService.parseForumDisplayName(result),

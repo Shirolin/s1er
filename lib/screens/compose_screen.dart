@@ -1,3 +1,6 @@
+import 'dart:async';
+import 'dart:typed_data';
+
 import 'package:file_selector/file_selector.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -11,11 +14,13 @@ import '../services/external_image_upload_service.dart';
 import '../theme/app_theme.dart';
 import '../utils/compose_draft_store.dart';
 import '../utils/compose_img_tags.dart';
+import '../utils/compose_message_draft.dart';
 import '../utils/post_image_index_counter.dart';
 import '../utils/quote_builder.dart';
 import '../utils/s1_snack_bar.dart';
 import '../widgets/bbcode_renderer.dart';
 import '../widgets/compose_emoticon_panel.dart';
+import '../widgets/quote_block.dart';
 import '../widgets/s1_confirm_dialog.dart';
 
 const _recentEmoticonsKey = 'compose_recent_emoticons';
@@ -56,13 +61,16 @@ class _ComposeScreenState extends ConsumerState<ComposeScreen> {
   bool _allowPop = false;
   bool _showEmoticonPanel = false;
   ComposeDraft? _draft;
-  bool _includeQuote = true;
+  bool _includeQuote = false;
   QuoteInfo? _quoteInfo;
   bool _quotePrefetching = false;
   String? _quotePrefetchError;
   final List<_ComposeUploadedImage> _uploadedImages = [];
   final Map<String, String> _imageLabelsByUrl = {};
   List<String> _recentEmoticons = [];
+  Timer? _draftSaveTimer;
+  bool _suppressDraftSave = false;
+  ({Uint8List bytes, String filename})? _pendingUpload;
 
   bool get _hasValidTid => widget.tid != null && widget.tid!.isNotEmpty;
 
@@ -74,8 +82,7 @@ class _ComposeScreenState extends ConsumerState<ComposeScreen> {
     return subject;
   }
 
-  bool get _quoting =>
-      _draft != null && _includeQuote && _quoteInfo != null;
+  bool get _quoting => _includeQuote && _quoteInfo != null;
 
   bool get _isDirty =>
       _messageController.text.trim().isNotEmpty || _uploadedImages.isNotEmpty;
@@ -91,6 +98,11 @@ class _ComposeScreenState extends ConsumerState<ComposeScreen> {
     return _messageController.text.trim().isNotEmpty || _quoting;
   }
 
+  String get _draftEntryKey {
+    final tid = widget.tid ?? '';
+    return ComposeMessageDraft.entryKey(tid: tid, reppost: _quotePid);
+  }
+
   @override
   void initState() {
     super.initState();
@@ -98,12 +110,14 @@ class _ComposeScreenState extends ConsumerState<ComposeScreen> {
     _messageFocusNode.addListener(_onMessageFocusChanged);
     if (widget.draftId != null) {
       _draft = ComposeDraftStore.take(widget.draftId!);
-      _includeQuote = _draft != null;
     }
+    final pid = _quotePid;
+    _includeQuote = pid != null && pid.isNotEmpty;
 
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (!mounted) return;
       _loadRecentEmoticons();
+      _restoreMessageDraft();
       if (!ref.read(authStateProvider).isLoggedIn && !_redirectedToLogin) {
         _redirectedToLogin = true;
         // 勿 pop 再 push：会在 Web 上触发 disposed EngineFlutterView 断言刷屏
@@ -128,6 +142,75 @@ class _ComposeScreenState extends ConsumerState<ComposeScreen> {
     }
   }
 
+  void _restoreMessageDraft() {
+    final tid = widget.tid;
+    if (tid == null || tid.isEmpty) return;
+    try {
+      final store = ref.read(settingsStoreProvider);
+      final drafts = ComposeMessageDraft.parseStore(
+        store.get<Object>(ComposeMessageDraft.settingsKey),
+      );
+      final saved = ComposeMessageDraft.readMessage(drafts, _draftEntryKey);
+      if (saved == null) return;
+      _suppressDraftSave = true;
+      _messageController.value = TextEditingValue(
+        text: saved,
+        selection: TextSelection.collapsed(offset: saved.length),
+      );
+      _suppressDraftSave = false;
+      S1SnackBar.show(context, message: '已恢复草稿', bottomClearance: 72);
+    } on Object {
+      _suppressDraftSave = false;
+    }
+  }
+
+  void _scheduleDraftSave() {
+    if (_suppressDraftSave) return;
+    _draftSaveTimer?.cancel();
+    _draftSaveTimer = Timer(ComposeMessageDraft.debounce, _persistDraft);
+  }
+
+  void _persistDraft() {
+    final tid = widget.tid;
+    if (tid == null || tid.isEmpty) return;
+    try {
+      final store = ref.read(settingsStoreProvider);
+      final drafts = ComposeMessageDraft.parseStore(
+        store.get<Object>(ComposeMessageDraft.settingsKey),
+      );
+      final key = _draftEntryKey;
+      final text = _messageController.text;
+      final next = text.trim().isEmpty
+          ? ComposeMessageDraft.removeEntry(drafts, key)
+          : ComposeMessageDraft.upsert(drafts, key, text);
+      store.put(
+        ComposeMessageDraft.settingsKey,
+        ComposeMessageDraft.toStoreValue(next),
+      );
+    } on Object {
+      // 无 settings store 时跳过。
+    }
+  }
+
+  void _clearMessageDraft() {
+    _draftSaveTimer?.cancel();
+    final tid = widget.tid;
+    if (tid == null || tid.isEmpty) return;
+    try {
+      final store = ref.read(settingsStoreProvider);
+      final drafts = ComposeMessageDraft.parseStore(
+        store.get<Object>(ComposeMessageDraft.settingsKey),
+      );
+      final next = ComposeMessageDraft.removeEntry(drafts, _draftEntryKey);
+      store.put(
+        ComposeMessageDraft.settingsKey,
+        ComposeMessageDraft.toStoreValue(next),
+      );
+    } on Object {
+      // 无 settings store 时跳过。
+    }
+  }
+
   void _onMessageChanged() {
     if (!mounted) return;
     final urls = extractImgUrls(_messageController.text);
@@ -143,6 +226,7 @@ class _ComposeScreenState extends ConsumerState<ComposeScreen> {
         ..clear()
         ..addAll(next);
     });
+    _scheduleDraftSave();
   }
 
   void _onMessageFocusChanged() {
@@ -185,7 +269,9 @@ class _ComposeScreenState extends ConsumerState<ComposeScreen> {
     if (_draft != null && _draft!.displayFloor > 0) {
       return '回复 #${_draft!.displayFloor} 楼';
     }
-    if (_draft != null) return '回复楼层';
+    if (_draft != null || (_quotePid != null && _quotePid!.isNotEmpty)) {
+      return '回复楼层';
+    }
     return '回复主题';
   }
 
@@ -230,6 +316,8 @@ class _ComposeScreenState extends ConsumerState<ComposeScreen> {
     if (_showEmoticonPanel) {
       setState(() => _showEmoticonPanel = false);
     }
+    final quoteInfo = _quoting ? _quoteInfo : null;
+    final tid = widget.tid;
 
     await showModalBottomSheet<void>(
       context: context,
@@ -241,6 +329,7 @@ class _ComposeScreenState extends ConsumerState<ComposeScreen> {
       builder: (ctx) {
         final textTheme = Theme.of(ctx).textTheme;
         final height = MediaQuery.sizeOf(ctx).height * 0.65;
+        final imageIndexCounter = PostImageIndexCounter();
         return SafeArea(
           child: SizedBox(
             height: height,
@@ -254,9 +343,20 @@ class _ComposeScreenState extends ConsumerState<ComposeScreen> {
                 Expanded(
                   child: SingleChildScrollView(
                     padding: const EdgeInsets.fromLTRB(16, 0, 16, 8),
-                    child: BbcodeRenderer(
-                      bbcode: message.isEmpty ? '（无正文）' : message,
-                      imageIndexCounter: PostImageIndexCounter(),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.stretch,
+                      children: [
+                        if (quoteInfo != null)
+                          QuoteBlock(
+                            content: quoteInfo.noticeTrimStr,
+                            imageIndexCounter: imageIndexCounter,
+                            currentTid: tid,
+                          ),
+                        BbcodeRenderer(
+                          bbcode: message.isEmpty ? '（无正文）' : message,
+                          imageIndexCounter: imageIndexCounter,
+                        ),
+                      ],
                     ),
                   ),
                 ),
@@ -280,6 +380,10 @@ class _ComposeScreenState extends ConsumerState<ComposeScreen> {
 
   @override
   void dispose() {
+    _draftSaveTimer?.cancel();
+    if (!_allowPop && _messageController.text.trim().isNotEmpty) {
+      _persistDraft();
+    }
     _messageController.removeListener(_onMessageChanged);
     _messageFocusNode.removeListener(_onMessageFocusChanged);
     _messageController.dispose();
@@ -308,15 +412,27 @@ class _ComposeScreenState extends ConsumerState<ComposeScreen> {
     final file = await openFile(acceptedTypeGroups: [typeGroup]);
     if (file == null) return;
 
+    final bytes = await file.readAsBytes();
+    if (!mounted) return;
+    setState(() {
+      _pendingUpload = (bytes: bytes, filename: file.name);
+    });
+    await _uploadPendingImage();
+  }
+
+  Future<void> _uploadPendingImage() async {
+    final pending = _pendingUpload;
+    if (pending == null || _isUploadingImage || _isSubmitting) return;
+
     setState(() => _isUploadingImage = true);
     try {
-      final bytes = await file.readAsBytes();
       final url = await ref.read(composeControllerProvider).uploadImage(
-            bytes: bytes,
-            filename: file.name,
+            bytes: pending.bytes,
+            filename: pending.filename,
           );
       if (!mounted) return;
-      final label = file.name.trim().isEmpty ? '图片' : file.name;
+      final label =
+          pending.filename.trim().isEmpty ? '图片' : pending.filename;
       _imageLabelsByUrl[url] = label;
       final selection = _messageController.selection;
       final start =
@@ -333,14 +449,31 @@ class _ComposeScreenState extends ConsumerState<ComposeScreen> {
         text: result.text,
         selection: TextSelection.collapsed(offset: result.cursor),
       );
+      setState(() => _pendingUpload = null);
       S1SnackBar.show(context, message: '图片已插入', bottomClearance: 72);
     } on ExternalImageUploadException catch (e) {
       if (mounted) {
-        S1SnackBar.show(context, message: e.message, bottomClearance: 72);
+        S1SnackBar.show(
+          context,
+          message: e.message,
+          bottomClearance: 72,
+          actionLabel: '重试',
+          onAction: () {
+            if (mounted) unawaited(_uploadPendingImage());
+          },
+        );
       }
     } catch (_) {
       if (mounted) {
-        S1SnackBar.show(context, message: '图片上传失败', bottomClearance: 72);
+        S1SnackBar.show(
+          context,
+          message: '图片上传失败',
+          bottomClearance: 72,
+          actionLabel: '重试',
+          onAction: () {
+            if (mounted) unawaited(_uploadPendingImage());
+          },
+        );
       }
     } finally {
       if (mounted) setState(() => _isUploadingImage = false);
@@ -395,6 +528,7 @@ class _ComposeScreenState extends ConsumerState<ComposeScreen> {
 
       if (mounted) {
         if (result.isSuccess) {
+          _clearMessageDraft();
           S1SnackBar.show(context, message: '回复成功', bottomClearance: 16);
           setState(() => _allowPop = true);
           context.pop(result);
@@ -430,11 +564,12 @@ class _ComposeScreenState extends ConsumerState<ComposeScreen> {
     final discard = await showS1ConfirmDialog(
       context,
       title: '放弃回复？',
-      content: '未发送的内容将丢失。',
+      content: '放弃后将清除本回复草稿。',
       confirmLabel: '放弃',
       destructive: true,
     );
     if (!mounted || !discard) return;
+    _clearMessageDraft();
     setState(() => _allowPop = true);
     context.pop();
   }
@@ -482,10 +617,10 @@ class _ComposeScreenState extends ConsumerState<ComposeScreen> {
         body: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-            if (_draft != null && _includeQuote)
+            if (_includeQuote)
               _ComposeQuoteBanner(
-                post: _draft!.post,
-                displayFloor: _draft!.displayFloor,
+                post: _draft?.post,
+                displayFloor: _draft?.displayFloor ?? 0,
                 onRemove: _removeQuote,
                 loading: _quotePrefetching,
                 error: _quotePrefetchError,
@@ -659,14 +794,14 @@ class _ComposeSubjectLineState extends State<_ComposeSubjectLine> {
 
 class _ComposeQuoteBanner extends StatelessWidget {
   const _ComposeQuoteBanner({
-    required this.post,
-    required this.displayFloor,
+    this.post,
+    this.displayFloor = 0,
     required this.onRemove,
     this.loading = false,
     this.error,
   });
 
-  final Post post;
+  final Post? post;
   final int displayFloor;
   final VoidCallback onRemove;
   final bool loading;
@@ -676,7 +811,14 @@ class _ComposeQuoteBanner extends StatelessWidget {
   Widget build(BuildContext context) {
     final scheme = Theme.of(context).colorScheme;
     final textTheme = Theme.of(context).textTheme;
-    final preview = QuoteBuilder.previewText(post.message);
+    final post = this.post;
+    final preview =
+        post == null ? '' : QuoteBuilder.previewText(post.message);
+    final title = post == null
+        ? '引用楼层'
+        : displayFloor > 0
+            ? '引用 #$displayFloor 楼 · ${post.author}'
+            : '引用 ${post.author}';
 
     return Material(
       color: scheme.surfaceContainerHigh,
@@ -701,9 +843,7 @@ class _ComposeQuoteBanner extends StatelessWidget {
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         Text(
-                          displayFloor > 0
-                              ? '引用 #$displayFloor 楼 · ${post.author}'
-                              : '引用 ${post.author}',
+                          title,
                           style: textTheme.labelLarge?.copyWith(
                             color: scheme.onSurface,
                             fontWeight: FontWeight.w600,

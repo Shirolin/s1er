@@ -2,16 +2,50 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:go_router/go_router.dart';
+import 'package:flutter_riverpod/misc.dart' show Override;
 import 'package:s1_app/models/post.dart';
 import 'package:s1_app/models/quote_info.dart';
 import 'package:s1_app/models/reply_submit_result.dart';
 import 'package:s1_app/providers/auth_provider.dart';
 import 'package:s1_app/providers/compose_provider.dart';
+import 'package:s1_app/providers/settings_provider.dart';
 import 'package:s1_app/screens/compose_screen.dart';
+import 'package:s1_app/services/app_database.dart';
+import 'package:s1_app/services/app_local_data.dart';
 import 'package:s1_app/theme/app_theme.dart';
 import 'package:s1_app/utils/compose_draft_store.dart';
+import 'package:s1_app/utils/compose_message_draft.dart';
+import 'package:s1_app/widgets/quote_block.dart';
+
+import '../helpers/test_local_data.dart';
 
 void main() {
+  late AppDatabase db;
+  late AppLocalData local;
+
+  setUp(() async {
+    final opened = await openTestLocalData();
+    db = opened.$1;
+    local = opened.$2;
+  });
+
+  tearDown(() async {
+    await db.close();
+  });
+
+  List<Override> buildOverrides({
+    required AuthNotifier Function() auth,
+    ComposeController Function(Ref ref)? compose,
+  }) {
+    return [
+      localDataProvider.overrideWithValue(local),
+      authStateProvider.overrideWith(auth),
+      composeControllerProvider.overrideWith(
+        compose ?? (ref) => _StubComposeController(ref),
+      ),
+    ];
+  }
+
   final samplePost = Post(
     pid: '42',
     message: 'quoted content here',
@@ -27,12 +61,7 @@ void main() {
 
     await tester.pumpWidget(
       ProviderScope(
-        overrides: [
-          authStateProvider.overrideWith(_LoggedInAuthNotifier.new),
-          composeControllerProvider.overrideWith(
-            (ref) => _StubComposeController(ref),
-          ),
-        ],
+        overrides: buildOverrides(auth: _LoggedInAuthNotifier.new),
         child: MaterialApp(
           theme: AppTheme.lightTheme('purple'),
           home: ComposeScreen(
@@ -60,16 +89,87 @@ void main() {
     expect(find.byType(FilledButton), findsOneWidget);
   });
 
+  testWidgets('ComposeScreen shows simple quote banner for reppost only',
+      (tester) async {
+    await tester.pumpWidget(
+      ProviderScope(
+        overrides: buildOverrides(auth: _LoggedInAuthNotifier.new),
+        child: MaterialApp(
+          theme: AppTheme.lightTheme('purple'),
+          home: const ComposeScreen(
+            tid: '100',
+            fid: '4',
+            reppost: '42',
+          ),
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    expect(find.text('回复楼层'), findsOneWidget);
+    expect(find.text('引用楼层'), findsOneWidget);
+    expect(find.byTooltip('移除引用'), findsOneWidget);
+  });
+
+  testWidgets('ComposeScreen restores persisted message draft', (tester) async {
+    local.settings.put(
+      ComposeMessageDraft.settingsKey,
+      ComposeMessageDraft.toStoreValue(
+        ComposeMessageDraft.upsert({}, '100', '草稿正文内容'),
+      ),
+    );
+
+    await tester.pumpWidget(
+      ProviderScope(
+        overrides: buildOverrides(auth: _LoggedInAuthNotifier.new),
+        child: MaterialApp(
+          theme: AppTheme.lightTheme('purple'),
+          home: const ComposeScreen(tid: '100', fid: '4'),
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    final field = tester.widget<TextField>(find.byType(TextField));
+    expect(field.controller!.text, '草稿正文内容');
+    expect(find.text('已恢复草稿'), findsOneWidget);
+  });
+
+  testWidgets('ComposeScreen preview shows QuoteBlock when quoting',
+      (tester) async {
+    final draftId = ComposeDraftStore.put(samplePost, displayFloor: 5);
+
+    await tester.pumpWidget(
+      ProviderScope(
+        overrides: buildOverrides(auth: _LoggedInAuthNotifier.new),
+        child: MaterialApp(
+          theme: AppTheme.lightTheme('purple'),
+          home: ComposeScreen(
+            tid: '100',
+            fid: '4',
+            draftId: draftId,
+            reppost: '42',
+          ),
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    await tester.enterText(find.byType(TextField), '我的回复正文');
+    await tester.pump();
+    await tester.tap(find.byTooltip('预览'));
+    await tester.pumpAndSettle();
+
+    expect(find.text('预览'), findsWidgets);
+    expect(find.byType(QuoteBlock), findsAtLeastNWidgets(1));
+    expect(find.text('我的回复正文'), findsWidgets);
+  });
+
   testWidgets('ComposeScreen places send and image in bottom bar',
       (tester) async {
     await tester.pumpWidget(
       ProviderScope(
-        overrides: [
-          authStateProvider.overrideWith(_LoggedInAuthNotifier.new),
-          composeControllerProvider.overrideWith(
-            (ref) => _StubComposeController(ref),
-          ),
-        ],
+        overrides: buildOverrides(auth: _LoggedInAuthNotifier.new),
         child: MaterialApp(
           theme: AppTheme.lightTheme('purple'),
           home: const ComposeScreen(
@@ -98,12 +198,7 @@ void main() {
       (tester) async {
     await tester.pumpWidget(
       ProviderScope(
-        overrides: [
-          authStateProvider.overrideWith(_LoggedInAuthNotifier.new),
-          composeControllerProvider.overrideWith(
-            (ref) => _StubComposeController(ref),
-          ),
-        ],
+        overrides: buildOverrides(auth: _LoggedInAuthNotifier.new),
         child: MaterialApp(
           theme: AppTheme.lightTheme('purple'),
           home: const ComposeScreen(tid: '100', fid: '4'),
@@ -114,26 +209,20 @@ void main() {
 
     await tester.tap(find.text('表情'));
     await tester.pumpAndSettle();
-
-    expect(find.text('麻将脸'), findsWidgets);
-    expect(find.text('键盘'), findsOneWidget);
+    expect(find.text('麻将脸'), findsOneWidget);
 
     await tester.tap(find.byTooltip('[f:001]'));
     await tester.pump();
 
-    expect(find.text('[f:001]'), findsOneWidget);
+    final field = tester.widget<TextField>(find.byType(TextField));
+    expect(field.controller!.text, contains('[f:001]'));
   });
 
-  testWidgets('ComposeScreen disables send when message is empty',
+  testWidgets('ComposeScreen send disabled until message entered',
       (tester) async {
     await tester.pumpWidget(
       ProviderScope(
-        overrides: [
-          authStateProvider.overrideWith(_LoggedInAuthNotifier.new),
-          composeControllerProvider.overrideWith(
-            (ref) => _StubComposeController(ref),
-          ),
-        ],
+        overrides: buildOverrides(auth: _LoggedInAuthNotifier.new),
         child: MaterialApp(
           theme: AppTheme.lightTheme('purple'),
           home: const ComposeScreen(tid: '100', fid: '4'),
@@ -142,19 +231,16 @@ void main() {
     );
     await tester.pumpAndSettle();
 
-    final emptySend = tester.widget<FilledButton>(find.byType(FilledButton));
-    expect(emptySend.onPressed, isNull);
+    final sendFinder = find.widgetWithText(FilledButton, '发送');
+    expect(tester.widget<FilledButton>(sendFinder).onPressed, isNull);
 
     await tester.enterText(find.byType(TextField), 'hello');
     await tester.pump();
-
-    final filledSend = tester.widget<FilledButton>(find.byType(FilledButton));
-    expect(filledSend.onPressed, isNotNull);
+    expect(tester.widget<FilledButton>(sendFinder).onPressed, isNotNull);
 
     await tester.enterText(find.byType(TextField), '   ');
     await tester.pump();
-
-    final clearedSend = tester.widget<FilledButton>(find.byType(FilledButton));
+    final clearedSend = tester.widget<FilledButton>(sendFinder);
     expect(clearedSend.onPressed, isNull);
   });
 
@@ -163,12 +249,7 @@ void main() {
         '很长的主题标题用于测试展开折叠行为一二三四五六七八九十';
     await tester.pumpWidget(
       ProviderScope(
-        overrides: [
-          authStateProvider.overrideWith(_LoggedInAuthNotifier.new),
-          composeControllerProvider.overrideWith(
-            (ref) => _StubComposeController(ref),
-          ),
-        ],
+        overrides: buildOverrides(auth: _LoggedInAuthNotifier.new),
         child: MaterialApp(
           theme: AppTheme.lightTheme('purple'),
           home: const ComposeScreen(
@@ -191,12 +272,7 @@ void main() {
       (tester) async {
     await tester.pumpWidget(
       ProviderScope(
-        overrides: [
-          authStateProvider.overrideWith(_LoggedInAuthNotifier.new),
-          composeControllerProvider.overrideWith(
-            (ref) => _StubComposeController(ref),
-          ),
-        ],
+        overrides: buildOverrides(auth: _LoggedInAuthNotifier.new),
         child: MaterialApp(
           theme: AppTheme.lightTheme('purple'),
           home: const ComposeScreen(tid: '100', fid: '4'),
@@ -222,12 +298,7 @@ void main() {
       (tester) async {
     await tester.pumpWidget(
       ProviderScope(
-        overrides: [
-          authStateProvider.overrideWith(_LoggedInAuthNotifier.new),
-          composeControllerProvider.overrideWith(
-            (ref) => _StubComposeController(ref),
-          ),
-        ],
+        overrides: buildOverrides(auth: _LoggedInAuthNotifier.new),
         child: MaterialApp(
           theme: AppTheme.lightTheme('purple'),
           home: const ComposeScreen(tid: '100', fid: '4'),
@@ -279,12 +350,7 @@ void main() {
 
     await tester.pumpWidget(
       ProviderScope(
-        overrides: [
-          authStateProvider.overrideWith(_LoggedOutAuthNotifier.new),
-          composeControllerProvider.overrideWith(
-            (ref) => _StubComposeController(ref),
-          ),
-        ],
+        overrides: buildOverrides(auth: _LoggedOutAuthNotifier.new),
         child: MaterialApp.router(
           theme: AppTheme.lightTheme('purple'),
           routerConfig: router,
@@ -299,12 +365,7 @@ void main() {
   testWidgets('ComposeScreen without tid shows error state', (tester) async {
     await tester.pumpWidget(
       ProviderScope(
-        overrides: [
-          authStateProvider.overrideWith(_LoggedInAuthNotifier.new),
-          composeControllerProvider.overrideWith(
-            (ref) => _StubComposeController(ref),
-          ),
-        ],
+        overrides: buildOverrides(auth: _LoggedInAuthNotifier.new),
         child: MaterialApp(
           theme: AppTheme.lightTheme('purple'),
           home: const ComposeScreen(),
@@ -329,7 +390,8 @@ class _StubComposeController extends ComposeController {
     return const QuoteInfo(
       noticeAuthor: 'encoded',
       noticeTrimStr:
-          '[post][url=forum.php?mod=redirect&goto=findpost&pid=42&ptid=100]x[/url][/post]',
+          '[quote][url=forum.php?mod=redirect&goto=findpost&pid=42&ptid=100]'
+          'alice 发表于 2024[/url]\nquoted body[/quote]',
     );
   }
 

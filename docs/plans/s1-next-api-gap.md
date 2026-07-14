@@ -91,7 +91,8 @@ S1-Next 同时打 Discuz Mobile / `forum.php`，以及独立 App API（`https://
 
 1. **只读/本地（适合 S1 繁忙或暂缓写操作时）**  
    搜索 → 私信会话详情（`mypm&subop=view`）→ 通知体验（可选切 `mynotelist` JSON）  
-   本地黑名单：补 `pm` scope 过滤（可选）；服务端同步仍后置
+   本地黑名单：补 `pm` scope 过滤（可选）；服务端同步仍后置  
+   → **搜索执行计划**：[2026-07-14-search.md](./2026-07-14-search.md)
 2. **写操作（等论坛稳定后再开）**  
    发新帖 `newthread` → 发私信 `sendpm` → 编辑 / 举报
 3. **社交周边（可后置）**  

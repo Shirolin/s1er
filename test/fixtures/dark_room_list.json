@@ -1,0 +1,16 @@
+{
+  "message": "1|78571",
+  "data": [
+    {
+      "cid": "78573",
+      "uid": "200002",
+      "operatorid": "2",
+      "operator": "版主",
+      "action": "禁止发言",
+      "reason": "数组形态",
+      "dateline": "2026-7-12 08:00",
+      "username": "array_user",
+      "groupexpiry": "2026-8-12 08:00"
+    }
+  ]
+}

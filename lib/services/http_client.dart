@@ -19,9 +19,9 @@ class S1HttpClient {
 
   @visibleForTesting
   S1HttpClient.test(this._testContainer, Dio dio)
-      : _ref = null,
-        _dio = dio,
-        _initialized = true;
+    : _ref = null,
+      _dio = dio,
+      _initialized = true;
 
   late Dio _dio;
   bool _initialized = false;
@@ -56,10 +56,12 @@ class S1HttpClient {
 
     _dio = Dio(
       BaseOptions(
-        connectTimeout:
-            const Duration(seconds: EnvConfig.connectTimeoutSeconds),
-        receiveTimeout:
-            const Duration(seconds: EnvConfig.receiveTimeoutSeconds),
+        connectTimeout: const Duration(
+          seconds: EnvConfig.connectTimeoutSeconds,
+        ),
+        receiveTimeout: const Duration(
+          seconds: EnvConfig.receiveTimeoutSeconds,
+        ),
         sendTimeout: const Duration(seconds: EnvConfig.sendTimeoutSeconds),
         headers: headers,
       ),
@@ -189,6 +191,9 @@ class S1HttpClient {
     _read(formhashProvider.notifier).update(formhash);
   }
 
+  /// 当前缓存的 formhash；空字符串表示尚未取得。
+  String get currentFormhash => _read(formhashProvider);
+
   /// 发帖前确保 formhash 已从 Mobile API 或回复页 HTML 中缓存。
   ///
   /// [force] 为 true 时丢弃缓存并重新拉取（回复 POST 前必须使用，避免登录等
@@ -227,6 +232,17 @@ class S1HttpClient {
       await _fetchFormhashFromReplyPage(fid: fid, tid: tid);
     }
     return _read(formhashProvider).isNotEmpty;
+  }
+
+  /// 确保 formhash 可用并返回 token；失败时返回 `null`。
+  ///
+  /// 供需要显式把 formhash 放入 GET query 的场景（每日签到），不改变
+  /// 现有 POST/PUT 自动注入行为。
+  Future<String?> requireFormhash({bool force = false}) async {
+    final ok = await ensureFormhash(force: force);
+    if (!ok) return null;
+    final token = currentFormhash;
+    return token.isEmpty ? null : token;
   }
 
   /// 登录/登出后刷新 formhash，避免沿用已消耗的验证串。

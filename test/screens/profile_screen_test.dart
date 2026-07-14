@@ -93,6 +93,61 @@ void main() {
       expect(find.text('主题设置'), findsNothing);
     });
 
+    testWidgets('guest sees dark room but not daily sign', (tester) async {
+      await tester.pumpWidget(
+        ProviderScope(
+          overrides: [
+            ...localOverrides(),
+            packageInfoOverride(),
+          ],
+          child: MaterialApp(
+            theme: AppTheme.lightTheme('purple'),
+            home: const ProfileScreen(),
+          ),
+        ),
+      );
+      await tester.pump();
+
+      expect(find.text('小黑屋'), findsOneWidget);
+      expect(find.text('每日签到'), findsNothing);
+    });
+
+    testWidgets('logged-in profile shows sign card and friends stats',
+        (tester) async {
+      tester.view.physicalSize = const Size(1080, 2400);
+      tester.view.devicePixelRatio = 1.0;
+      addTearDown(() => tester.view.resetPhysicalSize());
+
+      await tester.pumpWidget(
+        ProviderScope(
+          overrides: [
+            ...localOverrides(),
+            packageInfoOverride(),
+            authStateProvider.overrideWith(
+              () => _TestAuthNotifier(
+                AuthState(
+                  isLoggedIn: true,
+                  username: 'TestUser',
+                  user: User(uid: '123', username: 'TestUser', friends: 3),
+                ),
+                shouldFail: false,
+              ),
+            ),
+          ],
+          child: MaterialApp(
+            theme: AppTheme.lightTheme('purple'),
+            home: const ProfileScreen(),
+          ),
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      expect(find.text('每日签到'), findsOneWidget);
+      expect(find.text('签到'), findsOneWidget);
+      expect(find.text('好友'), findsOneWidget);
+      expect(find.text('小黑屋'), findsOneWidget);
+    });
+
     testWidgets('shows project support links and opens their URLs',
         (tester) async {
       tester.view.physicalSize = const Size(1080, 2400);

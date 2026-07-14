@@ -1,0 +1,12 @@
+{
+  "Version": "1",
+  "Charset": "UTF-8",
+  "Variables": {
+    "list": [],
+    "count": null
+  },
+  "Message": {
+    "messageval": "login_before_enter_home//1",
+    "messagestr": "请先登录后才能继续浏览"
+  }
+}

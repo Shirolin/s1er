@@ -29,7 +29,7 @@ void main() {
       ),
     );
 
-    expect(find.byIcon(Icons.vertical_align_top), findsOneWidget);
+    expect(find.byIcon(Icons.keyboard_double_arrow_up), findsOneWidget);
     expect(find.byIcon(Icons.arrow_downward), findsOneWidget);
     expect(find.byIcon(Icons.edit_outlined), findsOneWidget);
     expect(find.byType(FloatingActionButton), findsOneWidget);
@@ -194,7 +194,7 @@ void main() {
     await tester.longPress(find.byKey(const ValueKey('scroll_nav_down')));
     await tester.pump();
 
-    expect(find.byIcon(Icons.vertical_align_bottom), findsOneWidget);
+    expect(find.byIcon(Icons.keyboard_double_arrow_down), findsOneWidget);
   });
 
   test('S1FabLayout.scrollBottomPadding is fixed edge margin', () {

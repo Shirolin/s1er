@@ -202,7 +202,7 @@ class S1ScrollNavGroup extends StatelessWidget {
       children.add(
         _NavActionButton(
           key: const ValueKey('scroll_nav_up'),
-          icon: Icons.vertical_align_top,
+          icon: Icons.keyboard_double_arrow_up,
           tooltip: '返回顶部',
           onPressed: config.onScrollToTop!,
         ),
@@ -231,7 +231,7 @@ class S1ScrollNavGroup extends StatelessWidget {
         _NavActionButton(
           key: ValueKey(isNextPage ? 'scroll_nav_forward' : 'scroll_nav_down'),
           icon: isNextPage ? Icons.arrow_forward : Icons.arrow_downward,
-          longPressIcon: isNextPage ? null : Icons.vertical_align_bottom,
+          longPressIcon: isNextPage ? null : Icons.keyboard_double_arrow_down,
           iconKey: ValueKey(
             isNextPage ? 'scroll_nav_forward_icon' : 'scroll_nav_down_icon',
           ),

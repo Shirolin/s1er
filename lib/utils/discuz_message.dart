@@ -87,7 +87,6 @@ const Map<String, String> _apiKeyMessages = {
   'login_before_enter_home': '请先登录',
 };
 
-
 /// 去掉 `mobile:` 前缀，便于对照语言包 key。
 String normalizeDiscuzMessageKey(String? raw) {
   if (raw == null) return '';

@@ -176,9 +176,8 @@ class QuoteBlock extends StatelessWidget {
       }
     }
 
-    result = result
-        .replaceAll(RegExp(r'</div>$', caseSensitive: false), '')
-        .trim();
+    result =
+        result.replaceAll(RegExp(r'</div>$', caseSensitive: false), '').trim();
 
     final authorLine = RegExp(
       r'^.*?发表于\s*\d{4}-\d{1,2}-\d{1,2}\s*\d{2}:\d{2}(?::\d{2})?\s*(?:<br\s*/?>|\n)?',

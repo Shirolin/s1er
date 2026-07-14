@@ -141,7 +141,8 @@ class _FavoriteListBody extends ConsumerWidget {
       ),
       error: (e, st) => S1ErrorView(
         error: e,
-        onRetry: () => ref.read(favoriteListProvider(segment).notifier).refresh(),
+        onRetry: () =>
+            ref.read(favoriteListProvider(segment).notifier).refresh(),
         onLogin: () => context.push('/login'),
       ),
       data: (state) => Column(
@@ -151,12 +152,17 @@ class _FavoriteListBody extends ConsumerWidget {
               key: swipeKey,
               currentPage: state.currentPage,
               totalPages: state.totalPages,
-              onPageChanged: (page) =>
-                  ref.read(favoriteListProvider(segment).notifier).goToPage(page),
+              onPageChanged: (page) => ref
+                  .read(favoriteListProvider(segment).notifier)
+                  .goToPage(page),
               pageBuilder: (context, scrollController) => RefreshIndicator(
                 onRefresh: () async {
-                  await ref.read(favoriteListProvider(segment).notifier).refresh();
-                  await ref.read(favoriteMembershipProvider.notifier).ensureSynced();
+                  await ref
+                      .read(favoriteListProvider(segment).notifier)
+                      .refresh();
+                  await ref
+                      .read(favoriteMembershipProvider.notifier)
+                      .ensureSynced();
                 },
                 child: state.items.isEmpty
                     ? ListView(
@@ -189,8 +195,9 @@ class _FavoriteListBody extends ConsumerWidget {
             PaginationBar(
               currentPage: state.currentPage,
               totalPages: state.totalPages,
-              onPageChanged: (page) =>
-                  ref.read(favoriteListProvider(segment).notifier).goToPage(page),
+              onPageChanged: (page) => ref
+                  .read(favoriteListProvider(segment).notifier)
+                  .goToPage(page),
             ),
         ],
       ),
@@ -272,7 +279,8 @@ class _FavoriteThreadTile extends StatelessWidget {
                     const SizedBox(height: 6),
                     Text(
                       [
-                        if (item.forumName != null && item.forumName!.isNotEmpty)
+                        if (item.forumName != null &&
+                            item.forumName!.isNotEmpty)
                           item.forumName,
                         if (item.dateline > 0) formatTimeAgo(item.dateline),
                         if (item.views != null) '${item.views} 浏览',

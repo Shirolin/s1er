@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
-import 'package:url_launcher/url_launcher.dart';
+import '../models/notice_item.dart';
 import '../providers/messages_segment_provider.dart';
 import '../providers/notice_list_provider.dart';
 import '../providers/pm_list_provider.dart';
@@ -46,7 +46,9 @@ class _MessagesScreenState extends ConsumerState<MessagesScreen> {
           ),
         ),
         Expanded(
-          child: _segment == 0 ? _PmListBody() : _NoticeListBody(swipeKey: _noticeSwipeKey),
+          child: _segment == 0
+              ? _PmListBody()
+              : _NoticeListBody(swipeKey: _noticeSwipeKey),
         ),
       ],
     );
@@ -88,9 +90,11 @@ class _PmListBody extends ConsumerWidget {
                     key: ValueKey('pm_${item.touid}'),
                     child: PmListTile(
                       item: item,
-                      onTap: () => launchUrl(
-                        Uri.parse(item.browserUrl),
-                        mode: LaunchMode.externalApplication,
+                      onTap: () => context.push(
+                        Uri(
+                          path: '/pm/${item.touid}',
+                          queryParameters: {'name': item.partnerName},
+                        ).toString(),
                       ),
                     ),
                   );
@@ -124,6 +128,30 @@ class _NoticeListBody extends ConsumerWidget {
       ),
       data: (state) => Column(
         children: [
+          Padding(
+            padding: const EdgeInsets.fromLTRB(16, 0, 16, 8),
+            child: SegmentedButton<NoticeFeed>(
+              segments: const [
+                ButtonSegment(
+                  value: NoticeFeed.mypost,
+                  label: Text('帖子提醒'),
+                ),
+                ButtonSegment(
+                  value: NoticeFeed.system,
+                  label: Text('系统通知'),
+                ),
+              ],
+              selected: {state.feed},
+              onSelectionChanged: (value) {
+                final feed = value.first;
+                ref.read(noticeFeedSelectionProvider.notifier).select(feed);
+                ref.read(noticeListProvider.notifier).selectFeed(feed);
+              },
+              style: S1SegmentedButtonStyle.forScheme(
+                Theme.of(context).colorScheme,
+              ),
+            ),
+          ),
           Expanded(
             child: S1SwipePagination(
               key: swipeKey,

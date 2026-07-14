@@ -10,7 +10,6 @@ import 'talker.dart';
 import '../utils/error_handler.dart';
 
 class AuthService {
-
   AuthService({required S1HttpClient httpClient}) : _httpClient = httpClient;
   final S1HttpClient _httpClient;
 

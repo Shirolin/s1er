@@ -546,7 +546,8 @@ class _SystemGroupCard extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final count = ref.watch(readingHistoryProvider.select((s) => s.records.length));
+    final count =
+        ref.watch(readingHistoryProvider.select((s) => s.records.length));
     final colorScheme = Theme.of(context).colorScheme;
 
     return Card(

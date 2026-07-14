@@ -39,9 +39,8 @@ String buildThreadDetailPath(
   int? liveTotalPages,
 }) {
   final pages = liveTotalPages ?? record?.totalPages;
-  final targetPage = record != null && pages != null
-      ? record.resolveOpenPage(pages)
-      : 1;
+  final targetPage =
+      record != null && pages != null ? record.resolveOpenPage(pages) : 1;
   if (targetPage <= 1) {
     return '/thread/$tid';
   }

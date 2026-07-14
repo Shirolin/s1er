@@ -1,6 +1,8 @@
 # Discuz! Mobile API Reference
 
-S1 论坛使用的 Discuz! Mobile API (version=4)。所有请求走 `ApiConfig.mobileApiUrl`，通过 query params 指定 `module` 和 `version`。
+S1 论坛主要使用 Discuz! Mobile API version=4；`mynotelist` 明确使用
+version=3。所有请求走 `ApiConfig.mobileApiUrl`，通过 query params 指定
+`module` 和 `version`。
 
 ---
 
@@ -15,7 +17,8 @@ S1 论坛使用的 Discuz! Mobile API (version=4)。所有请求走 `ApiConfig.m
 | `profile` | 用户资料 | `getUserProfile()` / `getUserProfileByUid()` | ✅ 已完成 | ✅ 已通过 |
 | `newthread` | 发表新主题 | 待实现 | 📄 仅文档 | ✅ 已通过 |
 | `sendpm` | 发私信 | 未使用 | ❌ 未实现 | — |
-| `mypm` | 私信会话列表 | `getPmList()` | ✅ 已完成 | ✅ 已通过（未登录探测） |
+| `mypm` | 私信会话列表与详情 | `getPmList()` / `getPmConversation()` | ✅ 已完成 | ⚠️ 列表已探测；详情为合成契约测试 |
+| `mynotelist` v3 | 帖子提醒 / 系统通知 | `getNoticeList()` | ✅ 已完成 | ⚠️ 合成契约测试，待真实登录态复核 |
 | `sendreply` | **发回复（当前路径）** | `sendReply()` | ✅ 已完成 | ✅ 模块存在 |
 | `search.php?mod=forum` | 主题搜索（HTML） | `searchForum()` | ✅ 已完成 | ⚠️ 服务器过载时未复测；fixture 单测 |
 | `search.php?mod=user` | 用户搜索（HTML） | `searchUser()` | ✅ 已完成 | ⚠️ 同上 |
@@ -86,6 +89,8 @@ S1 论坛使用的 Discuz! Mobile API (version=4)。所有请求走 `ApiConfig.m
 请求参数：
 - `fid`: 版块 ID
 - `page`: 页码（从 1 开始）
+- `tpp`: 客户端固定传 `50`
+- 分类筛选时额外传独立参数 `filter=typeid` 与 `typeid={分类 ID}`
 
 响应 `Variables` 新增字段：
 
@@ -727,7 +732,7 @@ S1 实际配置：
 
 ---
 
-## module=mypm（私信会话列表）
+## module=mypm（私信会话列表与详情）
 
 获取当前登录用户的私信会话列表。未登录时 `Message.messageval` 为 `login_before_enter_home`。
 
@@ -768,15 +773,38 @@ S1 实际配置：
 
 解析 `#pmlist ul li`：`touid`、头像、`.mtime`、`.mtit`、`.mtxt`。
 
+### 会话详情
+
+请求 `module=mypm&subop=view&touid={对话对象 UID}&page={page}`。响应
+`Variables.list[]` 解析 `pmid/plid`、`msgfromid`、`msgfrom`、`message` 和
+`dateline`；以 `msgfromid == touid` 判断对方发来，否则为自己发出。
+
+分页使用 `count/perpage/page`。当前解析契约由 S1-Next 模型和完全合成的
+fixture 覆盖，尚未使用真实账号响应复核。
+
 ---
 
-## HTML 解析：我的提醒
+## module=mynotelist v3（我的提醒）
 
-Mobile API 无可用 `notice` / `mynotelist`（version=4）列表模块，需解析 HTML。
+客户端使用 version=3，并按需请求两个分类：
 
-### URL
+- 帖子提醒：`view=mypost&type=post`
+- 系统通知：`view=system&type=post`
 
-`home.php?mod=space&do=notice&view=all&type=&isread=1&page={page}`
+响应解析 `Variables.count/page/perpage/list`。`list[]` 使用 `id`、`author`、
+`authorid`、`dateline`、`new` 与 `note`；从 `note` HTML 提取纯文本摘要和
+可选的 `ptid/pid` 跳转目标。系统通知允许没有作者和帖子目标。
+
+version=4 不可用。当前 v3 字段契约由 S1-Next 模型和完全合成的 fixture
+覆盖，尚未使用真实账号响应复核。
+
+### HTML 兼容兜底
+
+JSON 非法、模块不可用或缺少 `Variables.list` 时，回退相同分类：
+
+`home.php?mod=space&do=notice&view={mypost|system}&type=&isread=1&page={page}`
+
+登录错误直接上抛，合法空 JSON 列表不触发兜底。
 
 ### 列表项
 
@@ -884,7 +912,7 @@ Mobile API 无可用 `notice` / `mynotelist`（version=4）列表模块，需解
 | `newthread` | 返回 JSON，缺参数时提示 `forum_nonexistence` | ✅ 可用（发新帖） |
 | `sendpm` | 返回 JSON，未登录时提示 `to_login` | ✅ 可用（发私信） |
 | `mypm` | 返回 JSON，`list` 字段；未登录 `login_before_enter_home` | ✅ 可用（私信列表） |
-| `mynotelist` | 返回 JSON（version=3 探测）；S1 客户端用 HTML 解析提醒 | ⚠️ 存在但未采用 |
+| `mynotelist` | version=3 返回 JSON；客户端按 mypost/system 使用，HTML 同分类兜底 | ✅ 已采用（待真实登录态复核） |
 | `sendreply` | 游客探测可进入 `api/4/sendreply.php`；正式回复需登录 | ✅ 可用（发回复） |
 | `sendpost` | `{"error":"module_not_exists"}` | ❌ S1 已禁用 |
 | `editpost` | `{"error":"module_not_exists"}` | ❌ S1 已禁用 |

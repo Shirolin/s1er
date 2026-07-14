@@ -98,9 +98,8 @@ class FavoriteListNotifier extends AsyncNotifier<FavoriteListState> {
     final current = state.asData?.value;
     if (current == null) return false;
 
-    final optimistic = current.items
-        .where((e) => e.favid != item.favid)
-        .toList();
+    final optimistic =
+        current.items.where((e) => e.favid != item.favid).toList();
     state = AsyncValue.data(current.copyWith(items: optimistic));
 
     final result = await _apiService.removeFavorite(favid: item.favid);

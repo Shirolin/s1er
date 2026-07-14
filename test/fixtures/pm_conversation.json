@@ -1,0 +1,23 @@
+{
+  "Variables": {
+    "page": "1",
+    "perpage": "20",
+    "count": "2",
+    "list": [
+      {
+        "pmid": "101",
+        "msgfromid": "200001",
+        "msgfrom": "示例用户",
+        "message": "收到 &amp; 谢谢",
+        "dateline": "1700000000"
+      },
+      {
+        "pmid": "102",
+        "msgfromid": "100001",
+        "msgfrom": "本地用户",
+        "message": "不客气<br>稍后见",
+        "dateline": "1700000060"
+      }
+    ]
+  }
+}

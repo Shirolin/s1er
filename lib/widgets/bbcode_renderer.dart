@@ -265,148 +265,145 @@ class _MemoizedHtmlBlockState extends State<_MemoizedHtmlBlock> {
     }
 
     return Html(
-          data: html,
-          style: {
-            'body': Style(
-              fontSize: FontSize(bodySize),
-              lineHeight: LineHeight.number(bodyLineHeight),
-              margin: Margins.zero,
-              padding: HtmlPaddings.zero,
-              color: scheme.onSurface,
-              fontFamily: textTheme.bodyMedium?.fontFamily,
-            ),
-            'a': Style(
-              color: scheme.primary,
-              textDecoration: TextDecoration.none,
-              fontWeight: FontWeight.w500,
-            ),
-            'b': Style(fontWeight: FontWeight.bold),
-            'i': Style(fontStyle: FontStyle.italic),
-            'u': Style(textDecoration: TextDecoration.underline),
-            's': Style(textDecoration: TextDecoration.lineThrough),
-            'pre': Style(
-              backgroundColor: scheme.surfaceContainerHighest,
-              padding: HtmlPaddings.all(12),
-              margin: Margins.symmetric(vertical: 8),
-              fontFamily: codeFontFamily,
-              fontSize: FontSize(codeSize),
-              display: Display.block,
-            ),
-            '.hide-content': Style(
-              color: Colors.transparent,
-              backgroundColor: scheme.outlineVariant,
-            ),
-            'blockquote': Style(display: Display.none),
-            'hr': Style(
-              border: Border(
-                bottom: BorderSide(color: scheme.outlineVariant, width: 0.8),
-              ),
-              margin: Margins.symmetric(vertical: 12),
-            ),
-            'ul': Style(padding: HtmlPaddings.only(left: 16)),
-            'ol': Style(padding: HtmlPaddings.only(left: 16)),
-            'li': Style(margin: Margins.only(bottom: 8)),
-          },
-          onLinkTap: (url, _, __) {
-            if (url != null) {
-              launchUrl(Uri.parse(url), mode: LaunchMode.externalApplication);
-            }
-          },
-          extensions: [
-            TagExtension(
-              tagsToExtend: {'span'},
-              builder: (context) {
-                final element = context.element;
-                if (element == null) return const SizedBox.shrink();
+      data: html,
+      style: {
+        'body': Style(
+          fontSize: FontSize(bodySize),
+          lineHeight: LineHeight.number(bodyLineHeight),
+          margin: Margins.zero,
+          padding: HtmlPaddings.zero,
+          color: scheme.onSurface,
+          fontFamily: textTheme.bodyMedium?.fontFamily,
+        ),
+        'a': Style(
+          color: scheme.primary,
+          textDecoration: TextDecoration.none,
+          fontWeight: FontWeight.w500,
+        ),
+        'b': Style(fontWeight: FontWeight.bold),
+        'i': Style(fontStyle: FontStyle.italic),
+        'u': Style(textDecoration: TextDecoration.underline),
+        's': Style(textDecoration: TextDecoration.lineThrough),
+        'pre': Style(
+          backgroundColor: scheme.surfaceContainerHighest,
+          padding: HtmlPaddings.all(12),
+          margin: Margins.symmetric(vertical: 8),
+          fontFamily: codeFontFamily,
+          fontSize: FontSize(codeSize),
+          display: Display.block,
+        ),
+        '.hide-content': Style(
+          color: Colors.transparent,
+          backgroundColor: scheme.outlineVariant,
+        ),
+        'blockquote': Style(display: Display.none),
+        'hr': Style(
+          border: Border(
+            bottom: BorderSide(color: scheme.outlineVariant, width: 0.8),
+          ),
+          margin: Margins.symmetric(vertical: 12),
+        ),
+        'ul': Style(padding: HtmlPaddings.only(left: 16)),
+        'ol': Style(padding: HtmlPaddings.only(left: 16)),
+        'li': Style(margin: Margins.only(bottom: 8)),
+      },
+      onLinkTap: (url, _, __) {
+        if (url != null) {
+          launchUrl(Uri.parse(url), mode: LaunchMode.externalApplication);
+        }
+      },
+      extensions: [
+        TagExtension(
+          tagsToExtend: {'span'},
+          builder: (context) {
+            final element = context.element;
+            if (element == null) return const SizedBox.shrink();
 
-                if (element.classes.contains('post-image')) {
-                  final preview =
-                      _unescapeHtml(element.attributes['data-preview'] ?? '');
-                  final full = _unescapeHtml(
-                    element.attributes['data-full'] ?? preview,
-                  );
-                  if (preview.isEmpty) return const SizedBox.shrink();
+            if (element.classes.contains('post-image')) {
+              final preview =
+                  _unescapeHtml(element.attributes['data-preview'] ?? '');
+              final full = _unescapeHtml(
+                element.attributes['data-full'] ?? preview,
+              );
+              if (preview.isEmpty) return const SizedBox.shrink();
 
-                  final index = int.tryParse(
-                        element.attributes['data-image-index'] ?? '',
-                      ) ??
-                      0;
-                  if (!shouldShowPostImage(index)) {
-                    return const SizedBox.shrink();
-                  }
-
-                  return ImageViewer(
-                    imageUrl: preview,
-                    fullImageUrl: full,
-                    showBorder: true,
-                    margin: const EdgeInsets.symmetric(vertical: 8),
-                    deferUntilVisible: true,
-                  );
-                }
-
-                if (element.classes.contains('emoticon')) {
-                  final src =
-                      _unescapeHtml(element.attributes['data-src'] ?? '');
-                  final code = element.attributes['data-code'] ?? '';
-                  final fromUrl =
-                      src.isNotEmpty ? EmoticonCatalog.fromSmileyUrl(src) : null;
-                  final item =
-                      fromUrl ?? EmoticonCatalog.findByCode(code);
-                  if (item != null) {
-                    return Padding(
-                      padding: const EdgeInsets.symmetric(horizontal: 2),
-                      child: EmoticonImage(item: item, size: 24),
-                    );
-                  }
-                  if (src.isNotEmpty) {
-                    return ImageViewer(
-                      imageUrl: src,
-                      isEmoticon: true,
-                      margin: const EdgeInsets.symmetric(horizontal: 2),
-                    );
-                  }
-                  return EmoticonWidget(code: code);
-                }
-
+              final index = int.tryParse(
+                    element.attributes['data-image-index'] ?? '',
+                  ) ??
+                  0;
+              if (!shouldShowPostImage(index)) {
                 return const SizedBox.shrink();
-              },
-            ),
-            TagExtension(
-              tagsToExtend: {'img'},
-              builder: (context) {
-                final src =
-                    _unescapeHtml(context.element?.attributes['src'] ?? '');
-                if (src.isEmpty) return const SizedBox.shrink();
+              }
 
-                if (S1Constants.isEmoticon(src)) {
-                  final item = EmoticonCatalog.fromSmileyUrl(src);
-                  if (item != null) {
-                    return Padding(
-                      padding: const EdgeInsets.symmetric(horizontal: 2),
-                      child: EmoticonImage(item: item, size: 24),
-                    );
-                  }
-                  return ImageViewer(
-                    imageUrl: src,
-                    isEmoticon: true,
-                    margin: const EdgeInsets.symmetric(horizontal: 2),
-                  );
-                }
+              return ImageViewer(
+                imageUrl: preview,
+                fullImageUrl: full,
+                showBorder: true,
+                margin: const EdgeInsets.symmetric(vertical: 8),
+                deferUntilVisible: true,
+              );
+            }
 
-                final urls = PostImageUrls.resolve(src: src);
-                if (!shouldShowPostImage(0)) {
-                  return const SizedBox.shrink();
-                }
-                return ImageViewer(
-                  imageUrl: urls.previewUrl,
-                  fullImageUrl: urls.fullUrl,
-                  showBorder: true,
-                  margin: const EdgeInsets.symmetric(vertical: 8),
-                  deferUntilVisible: true,
+            if (element.classes.contains('emoticon')) {
+              final src = _unescapeHtml(element.attributes['data-src'] ?? '');
+              final code = element.attributes['data-code'] ?? '';
+              final fromUrl =
+                  src.isNotEmpty ? EmoticonCatalog.fromSmileyUrl(src) : null;
+              final item = fromUrl ?? EmoticonCatalog.findByCode(code);
+              if (item != null) {
+                return Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 2),
+                  child: EmoticonImage(item: item, size: 24),
                 );
-              },
-            ),
-          ],
-        );
+              }
+              if (src.isNotEmpty) {
+                return ImageViewer(
+                  imageUrl: src,
+                  isEmoticon: true,
+                  margin: const EdgeInsets.symmetric(horizontal: 2),
+                );
+              }
+              return EmoticonWidget(code: code);
+            }
+
+            return const SizedBox.shrink();
+          },
+        ),
+        TagExtension(
+          tagsToExtend: {'img'},
+          builder: (context) {
+            final src = _unescapeHtml(context.element?.attributes['src'] ?? '');
+            if (src.isEmpty) return const SizedBox.shrink();
+
+            if (S1Constants.isEmoticon(src)) {
+              final item = EmoticonCatalog.fromSmileyUrl(src);
+              if (item != null) {
+                return Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 2),
+                  child: EmoticonImage(item: item, size: 24),
+                );
+              }
+              return ImageViewer(
+                imageUrl: src,
+                isEmoticon: true,
+                margin: const EdgeInsets.symmetric(horizontal: 2),
+              );
+            }
+
+            final urls = PostImageUrls.resolve(src: src);
+            if (!shouldShowPostImage(0)) {
+              return const SizedBox.shrink();
+            }
+            return ImageViewer(
+              imageUrl: urls.previewUrl,
+              fullImageUrl: urls.fullUrl,
+              showBorder: true,
+              margin: const EdgeInsets.symmetric(vertical: 8),
+              deferUntilVisible: true,
+            );
+          },
+        ),
+      ],
+    );
   }
 }

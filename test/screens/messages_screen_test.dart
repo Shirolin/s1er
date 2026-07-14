@@ -106,4 +106,40 @@ void main() {
 
     expect(find.text('thread 2253488 pid=69899250'), findsOneWidget);
   });
+
+  testWidgets('pm tap navigates to in-app conversation route', (tester) async {
+    final router = GoRouter(
+      routes: [
+        GoRoute(
+          path: '/',
+          builder: (context, state) => const Scaffold(body: MessagesScreen()),
+        ),
+        GoRoute(
+          path: '/pm/:touid',
+          builder: (context, state) => Scaffold(
+            body: Text(
+              'pm ${state.pathParameters['touid']} '
+              '${state.uri.queryParameters['name']}',
+            ),
+          ),
+        ),
+      ],
+    );
+
+    await tester.pumpWidget(
+      ProviderScope(
+        overrides: messagesProviderOverrides(),
+        child: MaterialApp.router(
+          theme: ThemeData(useMaterial3: true),
+          routerConfig: router,
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.text('我对 Kiyohara_Yasuke 说'));
+    await tester.pumpAndSettle();
+
+    expect(find.text('pm 535036 Kiyohara_Yasuke'), findsOneWidget);
+  });
 }

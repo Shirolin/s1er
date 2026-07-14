@@ -1,5 +1,4 @@
 class User {
-
   User({
     required this.uid,
     required this.username,
@@ -24,7 +23,8 @@ class User {
       uid: json['uid']?.toString() ?? '',
       username: json['username']?.toString() ?? '',
       avatar: json['avatar']?.toString(),
-      groupTitle: json['grouptitle']?.toString() ?? json['groupTitle']?.toString(),
+      groupTitle:
+          json['grouptitle']?.toString() ?? json['groupTitle']?.toString(),
       credits: int.tryParse(json['credits']?.toString() ?? '') ?? 0,
       posts: int.tryParse(json['posts']?.toString() ?? '') ?? 0,
       threads: int.tryParse(json['threads']?.toString() ?? '') ?? 0,

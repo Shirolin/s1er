@@ -9,6 +9,7 @@ import '../providers/notice_list_provider.dart';
 import '../providers/messages_segment_provider.dart';
 import '../providers/settings_provider.dart';
 import '../models/forum_category.dart';
+import '../models/notice_item.dart';
 import '../theme/app_theme.dart';
 import '../widgets/app_bar_more_menu.dart';
 import '../widgets/s1_error_view.dart';
@@ -59,6 +60,9 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
     final isMessagesTab = isLoggedIn && tabIndex == 2;
     final messagesSegment =
         isMessagesTab ? ref.watch(messagesSegmentProvider) : 0;
+    final noticeFeed = isMessagesTab
+        ? ref.watch(noticeFeedSelectionProvider)
+        : NoticeFeed.mypost;
 
     return Scaffold(
       appBar: AppBar(
@@ -86,7 +90,10 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                         ref.read(pmListProvider.notifier).refresh();
                         ref.read(noticeListProvider.notifier).refresh();
                       },
-                      browserUrl: messagesBrowserUrl(messagesSegment),
+                      browserUrl: messagesBrowserUrl(
+                        messagesSegment,
+                        noticeFeed: noticeFeed,
+                      ),
                     ),
                   ]
                 : [

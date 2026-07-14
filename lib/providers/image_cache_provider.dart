@@ -13,7 +13,8 @@ CacheManager get s1ImageCacheManager => S1ImageCache.manager;
 
 String formatImageCacheSize(int bytes) => S1ImageCache.formatSize(bytes);
 
-Future<Uint8List?> getCachedImageBytes(String url) => S1ImageCache.getBytes(url);
+Future<Uint8List?> getCachedImageBytes(String url) =>
+    S1ImageCache.getBytes(url);
 
 Future<bool> hasCachedImage(String url) => S1ImageCache.hasCachedFile(url);
 

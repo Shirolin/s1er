@@ -52,13 +52,11 @@ class EmoticonItem {
 
   String get assetPath => 'assets/emoticons/$relativePath';
 
-  String get networkUrl =>
-      '${EmoticonCatalog.staticSmileyBase}$relativePath';
+  String get networkUrl => '${EmoticonCatalog.staticSmileyBase}$relativePath';
 }
 
 abstract final class EmoticonCatalog {
-  static const staticSmileyBase =
-      'https://static.stage1st.com/image/smiley/';
+  static const staticSmileyBase = 'https://static.stage1st.com/image/smiley/';
 
   static const assetRoot = 'assets/emoticons';
 

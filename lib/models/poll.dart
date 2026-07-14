@@ -59,7 +59,8 @@ class ThreadPoll {
     final options = <PollOption>[];
     if (rawOptions is Map) {
       final sortedKeys = rawOptions.keys.map((k) => k.toString()).toList()
-        ..sort((a, b) => int.tryParse(a)?.compareTo(int.tryParse(b) ?? 0) ?? a.compareTo(b));
+        ..sort((a, b) =>
+            int.tryParse(a)?.compareTo(int.tryParse(b) ?? 0) ?? a.compareTo(b),);
       for (final key in sortedKeys) {
         final value = rawOptions[key];
         if (value is Map<String, dynamic>) {
@@ -151,6 +152,5 @@ class ThreadPoll {
     return '剩余 ${parts.join('')}';
   }
 
-  String get voteModeLabel =>
-      multiple ? '多选（最多 $maxChoices 项）' : '单选';
+  String get voteModeLabel => multiple ? '多选（最多 $maxChoices 项）' : '单选';
 }

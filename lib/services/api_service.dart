@@ -11,6 +11,7 @@ import '../models/reply_submit_result.dart';
 import '../models/forum_category.dart';
 import '../models/user.dart';
 import '../models/private_message_item.dart';
+import '../models/private_message.dart';
 import '../models/notice_item.dart';
 import '../models/favorite_item.dart';
 import '../models/message_list_result.dart';
@@ -23,9 +24,8 @@ import 'formhash_service.dart';
 import 'http_client.dart';
 import 'talker.dart';
 
-export '../models/app_exceptions.dart' show
-    LoginRequiredException,
-    ServerMaintenanceException;
+export '../models/app_exceptions.dart'
+    show LoginRequiredException, ServerMaintenanceException;
 
 class ApiService {
   ApiService(this._httpClient);
@@ -60,10 +60,11 @@ class ApiService {
 
   static String buildApiUrl({
     required String module,
+    String version = '4',
     Map<String, dynamic>? params,
   }) {
     final queryParams = {
-      'version': '4',
+      'version': version,
       'module': module,
       if (params != null) ...params,
     };
@@ -152,6 +153,31 @@ class ApiService {
     final name = forum?['name']?.toString().trim();
     if (name == null || name.isEmpty) return null;
     return name;
+  }
+
+  static int parseThreadListTotalPages(
+    Map<String, dynamic> json, {
+    required int currentPage,
+    required int itemCount,
+    required bool isFiltered,
+  }) {
+    final variables = json['Variables'] as Map<String, dynamic>?;
+    if (variables == null) return 1;
+    final forum = variables['forum'] as Map<String, dynamic>?;
+    int? totalThreads = int.tryParse(
+      variables['threadcount']?.toString() ?? '',
+    );
+    totalThreads ??= int.tryParse(forum?['threadcount']?.toString() ?? '');
+    if (!isFiltered) {
+      totalThreads ??= int.tryParse(forum?['threads']?.toString() ?? '');
+      totalThreads ??= int.tryParse(variables['threads']?.toString() ?? '');
+    }
+    final perPage = int.tryParse(variables['tpp']?.toString() ?? '') ?? 50;
+    if (totalThreads != null && totalThreads > 0 && perPage > 0) {
+      return (totalThreads / perPage).ceil();
+    }
+    if (perPage > 0 && itemCount >= perPage) return currentPage + 1;
+    return currentPage < 1 ? 1 : currentPage;
   }
 
   static List<Post> parsePostList(Map<String, dynamic> json) {
@@ -275,19 +301,41 @@ class ApiService {
     } catch (_) {}
   }
 
-  Future<List<Thread>> getThreadList(String fid, {int page = 1}) async {
-    final result = await getThreadListRaw(fid, page: page);
+  Future<List<Thread>> getThreadList(
+    String fid, {
+    int page = 1,
+    String? typeId,
+  }) async {
+    final result = await getThreadListRaw(fid, page: page, typeId: typeId);
     return parseThreadList(result);
+  }
+
+  static String buildThreadListUrl(
+    String fid, {
+    int page = 1,
+    String? typeId,
+  }) {
+    final params = <String, String>{
+      'fid': fid,
+      'page': page.toString(),
+      'tpp': '50',
+    };
+    if (typeId != null && typeId.isNotEmpty) {
+      params['filter'] = 'typeid';
+      params['typeid'] = typeId;
+    }
+    return buildApiUrl(
+      module: ApiConfig.moduleForumDisplay,
+      params: params,
+    );
   }
 
   Future<Map<String, dynamic>> getThreadListRaw(
     String fid, {
     int page = 1,
+    String? typeId,
   }) async {
-    final url = buildApiUrl(
-      module: ApiConfig.moduleForumDisplay,
-      params: {'fid': fid, 'page': page.toString()},
-    );
+    final url = buildThreadListUrl(fid, page: page, typeId: typeId);
     final response = await _httpClient.get(url);
     final json = ensureJson(response.data);
     _throwIfLoginRequiredWithNoData(json, parseThreadList(json).isNotEmpty);
@@ -410,8 +458,8 @@ class ApiService {
           );
         }
         // 部分错误体把 messageval 放在顶层
-        final topVal = dataMap['messageval']?.toString() ??
-            dataMap['error']?.toString();
+        final topVal =
+            dataMap['messageval']?.toString() ?? dataMap['error']?.toString();
         if (topVal != null && topVal.isNotEmpty) {
           return friendlyLoginError(
             messageval: topVal,
@@ -535,9 +583,8 @@ class ApiService {
       data['noticeauthor'] = quoteInfo.noticeAuthor;
       data['noticetrimstr'] = quoteInfo.noticeTrimStr;
       final abbr = (noticeAuthorMsg ?? message).trim();
-      data['noticeauthormsg'] = abbr.length <= 100
-          ? abbr
-          : '${abbr.substring(0, 100)}…';
+      data['noticeauthormsg'] =
+          abbr.length <= 100 ? abbr : '${abbr.substring(0, 100)}…';
     }
 
     try {
@@ -568,8 +615,7 @@ class ApiService {
           trimmed.contains('errorhandle_')) {
         return parseReplyResponse(data);
       }
-      if (looksLikeDiscuzMessageKey(trimmed) ||
-          trimmed.startsWith('mobile:')) {
+      if (looksLikeDiscuzMessageKey(trimmed) || trimmed.startsWith('mobile:')) {
         return ReplySubmitResult(
           error: friendlyDiscuzApiError(messageval: trimmed),
         );
@@ -1488,10 +1534,57 @@ class ApiService {
     return parsePmListHtml(html, page: page);
   }
 
-  /// 获取提醒列表（HTML 解析）。
-  Future<NoticeListResult> getNoticeList({int page = 1}) async {
+  /// 获取与指定用户的私信会话。
+  Future<PmConversationResult> getPmConversation(
+    String touid, {
+    int page = 1,
+  }) async {
+    final url = buildApiUrl(
+      module: ApiConfig.moduleMyPm,
+      params: {
+        'subop': 'view',
+        'touid': touid,
+        'page': page.toString(),
+      },
+    );
+    final response = await _httpClient.get(url);
+    final json = ensureJson(response.data);
+    checkAuthError(json);
+    return parsePmConversationJson(json, partnerUid: touid, page: page);
+  }
+
+  /// 获取提醒列表（v3 JSON 优先，同分类 HTML 兜底）。
+  Future<NoticeListResult> getNoticeList({
+    NoticeFeed feed = NoticeFeed.mypost,
+    int page = 1,
+  }) async {
+    try {
+      final url = buildApiUrl(
+        module: ApiConfig.moduleMyNoteList,
+        version: '3',
+        params: {
+          'view': feed.name,
+          'type': 'post',
+          'page': page.toString(),
+        },
+      );
+      final response = await _httpClient.get(url);
+      final json = ensureJson(response.data);
+      checkAuthError(json);
+      return parseNoticeListJson(json, page: page);
+    } catch (error, stackTrace) {
+      if (error is LoginRequiredException) rethrow;
+      talker.handle(error, stackTrace, 'mynotelist JSON failed; using HTML');
+    }
+    return getNoticeListHtml(feed: feed, page: page);
+  }
+
+  Future<NoticeListResult> getNoticeListHtml({
+    NoticeFeed feed = NoticeFeed.mypost,
+    int page = 1,
+  }) async {
     final url = '${ApiConfig.baseUrl}/home.php'
-        '?mod=space&do=notice&view=all&type=&isread=1&page=$page';
+        '?mod=space&do=notice&view=${feed.name}&type=&isread=1&page=$page';
     final response = await _httpClient.get(
       url,
       options: Options(responseType: ResponseType.plain),
@@ -1533,6 +1626,103 @@ class ApiService {
       items: items,
       currentPage: page,
       totalPages: totalPages.clamp(1, totalPages),
+    );
+  }
+
+  static PmConversationResult parsePmConversationJson(
+    Map<String, dynamic> json, {
+    required String partnerUid,
+    int page = 1,
+  }) {
+    final message = json['Message'] as Map<String, dynamic>?;
+    final messageval = message?['messageval']?.toString() ?? '';
+    if (messageval.contains('login_before_enter_home') ||
+        messageval.contains('to_login')) {
+      throw LoginRequiredException();
+    }
+
+    final variables = json['Variables'] as Map<String, dynamic>?;
+    if (variables == null) return PmConversationResult.empty;
+    final list = variables['list'];
+    if (list is! List) {
+      throw const FormatException('私信会话响应缺少 Variables.list');
+    }
+    final items = list
+        .whereType<Map>()
+        .map(
+          (item) => PrivateMessage.fromApiJson(
+            Map<String, dynamic>.from(item),
+            partnerUid: partnerUid,
+          ),
+        )
+        .toList();
+    final currentPage =
+        int.tryParse(variables['page']?.toString() ?? '') ?? page;
+    final perPage = int.tryParse(variables['perpage']?.toString() ?? '') ?? 20;
+    final count = int.tryParse(variables['count']?.toString() ?? '');
+    final totalPages = count != null && count > 0 && perPage > 0
+        ? (count / perPage).ceil()
+        : (items.length >= perPage ? currentPage + 1 : currentPage);
+    return PmConversationResult(
+      items: items,
+      currentPage: currentPage,
+      totalPages: totalPages < 1 ? 1 : totalPages,
+    );
+  }
+
+  static NoticeListResult parseNoticeListJson(
+    Map<String, dynamic> json, {
+    int page = 1,
+  }) {
+    final message = json['Message'] as Map<String, dynamic>?;
+    final messageval = message?['messageval']?.toString() ?? '';
+    if (messageval.contains('login_before_enter_home') ||
+        messageval.contains('to_login')) {
+      throw LoginRequiredException();
+    }
+
+    final variables = json['Variables'] as Map<String, dynamic>?;
+    final list = variables?['list'];
+    if (variables == null || list is! List) {
+      throw const FormatException('提醒响应缺少 Variables.list');
+    }
+    final items = <NoticeItem>[];
+    for (final raw in list.whereType<Map>()) {
+      final item = Map<String, dynamic>.from(raw);
+      final noteHtml = item['note']?.toString() ?? '';
+      final linkMatch = _findPostLinkRe.firstMatch(noteHtml);
+      final tid = linkMatch?.group(1) ?? linkMatch?.group(4) ?? '';
+      final pid = linkMatch?.group(2) ?? linkMatch?.group(3);
+      final authorUid = item['authorid']?.toString() ?? '';
+      final authorName = item['author']?.toString().trim() ?? '';
+      final summary = _stripHtml(noteHtml);
+      items.add(
+        NoticeItem(
+          id: item['id']?.toString() ?? '',
+          authorUid: authorUid,
+          authorName: authorName.isNotEmpty ? authorName : '系统通知',
+          summary: summary,
+          dateline: int.tryParse(item['dateline']?.toString() ?? '') ?? 0,
+          tid: tid,
+          pid: pid,
+          avatarUrl: PrivateMessageItem.avatarUrlForUid(authorUid),
+          type: _classifyNotice(summary),
+          isNew: item['new']?.toString() == '1',
+        ),
+      );
+    }
+
+    final currentPage =
+        int.tryParse(variables['page']?.toString() ?? '') ?? page;
+    final perPage = int.tryParse(variables['perpage']?.toString() ?? '') ?? 20;
+    final count = int.tryParse(variables['count']?.toString() ?? '');
+    final totalPages = count != null && count > 0 && perPage > 0
+        ? (count / perPage).ceil()
+        : (items.length >= perPage ? currentPage + 1 : currentPage);
+    return NoticeListResult(
+      items: items,
+      currentPage: currentPage,
+      totalPages: totalPages < 1 ? 1 : totalPages,
     );
   }
 
@@ -2442,9 +2632,8 @@ class ApiService {
       caseSensitive: false,
       dotAll: true,
     ).firstMatch(block);
-    final title = titleMatch != null
-        ? _stripHtml(titleMatch.group(1) ?? '')
-        : '';
+    final title =
+        titleMatch != null ? _stripHtml(titleMatch.group(1) ?? '') : '';
     if (title.isEmpty) return null;
 
     final paragraphs = RegExp(
@@ -2515,10 +2704,8 @@ class ApiService {
       r'space-uid-(\d+)|[?&]uid=(\d+)|uid[=/](\d+)',
       caseSensitive: false,
     ).firstMatch(block);
-    final uid = uidMatch?.group(1) ??
-        uidMatch?.group(2) ??
-        uidMatch?.group(3) ??
-        '';
+    final uid =
+        uidMatch?.group(1) ?? uidMatch?.group(2) ?? uidMatch?.group(3) ?? '';
     if (uid.isEmpty) return null;
 
     // 优先取用户名链接文本（跳过头像链接内的空/img）。

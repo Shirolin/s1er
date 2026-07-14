@@ -1,0 +1,17 @@
+{
+  "Variables": {
+    "page": 1,
+    "perpage": 20,
+    "count": 1,
+    "list": [
+      {
+        "id": "302",
+        "author": "",
+        "authorid": "0",
+        "dateline": "1700000180",
+        "new": "0",
+        "note": "这是一条不包含帖子链接的系统通知"
+      }
+    ]
+  }
+}

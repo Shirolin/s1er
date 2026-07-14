@@ -31,6 +31,7 @@ class ApiConfig {
   static const String moduleLogin = 'login';
   static const String moduleSendMessage = 'sendpm';
   static const String moduleMyPm = 'mypm';
+  static const String moduleMyNoteList = 'mynotelist';
   static const String moduleProfile = 'profile';
   static const String moduleMyFavThread = 'myfavthread';
   static const String moduleMyFavForum = 'myfavforum';

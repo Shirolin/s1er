@@ -23,7 +23,8 @@ abstract class S1MenuSpec {
     final base = MenuTheme.of(context).style ?? const MenuStyle();
     return base.copyWith(
       minimumSize: const WidgetStatePropertyAll(Size(minWidth, 0)),
-      maximumSize: const WidgetStatePropertyAll(Size(maxWidth, double.infinity)),
+      maximumSize:
+          const WidgetStatePropertyAll(Size(maxWidth, double.infinity)),
       fixedSize: const WidgetStatePropertyAll(Size.fromWidth(minWidth)),
       alignment: AlignmentDirectional.topEnd,
     );
@@ -99,7 +100,8 @@ class S1IconMenuAnchor extends StatelessWidget {
     this.icon = Icons.more_vert,
     this.alignmentOffset,
     this.iconButtonPadding = EdgeInsets.zero,
-    this.iconButtonConstraints = const BoxConstraints(minWidth: 40, minHeight: 40),
+    this.iconButtonConstraints =
+        const BoxConstraints(minWidth: 40, minHeight: 40),
   });
 
   final List<Widget> menuChildren;

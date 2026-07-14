@@ -1,5 +1,4 @@
 class ForumCategory {
-
   ForumCategory({
     required this.fid,
     required this.name,

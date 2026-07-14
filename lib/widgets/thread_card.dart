@@ -15,8 +15,10 @@ class ThreadCard extends ConsumerWidget {
   const ThreadCard({super.key, required this.thread});
   final Thread thread;
 
-  int _calcTotalPages(int replies,
-      {int perPage = S1Constants.postsPerPageFallback,}) {
+  int _calcTotalPages(
+    int replies, {
+    int perPage = S1Constants.postsPerPageFallback,
+  }) {
     return calcThreadTotalPages(replies, perPage: perPage);
   }
 
@@ -75,15 +77,13 @@ class ThreadCard extends ConsumerWidget {
     return Card(
       margin: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
       elevation: 0,
-      color: isSticky
-          ? scheme.primaryContainer
-          : scheme.surfaceContainerLow,
+      color: isSticky ? scheme.primaryContainer : scheme.surfaceContainerLow,
       shape: S1Shape.cardShape,
       child: InkWell(
         onTap: () => _handleTap(context, ref),
         borderRadius: S1Shape.medium,
         child: Padding(
-                      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
@@ -104,9 +104,8 @@ class ThreadCard extends ConsumerWidget {
                 totalPages: totalPages,
                 metaStyle: metaStyle,
                 scheme: scheme,
-                onPageTap: totalPages > 1
-                    ? () => _showPageSheet(context)
-                    : null,
+                onPageTap:
+                    totalPages > 1 ? () => _showPageSheet(context) : null,
               ),
               _ReadingProgressBar(
                 tid: thread.tid,
@@ -165,7 +164,8 @@ class _ReadingProgressBar extends ConsumerWidget {
                 backgroundColor: scheme.surfaceContainerHighest,
                 valueColor: AlwaysStoppedAnimation<Color>(
                   isFinished
-                      ? scheme.onSurfaceVariant.withValues(alpha: S1Alpha.medium)
+                      ? scheme.onSurfaceVariant
+                          .withValues(alpha: S1Alpha.medium)
                       : scheme.primary,
                 ),
               ),

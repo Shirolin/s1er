@@ -78,14 +78,14 @@ class ThreadDetailScreen extends ConsumerStatefulWidget {
 
 class _ThreadDetailScreenState extends ConsumerState<ThreadDetailScreen> {
   final _swipeKey = GlobalKey<S1SwipePaginationState>();
-  final _scrollFabVisibility =
-      ValueNotifier(const _ScrollFabVisibility());
+  final _scrollFabVisibility = ValueNotifier(const _ScrollFabVisibility());
   String? _scrollOncePid;
   bool _hasRecordedInitialVisit = false;
   int? _lastRecordedPage;
   bool _pendingInitialNavigation = false;
   bool _b3CorrectionDone = false;
   String? _highlightPid;
+
   /// 用户手动翻页后为 true，此时不再对 targetPid / highlight 做 ensureVisible。
   bool _manualPageChange = false;
 
@@ -240,14 +240,16 @@ class _ThreadDetailScreenState extends ConsumerState<ThreadDetailScreen> {
 
   /// 单击「下一楼」：滚至下一楼靠上展示；已是末楼则滚到页底。
   void _scrollToNextFloor() {
-    unawaited(_runScrollAction(
-      () async {
-        await ScrollFloorNavigator.scrollToNextFloor(
-          postKeys: _postKeys,
-          onAtLastFloor: () => unawaited(_scrollToBottomImpl()),
-        );
-      },
-    ),);
+    unawaited(
+      _runScrollAction(
+        () async {
+          await ScrollFloorNavigator.scrollToNextFloor(
+            postKeys: _postKeys,
+            onAtLastFloor: () => unawaited(_scrollToBottomImpl()),
+          );
+        },
+      ),
+    );
   }
 
   Future<void> _goToPage(int page) async {
@@ -360,9 +362,7 @@ class _ThreadDetailScreenState extends ConsumerState<ThreadDetailScreen> {
 
     final postKey = postIndex < _postKeys.length ? _postKeys[postIndex] : null;
 
-    if (isTarget &&
-        !_manualPageChange &&
-        _scrollOncePid != post.pid) {
+    if (isTarget && !_manualPageChange && _scrollOncePid != post.pid) {
       _scrollOncePid = post.pid;
       WidgetsBinding.instance.addPostFrameCallback((_) {
         if (!mounted) return;
@@ -407,8 +407,8 @@ class _ThreadDetailScreenState extends ConsumerState<ThreadDetailScreen> {
     }
 
     final currentUid = ref.watch(authStateProvider).user?.uid;
-    final canAddToBlacklist = post.authorId.isNotEmpty &&
-        post.authorId != currentUid;
+    final canAddToBlacklist =
+        post.authorId.isNotEmpty && post.authorId != currentUid;
 
     return RepaintBoundary(
       key: ValueKey(post.pid),
@@ -616,10 +616,9 @@ class _ThreadDetailScreenState extends ConsumerState<ThreadDetailScreen> {
                           builder: (context, fab, _) {
                             final showScrollAdvance = fab.showScrollDown ||
                                 (fab.atPageBottom && hasNextPage);
-                            final advanceMode =
-                                fab.atPageBottom && hasNextPage
-                                    ? ScrollNavAdvanceMode.nextPage
-                                    : ScrollNavAdvanceMode.nextFloor;
+                            final advanceMode = fab.atPageBottom && hasNextPage
+                                ? ScrollNavAdvanceMode.nextPage
+                                : ScrollNavAdvanceMode.nextFloor;
                             return S1FabStack(
                               scrollNav: S1ScrollNavConfig(
                                 showScrollToTop: fab.showScrollToTop,
@@ -649,15 +648,14 @@ class _ThreadDetailScreenState extends ConsumerState<ThreadDetailScreen> {
                           totalPages: state.totalPages,
                           onScrollMetricsChanged: _onScrollMetricsChanged,
                           onPageChanged: _goToPage,
-                          pageBuilder: (context, scrollController) =>
-                              Scrollbar(
+                          pageBuilder: (context, scrollController) => Scrollbar(
                             controller: scrollController,
                             child: state.posts.isEmpty
                                 ? const Center(child: Text('暂无回复'))
                                 : ListView.builder(
                                     controller: scrollController,
-                                    padding:
-                                        S1FabLayout.threadDetailScrollBottomPadding,
+                                    padding: S1FabLayout
+                                        .threadDetailScrollBottomPadding,
                                     itemCount: _detailItemCount(state),
                                     itemBuilder: (context, index) =>
                                         _buildDetailItem(

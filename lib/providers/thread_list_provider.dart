@@ -11,24 +11,43 @@ class ThreadListState {
     this.currentPage = 1,
     this.totalPages = 1,
     this.forumName,
+    this.threadTypes = const {},
+    this.selectedTypeId,
+    this.isLoading = false,
+    this.errorMessage,
   });
 
   final List<Thread> threads;
   final int currentPage;
   final int totalPages;
   final String? forumName;
+  final Map<String, String> threadTypes;
+  final String? selectedTypeId;
+  final bool isLoading;
+  final String? errorMessage;
 
   ThreadListState copyWith({
     List<Thread>? threads,
     int? currentPage,
     int? totalPages,
     String? forumName,
+    Map<String, String>? threadTypes,
+    String? selectedTypeId,
+    bool clearSelectedType = false,
+    bool? isLoading,
+    String? errorMessage,
+    bool clearError = false,
   }) {
     return ThreadListState(
       threads: threads ?? this.threads,
       currentPage: currentPage ?? this.currentPage,
       totalPages: totalPages ?? this.totalPages,
       forumName: forumName ?? this.forumName,
+      threadTypes: threadTypes ?? this.threadTypes,
+      selectedTypeId:
+          clearSelectedType ? null : (selectedTypeId ?? this.selectedTypeId),
+      isLoading: isLoading ?? this.isLoading,
+      errorMessage: clearError ? null : (errorMessage ?? this.errorMessage),
     );
   }
 }
@@ -37,6 +56,8 @@ class ThreadListNotifier extends AsyncNotifier<ThreadListState> {
   ThreadListNotifier(this.fid);
 
   final String fid;
+  String? _selectedTypeId;
+  Map<String, String> _threadTypes = const {};
 
   @override
   Future<ThreadListState> build() {
@@ -48,8 +69,14 @@ class ThreadListNotifier extends AsyncNotifier<ThreadListState> {
   ApiService get _apiService => ref.watch(apiServiceProvider);
 
   Future<ThreadListState> _loadPage(int page) async {
-    final result = await _apiService.getThreadListRaw(fid, page: page);
+    final result = await _apiService.getThreadListRaw(
+      fid,
+      page: page,
+      typeId: _selectedTypeId,
+    );
     final threads = ApiService.parseThreadList(result);
+    final parsedTypes = ApiService.parseThreadTypes(result);
+    if (parsedTypes.isNotEmpty) _threadTypes = parsedTypes;
     final filtered = threads
         .where(
           (t) =>
@@ -59,45 +86,96 @@ class ThreadListNotifier extends AsyncNotifier<ThreadListState> {
                   .hasScope(t.authorId, BlacklistRecord.scopeThread),
         )
         .toList();
-    final totalPages = _extractTotalPages(result);
+    final totalPages = ApiService.parseThreadListTotalPages(
+      result,
+      currentPage: page,
+      itemCount: threads.length,
+      isFiltered: _selectedTypeId != null,
+    );
     return ThreadListState(
       threads: filtered,
       currentPage: page,
       totalPages: totalPages,
       forumName: ApiService.parseForumDisplayName(result),
+      threadTypes: _threadTypes,
+      selectedTypeId: _selectedTypeId,
     );
-  }
-
-  int _extractTotalPages(Map<String, dynamic> json) {
-    final variables = json['Variables'] as Map<String, dynamic>?;
-    if (variables == null) return 1;
-
-    final forum = variables['forum'] as Map<String, dynamic>?;
-    int? totalThreads;
-    if (forum != null) {
-      totalThreads = int.tryParse(forum['threads']?.toString() ?? '');
-    }
-    totalThreads ??= int.tryParse(
-      (variables['threadcount'] ?? variables['threads'])?.toString() ?? '',
-    );
-    if (totalThreads == null || totalThreads <= 0) return 1;
-
-    final perPage = int.tryParse(variables['tpp']?.toString() ?? '') ?? 30;
-    if (perPage <= 0) return 1;
-    return (totalThreads / perPage).ceil();
   }
 
   Future<void> goToPage(int page) async {
     final current = state.asData?.value;
-    state = await AsyncValue.guard(() => _loadPage(page));
-    if (state.hasError && current != null) {
-      state = AsyncValue.data(current);
+    if (current != null) {
+      state = AsyncValue.data(
+        current.copyWith(isLoading: true, clearError: true),
+      );
+    }
+    try {
+      state = AsyncValue.data(await _loadPage(page));
+    } catch (error) {
+      if (current != null) {
+        state = AsyncValue.data(
+          current.copyWith(isLoading: false, errorMessage: error.toString()),
+        );
+      } else {
+        rethrow;
+      }
+    }
+  }
+
+  Future<void> selectType(String? typeId) async {
+    final normalized = typeId == null || typeId.isEmpty ? null : typeId;
+    if (_selectedTypeId == normalized) return;
+    final previousType = _selectedTypeId;
+    final current = state.asData?.value;
+    _selectedTypeId = normalized;
+    if (current != null) {
+      state = AsyncValue.data(
+        ThreadListState(
+          threads: current.threads,
+          currentPage: current.currentPage,
+          totalPages: current.totalPages,
+          forumName: current.forumName,
+          threadTypes: current.threadTypes,
+          selectedTypeId: normalized,
+          isLoading: true,
+        ),
+      );
+    }
+    try {
+      state = AsyncValue.data(await _loadPage(1));
+    } catch (error) {
+      _selectedTypeId = previousType;
+      if (current != null) {
+        state = AsyncValue.data(
+          current.copyWith(isLoading: false, errorMessage: error.toString()),
+        );
+      } else {
+        rethrow;
+      }
     }
   }
 
   Future<void> refresh() async {
-    state = const AsyncValue.loading();
-    state = await AsyncValue.guard(() => _loadPage(1));
+    final current = state.asData?.value;
+    final page = current?.currentPage ?? 1;
+    if (current != null) {
+      state = AsyncValue.data(
+        current.copyWith(isLoading: true, clearError: true),
+      );
+    } else {
+      state = const AsyncValue.loading();
+    }
+    try {
+      state = AsyncValue.data(await _loadPage(page));
+    } catch (error, stackTrace) {
+      if (current != null) {
+        state = AsyncValue.data(
+          current.copyWith(isLoading: false, errorMessage: error.toString()),
+        );
+      } else {
+        state = AsyncValue.error(error, stackTrace);
+      }
+    }
   }
 }
 

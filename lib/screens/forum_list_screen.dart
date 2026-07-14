@@ -12,9 +12,9 @@ import '../widgets/s1_error_view.dart';
 import '../widgets/s1_fab_layout.dart';
 import '../widgets/s1_swipe_pagination.dart';
 import '../widgets/thread_card.dart';
+import '../utils/s1_snack_bar.dart';
 
 class ForumListScreen extends ConsumerStatefulWidget {
-
   const ForumListScreen({super.key, required this.fid});
   final String fid;
 
@@ -38,7 +38,15 @@ class _ForumListScreenState extends ConsumerState<ForumListScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final threadsAsync = ref.watch(threadListProvider(widget.fid));
+    final provider = threadListProvider(widget.fid);
+    final threadsAsync = ref.watch(provider);
+    ref.listen(provider, (previous, next) {
+      final previousMessage = previous?.asData?.value.errorMessage;
+      final message = next.asData?.value.errorMessage;
+      if (message != null && message != previousMessage) {
+        S1SnackBar.show(context, message: '加载失败：$message');
+      }
+    });
     final forum = ref.watch(forumNameProvider(widget.fid)) ??
         threadsAsync.asData?.value.forumName ??
         '';
@@ -74,69 +82,127 @@ class _ForumListScreenState extends ConsumerState<ForumListScreen> {
         ),
         data: (state) {
           return Column(
-          children: [
-            Expanded(
-              child: S1ContentFabOverlay(
-                fab: S1FabStack(
-                  scrollNav: S1ScrollNavConfig(
-                    showScrollToTop: _showScrollToTop,
-                    showScrollAdvance: false,
-                    onScrollToTop: () =>
-                        _swipeKey.currentState?.scrollToTop(),
-                  ),
+            children: [
+              if (state.isLoading) const LinearProgressIndicator(),
+              if (state.threadTypes.isNotEmpty)
+                _ThreadTypeFilterBar(
+                  threadTypes: state.threadTypes,
+                  selectedTypeId: state.selectedTypeId,
+                  enabled: !state.isLoading,
+                  onSelected: (typeId) =>
+                      ref.read(provider.notifier).selectType(typeId),
                 ),
-                child: S1SwipePagination(
-                  key: _swipeKey,
-                  currentPage: state.currentPage,
-                  totalPages: state.totalPages,
-                  onScrollMetricsChanged: _onScrollMetricsChanged,
-                  onPageChanged: (page) => ref
-                      .read(threadListProvider(widget.fid).notifier)
-                      .goToPage(page),
-                  pageBuilder: (context, scrollController) => Scrollbar(
-                    controller: scrollController,
-                    child: RefreshIndicator(
-                      onRefresh: () => ref
-                          .read(threadListProvider(widget.fid).notifier)
-                          .refresh(),
-                      child: state.threads.isEmpty
-                          ? ListView(
-                              controller: scrollController,
-                              children: const [
-                                SizedBox(height: 48),
-                                Center(child: Text('暂无帖子')),
-                              ],
-                            )
-                          : ListView.builder(
-                              controller: scrollController,
-                              padding: S1FabLayout.scrollBottomPadding,
-                              itemCount: state.threads.length,
-                              itemBuilder: (context, index) {
-                                final thread = state.threads[index];
-                                return RepaintBoundary(
-                                  key: ValueKey('thread_card_${thread.tid}'),
-                                  child: ThreadCard(
-                                    key: ValueKey(thread.tid),
-                                    thread: thread,
+              Expanded(
+                child: S1ContentFabOverlay(
+                  fab: S1FabStack(
+                    scrollNav: S1ScrollNavConfig(
+                      showScrollToTop: _showScrollToTop,
+                      showScrollAdvance: false,
+                      onScrollToTop: () =>
+                          _swipeKey.currentState?.scrollToTop(),
+                    ),
+                  ),
+                  child: S1SwipePagination(
+                    key: _swipeKey,
+                    currentPage: state.currentPage,
+                    totalPages: state.totalPages,
+                    onScrollMetricsChanged: _onScrollMetricsChanged,
+                    onPageChanged: (page) => ref
+                        .read(threadListProvider(widget.fid).notifier)
+                        .goToPage(page),
+                    pageBuilder: (context, scrollController) => Scrollbar(
+                      controller: scrollController,
+                      child: RefreshIndicator(
+                        onRefresh: () => ref
+                            .read(threadListProvider(widget.fid).notifier)
+                            .refresh(),
+                        child: state.threads.isEmpty
+                            ? ListView(
+                                controller: scrollController,
+                                children: [
+                                  const SizedBox(height: 48),
+                                  Center(
+                                    child: Text(
+                                      state.selectedTypeId == null
+                                          ? '暂无帖子'
+                                          : '该分类暂无帖子',
+                                    ),
                                   ),
-                                );
-                              },
-                            ),
+                                ],
+                              )
+                            : ListView.builder(
+                                controller: scrollController,
+                                padding: S1FabLayout.scrollBottomPadding,
+                                itemCount: state.threads.length,
+                                itemBuilder: (context, index) {
+                                  final thread = state.threads[index];
+                                  return RepaintBoundary(
+                                    key: ValueKey('thread_card_${thread.tid}'),
+                                    child: ThreadCard(
+                                      key: ValueKey(thread.tid),
+                                      thread: thread,
+                                    ),
+                                  );
+                                },
+                              ),
+                      ),
                     ),
                   ),
                 ),
               ),
-            ),
-            PaginationBar(
-              currentPage: state.currentPage,
-              totalPages: state.totalPages,
-              onPageChanged: (page) => ref
-                  .read(threadListProvider(widget.fid).notifier)
-                  .goToPage(page),
-            ),
-          ],
-        );
+              PaginationBar(
+                currentPage: state.currentPage,
+                totalPages: state.totalPages,
+                onPageChanged: (page) => ref
+                    .read(threadListProvider(widget.fid).notifier)
+                    .goToPage(page),
+              ),
+            ],
+          );
         },
+      ),
+    );
+  }
+}
+
+class _ThreadTypeFilterBar extends StatelessWidget {
+  const _ThreadTypeFilterBar({
+    required this.threadTypes,
+    required this.selectedTypeId,
+    required this.enabled,
+    required this.onSelected,
+  });
+
+  final Map<String, String> threadTypes;
+  final String? selectedTypeId;
+  final bool enabled;
+  final ValueChanged<String?> onSelected;
+
+  @override
+  Widget build(BuildContext context) {
+    return SingleChildScrollView(
+      scrollDirection: Axis.horizontal,
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+      child: Row(
+        children: [
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 4),
+            child: FilterChip(
+              label: const Text('全部'),
+              selected: selectedTypeId == null,
+              onSelected: enabled ? (_) => onSelected(null) : null,
+            ),
+          ),
+          for (final entry in threadTypes.entries)
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 4),
+              child: FilterChip(
+                label: Text(entry.value),
+                selected: selectedTypeId == entry.key,
+                onSelected: enabled ? (_) => onSelected(entry.key) : null,
+              ),
+            ),
+        ],
       ),
     );
   }

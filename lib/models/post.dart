@@ -1,7 +1,6 @@
 import 'user.dart';
 
 class Post {
-
   Post({
     required this.pid,
     required this.message,

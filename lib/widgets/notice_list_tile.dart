@@ -29,9 +29,8 @@ class NoticeListTile extends StatelessWidget {
   Widget build(BuildContext context) {
     final scheme = Theme.of(context).colorScheme;
     final textTheme = Theme.of(context).textTheme;
-    final letter = item.authorName.isNotEmpty
-        ? item.authorName.characters.first
-        : '?';
+    final letter =
+        item.authorName.isNotEmpty ? item.authorName.characters.first : '?';
 
     return Card(
       margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
@@ -64,7 +63,8 @@ class NoticeListTile extends StatelessWidget {
             ),
             Text(
               formatTimeAgo(item.dateline),
-              style: textTheme.labelSmall?.copyWith(color: scheme.onSurfaceVariant),
+              style: textTheme.labelSmall
+                  ?.copyWith(color: scheme.onSurfaceVariant),
             ),
           ],
         ),

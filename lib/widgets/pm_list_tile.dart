@@ -18,9 +18,8 @@ class PmListTile extends StatelessWidget {
   Widget build(BuildContext context) {
     final scheme = Theme.of(context).colorScheme;
     final textTheme = Theme.of(context).textTheme;
-    final letter = item.partnerName.isNotEmpty
-        ? item.partnerName.characters.first
-        : '?';
+    final letter =
+        item.partnerName.isNotEmpty ? item.partnerName.characters.first : '?';
 
     return Card(
       margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
@@ -36,7 +35,9 @@ class PmListTile extends StatelessWidget {
           fallbackLetter: letter,
         ),
         title: Text(
-          item.isOutgoing ? '我对 ${item.partnerName} 说' : '${item.partnerName} 对我说',
+          item.isOutgoing
+              ? '我对 ${item.partnerName} 说'
+              : '${item.partnerName} 对我说',
           maxLines: 1,
           overflow: TextOverflow.ellipsis,
           style: textTheme.titleSmall,

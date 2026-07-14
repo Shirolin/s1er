@@ -1,4 +1,4 @@
-﻿import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../models/user_space_item.dart';
 import '../services/api_service.dart';
 import '../services/talker.dart';
@@ -144,7 +144,8 @@ class UserSpaceNotifier extends AsyncNotifier<UserSpaceState> {
     state = await AsyncValue.guard(() async {
       final threads = isSelf
           ? await _apiService.getMySpaceList(type: 'thread', page: 1)
-          : await _apiService.getUserSpaceList(uid: uid, type: 'thread', page: 1);
+          : await _apiService.getUserSpaceList(
+              uid: uid, type: 'thread', page: 1,);
       var next = UserSpaceState(
         threads: threads.items,
         threadTotalPages: threads.totalPages,

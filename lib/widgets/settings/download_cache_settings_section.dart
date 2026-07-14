@@ -71,9 +71,7 @@ class _DownloadCacheSettingsSectionState
         _sizeRequested ? ref.watch(imageCacheSizeProvider) : null;
 
     final cacheSummary = !_sizeRequested
-        ? (kIsWeb
-            ? '浏览器管理磁盘缓存；可清除应用内图片内存缓存'
-            : '点击「查看占用」统计本地图片缓存')
+        ? (kIsWeb ? '浏览器管理磁盘缓存；可清除应用内图片内存缓存' : '点击「查看占用」统计本地图片缓存')
         : cacheSizeAsync!.when(
             data: (bytes) {
               if (kIsWeb) {
@@ -95,8 +93,10 @@ class _DownloadCacheSettingsSectionState
             const SettingsSectionHeader(title: '下载与缓存'),
             const SizedBox(height: 8),
             ListTile(
-              leading: Icon(Icons.sd_storage_outlined,
-                  color: scheme.onSurfaceVariant,),
+              leading: Icon(
+                Icons.sd_storage_outlined,
+                color: scheme.onSurfaceVariant,
+              ),
               title: const Text('图片缓存占用'),
               subtitle: Text(
                 cacheSummary,

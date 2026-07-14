@@ -1,7 +1,9 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import '../models/blacklist_record.dart';
 import '../models/private_message_item.dart';
 import '../services/api_service.dart';
 import 'api_service_provider.dart';
+import 'blacklist_provider.dart';
 
 class PmListState {
   PmListState({
@@ -35,6 +37,7 @@ class PmListNotifier extends AsyncNotifier<PmListState> {
   @override
   Future<PmListState> build() async {
     if (seed != null) return seed!;
+    ref.watch(blacklistProvider);
     return _loadPage(1);
   }
 
@@ -42,8 +45,13 @@ class PmListNotifier extends AsyncNotifier<PmListState> {
 
   Future<PmListState> _loadPage(int page) async {
     final result = await _apiService.getPmList(page: page);
+    final blacklist = ref.read(blacklistServiceProvider);
     return PmListState(
-      items: result.items,
+      items: result.items
+          .where(
+            (item) => !blacklist.hasScope(item.touid, BlacklistRecord.scopePm),
+          )
+          .toList(),
       currentPage: result.currentPage,
       totalPages: result.totalPages,
     );

@@ -24,7 +24,8 @@ class FavoriteBookmarkButton extends ConsumerStatefulWidget {
       _FavoriteBookmarkButtonState();
 }
 
-class _FavoriteBookmarkButtonState extends ConsumerState<FavoriteBookmarkButton> {
+class _FavoriteBookmarkButtonState
+    extends ConsumerState<FavoriteBookmarkButton> {
   bool _busy = false;
   bool _syncRequested = false;
 

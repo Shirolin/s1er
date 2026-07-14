@@ -73,8 +73,7 @@ class BbcodeQuoteSplitter {
           BbcodeQuoteSegment(text.substring(lastEnd, match.start), false),
         );
       }
-      final content =
-          match.group(1) ?? match.group(2) ?? match.group(3) ?? '';
+      final content = match.group(1) ?? match.group(2) ?? match.group(3) ?? '';
       segments.add(BbcodeQuoteSegment(content, true));
       lastEnd = match.end;
     }

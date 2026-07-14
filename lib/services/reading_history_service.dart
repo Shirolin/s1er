@@ -68,14 +68,14 @@ class ReadingHistoryService {
     final records = <ReadingRecord>[];
     for (final entry in _local.readingHistory.entries) {
       if (!_belongsToUser(entry.key)) continue;
-      records.add(ReadingRecord.fromJson(Map<String, dynamic>.from(entry.value)));
+      records
+          .add(ReadingRecord.fromJson(Map<String, dynamic>.from(entry.value)));
     }
     records.sort((a, b) => b.lastReadAt.compareTo(a.lastReadAt));
     return records;
   }
 
-  int get count =>
-      _local.readingHistory.keys.where(_belongsToUser).length;
+  int get count => _local.readingHistory.keys.where(_belongsToUser).length;
 
   void deleteRecord(String tid) {
     _local.deleteReadingRecord(_uid, tid);
@@ -116,8 +116,7 @@ class ReadingHistoryService {
   }
 
   void _evictIfNeeded() {
-    final keys =
-        _local.readingHistory.keys.where(_belongsToUser).toList();
+    final keys = _local.readingHistory.keys.where(_belongsToUser).toList();
     if (keys.length <= maxRecords) return;
     keys.sort((a, b) {
       final at =

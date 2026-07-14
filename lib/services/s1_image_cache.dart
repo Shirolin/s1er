@@ -160,7 +160,8 @@ class S1ImageCache {
     if (cacheDir == null || !await cacheDir.exists()) return;
 
     final files = <File>[];
-    await for (final entity in cacheDir.list(recursive: true, followLinks: false)) {
+    await for (final entity
+        in cacheDir.list(recursive: true, followLinks: false)) {
       if (entity is File) {
         files.add(entity);
       }

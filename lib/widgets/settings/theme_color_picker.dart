@@ -68,7 +68,8 @@ class ThemeColorPicker extends StatelessWidget {
                             boxShadow: isSelected
                                 ? [
                                     BoxShadow(
-                                      color: color.withValues(alpha: S1Alpha.cardOverlay),
+                                      color: color.withValues(
+                                          alpha: S1Alpha.cardOverlay,),
                                       blurRadius: 8,
                                       spreadRadius: 2,
                                     ),
@@ -97,7 +98,9 @@ class ThemeColorPicker extends StatelessWidget {
                     Text(
                       _shortLabels[key] ?? key,
                       style: textTheme.labelMedium?.copyWith(
-                        color: isSelected ? scheme.primary : scheme.onSurfaceVariant,
+                        color: isSelected
+                            ? scheme.primary
+                            : scheme.onSurfaceVariant,
                         fontWeight: isSelected ? FontWeight.bold : null,
                       ),
                     ),

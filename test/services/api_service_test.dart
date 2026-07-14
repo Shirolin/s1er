@@ -23,6 +23,14 @@ void main() {
         expect(url, contains('version=4'));
       });
 
+      test('supports an explicit API version', () {
+        final url = ApiService.buildApiUrl(
+          module: 'mynotelist',
+          version: '3',
+        );
+        expect(url, contains('version=3'));
+      });
+
       test('builds URL with module only', () {
         final url = ApiService.buildApiUrl(module: 'forumindex');
         expect(url, contains('module=forumindex'));
@@ -41,6 +49,26 @@ void main() {
       test('starts with mobile API URL', () {
         final url = ApiService.buildApiUrl(module: 'forumindex');
         expect(url, startsWith('https://stage1st.com/2b/api/mobile/index.php'));
+      });
+
+      test('builds separate forum type filter parameters', () {
+        final url = Uri.parse(
+          ApiService.buildThreadListUrl('4', page: 2, typeId: '8'),
+        );
+
+        expect(url.queryParameters['fid'], '4');
+        expect(url.queryParameters['page'], '2');
+        expect(url.queryParameters['filter'], 'typeid');
+        expect(url.queryParameters['typeid'], '8');
+        expect(url.queryParameters['tpp'], '50');
+      });
+
+      test('omits type filter for the full forum list', () {
+        final url = Uri.parse(ApiService.buildThreadListUrl('4'));
+
+        expect(url.queryParameters.containsKey('filter'), isFalse);
+        expect(url.queryParameters.containsKey('typeid'), isFalse);
+        expect(url.queryParameters['tpp'], '50');
       });
     });
 
@@ -138,6 +166,38 @@ void main() {
         expect(threads.length, 1);
         expect(threads[0].tid, '123');
         expect(threads[0].views, 100);
+      });
+
+      test('uses filtered threadcount before forum total for pagination', () {
+        final pages = ApiService.parseThreadListTotalPages(
+          {
+            'Variables': {
+              'threadcount': '72',
+              'tpp': '50',
+              'forum': {'threads': '9999'},
+            },
+          },
+          currentPage: 1,
+          itemCount: 50,
+          isFiltered: true,
+        );
+
+        expect(pages, 2);
+      });
+
+      test('infers a next filtered page when count is absent', () {
+        final pages = ApiService.parseThreadListTotalPages(
+          {
+            'Variables': {
+              'forum': {'threads': '9999'},
+            },
+          },
+          currentPage: 2,
+          itemCount: 50,
+          isFiltered: true,
+        );
+
+        expect(pages, 3);
       });
     });
 

@@ -158,7 +158,8 @@ class _PaginationBarState extends State<PaginationBar> {
                     return SingleChildScrollView(
                       scrollDirection: Axis.horizontal,
                       child: ConstrainedBox(
-                        constraints: BoxConstraints(minWidth: constraints.maxWidth),
+                        constraints:
+                            BoxConstraints(minWidth: constraints.maxWidth),
                         child: Row(
                           mainAxisAlignment: MainAxisAlignment.center,
                           children: controls,
@@ -229,7 +230,8 @@ class _PageIndicator extends StatelessWidget {
                     size: 24,
                     color: enabled
                         ? scheme.onSecondaryContainer
-                        : scheme.onSurface.withValues(alpha: S1Alpha.disabledIcon),
+                        : scheme.onSurface
+                            .withValues(alpha: S1Alpha.disabledIcon),
                   ),
                 ],
               ),
@@ -269,7 +271,8 @@ class _PaginationIconButton extends StatelessWidget {
           S1BottomBarStyle.minTouchTarget,
         ),
         foregroundColor: scheme.onSurfaceVariant,
-        disabledForegroundColor: scheme.onSurface.withValues(alpha: S1Alpha.disabledIcon),
+        disabledForegroundColor:
+            scheme.onSurface.withValues(alpha: S1Alpha.disabledIcon),
       ),
     );
   }

@@ -120,7 +120,8 @@ class PostImageUrls {
 
     final uri = Uri.tryParse(url);
     if (uri == null) return null;
-    if (uri.path.contains('forum.php') && uri.queryParameters['mod'] == 'image') {
+    if (uri.path.contains('forum.php') &&
+        uri.queryParameters['mod'] == 'image') {
       final params = Map<String, String>.from(uri.queryParameters);
       params.remove('size');
       params['size'] = 'source';

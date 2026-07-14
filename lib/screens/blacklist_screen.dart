@@ -115,7 +115,11 @@ class _EmptyState extends StatelessWidget {
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            Icon(Icons.block_outlined, size: 56, color: scheme.onSurfaceVariant),
+            Icon(
+              Icons.block_outlined,
+              size: 56,
+              color: scheme.onSurfaceVariant,
+            ),
             const SizedBox(height: 16),
             Text(
               '暂无屏蔽用户',
@@ -365,7 +369,7 @@ class _BlacklistEditorDialogState extends State<_BlacklistEditorDialog> {
                   },
                 ),
                 FilterChip(
-                  label: const Text('私信（预留）'),
+                  label: const Text('私信'),
                   selected: _scopes.contains(BlacklistRecord.scopePm),
                   onSelected: (selected) {
                     setState(() {
@@ -403,7 +407,7 @@ String _scopeLabel(String scope) {
     case BlacklistRecord.scopePost:
       return '帖内楼层';
     case BlacklistRecord.scopePm:
-      return '私信（预留）';
+      return '私信';
     default:
       return scope;
   }

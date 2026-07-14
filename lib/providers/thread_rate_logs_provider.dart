@@ -56,8 +56,8 @@ class ThreadRateLogsNotifier extends Notifier<Map<String, PostRateLog>> {
   }
 }
 
-final threadRateLogsProvider = NotifierProvider
-    .family<ThreadRateLogsNotifier, Map<String, PostRateLog>, String>(
+final threadRateLogsProvider = NotifierProvider.family<ThreadRateLogsNotifier,
+    Map<String, PostRateLog>, String>(
   ThreadRateLogsNotifier.new,
 );
 

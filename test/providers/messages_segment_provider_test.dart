@@ -1,4 +1,5 @@
 import 'package:flutter_test/flutter_test.dart';
+import 'package:s1_app/models/notice_item.dart';
 import 'package:s1_app/providers/messages_segment_provider.dart';
 
 void main() {
@@ -11,7 +12,12 @@ void main() {
   test('messagesBrowserUrl returns notice page for segment 1', () {
     final url = messagesBrowserUrl(1);
     expect(url, contains('do=notice'));
-    expect(url, contains('view=all'));
+    expect(url, contains('view=mypost'));
     expect(url, contains('isread=1'));
+  });
+
+  test('messagesBrowserUrl follows selected system notice feed', () {
+    final url = messagesBrowserUrl(1, noticeFeed: NoticeFeed.system);
+    expect(url, contains('view=system'));
   });
 }

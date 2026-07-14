@@ -10,7 +10,6 @@ import '../models/quote_info.dart';
 import '../providers/auth_provider.dart';
 import '../providers/compose_provider.dart';
 import '../providers/settings_provider.dart';
-import '../services/external_image_upload_service.dart';
 import '../theme/app_theme.dart';
 import '../utils/compose_draft_store.dart';
 import '../utils/compose_img_tags.dart';
@@ -288,8 +287,10 @@ class _ComposeScreenState extends ConsumerState<ComposeScreen> {
 
   void _insertEmoticon(String entity) {
     final selection = _messageController.selection;
-    final start = selection.isValid ? selection.start : _messageController.text.length;
-    final end = selection.isValid ? selection.end : _messageController.text.length;
+    final start =
+        selection.isValid ? selection.start : _messageController.text.length;
+    final end =
+        selection.isValid ? selection.end : _messageController.text.length;
     final result = insertEmoticonEntity(
       text: _messageController.text,
       start: start,
@@ -431,8 +432,7 @@ class _ComposeScreenState extends ConsumerState<ComposeScreen> {
             filename: pending.filename,
           );
       if (!mounted) return;
-      final label =
-          pending.filename.trim().isEmpty ? '图片' : pending.filename;
+      final label = pending.filename.trim().isEmpty ? '图片' : pending.filename;
       _imageLabelsByUrl[url] = label;
       final selection = _messageController.selection;
       final start =
@@ -451,23 +451,11 @@ class _ComposeScreenState extends ConsumerState<ComposeScreen> {
       );
       setState(() => _pendingUpload = null);
       S1SnackBar.show(context, message: '图片已插入', bottomClearance: 72);
-    } on ExternalImageUploadException catch (e) {
+    } catch (e) {
       if (mounted) {
         S1SnackBar.show(
           context,
-          message: e.message,
-          bottomClearance: 72,
-          actionLabel: '重试',
-          onAction: () {
-            if (mounted) unawaited(_uploadPendingImage());
-          },
-        );
-      }
-    } catch (_) {
-      if (mounted) {
-        S1SnackBar.show(
-          context,
-          message: '图片上传失败',
+          message: e.toString(),
           bottomClearance: 72,
           actionLabel: '重试',
           onAction: () {
@@ -625,8 +613,7 @@ class _ComposeScreenState extends ConsumerState<ComposeScreen> {
                 loading: _quotePrefetching,
                 error: _quotePrefetchError,
               ),
-            if (subject != null)
-              _ComposeSubjectLine(subject: subject),
+            if (subject != null) _ComposeSubjectLine(subject: subject),
             if (_uploadedImages.isNotEmpty)
               _ComposeImageStrip(
                 images: List.unmodifiable(_uploadedImages),
@@ -772,11 +759,11 @@ class _ComposeSubjectLineState extends State<_ComposeSubjectLine> {
                 child: Text(
                   '主题 · ${widget.subject}',
                   maxLines: _expanded ? null : 1,
-                  overflow: _expanded ? TextOverflow.visible : TextOverflow.ellipsis,
+                  overflow:
+                      _expanded ? TextOverflow.visible : TextOverflow.ellipsis,
                   style: textTheme.labelMedium?.copyWith(
-                    color: _expanded
-                        ? scheme.onSurface
-                        : scheme.onSurfaceVariant,
+                    color:
+                        _expanded ? scheme.onSurface : scheme.onSurfaceVariant,
                   ),
                 ),
               ),
@@ -812,8 +799,7 @@ class _ComposeQuoteBanner extends StatelessWidget {
     final scheme = Theme.of(context).colorScheme;
     final textTheme = Theme.of(context).textTheme;
     final post = this.post;
-    final preview =
-        post == null ? '' : QuoteBuilder.previewText(post.message);
+    final preview = post == null ? '' : QuoteBuilder.previewText(post.message);
     final title = post == null
         ? '引用楼层'
         : displayFloor > 0

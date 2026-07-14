@@ -22,13 +22,18 @@ abstract class S1ScrollMotion {
     if (viewport <= 0) return minDuration;
     final normalized = (delta / viewport).clamp(0.0, 3.5);
     final ms = 200 + normalized * normalized * 240;
-    final cap = toBottom ? bottomMaxDuration.inMilliseconds : maxDuration.inMilliseconds;
-    return Duration(milliseconds: ms.round().clamp(minDuration.inMilliseconds, cap));
+    final cap = toBottom
+        ? bottomMaxDuration.inMilliseconds
+        : maxDuration.inMilliseconds;
+    return Duration(
+        milliseconds: ms.round().clamp(minDuration.inMilliseconds, cap),);
   }
 
   static Curve curveForDelta(double delta, double viewport) {
     if (viewport <= 0) return Curves.easeOutCubic;
-    return delta < viewport * 0.55 ? Curves.easeOutCubic : Curves.easeInOutCubic;
+    return delta < viewport * 0.55
+        ? Curves.easeOutCubic
+        : Curves.easeInOutCubic;
   }
 
   /// 滚至固定目标；已到位则跳过。
@@ -41,7 +46,8 @@ abstract class S1ScrollMotion {
   }) async {
     if (!position.hasPixels) return;
 
-    final clamped = target.clamp(position.minScrollExtent, position.maxScrollExtent);
+    final clamped =
+        target.clamp(position.minScrollExtent, position.maxScrollExtent);
     final delta = (clamped - position.pixels).abs();
     if (delta <= tolerance) return;
 
@@ -69,7 +75,8 @@ abstract class S1ScrollMotion {
         position,
         max,
         duration: pass == 0
-            ? durationForDelta(delta, position.viewportDimension, toBottom: true)
+            ? durationForDelta(delta, position.viewportDimension,
+                toBottom: true,)
             : correctionDuration,
         curve: pass == 0 ? null : Curves.easeOut,
       );
@@ -107,7 +114,8 @@ abstract class S1ScrollMotion {
   ) async {
     if (!position.hasPixels) return;
 
-    final clamped = target.clamp(position.minScrollExtent, position.maxScrollExtent);
+    final clamped =
+        target.clamp(position.minScrollExtent, position.maxScrollExtent);
     final delta = (clamped - position.pixels).abs();
     if (delta <= settleTolerance) return;
 

@@ -122,7 +122,8 @@ class _PagePickerSheetState extends State<PagePickerSheet> {
                         ),
                       ),
                       Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                        padding: const EdgeInsets.symmetric(
+                            horizontal: 10, vertical: 4,),
                         decoration: BoxDecoration(
                           color: scheme.secondaryContainer,
                           borderRadius: S1Shape.medium,
@@ -179,7 +180,8 @@ class _PagePickerSheetState extends State<PagePickerSheet> {
                           borderRadius: S1Shape.medium,
                         ),
                         focusedBorder: OutlineInputBorder(
-                          borderSide: BorderSide(color: scheme.primary, width: 2),
+                          borderSide:
+                              BorderSide(color: scheme.primary, width: 2),
                           borderRadius: S1Shape.medium,
                         ),
                         errorBorder: OutlineInputBorder(
@@ -201,7 +203,8 @@ class _PagePickerSheetState extends State<PagePickerSheet> {
                   ),
                   const SizedBox(width: 12),
                   SizedBox(
-                    height: 44, // Aligns with the denser OutlineInputBorder height
+                    height:
+                        44, // Aligns with the denser OutlineInputBorder height
                     child: FilledButton(
                       onPressed: _submitJump,
                       style: FilledButton.styleFrom(
@@ -221,12 +224,13 @@ class _PagePickerSheetState extends State<PagePickerSheet> {
               child: ClipRect(
                 child: ListView.builder(
                   shrinkWrap: true,
-                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
                   itemCount: pages.length,
                   itemBuilder: (ctx, index) {
                     final page = pages[index];
-                    final isCurrent =
-                        widget.currentPage != null && page == widget.currentPage;
+                    final isCurrent = widget.currentPage != null &&
+                        page == widget.currentPage;
                     final showEllipsisBefore =
                         index > 0 && page - pages[index - 1] > 1;
 
@@ -239,7 +243,8 @@ class _PagePickerSheetState extends State<PagePickerSheet> {
                             child: Row(
                               mainAxisAlignment: MainAxisAlignment.center,
                               children: [
-                                Icon(Icons.more_horiz, size: 16, color: scheme.outlineVariant),
+                                Icon(Icons.more_horiz,
+                                    size: 16, color: scheme.outlineVariant,),
                               ],
                             ),
                           ),
@@ -250,13 +255,15 @@ class _PagePickerSheetState extends State<PagePickerSheet> {
                               borderRadius: S1Shape.medium,
                             ),
                             selected: isCurrent,
-                            selectedTileColor: scheme.primaryContainer.withValues(alpha: S1Alpha.half),
+                            selectedTileColor: scheme.primaryContainer
+                                .withValues(alpha: S1Alpha.half),
                             leading: Container(
                               constraints: const BoxConstraints(
                                 minWidth: 32,
                                 minHeight: 32,
                               ),
-                              padding: const EdgeInsets.symmetric(horizontal: 6),
+                              padding:
+                                  const EdgeInsets.symmetric(horizontal: 6),
                               decoration: BoxDecoration(
                                 color: isCurrent
                                     ? scheme.primary
@@ -281,16 +288,21 @@ class _PagePickerSheetState extends State<PagePickerSheet> {
                               widget.pageItemLabelBuilder?.call(page) ??
                                   '第 $page 页',
                               style: textTheme.titleSmall?.copyWith(
-                                color: isCurrent ? scheme.primary : scheme.onSurface,
-                                fontWeight:
-                                    isCurrent ? FontWeight.bold : FontWeight.w500,
+                                color: isCurrent
+                                    ? scheme.primary
+                                    : scheme.onSurface,
+                                fontWeight: isCurrent
+                                    ? FontWeight.bold
+                                    : FontWeight.w500,
                               ),
                             ),
                             trailing: isCurrent
-                                ? Icon(Icons.check_circle, color: scheme.primary, size: 22)
+                                ? Icon(Icons.check_circle,
+                                    color: scheme.primary, size: 22,)
                                 : Icon(
                                     Icons.chevron_right,
-                                    color: scheme.onSurfaceVariant.withValues(alpha: S1Alpha.strong),
+                                    color: scheme.onSurfaceVariant
+                                        .withValues(alpha: S1Alpha.strong),
                                     size: 18,
                                   ),
                             onTap: isCurrent

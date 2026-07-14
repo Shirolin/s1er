@@ -88,7 +88,8 @@ class _UserSpaceScreenState extends ConsumerState<UserSpaceScreen>
           AppBarMoreMenu(
             onRefresh: () =>
                 ref.read(userSpaceProvider(_params).notifier).refresh(),
-            browserUrl: '${ApiConfig.baseUrl}/home.php?mod=space&uid=${widget.uid}',
+            browserUrl:
+                '${ApiConfig.baseUrl}/home.php?mod=space&uid=${widget.uid}',
           ),
         ],
         bottom: TabBar(
@@ -298,7 +299,8 @@ class _ThreadCard extends ConsumerWidget {
             children: [
               if (item.forumName != null && item.forumName!.isNotEmpty) ...[
                 Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
                   decoration: BoxDecoration(
                     color: scheme.secondaryContainer,
                     borderRadius: S1Shape.full,
@@ -332,12 +334,21 @@ class _ThreadCard extends ConsumerWidget {
                     color: scheme.onSurfaceVariant,
                   ),
                   const SizedBox(width: 2),
-                  Text(formatCount(item.views), style: metaStyle,),
+                  Text(
+                    formatCount(item.views),
+                    style: metaStyle,
+                  ),
                   const SizedBox(width: 8),
-                  Icon(Icons.chat_bubble_outline,
-                      size: 12, color: scheme.onSurfaceVariant,),
+                  Icon(
+                    Icons.chat_bubble_outline,
+                    size: 12,
+                    color: scheme.onSurfaceVariant,
+                  ),
                   const SizedBox(width: 2),
-                  Text(formatCount(item.replies), style: metaStyle,),
+                  Text(
+                    formatCount(item.replies),
+                    style: metaStyle,
+                  ),
                 ],
               ),
             ],
@@ -386,7 +397,8 @@ class _ReplyCard extends StatelessWidget {
                 maxLines: 1,
                 overflow: TextOverflow.ellipsis,
               ),
-              if (item.replyExcerpt != null && item.replyExcerpt!.isNotEmpty) ...[
+              if (item.replyExcerpt != null &&
+                  item.replyExcerpt!.isNotEmpty) ...[
                 const SizedBox(height: 4),
                 Container(
                   padding: const EdgeInsets.only(left: 8),

@@ -45,7 +45,8 @@ class _VersionTileState extends ConsumerState<_VersionTile> {
       if (context.mounted) {
         Navigator.of(context).push(
           MaterialPageRoute(
-            builder: (context) => TalkerScreen(talker: ref.read(talkerProvider)),
+            builder: (context) =>
+                TalkerScreen(talker: ref.read(talkerProvider)),
           ),
         );
       }

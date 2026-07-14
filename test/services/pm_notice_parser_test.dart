@@ -1,3 +1,4 @@
+import 'dart:convert';
 import 'dart:io';
 
 import 'package:flutter_test/flutter_test.dart';
@@ -123,6 +124,88 @@ void main() {
       expect(item.preview, '好的 明白了');
       expect(item.isOutgoing, isFalse);
       expect(item.avatarUrl, contains('19/47/17'));
+    });
+  });
+
+  group('parsePmConversationJson', () {
+    test('parses messages, direction, entities and pagination', () {
+      final json = jsonDecode(
+        File('test/fixtures/pm_conversation.json').readAsStringSync(),
+      ) as Map<String, dynamic>;
+
+      final result = ApiService.parsePmConversationJson(
+        json,
+        partnerUid: '200001',
+      );
+
+      expect(result.items, hasLength(2));
+      expect(result.items.first.isOutgoing, isFalse);
+      expect(result.items.first.message, '收到 & 谢谢');
+      expect(result.items.last.isOutgoing, isTrue);
+      expect(result.items.last.message, '不客气\n稍后见');
+      expect(result.totalPages, 1);
+    });
+
+    test('rejects missing list and login responses', () {
+      expect(
+        () => ApiService.parsePmConversationJson(
+          {'Variables': <String, dynamic>{}},
+          partnerUid: '200001',
+        ),
+        throwsFormatException,
+      );
+      expect(
+        () => ApiService.parsePmConversationJson(
+          {
+            'Message': {'messageval': 'login_before_enter_home'},
+          },
+          partnerUid: '200001',
+        ),
+        throwsA(isA<LoginRequiredException>()),
+      );
+    });
+  });
+
+  group('parseNoticeListJson', () {
+    test('parses post notice and navigation target', () {
+      final json = jsonDecode(
+        File('test/fixtures/mynotelist_mypost.json').readAsStringSync(),
+      ) as Map<String, dynamic>;
+
+      final result = ApiService.parseNoticeListJson(json);
+      final item = result.items.single;
+
+      expect(item.authorName, '提醒用户');
+      expect(item.tid, '400001');
+      expect(item.pid, '500001');
+      expect(item.type, NoticeType.reply);
+      expect(item.isNew, isTrue);
+      expect(item.canNavigate, isTrue);
+    });
+
+    test('accepts system notice without author or thread target', () {
+      final json = jsonDecode(
+        File('test/fixtures/mynotelist_system.json').readAsStringSync(),
+      ) as Map<String, dynamic>;
+
+      final item = ApiService.parseNoticeListJson(json).items.single;
+
+      expect(item.authorName, '系统通知');
+      expect(item.canNavigate, isFalse);
+      expect(item.type, NoticeType.other);
+    });
+
+    test('treats a valid empty list as empty data', () {
+      final result = ApiService.parseNoticeListJson({
+        'Variables': {
+          'list': <dynamic>[],
+          'count': '0',
+          'perpage': '20',
+        },
+      });
+
+      expect(result.items, isEmpty);
+      expect(result.totalPages, 1);
     });
   });
 }

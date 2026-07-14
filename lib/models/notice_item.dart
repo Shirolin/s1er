@@ -1,5 +1,7 @@
 enum NoticeType { reply, rate, other }
 
+enum NoticeFeed { mypost, system }
+
 class NoticeItem {
   NoticeItem({
     required this.id,
@@ -11,6 +13,7 @@ class NoticeItem {
     this.pid,
     this.avatarUrl,
     this.type = NoticeType.other,
+    this.isNew = false,
   });
 
   final String id;
@@ -22,6 +25,7 @@ class NoticeItem {
   final String? pid;
   final String? avatarUrl;
   final NoticeType type;
+  final bool isNew;
 
   bool get canNavigate => tid.isNotEmpty;
 }

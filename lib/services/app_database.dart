@@ -49,8 +49,7 @@ class BlacklistEntries extends Table {
   TextColumn get username => text().withDefault(const Constant(''))();
   IntColumn get createdAt => integer()();
   TextColumn get reason => text().withDefault(const Constant(''))();
-  TextColumn get scopeJson =>
-      text().withDefault(const Constant('[]'))();
+  TextColumn get scopeJson => text().withDefault(const Constant('[]'))();
 
   @override
   Set<Column<Object>> get primaryKey => {uid};

@@ -170,7 +170,8 @@ class _HistoryTile extends ConsumerWidget {
                           backgroundColor: scheme.surfaceContainerHighest,
                           valueColor: AlwaysStoppedAnimation<Color>(
                             isFinished
-                                ? scheme.onSurfaceVariant.withValues(alpha: S1Alpha.medium)
+                                ? scheme.onSurfaceVariant
+                                    .withValues(alpha: S1Alpha.medium)
                                 : scheme.primary,
                           ),
                         ),

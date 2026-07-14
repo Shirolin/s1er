@@ -13,16 +13,14 @@ class FavoriteItem {
   });
 
   factory FavoriteItem.fromThreadJson(Map<String, dynamic> json) {
-    final tid = json['tid']?.toString() ??
-        json['id']?.toString() ??
-        '';
+    final tid = json['tid']?.toString() ?? json['id']?.toString() ?? '';
     return FavoriteItem(
       favid: json['favid']?.toString() ?? '',
       type: FavoriteType.thread,
       id: tid,
-      title: _decodeHtml(json['title']?.toString() ??
-          json['subject']?.toString() ??
-          '',),
+      title: _decodeHtml(
+        json['title']?.toString() ?? json['subject']?.toString() ?? '',
+      ),
       dateline: int.tryParse(json['dateline']?.toString() ?? '') ??
           int.tryParse(json['dbdateline']?.toString() ?? '') ??
           0,
@@ -33,17 +31,17 @@ class FavoriteItem {
   }
 
   factory FavoriteItem.fromForumJson(Map<String, dynamic> json) {
-    final fid = json['fid']?.toString() ??
-        json['id']?.toString() ??
-        '';
+    final fid = json['fid']?.toString() ?? json['id']?.toString() ?? '';
     return FavoriteItem(
       favid: json['favid']?.toString() ?? '',
       type: FavoriteType.forum,
       id: fid,
-      title: _decodeHtml(json['title']?.toString() ??
-          json['name']?.toString() ??
-          json['fname']?.toString() ??
-          '',),
+      title: _decodeHtml(
+        json['title']?.toString() ??
+            json['name']?.toString() ??
+            json['fname']?.toString() ??
+            '',
+      ),
       dateline: int.tryParse(json['dateline']?.toString() ?? '') ?? 0,
     );
   }

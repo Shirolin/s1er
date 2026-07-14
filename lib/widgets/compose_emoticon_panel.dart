@@ -119,8 +119,7 @@ class _ComposeEmoticonPanelState extends State<ComposeEmoticonPanel>
               indicatorColor: scheme.primary,
               dividerColor: scheme.outlineVariant,
               tabs: [
-                for (final pack in EmoticonCatalog.packs)
-                  Tab(text: pack.title),
+                for (final pack in EmoticonCatalog.packs) Tab(text: pack.title),
               ],
             ),
             Expanded(

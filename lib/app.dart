@@ -20,6 +20,7 @@ import 'screens/blacklist_screen.dart';
 import 'screens/favorites_screen.dart';
 import 'screens/image_viewer_screen.dart';
 import 'screens/user_space_screen.dart';
+import 'screens/pm_conversation_screen.dart';
 import 'models/thread_open_intent.dart';
 import 'providers/thread_open_intent_provider.dart';
 import 'services/talker.dart';
@@ -95,6 +96,13 @@ final _router = GoRouter(
     GoRoute(
       path: '/login',
       builder: (context, state) => const LoginScreen(),
+    ),
+    GoRoute(
+      path: '/pm/:touid',
+      builder: (context, state) => PmConversationScreen(
+        touid: state.pathParameters['touid']!,
+        partnerName: state.uri.queryParameters['name'],
+      ),
     ),
     GoRoute(
       path: '/compose',

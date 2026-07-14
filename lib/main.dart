@@ -16,8 +16,7 @@ import 'services/talker.dart';
 
 Future<void> _loadEmoticonManifest() async {
   try {
-    final raw =
-        await rootBundle.loadString('assets/emoticons/manifest.json');
+    final raw = await rootBundle.loadString('assets/emoticons/manifest.json');
     final decoded = jsonDecode(raw);
     if (decoded is Map<String, dynamic>) {
       EmoticonCatalog.applyManifest(decoded);

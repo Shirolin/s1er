@@ -1,5 +1,4 @@
 class UserSpaceItem {
-
   UserSpaceItem({
     required this.tid,
     required this.subject,

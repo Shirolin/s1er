@@ -1,5 +1,4 @@
 class Thread {
-
   Thread({
     required this.tid,
     required this.subject,
@@ -82,13 +81,13 @@ class Thread {
   }
 
   Map<String, dynamic> toJson() => {
-    'tid': tid,
-    'subject': subject,
-    'author': author,
-    'authorid': authorId,
-    'dateline': dateline,
-    'views': views,
-    'replies': replies,
-    'fid': fid,
-  };
+        'tid': tid,
+        'subject': subject,
+        'author': author,
+        'authorid': authorId,
+        'dateline': dateline,
+        'views': views,
+        'replies': replies,
+        'fid': fid,
+      };
 }

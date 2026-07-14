@@ -116,8 +116,7 @@ class _UserProfileContent extends StatelessWidget {
               username: user.username,
               groupTitle: user.groupTitle,
               avatarUrl: avatarUrl,
-              fallbackLetter:
-                  user.username.isNotEmpty ? user.username[0] : '?',
+              fallbackLetter: user.username.isNotEmpty ? user.username[0] : '?',
             ),
             const SizedBox(height: 16),
             _StatsRow(

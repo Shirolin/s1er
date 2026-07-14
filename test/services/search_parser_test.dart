@@ -38,6 +38,21 @@ void main() {
       expect(page.error, isNull);
     });
 
+    test('parses live mobile list template', () {
+      final html =
+          File('test/fixtures/search_forum_mobile.html').readAsStringSync();
+      final page = ApiService.parseForumSearchHtml(html);
+
+      expect(page.hits, hasLength(1));
+      expect(page.count, 1);
+      expect(page.hits.single.tid, '2300001');
+      expect(page.hits.single.title, '移动模板主题');
+      expect(page.hits.single.snippet, '移动模板摘要');
+      expect(page.hits.single.forumName, '游戏论坛');
+      expect(page.hits.single.author, 'mobile_user');
+      expect(page.hits.single.dateline, '2026-7-14 20:00');
+    });
+
     test('surfaces rate-limit messagetext as error', () {
       final html =
           File('test/fixtures/search_rate_limited.html').readAsStringSync();
@@ -75,6 +90,23 @@ void main() {
       final page = ApiService.parseUserSearchHtml(html);
       expect(page.hasError, isTrue);
       expect(page.error, contains('搜索'));
+    });
+
+    test('extracts forced desktop URL from mobile jump page', () {
+      final html =
+          File('test/fixtures/search_user_mobile_jump.html').readAsStringSync();
+
+      final url = ApiService.extractForcedDesktopUrl(html);
+
+      expect(url, startsWith('https://stage1st.com/2b/home.php'));
+      expect(url, contains('username=demo_user'));
+      expect(url, contains('forcemobile=1'));
+      expect(url, isNot(contains('&amp;')));
+    });
+
+    test('rejects forced desktop links to another host', () {
+      const html = '<a href="https://example.com/?forcemobile=1">continue</a>';
+      expect(ApiService.extractForcedDesktopUrl(html), isNull);
     });
   });
 }

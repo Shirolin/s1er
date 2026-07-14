@@ -2526,7 +2526,15 @@ class ApiService {
           responseType: ResponseType.plain,
         ),
       );
-      final body = response.data?.toString() ?? '';
+      var body = response.data?.toString() ?? '';
+      final forcedDesktopUrl = extractForcedDesktopUrl(body);
+      if (forcedDesktopUrl != null) {
+        final forcedResponse = await _httpClient.get(
+          forcedDesktopUrl,
+          options: Options(responseType: ResponseType.plain),
+        );
+        body = forcedResponse.data?.toString() ?? '';
+      }
       return parseUserSearchHtml(body);
     } on LoginRequiredException {
       rethrow;
@@ -2579,12 +2587,13 @@ class ApiService {
       }
     }
 
-    if (count == 0 && doc.querySelectorAll('li.pbw').isEmpty) {
+    final resultItems = doc.querySelectorAll('li.pbw, li.list');
+    if (count == 0 && resultItems.isEmpty) {
       return const ForumSearchPage(count: 0);
     }
 
     final hits = <ForumSearchHit>[];
-    for (final li in doc.querySelectorAll('li.pbw')) {
+    for (final li in resultItems) {
       final hit = _parseForumSearchHit(li.outerHtml);
       if (hit != null) hits.add(hit);
     }
@@ -2632,8 +2641,14 @@ class ApiService {
       caseSensitive: false,
       dotAll: true,
     ).firstMatch(block);
-    final title =
-        titleMatch != null ? _stripHtml(titleMatch.group(1) ?? '') : '';
+    final mobileTitleMatch = RegExp(
+      r'class="[^"]*threadlist_tit[^"]*"[^>]*>.*?<em[^>]*>(.*?)</em>',
+      caseSensitive: false,
+      dotAll: true,
+    ).firstMatch(block);
+    final title = _stripHtml(
+      mobileTitleMatch?.group(1) ?? titleMatch?.group(1) ?? '',
+    );
     if (title.isEmpty) return null;
 
     final paragraphs = RegExp(
@@ -2669,6 +2684,47 @@ class ApiService {
       }
     }
 
+    if (author.isEmpty) {
+      author = _stripHtml(
+        RegExp(
+              r'class="mmc"[^>]*>(.*?)</a>',
+              caseSensitive: false,
+              dotAll: true,
+            ).firstMatch(block)?.group(1) ??
+            '',
+      );
+    }
+    if (dateline.isEmpty) {
+      dateline = _stripHtml(
+        RegExp(
+              r'class="mtime"[^>]*>(.*?)</span>',
+              caseSensitive: false,
+              dotAll: true,
+            ).firstMatch(block)?.group(1) ??
+            '',
+      );
+    }
+    if (forumName.isEmpty) {
+      forumName = _stripHtml(
+        RegExp(
+              r'class="mr"[^>]*>.*?<a[^>]*>(.*?)</a>',
+              caseSensitive: false,
+              dotAll: true,
+            ).firstMatch(block)?.group(1) ??
+            '',
+      );
+    }
+    if (snippet.isEmpty) {
+      snippet = _stripHtml(
+        RegExp(
+              r'class="[^"]*threadlist_mes[^"]*"[^>]*>(.*?)</div>',
+              caseSensitive: false,
+              dotAll: true,
+            ).firstMatch(block)?.group(1) ??
+            '',
+      );
+    }
+
     return ForumSearchHit(
       tid: tid,
       title: title,
@@ -2697,6 +2753,23 @@ class ApiService {
       if (hit != null) hits.add(hit);
     }
     return UserSearchPage(hits: hits);
+  }
+
+  static String? extractForcedDesktopUrl(String html) {
+    final match = RegExp(
+      r'<a[^>]*href="([^"]*forcemobile=1[^"]*)"[^>]*>',
+      caseSensitive: false,
+    ).firstMatch(html);
+    final raw = match?.group(1)?.replaceAll('&amp;', '&').trim();
+    if (raw == null || raw.isEmpty) return null;
+    final uri = Uri.tryParse(raw);
+    if (uri == null) return null;
+    if (uri.hasAuthority && uri.host != Uri.parse(ApiConfig.baseUrl).host) {
+      return null;
+    }
+    return uri.hasAuthority
+        ? uri.toString()
+        : Uri.parse(ApiConfig.baseUrl).resolveUri(uri).toString();
   }
 
   static UserSearchHit? _parseUserSearchHit(String block) {

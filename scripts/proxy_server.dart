@@ -224,6 +224,13 @@ Future<void> _handleRequest(HttpRequest req) async {
   res.statusCode = upRes.statusCode;
   _applyCors(req, res);
   _forwardCookies(res, upRes.headers['set-cookie']);
+  final redirectLocation = rewriteProxyLocation(
+    upRes.headers.value(HttpHeaders.locationHeader),
+    target,
+  );
+  if (redirectLocation != null) {
+    res.headers.set(HttpHeaders.locationHeader, redirectLocation);
+  }
 
   res.add(bytes);
   await res.close();
@@ -330,4 +337,22 @@ void _forwardCookies(HttpResponse res, List<String>? setCookieHeaders) {
     }).toList();
     res.headers.add('set-cookie', cleanedParts.join('; '));
   }
+}
+
+/// 将同源上游重定向改写回本地代理，避免浏览器绕过 CORS/Cookie 代理。
+String? rewriteProxyLocation(String? location, Uri upstreamRequest) {
+  if (location == null || location.trim().isEmpty) return null;
+  final resolved = upstreamRequest.resolve(location.trim());
+  if (resolved.host != upstreamRequest.host ||
+      (resolved.scheme != 'http' && resolved.scheme != 'https')) {
+    return null;
+  }
+  return Uri(
+    scheme: 'http',
+    host: 'localhost',
+    port: ResourceDomains.proxyPort,
+    path: resolved.path,
+    query: resolved.hasQuery ? resolved.query : null,
+    fragment: resolved.hasFragment ? resolved.fragment : null,
+  ).toString();
 }

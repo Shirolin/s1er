@@ -80,7 +80,14 @@ class BbcodeParser {
     output = output.replaceAll(RegExp(r'\[hr\]', caseSensitive: false), '<hr/>');
     output = output.trim();
     output = output.replaceAll('\n', '<br/>');
-    output = output.replaceAllMapped(RegExp(r'\[f:(\d+)\]'), (m) => '<span class="emoticon" data-code="f:${m.group(1)}">[emoticon]</span>');
+    output = output.replaceAllMapped(
+      RegExp(r'\[([facdgb]):(\d+)\]', caseSensitive: false),
+      (m) {
+        final prefix = m.group(1)!.toLowerCase();
+        final digits = m.group(2)!;
+        return '<span class="emoticon" data-code="$prefix:$digits">[emoticon]</span>';
+      },
+    );
 
     return output;
   }

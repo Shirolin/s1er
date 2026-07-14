@@ -11,6 +11,7 @@ import '../theme/app_theme.dart';
 import '../utils/compose_draft_store.dart';
 import '../utils/quote_builder.dart';
 import '../utils/s1_snack_bar.dart';
+import '../widgets/compose_emoticon_panel.dart';
 import '../widgets/s1_confirm_dialog.dart';
 
 class ComposeScreen extends ConsumerStatefulWidget {
@@ -46,6 +47,7 @@ class _ComposeScreenState extends ConsumerState<ComposeScreen> {
   bool _isUploadingImage = false;
   bool _redirectedToLogin = false;
   bool _allowPop = false;
+  bool _showEmoticonPanel = false;
   ComposeDraft? _draft;
   bool _includeQuote = true;
   QuoteInfo? _quoteInfo;
@@ -158,6 +160,15 @@ class _ComposeScreenState extends ConsumerState<ComposeScreen> {
       text: next,
       selection: TextSelection.collapsed(offset: start + snippet.length),
     );
+  }
+
+  void _toggleEmoticonPanel() {
+    FocusScope.of(context).unfocus();
+    setState(() => _showEmoticonPanel = !_showEmoticonPanel);
+  }
+
+  void _insertEmoticon(String entity) {
+    _insertAtCursor(entity);
   }
 
   void _removeUploadedImage(_ComposeUploadedImage image) {
@@ -362,6 +373,11 @@ class _ComposeScreenState extends ConsumerState<ComposeScreen> {
                 expands: true,
                 textAlignVertical: TextAlignVertical.top,
                 style: textTheme.bodyLarge,
+                onTap: () {
+                  if (_showEmoticonPanel) {
+                    setState(() => _showEmoticonPanel = false);
+                  }
+                },
                 decoration: InputDecoration(
                   filled: true,
                   fillColor: scheme.surfaceContainerHighest,
@@ -383,13 +399,22 @@ class _ComposeScreenState extends ConsumerState<ComposeScreen> {
             ),
           ],
         ),
-        bottomNavigationBar: _ComposeBottomBar(
-          busy: busy,
-          canSubmit: _canSubmit,
-          isSubmitting: _isSubmitting,
-          isUploadingImage: _isUploadingImage,
-          onPickImage: _pickAndUploadImage,
-          onSubmit: _submit,
+        bottomNavigationBar: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            if (_showEmoticonPanel)
+              ComposeEmoticonPanel(onSelect: _insertEmoticon),
+            _ComposeBottomBar(
+              busy: busy,
+              canSubmit: _canSubmit,
+              isSubmitting: _isSubmitting,
+              isUploadingImage: _isUploadingImage,
+              emoticonPanelOpen: _showEmoticonPanel,
+              onPickImage: _pickAndUploadImage,
+              onToggleEmoticon: _toggleEmoticonPanel,
+              onSubmit: _submit,
+            ),
+          ],
         ),
       ),
     );
@@ -566,7 +591,9 @@ class _ComposeBottomBar extends StatelessWidget {
     required this.canSubmit,
     required this.isSubmitting,
     required this.isUploadingImage,
+    required this.emoticonPanelOpen,
     required this.onPickImage,
+    required this.onToggleEmoticon,
     required this.onSubmit,
   });
 
@@ -574,7 +601,9 @@ class _ComposeBottomBar extends StatelessWidget {
   final bool canSubmit;
   final bool isSubmitting;
   final bool isUploadingImage;
+  final bool emoticonPanelOpen;
   final VoidCallback onPickImage;
+  final VoidCallback onToggleEmoticon;
   final VoidCallback onSubmit;
 
   @override
@@ -596,6 +625,15 @@ class _ComposeBottomBar extends StatelessWidget {
             padding: const EdgeInsets.fromLTRB(4, 8, 16, 8),
             child: Row(
               children: [
+                TextButton.icon(
+                  onPressed: busy ? null : onToggleEmoticon,
+                  icon: Icon(
+                    emoticonPanelOpen
+                        ? Icons.keyboard_outlined
+                        : Icons.emoji_emotions_outlined,
+                  ),
+                  label: Text(emoticonPanelOpen ? '键盘' : '表情'),
+                ),
                 TextButton.icon(
                   onPressed: busy ? null : onPickImage,
                   icon: isUploadingImage

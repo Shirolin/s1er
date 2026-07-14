@@ -70,5 +70,12 @@ void main() {
       expect(parsed, contains('data-image-index="0"'));
       expect(counter.assignedCount, 1);
     });
+
+    test('converts multi-pack emoticon entities', () {
+      final parsed = BbcodeParser.parse('[f:001][c:002][a:003]');
+      expect(parsed, contains('data-code="f:001"'));
+      expect(parsed, contains('data-code="c:002"'));
+      expect(parsed, contains('data-code="a:003"'));
+    });
   });
 }

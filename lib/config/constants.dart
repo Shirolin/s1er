@@ -31,7 +31,15 @@ class S1Constants {
   /// 识别表情包路径的特征
   static bool isEmoticon(String url) {
     final lowerUrl = url.toLowerCase();
-    return lowerUrl.contains('static.stage1st.com/image/smiley') ||
-           lowerUrl.contains('face2017');
+    if (lowerUrl.contains('static.stage1st.com/image/smiley') ||
+        lowerUrl.contains('/image/smiley/')) {
+      return true;
+    }
+    return lowerUrl.contains('face2017') ||
+        lowerUrl.contains('carton2017') ||
+        lowerUrl.contains('animal2017') ||
+        lowerUrl.contains('device2017') ||
+        lowerUrl.contains('goose2017') ||
+        lowerUrl.contains('bundam2017');
   }
 }

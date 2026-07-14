@@ -54,6 +54,7 @@ void main() {
     expect(find.textContaining('主题 · 示例主题标题'), findsOneWidget);
     expect(find.text('发送'), findsOneWidget);
     expect(find.text('图片'), findsOneWidget);
+    expect(find.text('表情'), findsOneWidget);
     expect(find.byIcon(Icons.image_outlined), findsOneWidget);
     expect(find.byType(FilledButton), findsOneWidget);
   });
@@ -87,7 +88,38 @@ void main() {
     expect(find.textContaining('主题 · 另一个主题'), findsOneWidget);
     expect(find.text('发送'), findsOneWidget);
     expect(find.text('图片'), findsOneWidget);
+    expect(find.text('表情'), findsOneWidget);
     expect(find.byIcon(Icons.image_outlined), findsOneWidget);
+  });
+
+  testWidgets('ComposeScreen emoticon panel inserts entity into editor',
+      (tester) async {
+    await tester.pumpWidget(
+      ProviderScope(
+        overrides: [
+          authStateProvider.overrideWith(_LoggedInAuthNotifier.new),
+          composeControllerProvider.overrideWith(
+            (ref) => _StubComposeController(ref),
+          ),
+        ],
+        child: MaterialApp(
+          theme: AppTheme.lightTheme('purple'),
+          home: const ComposeScreen(tid: '100', fid: '4'),
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.text('表情'));
+    await tester.pumpAndSettle();
+
+    expect(find.text('麻将脸'), findsWidgets);
+    expect(find.text('键盘'), findsOneWidget);
+
+    await tester.tap(find.byTooltip('[f:001]'));
+    await tester.pump();
+
+    expect(find.text('[f:001]'), findsOneWidget);
   });
 
   testWidgets('ComposeScreen disables send when message is empty',

@@ -68,6 +68,83 @@ void main() {
       expect(find.text('主题设置'), findsNothing);
     });
 
+    testWidgets('shows project support links and opens their URLs',
+        (tester) async {
+      tester.view.physicalSize = const Size(1080, 2400);
+      tester.view.devicePixelRatio = 1.0;
+      addTearDown(() => tester.view.resetPhysicalSize());
+      final openedUrls = <Uri>[];
+
+      await tester.pumpWidget(
+        ProviderScope(
+          overrides: [
+            ...localOverrides(),
+            packageInfoOverride(),
+          ],
+          child: MaterialApp(
+            theme: AppTheme.lightTheme('purple'),
+            home: ProfileScreen(
+              externalUrlLauncher: (uri) async {
+                openedUrls.add(uri);
+                return true;
+              },
+            ),
+          ),
+        ),
+      );
+      await tester.pump();
+
+      expect(find.text('支持项目'), findsOneWidget);
+      expect(find.text('爱发电'), findsOneWidget);
+      expect(find.text('Ko-fi'), findsOneWidget);
+      expect(find.text('GitHub'), findsOneWidget);
+      expect(find.text('查看项目源代码（即将开源）'), findsOneWidget);
+
+      await tester.tap(find.text('爱发电'));
+      await tester.pump();
+      await tester.tap(find.text('Ko-fi'));
+      await tester.pump();
+      await tester.tap(find.text('GitHub'));
+      await tester.pump();
+
+      expect(
+        openedUrls,
+        [
+          Uri.parse('https://ifdian.net/a/shirolin'),
+          Uri.parse('https://ko-fi.com/shirolin'),
+          Uri.parse('https://github.com/Shirolin/s1-app'),
+        ],
+      );
+    });
+
+    testWidgets('shows feedback when a project support link cannot open',
+        (tester) async {
+      tester.view.physicalSize = const Size(1080, 2400);
+      tester.view.devicePixelRatio = 1.0;
+      addTearDown(() => tester.view.resetPhysicalSize());
+
+      await tester.pumpWidget(
+        ProviderScope(
+          overrides: [
+            ...localOverrides(),
+            packageInfoOverride(),
+          ],
+          child: MaterialApp(
+            theme: AppTheme.lightTheme('purple'),
+            home: ProfileScreen(
+              externalUrlLauncher: (_) async => false,
+            ),
+          ),
+        ),
+      );
+      await tester.pump();
+
+      await tester.tap(find.text('GitHub'));
+      await tester.pump();
+
+      expect(find.text('无法打开链接'), findsOneWidget);
+    });
+
     testWidgets('shows confirm dialog when clicking logout and can cancel',
         (tester) async {
       tester.view.physicalSize = const Size(1080, 1920);

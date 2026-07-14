@@ -2,6 +2,7 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+import 'package:url_launcher/url_launcher.dart';
 import '../config/api_config.dart';
 import '../theme/app_theme.dart';
 import '../utils/format_utils.dart';
@@ -15,7 +16,9 @@ import '../widgets/s1_confirm_dialog.dart';
 import '../utils/s1_snack_bar.dart';
 
 class ProfileScreen extends ConsumerWidget {
-  const ProfileScreen({super.key});
+  const ProfileScreen({super.key, this.externalUrlLauncher});
+
+  final Future<bool> Function(Uri url)? externalUrlLauncher;
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -36,13 +39,15 @@ class ProfileScreen extends ConsumerWidget {
             ),
         ],
       ),
-      body: const ProfileBody(),
+      body: ProfileBody(externalUrlLauncher: externalUrlLauncher),
     );
   }
 }
 
 class ProfileBody extends ConsumerStatefulWidget {
-  const ProfileBody({super.key});
+  const ProfileBody({super.key, this.externalUrlLauncher});
+
+  final Future<bool> Function(Uri url)? externalUrlLauncher;
 
   @override
   ConsumerState<ProfileBody> createState() => _ProfileBodyState();
@@ -122,6 +127,21 @@ class _ProfileBodyState extends ConsumerState<ProfileBody> {
     }
   }
 
+  Future<void> _openExternalUrl(String url) async {
+    final uri = Uri.parse(url);
+    try {
+      final didLaunch = await (widget.externalUrlLauncher?.call(uri) ??
+          launchUrl(uri, mode: LaunchMode.externalApplication));
+      if (!didLaunch && mounted) {
+        S1SnackBar.show(context, message: '无法打开链接');
+      }
+    } catch (error) {
+      if (mounted) {
+        S1SnackBar.show(context, message: '无法打开链接');
+      }
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     final authState = ref.watch(authStateProvider);
@@ -159,6 +179,10 @@ class _ProfileBodyState extends ConsumerState<ProfileBody> {
           const SizedBox(height: 16),
         ],
         const _SystemGroupCard(),
+        const SizedBox(height: 16),
+        _ProjectSupportCard(
+          onOpenUrl: (url) => unawaited(_openExternalUrl(url)),
+        ),
         const SizedBox(height: 16),
         if (authState.isLoggedIn)
           _LogoutTile(
@@ -592,6 +616,90 @@ class _SystemGroupCard extends ConsumerWidget {
             title: '设置',
             subtitle: '主题、文字大小与显示',
             onTap: () => context.push('/settings'),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _ProjectSupportCard extends StatelessWidget {
+  const _ProjectSupportCard({required this.onOpenUrl});
+
+  static const _afdianUrl = 'https://ifdian.net/a/shirolin';
+  static const _koFiUrl = 'https://ko-fi.com/shirolin';
+  static const _githubUrl = 'https://github.com/Shirolin/s1-app';
+
+  final ValueChanged<String> onOpenUrl;
+
+  @override
+  Widget build(BuildContext context) {
+    final colorScheme = Theme.of(context).colorScheme;
+    final textTheme = Theme.of(context).textTheme;
+
+    Widget divider() => Padding(
+          padding: const EdgeInsets.symmetric(
+            horizontal: _ProfileListMetrics.hPadding,
+          ),
+          child: Divider(
+            height: 1,
+            color: colorScheme.outlineVariant.withValues(
+              alpha: S1Alpha.half,
+            ),
+          ),
+        );
+
+    Widget externalIcon() => Icon(
+          Icons.open_in_new,
+          size: _ProfileListMetrics.iconSize,
+          color: colorScheme.onSurfaceVariant,
+        );
+
+    return Card(
+      elevation: 0,
+      clipBehavior: Clip.antiAlias,
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Padding(
+            padding: const EdgeInsets.fromLTRB(16, 16, 16, 8),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text('支持项目', style: textTheme.titleMedium),
+                const SizedBox(height: 4),
+                Text(
+                  '如果 S1 Client 对你有帮助，欢迎支持开发或关注项目。',
+                  style: textTheme.bodySmall?.copyWith(
+                    color: colorScheme.onSurfaceVariant,
+                  ),
+                ),
+              ],
+            ),
+          ),
+          _ProfileTwoLineRow(
+            icon: Icons.favorite_outline,
+            title: '爱发电',
+            subtitle: '支持项目开发',
+            trailing: externalIcon(),
+            onTap: () => onOpenUrl(_afdianUrl),
+          ),
+          divider(),
+          _ProfileTwoLineRow(
+            icon: Icons.local_cafe_outlined,
+            title: 'Ko-fi',
+            subtitle: '请开发者喝杯咖啡',
+            trailing: externalIcon(),
+            onTap: () => onOpenUrl(_koFiUrl),
+          ),
+          divider(),
+          _ProfileTwoLineRow(
+            icon: Icons.code,
+            title: 'GitHub',
+            subtitle: '查看项目源代码（即将开源）',
+            trailing: externalIcon(),
+            onTap: () => onOpenUrl(_githubUrl),
           ),
         ],
       ),

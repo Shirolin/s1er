@@ -173,6 +173,7 @@ class PostNotifier extends AsyncNotifier<PostListState> {
         clearLocateError: true,
       );
     } catch (e) {
+      if (!ref.mounted) rethrow;
       final loaded = await _loadPage(1);
       return loaded.copyWith(
         openScrollTarget: const ScrollToPageTop(),

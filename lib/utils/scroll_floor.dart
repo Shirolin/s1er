@@ -155,23 +155,51 @@ abstract class ScrollFloorNavigator {
     if (viewportDimension <= 0) return false;
 
     var targetContext = postKeys[index].currentContext;
-    if (targetContext == null) {
-      // 估算：按近似行高推进到目标附近。
-      final estimated =
-          (position.pixels + index * viewportDimension * 0.45).clamp(
-        position.minScrollExtent,
-        position.maxScrollExtent,
-      );
+    // 目标尚未构建时：以最近已构建楼为锚，按实测行高多轮估算滚入视口。
+    for (var attempt = 0;
+        targetContext == null && attempt < 6;
+        attempt++) {
+      var refIndex = -1;
+      for (var i = index - 1; i >= 0; i--) {
+        if (postKeys[i].currentContext != null) {
+          refIndex = i;
+          break;
+        }
+      }
+      if (refIndex < 0) {
+        for (var i = index + 1; i < postKeys.length; i++) {
+          if (postKeys[i].currentContext != null) {
+            refIndex = i;
+            break;
+          }
+        }
+      }
+      if (refIndex < 0) return false;
+
+      final refContext = postKeys[refIndex].currentContext!;
+      if (!refContext.mounted) return false;
+      final refRender = refContext.findRenderObject();
+      if (refRender == null || !refRender.attached) return false;
+      final refViewport = RenderAbstractViewport.maybeOf(refRender);
+      if (refViewport == null) return false;
+      final refTop = refViewport.getOffsetToReveal(refRender, 0).offset;
+      final itemHeight = refRender.paintBounds.height;
+      if (itemHeight <= 0) return false;
+
+      // 每轮最多推进约一屏，逐步拉近懒列表构建窗口。
+      final remaining = index - refIndex;
+      final stepCount = remaining.abs().clamp(1, 8);
+      final direction = remaining >= 0 ? 1 : -1;
+      final estimated = (refTop +
+              direction * stepCount * itemHeight -
+              viewportDimension * alignment)
+          .clamp(position.minScrollExtent, position.maxScrollExtent);
+
       await S1ScrollMotion.animateTo(position, estimated);
       await WidgetsBinding.instance.endOfFrame;
       targetContext = postKeys[index].currentContext;
-      if (targetContext == null) {
-        await S1ScrollMotion.correctSilentlyIfNeeded(position, estimated);
-        await WidgetsBinding.instance.endOfFrame;
-        targetContext = postKeys[index].currentContext;
-      }
-      if (targetContext == null) return false;
     }
+    if (targetContext == null) return false;
 
     if (!targetContext.mounted) return false;
     final render = targetContext.findRenderObject();

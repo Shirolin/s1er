@@ -125,6 +125,8 @@ void main() {
           ),
         ],
       );
+      final sub = container.listen(postProvider('100'), (_, __) {});
+      addTearDown(sub.close);
 
       final state = await container.read(postProvider('100').future);
       expect(state.locateError, '未找到目标楼层');
@@ -153,6 +155,8 @@ void main() {
           ),
         ],
       );
+      final sub = container.listen(postProvider('100'), (_, __) {});
+      addTearDown(sub.close);
 
       final state = await container.read(postProvider('100').future);
 
@@ -183,6 +187,8 @@ void main() {
           ),
         ],
       );
+      final sub = container.listen(postProvider('100'), (_, __) {});
+      addTearDown(sub.close);
       // adapter replies=159 → totalPages = ceil(160/40)=4
       final state = await container.read(postProvider('100').future);
 

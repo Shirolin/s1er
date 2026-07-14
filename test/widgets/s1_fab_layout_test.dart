@@ -29,7 +29,7 @@ void main() {
       ),
     );
 
-    expect(find.byIcon(Icons.arrow_upward), findsOneWidget);
+    expect(find.byIcon(Icons.vertical_align_top), findsOneWidget);
     expect(find.byIcon(Icons.arrow_downward), findsOneWidget);
     expect(find.byIcon(Icons.edit_outlined), findsOneWidget);
     expect(find.byType(FloatingActionButton), findsOneWidget);
@@ -64,7 +64,8 @@ void main() {
     expect(nextPageTapped, isTrue);
   });
 
-  testWidgets('S1ScrollNavGroup keeps nav button size for up-only and down-only',
+  testWidgets(
+      'S1ScrollNavGroup keeps nav button size for up-only and down-only',
       (tester) async {
     Future<Size> navButtonSize(Finder finder) async {
       final box = tester.renderObject<RenderBox>(finder);
@@ -127,8 +128,14 @@ void main() {
     final downBoth =
         await navButtonSize(find.byKey(const ValueKey('scroll_nav_down')));
 
-    expect(upOnly, const Size(S1FabLayout.navButtonSize, S1FabLayout.navButtonSize));
-    expect(downOnly, const Size(S1FabLayout.navButtonSize, S1FabLayout.navButtonSize));
+    expect(
+      upOnly,
+      const Size(S1FabLayout.navButtonSize, S1FabLayout.navButtonSize),
+    );
+    expect(
+      downOnly,
+      const Size(S1FabLayout.navButtonSize, S1FabLayout.navButtonSize),
+    );
     expect(upBoth, upOnly);
     expect(downBoth, downOnly);
   });
@@ -164,6 +171,30 @@ void main() {
     await tester.pumpAndSettle();
     expect(taps, 1);
     expect(longPresses, 1);
+  });
+
+  testWidgets('long press animates down icon to page bottom indicator',
+      (tester) async {
+    await tester.pumpWidget(
+      MaterialApp(
+        theme: AppTheme.lightTheme('purple'),
+        home: const Scaffold(
+          body: S1ScrollNavGroup(
+            config: S1ScrollNavConfig(
+              showScrollToTop: false,
+              showScrollAdvance: true,
+              onScrollToNextFloor: _noop,
+              onScrollToBottom: _noop,
+            ),
+          ),
+        ),
+      ),
+    );
+
+    await tester.longPress(find.byKey(const ValueKey('scroll_nav_down')));
+    await tester.pump();
+
+    expect(find.byIcon(Icons.vertical_align_bottom), findsOneWidget);
   });
 
   test('S1FabLayout.scrollBottomPadding is fixed edge margin', () {

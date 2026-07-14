@@ -59,7 +59,8 @@ abstract class S1FabLayout {
   static const double navGroupInnerGap = 4;
 
   /// 分页栏内容高度（不含 SafeArea），供 SnackBar 避让。
-  static const double paginationBarHeight = S1BottomBarStyle.paginationBarHeight;
+  static const double paginationBarHeight =
+      S1BottomBarStyle.paginationBarHeight;
   static const double snackBarGap = 8;
 
   static double get snackBarClearance => paginationBarHeight + snackBarGap;
@@ -172,6 +173,7 @@ class S1ScrollNavConfig {
   });
 
   final bool showScrollToTop;
+
   /// 是否显示 ↓ / → 推进按钮位。
   final bool showScrollAdvance;
   final ScrollNavAdvanceMode advanceMode;
@@ -200,7 +202,7 @@ class S1ScrollNavGroup extends StatelessWidget {
       children.add(
         _NavActionButton(
           key: const ValueKey('scroll_nav_up'),
-          icon: Icons.arrow_upward,
+          icon: Icons.vertical_align_top,
           tooltip: '返回顶部',
           onPressed: config.onScrollToTop!,
         ),
@@ -229,13 +231,15 @@ class S1ScrollNavGroup extends StatelessWidget {
         _NavActionButton(
           key: ValueKey(isNextPage ? 'scroll_nav_forward' : 'scroll_nav_down'),
           icon: isNextPage ? Icons.arrow_forward : Icons.arrow_downward,
-          iconKey: ValueKey(isNextPage ? 'scroll_nav_forward_icon' : 'scroll_nav_down_icon'),
+          longPressIcon: isNextPage ? null : Icons.vertical_align_bottom,
+          iconKey: ValueKey(
+            isNextPage ? 'scroll_nav_forward_icon' : 'scroll_nav_down_icon',
+          ),
           tooltip: isNextPage ? '下一页（长按到底部）' : '下一楼（长按到底部）',
           semanticLabel: isNextPage ? '下一页' : '下一楼',
           semanticHint: '长按跳至页底',
-          onPressed: isNextPage
-              ? config.onGoToNextPage!
-              : config.onScrollToNextFloor!,
+          onPressed:
+              isNextPage ? config.onGoToNextPage! : config.onScrollToNextFloor!,
           onLongPress: config.onScrollToBottom,
         ),
       );
@@ -261,19 +265,21 @@ class S1ScrollNavGroup extends StatelessWidget {
 }
 
 /// 导航组内统一尺寸的图标按钮（可选长按）。
-class _NavActionButton extends StatelessWidget {
+class _NavActionButton extends StatefulWidget {
   const _NavActionButton({
     super.key,
     required this.icon,
     required this.tooltip,
     required this.onPressed,
     this.iconKey,
+    this.longPressIcon,
     this.onLongPress,
     this.semanticLabel,
     this.semanticHint,
   });
 
   final IconData icon;
+  final IconData? longPressIcon;
   final Key? iconKey;
   final String tooltip;
   final VoidCallback onPressed;
@@ -281,30 +287,43 @@ class _NavActionButton extends StatelessWidget {
   final String? semanticLabel;
   final String? semanticHint;
 
+  @override
+  State<_NavActionButton> createState() => _NavActionButtonState();
+}
+
+class _NavActionButtonState extends State<_NavActionButton> {
+  bool _longPressActivated = false;
+
   void _onTap() {
     HapticFeedback.selectionClick();
-    onPressed();
+    if (_longPressActivated) {
+      setState(() => _longPressActivated = false);
+    }
+    widget.onPressed();
   }
 
   void _onLongPress() {
     HapticFeedback.mediumImpact();
-    onLongPress?.call();
+    if (widget.longPressIcon != null) {
+      setState(() => _longPressActivated = true);
+    }
+    widget.onLongPress?.call();
   }
 
   @override
   Widget build(BuildContext context) {
     final scheme = Theme.of(context).colorScheme;
     return Tooltip(
-      message: tooltip,
+      message: widget.tooltip,
       child: Semantics(
         button: true,
-        label: semanticLabel,
-        hint: semanticHint,
+        label: widget.semanticLabel,
+        hint: widget.semanticHint,
         child: Material(
           color: Colors.transparent,
           child: InkWell(
             onTap: _onTap,
-            onLongPress: onLongPress == null ? null : _onLongPress,
+            onLongPress: widget.onLongPress == null ? null : _onLongPress,
             customBorder: const CircleBorder(),
             child: SizedBox(
               width: S1FabLayout.navButtonSize,
@@ -317,14 +336,15 @@ class _NavActionButton extends StatelessWidget {
                   return FadeTransition(
                     opacity: animation,
                     child: ScaleTransition(
-                      scale: Tween<double>(begin: 0.84, end: 1).animate(animation),
+                      scale:
+                          Tween<double>(begin: 0.84, end: 1).animate(animation),
                       child: child,
                     ),
                   );
                 },
                 child: Icon(
-                  icon,
-                  key: iconKey ?? ValueKey(icon),
+                  _activeIcon,
+                  key: ValueKey((widget.iconKey, _activeIcon)),
                   size: S1FabLayout.navIconSize,
                   color: scheme.onSurfaceVariant,
                 ),
@@ -335,6 +355,9 @@ class _NavActionButton extends StatelessWidget {
       ),
     );
   }
+
+  IconData get _activeIcon =>
+      _longPressActivated ? widget.longPressIcon ?? widget.icon : widget.icon;
 }
 
 /// 单个主 FAB 配置。

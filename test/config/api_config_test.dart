@@ -18,4 +18,19 @@ void main() {
     expect(referer, contains('mobile=2'));
     expect(referer, contains('handlekey=postform'));
   });
+
+  test('searchForumUrl / searchUserUrl match Discuz search.php', () {
+    expect(
+      ApiConfig.searchForumUrl(),
+      'https://stage1st.com/2b/search.php?searchsubmit=yes&mod=forum',
+    );
+    expect(
+      ApiConfig.searchForumUrl(page: 2),
+      contains('mod=forum&page=2'),
+    );
+    expect(
+      ApiConfig.searchUserUrl(),
+      'https://stage1st.com/2b/search.php?searchsubmit=yes&mod=user',
+    );
+  });
 }

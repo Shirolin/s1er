@@ -17,6 +17,8 @@ S1 论坛使用的 Discuz! Mobile API (version=4)。所有请求走 `ApiConfig.m
 | `sendpm` | 发私信 | 未使用 | ❌ 未实现 | — |
 | `mypm` | 私信会话列表 | `getPmList()` | ✅ 已完成 | ✅ 已通过（未登录探测） |
 | `sendreply` | **发回复（当前路径）** | `sendReply()` | ✅ 已完成 | ✅ 模块存在 |
+| `search.php?mod=forum` | 主题搜索（HTML） | `searchForum()` | ✅ 已完成 | ⚠️ 服务器过载时未复测；fixture 单测 |
+| `search.php?mod=user` | 用户搜索（HTML） | `searchUser()` | ✅ 已完成 | ⚠️ 同上 |
 | `sendpost` | ⚠️ **S1 已禁用**（勿与 sendreply 混淆） | — | ❌ 不存在 | |
 | `editpost` | ⚠️ **S1 已禁用** | — | ❌ 不存在 |
 | `uploadattach` / `postattach` | ⚠️ **S1 已禁用** | — | ❌ 不存在 |
@@ -24,6 +26,24 @@ S1 论坛使用的 Discuz! Mobile API (version=4)。所有请求走 `ApiConfig.m
 | `forum.php?mod=post&action=reply` | 旧 Web 回复（已弃用） | `sendPost()` `@Deprecated` | ⚠️ 遗留 | |
 | `forum.php?mod=post&action=edit` | 编辑帖子 | 未实现 | 📄 仅文档 | — |
 | 外链图床 `p.sda1.dev` | 回复插图 → `[img]url[/img]` | `ExternalImageUploadService` | ✅ 已完成 | |
+
+---
+
+## search.php（主题 / 用户搜索）
+
+> 对齐 S1-Next：`POST /2b/search.php?searchsubmit=yes&mod=forum|user`，body 含 `formhash` + `srchtxt`。响应为 HTML（非 Mobile JSON）。
+
+| | 主题 `mod=forum` | 用户 `mod=user` |
+|--|------------------|-----------------|
+| 入口 | 登录态「搜索」Tab → 主题 | 同 Tab → 用户 |
+| 首次请求 | POST + formhash | POST + formhash |
+| 翻页 | GET `pageHref`（`searchid` + `page=`） | 通常单页 |
+| 解析 | `em` 计数、`li.pbw`、`div.pg` | `li.bbda.cl` → uid/name；`#messagetext` 错误 |
+| 限流 | 用户组 `allowsearch`（常见 30s）；客户端另有 30s 提交冷却 | 同左 |
+
+主题结果结构化为 `tid` / 标题 / 摘要 / 版块 / 作者 / 时间，点击进 `/thread/{tid}`。用户结果打开资料 sheet。
+
+**注意**：2026-07-14 服务端曾返回过载文案，直播抓包未完成；解析回归依赖 `test/fixtures/search_*.html`。
 
 ---
 

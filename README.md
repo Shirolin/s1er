@@ -1,3 +1,7 @@
+<p align="center">
+  <img src="assets/branding/s1er_logo_transparent.png" alt="S1er" width="160" />
+</p>
+
 # S1 Client
 
 [![Flutter](https://img.shields.io/badge/Flutter-%3E%3D3.4-02569B?logo=flutter)](https://flutter.dev/)

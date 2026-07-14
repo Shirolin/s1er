@@ -55,6 +55,7 @@ void main() {
     expect(find.text('发送'), findsOneWidget);
     expect(find.text('图片'), findsOneWidget);
     expect(find.text('表情'), findsOneWidget);
+    expect(find.byTooltip('预览'), findsOneWidget);
     expect(find.byIcon(Icons.image_outlined), findsOneWidget);
     expect(find.byType(FilledButton), findsOneWidget);
   });
@@ -89,6 +90,7 @@ void main() {
     expect(find.text('发送'), findsOneWidget);
     expect(find.text('图片'), findsOneWidget);
     expect(find.text('表情'), findsOneWidget);
+    expect(find.byTooltip('预览'), findsOneWidget);
     expect(find.byIcon(Icons.image_outlined), findsOneWidget);
   });
 
@@ -154,6 +156,104 @@ void main() {
 
     final clearedSend = tester.widget<FilledButton>(find.byType(FilledButton));
     expect(clearedSend.onPressed, isNull);
+  });
+
+  testWidgets('ComposeScreen expands subject on tap', (tester) async {
+    const longSubject =
+        '很长的主题标题用于测试展开折叠行为一二三四五六七八九十';
+    await tester.pumpWidget(
+      ProviderScope(
+        overrides: [
+          authStateProvider.overrideWith(_LoggedInAuthNotifier.new),
+          composeControllerProvider.overrideWith(
+            (ref) => _StubComposeController(ref),
+          ),
+        ],
+        child: MaterialApp(
+          theme: AppTheme.lightTheme('purple'),
+          home: const ComposeScreen(
+            tid: '100',
+            fid: '4',
+            subject: longSubject,
+          ),
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    expect(find.byIcon(Icons.expand_more), findsOneWidget);
+    await tester.tap(find.textContaining('主题 ·'));
+    await tester.pumpAndSettle();
+    expect(find.byIcon(Icons.expand_less), findsOneWidget);
+  });
+
+  testWidgets('ComposeScreen shows short image chip for long img bbcode',
+      (tester) async {
+    await tester.pumpWidget(
+      ProviderScope(
+        overrides: [
+          authStateProvider.overrideWith(_LoggedInAuthNotifier.new),
+          composeControllerProvider.overrideWith(
+            (ref) => _StubComposeController(ref),
+          ),
+        ],
+        child: MaterialApp(
+          theme: AppTheme.lightTheme('purple'),
+          home: const ComposeScreen(tid: '100', fid: '4'),
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    const longName =
+        'QQ截图20260714142502_extra_long_filename.webp';
+    await tester.enterText(
+      find.byType(TextField),
+      '[img]https://p.sda1.dev/33/abc/$longName[/img]',
+    );
+    await tester.pump();
+
+    expect(find.text('图片 1'), findsOneWidget);
+    expect(find.text(longName), findsNothing);
+    expect(find.byType(InputChip), findsOneWidget);
+  });
+
+  testWidgets('ComposeScreen deletes chip and removes img bbcode',
+      (tester) async {
+    await tester.pumpWidget(
+      ProviderScope(
+        overrides: [
+          authStateProvider.overrideWith(_LoggedInAuthNotifier.new),
+          composeControllerProvider.overrideWith(
+            (ref) => _StubComposeController(ref),
+          ),
+        ],
+        child: MaterialApp(
+          theme: AppTheme.lightTheme('purple'),
+          home: const ComposeScreen(tid: '100', fid: '4'),
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    await tester.enterText(
+      find.byType(TextField),
+      'x[img]https://example.com/a.png[/img]y',
+    );
+    await tester.pump();
+    expect(find.text('图片 1'), findsOneWidget);
+
+    await tester.tap(
+      find.descendant(
+        of: find.byType(InputChip),
+        matching: find.byIcon(Icons.close),
+      ),
+    );
+    await tester.pump();
+
+    expect(find.text('图片 1'), findsNothing);
+    final field = tester.widget<TextField>(find.byType(TextField));
+    expect(field.controller!.text.contains('[img]'), isFalse);
   });
 
   testWidgets('ComposeScreen redirects to login when not authenticated',

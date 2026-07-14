@@ -96,6 +96,14 @@ abstract class S1Typography {
       textTheme.bodyMedium?.height ?? defaultBodyLineHeight;
 }
 
+/// M3 动效时长 / 曲线（短过渡与面板进出共用）。
+abstract class S1Motion {
+  static const Duration rapid = Duration(milliseconds: 100);
+  static const Duration short = Duration(milliseconds: 200);
+  static const Duration medium = Duration(milliseconds: 250);
+  static const Curve standard = Curves.easeOutCubic;
+}
+
 /// M3 Alpha tokens — 统一透明度
 abstract class S1Alpha {
   static const subtle = 0.08;

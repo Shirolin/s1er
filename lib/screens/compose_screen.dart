@@ -6,13 +6,19 @@ import '../models/post.dart';
 import '../models/quote_info.dart';
 import '../providers/auth_provider.dart';
 import '../providers/compose_provider.dart';
+import '../providers/settings_provider.dart';
 import '../services/external_image_upload_service.dart';
 import '../theme/app_theme.dart';
 import '../utils/compose_draft_store.dart';
+import '../utils/compose_img_tags.dart';
+import '../utils/post_image_index_counter.dart';
 import '../utils/quote_builder.dart';
 import '../utils/s1_snack_bar.dart';
+import '../widgets/bbcode_renderer.dart';
 import '../widgets/compose_emoticon_panel.dart';
 import '../widgets/s1_confirm_dialog.dart';
+
+const _recentEmoticonsKey = 'compose_recent_emoticons';
 
 class ComposeScreen extends ConsumerStatefulWidget {
   const ComposeScreen({
@@ -55,6 +61,8 @@ class _ComposeScreenState extends ConsumerState<ComposeScreen> {
   bool _quotePrefetching = false;
   String? _quotePrefetchError;
   final List<_ComposeUploadedImage> _uploadedImages = [];
+  final Map<String, String> _imageLabelsByUrl = {};
+  List<String> _recentEmoticons = [];
 
   bool get _hasValidTid => widget.tid != null && widget.tid!.isNotEmpty;
 
@@ -79,10 +87,15 @@ class _ComposeScreenState extends ConsumerState<ComposeScreen> {
     return hasText || _quoting;
   }
 
+  bool get _canPreview {
+    return _messageController.text.trim().isNotEmpty || _quoting;
+  }
+
   @override
   void initState() {
     super.initState();
     _messageController.addListener(_onMessageChanged);
+    _messageFocusNode.addListener(_onMessageFocusChanged);
     if (widget.draftId != null) {
       _draft = ComposeDraftStore.take(widget.draftId!);
       _includeQuote = _draft != null;
@@ -90,6 +103,7 @@ class _ComposeScreenState extends ConsumerState<ComposeScreen> {
 
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (!mounted) return;
+      _loadRecentEmoticons();
       if (!ref.read(authStateProvider).isLoggedIn && !_redirectedToLogin) {
         _redirectedToLogin = true;
         // 勿 pop 再 push：会在 Web 上触发 disposed EngineFlutterView 断言刷屏
@@ -100,7 +114,38 @@ class _ComposeScreenState extends ConsumerState<ComposeScreen> {
     });
   }
 
+  void _loadRecentEmoticons() {
+    try {
+      final store = ref.read(settingsStoreProvider);
+      final raw = store.get<Object>(_recentEmoticonsKey);
+      if (raw is! List) return;
+      setState(() {
+        _recentEmoticons =
+            raw.map((e) => e.toString()).where((e) => e.isNotEmpty).toList();
+      });
+    } on Object {
+      // Provider 未注入（如部分 widget 测试）时跳过持久化最近表情。
+    }
+  }
+
   void _onMessageChanged() {
+    if (!mounted) return;
+    final urls = extractImgUrls(_messageController.text);
+    final next = <_ComposeUploadedImage>[
+      for (final url in urls)
+        _ComposeUploadedImage(
+          url: url,
+          label: _imageLabelsByUrl[url] ?? filenameFromUrl(url),
+        ),
+    ];
+    setState(() {
+      _uploadedImages
+        ..clear()
+        ..addAll(next);
+    });
+  }
+
+  void _onMessageFocusChanged() {
     if (mounted) setState(() {});
   }
 
@@ -144,18 +189,6 @@ class _ComposeScreenState extends ConsumerState<ComposeScreen> {
     return '回复主题';
   }
 
-  void _insertAtCursor(String snippet) {
-    final text = _messageController.text;
-    final selection = _messageController.selection;
-    final start = selection.isValid ? selection.start : text.length;
-    final end = selection.isValid ? selection.end : text.length;
-    final next = text.replaceRange(start, end, snippet);
-    _messageController.value = TextEditingValue(
-      text: next,
-      selection: TextSelection.collapsed(offset: start + snippet.length),
-    );
-  }
-
   void _toggleEmoticonPanel() {
     setState(() {
       _showEmoticonPanel = !_showEmoticonPanel;
@@ -168,25 +201,101 @@ class _ComposeScreenState extends ConsumerState<ComposeScreen> {
   }
 
   void _insertEmoticon(String entity) {
-    _insertAtCursor(entity);
+    final selection = _messageController.selection;
+    final start = selection.isValid ? selection.start : _messageController.text.length;
+    final end = selection.isValid ? selection.end : _messageController.text.length;
+    final result = insertEmoticonEntity(
+      text: _messageController.text,
+      start: start,
+      end: end,
+      entity: entity,
+    );
+    _messageController.value = TextEditingValue(
+      text: result.text,
+      selection: TextSelection.collapsed(offset: result.cursor),
+    );
+    final next = pushRecentEmoticon(_recentEmoticons, entity);
+    setState(() => _recentEmoticons = next);
+    try {
+      ref.read(settingsStoreProvider).put(_recentEmoticonsKey, next);
+    } on Object {
+      // 同上：无 settings store 时仅保留会话内最近列表。
+    }
+  }
+
+  Future<void> _showPreview() async {
+    final message = _messageController.text;
+    if (!_canPreview) return;
+    _messageFocusNode.unfocus();
+    if (_showEmoticonPanel) {
+      setState(() => _showEmoticonPanel = false);
+    }
+
+    await showModalBottomSheet<void>(
+      context: context,
+      elevation: 0,
+      showDragHandle: true,
+      isScrollControlled: true,
+      backgroundColor: Theme.of(context).colorScheme.surfaceContainer,
+      shape: S1Shape.bottomSheetShape,
+      builder: (ctx) {
+        final textTheme = Theme.of(ctx).textTheme;
+        final height = MediaQuery.sizeOf(ctx).height * 0.65;
+        return SafeArea(
+          child: SizedBox(
+            height: height,
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                Padding(
+                  padding: const EdgeInsets.fromLTRB(16, 4, 16, 8),
+                  child: Text('预览', style: textTheme.titleMedium),
+                ),
+                Expanded(
+                  child: SingleChildScrollView(
+                    padding: const EdgeInsets.fromLTRB(16, 0, 16, 8),
+                    child: BbcodeRenderer(
+                      bbcode: message.isEmpty ? '（无正文）' : message,
+                      imageIndexCounter: PostImageIndexCounter(),
+                    ),
+                  ),
+                ),
+                Padding(
+                  padding: const EdgeInsets.fromLTRB(8, 0, 8, 8),
+                  child: Align(
+                    alignment: Alignment.centerRight,
+                    child: TextButton(
+                      onPressed: () => Navigator.of(ctx).pop(),
+                      child: const Text('关闭'),
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        );
+      },
+    );
   }
 
   @override
   void dispose() {
     _messageController.removeListener(_onMessageChanged);
+    _messageFocusNode.removeListener(_onMessageFocusChanged);
     _messageController.dispose();
     _messageFocusNode.dispose();
     super.dispose();
   }
 
   void _removeUploadedImage(_ComposeUploadedImage image) {
-    final tag = '[img]${image.url}[/img]';
-    final text = _messageController.text;
-    final next = text.replaceFirst(tag, '');
-    setState(() {
-      _uploadedImages.removeWhere((item) => item.url == image.url);
-      _messageController.text = next;
-    });
+    final next = removeImgTag(_messageController.text, image.url);
+    _imageLabelsByUrl.remove(image.url);
+    _messageController.value = TextEditingValue(
+      text: next,
+      selection: TextSelection.collapsed(
+        offset: next.length.clamp(0, next.length),
+      ),
+    );
   }
 
   Future<void> _pickAndUploadImage() async {
@@ -208,10 +317,22 @@ class _ComposeScreenState extends ConsumerState<ComposeScreen> {
           );
       if (!mounted) return;
       final label = file.name.trim().isEmpty ? '图片' : file.name;
-      setState(() {
-        _uploadedImages.add(_ComposeUploadedImage(url: url, label: label));
-      });
-      _insertAtCursor('[img]$url[/img]');
+      _imageLabelsByUrl[url] = label;
+      final selection = _messageController.selection;
+      final start =
+          selection.isValid ? selection.start : _messageController.text.length;
+      final end =
+          selection.isValid ? selection.end : _messageController.text.length;
+      final result = insertImgTagAt(
+        text: _messageController.text,
+        start: start,
+        end: end,
+        url: url,
+      );
+      _messageController.value = TextEditingValue(
+        text: result.text,
+        selection: TextSelection.collapsed(offset: result.cursor),
+      );
       S1SnackBar.show(context, message: '图片已插入', bottomClearance: 72);
     } on ExternalImageUploadException catch (e) {
       if (mounted) {
@@ -324,6 +445,8 @@ class _ComposeScreenState extends ConsumerState<ComposeScreen> {
     final textTheme = Theme.of(context).textTheme;
     final busy = _isSubmitting || _isUploadingImage || _quotePrefetching;
     final subject = _subjectLabel;
+    final keyboardInset = MediaQuery.viewInsetsOf(context).bottom;
+    final showPanel = _showEmoticonPanel && keyboardInset <= 0;
 
     if (!_hasValidTid) {
       return Scaffold(
@@ -375,35 +498,14 @@ class _ComposeScreenState extends ConsumerState<ComposeScreen> {
                 onRemove: _removeUploadedImage,
               ),
             Expanded(
-              child: TextField(
+              child: _ComposeMessageField(
                 controller: _messageController,
                 focusNode: _messageFocusNode,
-                maxLines: null,
-                expands: true,
-                textAlignVertical: TextAlignVertical.top,
-                style: textTheme.bodyLarge,
                 onTap: () {
                   if (_showEmoticonPanel) {
                     setState(() => _showEmoticonPanel = false);
                   }
                 },
-                decoration: InputDecoration(
-                  filled: true,
-                  fillColor: scheme.surfaceContainerHighest,
-                  hintText: '输入回复内容…',
-                  hintStyle: textTheme.bodyLarge?.copyWith(
-                    color: scheme.onSurfaceVariant,
-                  ),
-                  border: InputBorder.none,
-                  enabledBorder: InputBorder.none,
-                  focusedBorder: UnderlineInputBorder(
-                    borderSide: BorderSide(
-                      color: scheme.primary,
-                      width: 2,
-                    ),
-                  ),
-                  contentPadding: const EdgeInsets.all(16),
-                ),
               ),
             ),
           ],
@@ -411,16 +513,28 @@ class _ComposeScreenState extends ConsumerState<ComposeScreen> {
         bottomNavigationBar: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            if (_showEmoticonPanel)
-              ComposeEmoticonPanel(onSelect: _insertEmoticon),
+            ClipRect(
+              child: AnimatedAlign(
+                duration: S1Motion.medium,
+                curve: S1Motion.standard,
+                heightFactor: showPanel ? 1 : 0,
+                alignment: Alignment.bottomCenter,
+                child: ComposeEmoticonPanel(
+                  onSelect: _insertEmoticon,
+                  recent: _recentEmoticons,
+                ),
+              ),
+            ),
             _ComposeBottomBar(
               busy: busy,
               canSubmit: _canSubmit,
+              canPreview: _canPreview,
               isSubmitting: _isSubmitting,
               isUploadingImage: _isUploadingImage,
-              emoticonPanelOpen: _showEmoticonPanel,
+              emoticonPanelOpen: showPanel,
               onPickImage: _pickAndUploadImage,
               onToggleEmoticon: _toggleEmoticonPanel,
+              onPreview: _showPreview,
               onSubmit: _submit,
             ),
           ],
@@ -430,10 +544,80 @@ class _ComposeScreenState extends ConsumerState<ComposeScreen> {
   }
 }
 
-class _ComposeSubjectLine extends StatelessWidget {
+/// 正文 filled 输入：空态用 Highest 凹槽；有内容 / 聚焦时降到 Low，区分「内容态」。
+class _ComposeMessageField extends StatelessWidget {
+  const _ComposeMessageField({
+    required this.controller,
+    required this.focusNode,
+    required this.onTap,
+  });
+
+  final TextEditingController controller;
+  final FocusNode focusNode;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    final scheme = Theme.of(context).colorScheme;
+    final textTheme = Theme.of(context).textTheme;
+    final hasContent = controller.text.trim().isNotEmpty;
+    final focused = focusNode.hasFocus;
+    final active = hasContent || focused;
+    final fillColor =
+        active ? scheme.surfaceContainerLow : scheme.surfaceContainerHighest;
+
+    return AnimatedContainer(
+      duration: S1Motion.short,
+      curve: S1Motion.standard,
+      color: fillColor,
+      child: TextField(
+        controller: controller,
+        focusNode: focusNode,
+        maxLines: null,
+        expands: true,
+        textAlignVertical: TextAlignVertical.top,
+        style: textTheme.bodyLarge,
+        onTap: onTap,
+        decoration: InputDecoration(
+          filled: true,
+          fillColor: Colors.transparent,
+          hintText: '输入回复内容…',
+          hintStyle: textTheme.bodyLarge?.copyWith(
+            color: scheme.onSurfaceVariant,
+          ),
+          border: InputBorder.none,
+          enabledBorder: hasContent
+              ? UnderlineInputBorder(
+                  borderSide: BorderSide(
+                    color: scheme.outlineVariant,
+                    width: 1,
+                  ),
+                )
+              : InputBorder.none,
+          focusedBorder: UnderlineInputBorder(
+            borderSide: BorderSide(
+              color: scheme.primary,
+              width: 2,
+            ),
+          ),
+          contentPadding: const EdgeInsets.all(16),
+        ),
+      ),
+    );
+  }
+}
+
+class _ComposeSubjectLine extends StatefulWidget {
   const _ComposeSubjectLine({required this.subject});
 
   final String subject;
+
+  @override
+  State<_ComposeSubjectLine> createState() => _ComposeSubjectLineState();
+}
+
+class _ComposeSubjectLineState extends State<_ComposeSubjectLine> {
+  bool _expanded = false;
 
   @override
   Widget build(BuildContext context) {
@@ -442,14 +626,30 @@ class _ComposeSubjectLine extends StatelessWidget {
 
     return Material(
       color: scheme.surfaceContainer,
-      child: Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
-        child: Text(
-          '主题 · $subject',
-          maxLines: 1,
-          overflow: TextOverflow.ellipsis,
-          style: textTheme.labelMedium?.copyWith(
-            color: scheme.onSurfaceVariant,
+      child: InkWell(
+        onTap: () => setState(() => _expanded = !_expanded),
+        child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+          child: Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Expanded(
+                child: Text(
+                  '主题 · ${widget.subject}',
+                  maxLines: _expanded ? null : 1,
+                  overflow: _expanded ? TextOverflow.visible : TextOverflow.ellipsis,
+                  style: textTheme.labelMedium?.copyWith(
+                    color: _expanded
+                        ? scheme.onSurface
+                        : scheme.onSurfaceVariant,
+                  ),
+                ),
+              ),
+              Icon(
+                _expanded ? Icons.expand_less : Icons.expand_more,
+                color: scheme.onSurfaceVariant,
+              ),
+            ],
           ),
         ),
       ),
@@ -560,6 +760,8 @@ class _ComposeImageStrip extends StatelessWidget {
   Widget build(BuildContext context) {
     final scheme = Theme.of(context).colorScheme;
     final textTheme = Theme.of(context).textTheme;
+    final maxLabelWidth =
+        (MediaQuery.sizeOf(context).width * 0.4).clamp(88.0, 120.0);
 
     return Material(
       color: scheme.surfaceContainer,
@@ -572,20 +774,32 @@ class _ComposeImageStrip extends StatelessWidget {
           separatorBuilder: (_, __) => const SizedBox(width: 8),
           itemBuilder: (context, index) {
             final image = images[index];
-            return InputChip(
-              avatar: Icon(
-                Icons.image_outlined,
-                size: 18,
-                color: scheme.onSecondaryContainer,
+            return Tooltip(
+              message: image.label,
+              child: InputChip(
+                avatar: Icon(
+                  Icons.image_outlined,
+                  size: 18,
+                  color: scheme.onSecondaryContainer,
+                ),
+                label: SizedBox(
+                  width: maxLabelWidth,
+                  child: Text(
+                    displayLabelForIndex(index),
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: textTheme.labelMedium,
+                  ),
+                ),
+                onDeleted: () => onRemove(image),
+                deleteIcon: Icon(
+                  Icons.close,
+                  size: 18,
+                  color: scheme.onSecondaryContainer,
+                ),
+                backgroundColor: scheme.secondaryContainer,
+                side: BorderSide.none,
               ),
-              label: Text(
-                image.label,
-                style: textTheme.labelMedium,
-              ),
-              onDeleted: () => onRemove(image),
-              deleteIconColor: scheme.onSecondaryContainer,
-              backgroundColor: scheme.secondaryContainer,
-              side: BorderSide.none,
             );
           },
         ),
@@ -598,21 +812,25 @@ class _ComposeBottomBar extends StatelessWidget {
   const _ComposeBottomBar({
     required this.busy,
     required this.canSubmit,
+    required this.canPreview,
     required this.isSubmitting,
     required this.isUploadingImage,
     required this.emoticonPanelOpen,
     required this.onPickImage,
     required this.onToggleEmoticon,
+    required this.onPreview,
     required this.onSubmit,
   });
 
   final bool busy;
   final bool canSubmit;
+  final bool canPreview;
   final bool isSubmitting;
   final bool isUploadingImage;
   final bool emoticonPanelOpen;
   final VoidCallback onPickImage;
   final VoidCallback onToggleEmoticon;
+  final VoidCallback onPreview;
   final VoidCallback onSubmit;
 
   @override
@@ -625,8 +843,8 @@ class _ComposeBottomBar extends StatelessWidget {
       color: S1BottomBarStyle.background(scheme),
       elevation: 0,
       child: AnimatedPadding(
-        duration: const Duration(milliseconds: 100),
-        curve: Curves.easeOut,
+        duration: S1Motion.rapid,
+        curve: S1Motion.standard,
         padding: EdgeInsets.only(bottom: bottomInset),
         child: SafeArea(
           top: false,
@@ -658,6 +876,11 @@ class _ComposeBottomBar extends StatelessWidget {
                   label: Text(isUploadingImage ? '上传中' : '图片'),
                 ),
                 const Spacer(),
+                IconButton(
+                  tooltip: '预览',
+                  onPressed: canPreview && !busy ? onPreview : null,
+                  icon: const Icon(Icons.visibility_outlined),
+                ),
                 FilledButton(
                   onPressed: canSubmit ? onSubmit : null,
                   child: isSubmitting

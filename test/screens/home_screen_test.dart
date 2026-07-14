@@ -17,6 +17,36 @@ import 'package:s1_app/services/app_local_data.dart';
 import '../helpers/messages_test_helpers.dart';
 
 void main() {
+  testWidgets('empty forum list shows retry button', (tester) async {
+    await tester.pumpWidget(
+      ProviderScope(
+        overrides: [
+          authStateProvider.overrideWith(_LoggedOutAuthNotifier.new),
+          forumListProvider.overrideWith(_EmptyForumListNotifier.new),
+          settingsProvider.overrideWith(
+            () => SettingsNotifier(initial: const AppSettings()),
+          ),
+          ...messagesProviderOverrides(),
+        ],
+        child: MaterialApp(
+          theme: AppTheme.lightTheme('purple'),
+          home: const HomeScreen(),
+        ),
+      ),
+    );
+
+    await tester.pumpAndSettle();
+
+    expect(find.text('暂无版块数据'), findsOneWidget);
+    expect(find.text('请点击重试或下拉刷新'), findsOneWidget);
+    expect(find.widgetWithText(FilledButton, '重试'), findsOneWidget);
+    expect(find.byType(RefreshIndicator), findsOneWidget);
+
+    await tester.tap(find.text('重试'));
+    await tester.pumpAndSettle();
+    expect(find.text('暂无版块数据'), findsOneWidget);
+  });
+
   testWidgets('guest can view forum list on home forum tab', (tester) async {
     await tester.pumpWidget(
       ProviderScope(
@@ -374,6 +404,11 @@ void main() {
     expect(find.text('积分'), findsOneWidget);
     expect(find.text('帖子'), findsOneWidget);
   });
+}
+
+class _EmptyForumListNotifier extends ForumListNotifier {
+  @override
+  Future<List<ForumCategory>> build() async => const [];
 }
 
 class _GuestForumListNotifier extends ForumListNotifier {

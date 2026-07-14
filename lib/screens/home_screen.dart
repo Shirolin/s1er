@@ -166,34 +166,63 @@ class _ForumTab extends ConsumerWidget {
         onLogin: () => context.push('/login'),
       ),
       data: (categories) {
+        Future<void> refresh() =>
+            ref.read(forumListProvider.notifier).refresh();
+
         if (categories.isEmpty) {
-          return Center(
-            child: Padding(
-              padding: const EdgeInsets.all(32),
-              child: Column(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  const Icon(Icons.forum_outlined, size: 48),
-                  const SizedBox(height: 16),
-                  Text(
-                    '暂无版块数据',
-                    style: Theme.of(context).textTheme.titleMedium,
-                  ),
-                  const SizedBox(height: 8),
-                  Text(
-                    '请下拉刷新或稍后重试',
-                    style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                          color: Theme.of(context).colorScheme.onSurfaceVariant,
+          final scheme = Theme.of(context).colorScheme;
+          final textTheme = Theme.of(context).textTheme;
+          return RefreshIndicator(
+            onRefresh: refresh,
+            child: LayoutBuilder(
+              builder: (context, constraints) {
+                return SingleChildScrollView(
+                  physics: const AlwaysScrollableScrollPhysics(),
+                  child: ConstrainedBox(
+                    constraints:
+                        BoxConstraints(minHeight: constraints.maxHeight),
+                    child: Center(
+                      child: Padding(
+                        padding: const EdgeInsets.all(32),
+                        child: Column(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            Icon(
+                              Icons.forum_outlined,
+                              size: 48,
+                              color: scheme.onSurfaceVariant,
+                            ),
+                            const SizedBox(height: 16),
+                            Text(
+                              '暂无版块数据',
+                              style: textTheme.titleMedium,
+                            ),
+                            const SizedBox(height: 8),
+                            Text(
+                              '请点击重试或下拉刷新',
+                              style: textTheme.bodyMedium?.copyWith(
+                                color: scheme.onSurfaceVariant,
+                              ),
+                            ),
+                            const SizedBox(height: 24),
+                            FilledButton.icon(
+                              onPressed: refresh,
+                              icon: const Icon(Icons.refresh),
+                              label: const Text('重试'),
+                            ),
+                          ],
                         ),
+                      ),
+                    ),
                   ),
-                ],
-              ),
+                );
+              },
             ),
           );
         }
         return Scrollbar(
           child: RefreshIndicator(
-            onRefresh: () => ref.read(forumListProvider.notifier).refresh(),
+            onRefresh: refresh,
             child: ListView.builder(
               primary: true,
               padding: const EdgeInsets.only(bottom: 16),

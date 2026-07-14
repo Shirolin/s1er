@@ -26,10 +26,20 @@ class AuthService {
     unawaited(_fetchProfile());
   }
 
-  Future<String?> login(String username, String password) async {
+  Future<String?> login(
+    String username,
+    String password, {
+    int questionId = 0,
+    String answer = '',
+  }) async {
     try {
       final apiService = ApiService(_httpClient);
-      final error = await apiService.login(username, password);
+      final error = await apiService.login(
+        username,
+        password,
+        questionId: questionId,
+        answer: answer,
+      );
 
       if (error == null) {
         _isLoggedIn = true;

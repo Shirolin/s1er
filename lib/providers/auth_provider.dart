@@ -78,8 +78,18 @@ class AuthNotifier extends Notifier<AuthState> {
     _syncStateFromService();
   }
 
-  Future<String?> login(String username, String password) async {
-    final error = await _authService.login(username, password);
+  Future<String?> login(
+    String username,
+    String password, {
+    int questionId = 0,
+    String answer = '',
+  }) async {
+    final error = await _authService.login(
+      username,
+      password,
+      questionId: questionId,
+      answer: answer,
+    );
     if (error == null) {
       await _applyLoginSuccess();
     }

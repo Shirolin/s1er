@@ -17,6 +17,7 @@ import '../models/rate_form.dart';
 import '../models/app_exceptions.dart';
 import '../utils/error_handler.dart';
 import 'formhash_service.dart';
+import '../utils/discuz_message.dart';
 import 'http_client.dart';
 
 export '../models/app_exceptions.dart' show
@@ -313,7 +314,14 @@ class ApiService {
   }
 
   /// API 登录：返回 null 表示成功，否则返回错误信息。
-  Future<String?> login(String username, String password) async {
+  ///
+  /// [questionId] / [answer] 为 Discuz 安全提问（未设置时传 `0` / 空串）。
+  Future<String?> login(
+    String username,
+    String password, {
+    int questionId = 0,
+    String answer = '',
+  }) async {
     try {
       // 1. 发起 GET 请求以获取当前会话的 formhash
       final loginInitUrl = buildApiUrl(module: ApiConfig.moduleLogin);
@@ -362,8 +370,8 @@ class ApiService {
           'fastloginfield': 'username',
           'username': username,
           'password': password,
-          'questionid': '0',
-          'answer': '',
+          'questionid': '$questionId',
+          'answer': questionId == 0 ? '' : answer,
           'cookietime': '2592000',
         },
         options: Options(contentType: Headers.formUrlEncodedContentType),
@@ -376,25 +384,39 @@ class ApiService {
       } else if (data is String) {
         try {
           dataMap = jsonDecode(data) as Map<String, dynamic>;
-        } catch (_) {}
+        } catch (_) {
+          // Mobile API 偶发返回裸 key（如 mobile:login_invalid）
+          return friendlyLoginError(messageval: data);
+        }
       }
 
       if (dataMap != null) {
         final message = dataMap['Message'];
         if (message is Map<String, dynamic>) {
-          final messageval = message['messageval'];
-          final messagestr = message['messagestr'] as String?;
+          final messageval = message['messageval']?.toString();
+          final messagestr = message['messagestr']?.toString();
 
           if (messageval == 'login_succeed' ||
               messageval?.contains('succeed') == true) {
             await _httpClient.refreshFormhashAfterAuth();
             return null; // 登录成功
-          } else if (messagestr != null) {
-            return messagestr; // 登录失败，返回 Discuz 的错误提示
           }
+          return friendlyLoginError(
+            messageval: messageval,
+            messagestr: messagestr,
+          );
+        }
+        // 部分错误体把 messageval 放在顶层
+        final topVal = dataMap['messageval']?.toString() ??
+            dataMap['error']?.toString();
+        if (topVal != null && topVal.isNotEmpty) {
+          return friendlyLoginError(
+            messageval: topVal,
+            messagestr: dataMap['messagestr']?.toString(),
+          );
         }
       }
-      return '登录失败，服务器返回未知错误';
+      return '登录失败，请稍后重试';
     } catch (e) {
       return friendlyError(e, '登录');
     }

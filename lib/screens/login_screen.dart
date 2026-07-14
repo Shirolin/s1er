@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+import '../config/login_security_questions.dart';
 import '../providers/auth_provider.dart';
 import '../theme/app_theme.dart';
 
@@ -14,28 +15,41 @@ class LoginScreen extends ConsumerStatefulWidget {
 class _LoginScreenState extends ConsumerState<LoginScreen> {
   final _usernameController = TextEditingController();
   final _passwordController = TextEditingController();
+  final _answerController = TextEditingController();
   final _usernameFocus = FocusNode();
   final _passwordFocus = FocusNode();
+  final _answerFocus = FocusNode();
   bool _isLoading = false;
   bool _obscurePassword = true;
+  int _questionId = 0;
   String? _errorMessage;
 
   @override
   void dispose() {
     _usernameController.dispose();
     _passwordController.dispose();
+    _answerController.dispose();
     _usernameFocus.dispose();
     _passwordFocus.dispose();
+    _answerFocus.dispose();
     super.dispose();
   }
 
   Future<void> _handleLogin() async {
     final username = _usernameController.text.trim();
     final password = _passwordController.text;
+    final answer = _answerController.text.trim();
 
     if (username.isEmpty || password.isEmpty) {
       setState(() {
         _errorMessage = '用户名和密码不能为空';
+      });
+      return;
+    }
+
+    if (_questionId != 0 && answer.isEmpty) {
+      setState(() {
+        _errorMessage = '请填写安全提问的答案';
       });
       return;
     }
@@ -45,8 +59,12 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
       _errorMessage = null;
     });
 
-    final error =
-        await ref.read(authStateProvider.notifier).login(username, password);
+    final error = await ref.read(authStateProvider.notifier).login(
+          username,
+          password,
+          questionId: _questionId,
+          answer: answer,
+        );
 
     if (!mounted) return;
 
@@ -64,6 +82,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
   Widget build(BuildContext context) {
     final scheme = Theme.of(context).colorScheme;
     final textTheme = Theme.of(context).textTheme;
+    final showAnswer = _questionId != 0;
 
     return Scaffold(
       appBar: AppBar(
@@ -150,8 +169,56 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                         ),
                       ),
                       obscureText: _obscurePassword,
-                      onSubmitted: (_) => _handleLogin(),
+                      textInputAction: showAnswer
+                          ? TextInputAction.next
+                          : TextInputAction.done,
+                      onSubmitted: (_) {
+                        if (showAnswer) {
+                          _answerFocus.requestFocus();
+                        } else {
+                          _handleLogin();
+                        }
+                      },
                     ),
+                    const SizedBox(height: 16),
+                    DropdownMenu<int>(
+                      initialSelection: _questionId,
+                      label: const Text('安全提问'),
+                      leadingIcon: const Icon(Icons.help_outline),
+                      expandedInsets: EdgeInsets.zero,
+                      inputDecorationTheme: const InputDecorationTheme(
+                        filled: true,
+                      ),
+                      dropdownMenuEntries: [
+                        for (final q in LoginSecurityQuestions.all)
+                          DropdownMenuEntry<int>(
+                            value: q.id,
+                            label: q.label,
+                          ),
+                      ],
+                      onSelected: (value) {
+                        if (value == null) return;
+                        setState(() {
+                          _questionId = value;
+                          if (value == 0) {
+                            _answerController.clear();
+                          }
+                        });
+                      },
+                    ),
+                    if (showAnswer) ...[
+                      const SizedBox(height: 16),
+                      TextField(
+                        controller: _answerController,
+                        focusNode: _answerFocus,
+                        decoration: const InputDecoration(
+                          labelText: '答案',
+                          prefixIcon: Icon(Icons.quiz_outlined),
+                        ),
+                        textInputAction: TextInputAction.done,
+                        onSubmitted: (_) => _handleLogin(),
+                      ),
+                    ],
                     const SizedBox(height: 24),
                     FilledButton(
                       onPressed: _isLoading ? null : _handleLogin,

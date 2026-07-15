@@ -57,11 +57,45 @@ function Show-Menu {
 }
 
 function Start-Proxy {
+    $proxyUrl = $null
+
+    # ── 端口冲突清理 ────────────────────────────────────────
+    $connections = Get-NetTCPConnection -LocalPort 19080 -ErrorAction SilentlyContinue
+    if ($connections) {
+        Write-Host ''
+        Write-Host '  Port 19080 in use, stopping old proxy...' -ForegroundColor DarkYellow
+        $connections |
+            Select-Object -ExpandProperty OwningProcess -Unique |
+            Where-Object { $_ -gt 0 } |
+            ForEach-Object {
+                Stop-Process -Id $_ -Force -ErrorAction SilentlyContinue
+            }
+        Start-Sleep -Seconds 1
+    }
+
+    # ── 上游代理自动检测 ────────────────────────────────────
+    if (-not ($env:HTTPS_PROXY -or $env:HTTP_PROXY -or $env:ALL_PROXY)) {
+        $localProxy = Test-NetConnection 127.0.0.1 -Port 7890 -InformationLevel Quiet -WarningAction SilentlyContinue
+        if ($localProxy) {
+            $proxyUrl = 'http://127.0.0.1:7890'
+            $env:HTTP_PROXY = $proxyUrl
+            $env:HTTPS_PROXY = $proxyUrl
+            $env:ALL_PROXY = $proxyUrl
+        }
+    }
+
     Write-Host ''
     Write-Host 'Starting CORS Proxy on http://localhost:19080...' -ForegroundColor Yellow
     $global:ProxyJob = Start-Process -FilePath 'dart' -ArgumentList 'run', 'scripts/proxy_server.dart' -PassThru -WindowStyle Minimized
+    if ($proxyUrl) {
+        Write-Host "  Upstream proxy: $proxyUrl" -ForegroundColor Cyan
+    }
     Start-Sleep -Seconds 2
-    Write-Host '  Proxy started (PID: ' $global:ProxyJob.Id ')' -ForegroundColor Green
+    if ($global:ProxyJob.HasExited) {
+        Write-Host '  Proxy failed to start (exit code: ' $global:ProxyJob.ExitCode ')' -ForegroundColor Red
+    } else {
+        Write-Host '  Proxy started (PID: ' $global:ProxyJob.Id ')' -ForegroundColor Green
+    }
 }
 
 function Stop-Proxy {

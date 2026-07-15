@@ -8,6 +8,7 @@ import 'package:talker_dio_logger/talker_dio_logger.dart';
 import 'package:sentry_flutter/sentry_flutter.dart';
 import 'app.dart';
 import 'config/env_config.dart';
+import 'theme/app_theme.dart';
 import 'models/emoticon_catalog.dart';
 import 'providers/settings_provider.dart';
 import 'services/app_database.dart';
@@ -132,7 +133,7 @@ class _InitErrorApp extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
-      theme: ThemeData(useMaterial3: true),
+      theme: AppTheme.lightTheme(AppTheme.defaultThemeColorKey),
       home: Scaffold(
         body: Center(
           child: Padding(

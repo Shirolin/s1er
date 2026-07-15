@@ -17,6 +17,8 @@ import 'services/http_client.dart';
 import 'services/talker.dart';
 import 'utils/web_reload.dart'
     if (dart.library.js_interop) 'utils/web_reload_web.dart';
+import 'utils/web_crash_reporter.dart'
+    if (dart.library.js_interop) 'utils/web_crash_reporter_web.dart';
 
 Future<void> _loadEmoticonManifest() async {
   try {
@@ -33,6 +35,15 @@ Future<void> _loadEmoticonManifest() async {
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
 
+  // ── Check for persisted crash from a previous broken run ─────────
+  if (kIsWeb) {
+    final persisted = readPersistedInitError();
+    if (persisted != null) {
+      runApp(_InitErrorApp(error: persisted));
+      return;
+    }
+  }
+
   if (EnvConfig.sentryEnabled) {
     try {
       await SentryFlutter.init(
@@ -42,12 +53,11 @@ void main() async {
         },
       );
     } catch (e, st) {
-      // Sentry is optional — don't let it block startup.
       talker.handle(e, st, 'Sentry init skipped');
     }
   }
 
-  // ── Web error handlers: log to console, don't crash silently ──────
+  // ── Web error handlers: persist to localStorage + console log ────
   if (kIsWeb) {
     FlutterError.onError = (details) {
       final exception = details.exception;
@@ -57,8 +67,7 @@ void main() async {
               .contains('ViewInsets cannot be negative')) {
         return;
       }
-      // Log to browser console so the user can copy-paste the error.
-      // ignore: avoid_print — intentional console logging for debugging.
+      // ignore: avoid_print — intentional console logging.
       print('FlutterError: $exception\n${details.stack}');
       FlutterError.presentError(details);
     };
@@ -68,34 +77,26 @@ void main() async {
           error.message.toString().contains('ViewInsets cannot be negative')) {
         return true;
       }
-      // Log to browser console so the user can see the error.
-      // ignore: avoid_print — intentional console logging for debugging.
+      // ignore: avoid_print — intentional console logging.
       print('FATAL: $error\n$stack');
-      return true; // Prevent silent crash — error is now visible in console.
+      persistInitError('$error');
+      return true;
     };
   }
 
-  AppLocalData? localData;
-
+  // ── Init chain: persist to localStorage on failure ───────────────
   try {
     final db = AppDatabase();
-    localData = AppLocalData(db);
+    final localData = AppLocalData(db);
     await localData.loadEssentials();
-  } catch (e, st) {
-    talker.handle(e, st, 'App database init failed');
-    runApp(_InitErrorApp(error: '$e'));
-    return;
-  }
+    await _loadEmoticonManifest();
 
-  await _loadEmoticonManifest();
+    final container = ProviderContainer(
+      overrides: [
+        localDataProvider.overrideWithValue(localData),
+      ],
+    );
 
-  final container = ProviderContainer(
-    overrides: [
-      localDataProvider.overrideWithValue(localData),
-    ],
-  );
-
-  try {
     final httpClient = container.read(httpClientProvider);
     await httpClient.init();
     httpClient.dio.interceptors.add(
@@ -112,18 +113,20 @@ void main() async {
         ),
       ),
     );
-  } catch (e, st) {
-    talker.handle(e, st, 'HTTP client init failed');
-    runApp(_InitErrorApp(error: '$e'));
-    return;
-  }
 
-  runApp(
-    UncontrolledProviderScope(
-      container: container,
-      child: const S1App(),
-    ),
-  );
+    runApp(
+      UncontrolledProviderScope(
+        container: container,
+        child: const S1App(),
+      ),
+    );
+  } catch (e, st) {
+    talker.handle(e, st, 'App init failed');
+    if (kIsWeb) {
+      persistInitError('$e');
+    }
+    runApp(_InitErrorApp(error: '$e'));
+  }
 }
 
 class _InitErrorApp extends StatelessWidget {

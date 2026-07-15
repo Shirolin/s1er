@@ -193,8 +193,8 @@ class ForumToolsService {
     if (json['error']?.toString() == 'to_login' ||
         (json['Message'] is Map &&
             (json['Message'] as Map)['messageval']?.toString().contains(
-                  'to_login',
-                ) ==
+                      'to_login',
+                    ) ==
                 true)) {
       throw LoginRequiredException();
     }

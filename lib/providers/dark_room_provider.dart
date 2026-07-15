@@ -81,5 +81,5 @@ class DarkRoomNotifier extends AsyncNotifier<DarkRoomState> {
 
 final darkRoomProvider =
     AsyncNotifierProvider.autoDispose<DarkRoomNotifier, DarkRoomState>(
-      DarkRoomNotifier.new,
-    );
+  DarkRoomNotifier.new,
+);

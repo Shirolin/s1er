@@ -24,7 +24,9 @@ class EncryptedCookieStorage {
   /// 测试用：使用固定密钥构建加密存储。
   @visibleForTesting
   static FileStorage buildEncryptedStorage(
-      String dir, SecretKeyData secretKeyData,) {
+    String dir,
+    SecretKeyData secretKeyData,
+  ) {
     final storage = FileStorage(dir);
 
     storage.readPreHandler = (Uint8List bytes) {

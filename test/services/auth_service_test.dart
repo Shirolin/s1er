@@ -46,8 +46,7 @@ void main() {
     });
 
     test('fromHtml extracts hidden input value', () {
-      const html =
-          '<input type="hidden" name="formhash" value="de12ab34" />';
+      const html = '<input type="hidden" name="formhash" value="de12ab34" />';
       expect(FormhashExtractor.fromHtml(html), 'de12ab34');
     });
   });

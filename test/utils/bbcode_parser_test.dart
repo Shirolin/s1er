@@ -19,7 +19,8 @@ void main() {
       expect(parsed, isNot(contains('<img')));
     });
 
-    test('external single-url div.img becomes post-image with same preview/full',
+    test(
+        'external single-url div.img becomes post-image with same preview/full',
         () {
       final html = File('test/fixtures/post_images/external_single.html')
           .readAsStringSync();

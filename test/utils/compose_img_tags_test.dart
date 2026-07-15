@@ -4,8 +4,7 @@ import 'package:s1_app/utils/compose_img_tags.dart';
 void main() {
   group('compose_img_tags', () {
     test('extractImgUrls preserves first-seen order and dedupes', () {
-      const text =
-          'a[img]https://a/1.png[/img]b[img]https://a/2.png[/img]'
+      const text = 'a[img]https://a/1.png[/img]b[img]https://a/2.png[/img]'
           '[img]https://a/1.png[/img]';
       expect(extractImgUrls(text), [
         'https://a/1.png',
@@ -14,8 +13,7 @@ void main() {
     });
 
     test('removeImgTag strips all matching tags', () {
-      const text =
-          '[img]https://x/long-file-name.webp[/img] hi '
+      const text = '[img]https://x/long-file-name.webp[/img] hi '
           '[img]https://x/long-file-name.webp[/img]';
       expect(
         removeImgTag(text, 'https://x/long-file-name.webp').trim(),

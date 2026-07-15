@@ -102,7 +102,10 @@ void main() {
         'floor': 1,
       };
       final post = Post.fromJson(json);
-      expect(post.avatar, 'https://avatar.stage1st.com/000/00/00/42_avatar_small.jpg');
+      expect(
+        post.avatar,
+        'https://avatar.stage1st.com/000/00/00/42_avatar_small.jpg',
+      );
     });
   });
 

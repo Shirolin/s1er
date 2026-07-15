@@ -25,5 +25,5 @@ class FriendListNotifier extends AsyncNotifier<FriendListResult> {
 
 final friendListProvider =
     AsyncNotifierProvider.autoDispose<FriendListNotifier, FriendListResult>(
-      FriendListNotifier.new,
-    );
+  FriendListNotifier.new,
+);

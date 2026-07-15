@@ -33,8 +33,7 @@ void main() {
     });
 
     test('stripNestedQuotes removes reply_wrap divs', () {
-      const input =
-          'text <div class="reply_wrap"><a>user</a>body</div> tail';
+      const input = 'text <div class="reply_wrap"><a>user</a>body</div> tail';
       expect(QuoteBuilder.stripNestedQuotes(input), 'text  tail');
     });
 

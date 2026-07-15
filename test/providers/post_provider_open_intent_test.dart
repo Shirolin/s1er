@@ -325,9 +325,7 @@ class _ThreadDetailAdapter implements HttpClientAdapter {
     if (uri.query.contains('module=viewthread')) {
       final page = int.tryParse(uri.queryParameters['page'] ?? '1') ?? 1;
       requestedPages.add(page);
-      final pid = omitPidFromPostlist
-          ? '1'
-          : (_lastLocatedPid ?? '1');
+      final pid = omitPidFromPostlist ? '1' : (_lastLocatedPid ?? '1');
       final variables = <String, dynamic>{
         'ppp': '40',
         'thread': {

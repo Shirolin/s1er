@@ -4,10 +4,8 @@ import 'package:s1_app/utils/post_image_urls.dart';
 void main() {
   group('PostImageUrls.resolve', () {
     test('uses anchor href as full when distinct from img src', () {
-      const src =
-          'https://img.stage1st.com/forum/202411/12/foo.png.thumb.jpg';
-      const href =
-          'https://img.stage1st.com/forum/202411/12/foo.png';
+      const src = 'https://img.stage1st.com/forum/202411/12/foo.png.thumb.jpg';
+      const href = 'https://img.stage1st.com/forum/202411/12/foo.png';
 
       final urls = PostImageUrls.resolve(src: src, linkHref: href);
 
@@ -28,8 +26,7 @@ void main() {
     });
 
     test('derives full URL from .thumb.jpg suffix', () {
-      const src =
-          'https://img.stage1st.com/forum/202411/12/foo.png.thumb.jpg';
+      const src = 'https://img.stage1st.com/forum/202411/12/foo.png.thumb.jpg';
       final urls = PostImageUrls.resolve(src: src);
 
       expect(urls.previewUrl, src);

@@ -4,7 +4,8 @@ import 'package:s1_app/theme/app_theme.dart';
 import 'package:s1_app/widgets/avatar_fallback.dart';
 
 void main() {
-  testWidgets('AvatarFallbackLetter uses textTheme without bare fontSize', (tester) async {
+  testWidgets('AvatarFallbackLetter uses textTheme without bare fontSize',
+      (tester) async {
     await tester.pumpWidget(
       MaterialApp(
         theme: AppTheme.lightTheme('purple'),

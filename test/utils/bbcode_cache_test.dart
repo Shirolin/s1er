@@ -16,8 +16,10 @@ void main() {
     }
     expect(BbcodeCache.get('key0'), isNull);
     expect(BbcodeCache.get('key1'), 'html1');
-    expect(BbcodeCache.get('key${BbcodeCache.maxEntries}'),
-        'html${BbcodeCache.maxEntries}',);
+    expect(
+      BbcodeCache.get('key${BbcodeCache.maxEntries}'),
+      'html${BbcodeCache.maxEntries}',
+    );
   });
 
   test('buildKey changes when settings change', () {

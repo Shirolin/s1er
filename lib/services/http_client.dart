@@ -19,9 +19,9 @@ class S1HttpClient {
 
   @visibleForTesting
   S1HttpClient.test(this._testContainer, Dio dio)
-    : _ref = null,
-      _dio = dio,
-      _initialized = true;
+      : _ref = null,
+        _dio = dio,
+        _initialized = true;
 
   late Dio _dio;
   bool _initialized = false;

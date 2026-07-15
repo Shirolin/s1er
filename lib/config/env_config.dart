@@ -61,6 +61,16 @@ class EnvConfig {
     defaultValue: 120,
   );
 
+  // ── 监控 ──────────────────────────────────────────────
+
+  /// Sentry DSN（通过 --dart-define 注入，为空则禁用 Sentry）
+  static const String sentryDsn = String.fromEnvironment(
+    'SENTRY_DSN',
+    defaultValue: '',
+  );
+
+  static bool get sentryEnabled => sentryDsn.isNotEmpty;
+
   // ── 便捷判断 ──────────────────────────────────────────
 
   static bool get talkerLogAll => talkerLogLevel == 'all';

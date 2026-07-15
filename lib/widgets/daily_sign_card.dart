@@ -20,8 +20,7 @@ class DailySignCard extends StatelessWidget {
     final scheme = Theme.of(context).colorScheme;
     final textTheme = Theme.of(context).textTheme;
     final signed = result?.isSignedToday == true;
-    final failed =
-        result?.outcome == AttendanceOutcome.failed ||
+    final failed = result?.outcome == AttendanceOutcome.failed ||
         result?.outcome == AttendanceOutcome.unknown;
 
     return Card(

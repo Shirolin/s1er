@@ -31,7 +31,8 @@ void main() {
     });
 
     test('build loads only threads for other user space', () async {
-      final sub = container.listen(userSpaceProvider(('42', false)), (_, __) {});
+      final sub =
+          container.listen(userSpaceProvider(('42', false)), (_, __) {});
       addTearDown(sub.close);
 
       await container.read(userSpaceProvider(('42', false)).future);
@@ -40,10 +41,12 @@ void main() {
     });
 
     test('ensureRepliesLoaded fetches replies after initial build', () async {
-      final sub = container.listen(userSpaceProvider(('42', false)), (_, __) {});
+      final sub =
+          container.listen(userSpaceProvider(('42', false)), (_, __) {});
       addTearDown(sub.close);
 
-      final notifier = container.read(userSpaceProvider(('42', false)).notifier);
+      final notifier =
+          container.read(userSpaceProvider(('42', false)).notifier);
       await container.read(userSpaceProvider(('42', false)).future);
       expect(adapter.requestTypes, ['thread']);
 
@@ -51,16 +54,22 @@ void main() {
 
       expect(adapter.requestTypes, ['thread', 'reply']);
       expect(
-        container.read(userSpaceProvider(('42', false))).asData!.value.repliesLoaded,
+        container
+            .read(userSpaceProvider(('42', false)))
+            .asData!
+            .value
+            .repliesLoaded,
         isTrue,
       );
     });
 
     test('refresh reloads only threads when replies not loaded', () async {
-      final sub = container.listen(userSpaceProvider(('42', false)), (_, __) {});
+      final sub =
+          container.listen(userSpaceProvider(('42', false)), (_, __) {});
       addTearDown(sub.close);
 
-      final notifier = container.read(userSpaceProvider(('42', false)).notifier);
+      final notifier =
+          container.read(userSpaceProvider(('42', false)).notifier);
       await container.read(userSpaceProvider(('42', false)).future);
       adapter.requestTypes.clear();
 

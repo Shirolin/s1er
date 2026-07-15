@@ -4,13 +4,14 @@ import 'dart:io';
 void main() async {
   final client = HttpClient();
   client.userAgent = 'Mozilla/5.0 (Linux; Android 10) AppleWebKit/537.36';
-  
+
   print('=== Testing forumindex ===');
-  final req1 = await client.getUrl(Uri.parse('https://stage1st.com/2b/api/mobile/index.php?version=4&module=forumindex'));
+  final req1 = await client.getUrl(Uri.parse(
+      'https://stage1st.com/2b/api/mobile/index.php?version=4&module=forumindex'));
   final res1 = await req1.close();
   final body1 = await res1.transform(utf8.decoder).join();
   final json1 = jsonDecode(body1);
-  
+
   final vars = json1['Variables'] as Map<String, dynamic>?;
   if (vars != null) {
     print('Variables keys: ${vars.keys.toList()}');
@@ -36,7 +37,7 @@ void main() async {
     } else {
       print('forumlist type: ${forumlist?.runtimeType}');
     }
-    
+
     final memberinfo = vars['memberinfo'];
     if (memberinfo is Map) {
       print('\n=== memberinfo ===');
@@ -48,15 +49,17 @@ void main() async {
     }
   } else {
     print('No Variables. Top keys: ${json1.keys.toList()}');
-    print('Body (first 3000): ${body1.substring(0, body1.length > 3000 ? 3000 : body1.length)}');
+    print(
+        'Body (first 3000): ${body1.substring(0, body1.length > 3000 ? 3000 : body1.length)}');
   }
-  
+
   print('\n=== Testing forumdisplay fid=4 ===');
-  final req2 = await client.getUrl(Uri.parse('https://stage1st.com/2b/api/mobile/index.php?version=4&module=forumdisplay&fid=4&page=1'));
+  final req2 = await client.getUrl(Uri.parse(
+      'https://stage1st.com/2b/api/mobile/index.php?version=4&module=forumdisplay&fid=4&page=1'));
   final res2 = await req2.close();
   final body2 = await res2.transform(utf8.decoder).join();
   final json2 = jsonDecode(body2);
-  
+
   final vars2 = json2['Variables'] as Map<String, dynamic>?;
   if (vars2 != null) {
     print('Variables keys: ${vars2.keys.toList()}');
@@ -67,8 +70,9 @@ void main() async {
     print('threads (total count field): ${vars2['threads']}');
     print('perpage: ${vars2['perpage']}');
   } else {
-    print('No Variables. Body (first 3000): ${body2.substring(0, body2.length > 3000 ? 3000 : body2.length)}');
+    print(
+        'No Variables. Body (first 3000): ${body2.substring(0, body2.length > 3000 ? 3000 : body2.length)}');
   }
-  
+
   client.close();
 }

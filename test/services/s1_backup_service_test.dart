@@ -253,7 +253,10 @@ void main() {
       );
       expect(exported.payload.blacklist, hasLength(1));
       expect(exported.payload.blacklist.first['uid'], '55');
-      expect(exported.payload.blacklist.first['scope'], ['thread', 'post', 'pm']);
+      expect(
+        exported.payload.blacklist.first['scope'],
+        ['thread', 'post', 'pm'],
+      );
 
       await local.clearBlacklist();
       await local.flushPendingWrites();

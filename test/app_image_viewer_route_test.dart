@@ -4,7 +4,8 @@ import 'package:s1_app/theme/app_theme.dart';
 import 'package:go_router/go_router.dart';
 
 void main() {
-  testWidgets('image-viewer route without extra shows fallback', (tester) async {
+  testWidgets('image-viewer route without extra shows fallback',
+      (tester) async {
     final router = GoRouter(
       routes: [
         GoRoute(

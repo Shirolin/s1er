@@ -22,7 +22,8 @@ void main() {
     expect(find.byIcon(Icons.chevron_left), findsNothing);
   });
 
-  testWidgets('PaginationBar shows controls for multiple pages', (tester) async {
+  testWidgets('PaginationBar shows controls for multiple pages',
+      (tester) async {
     await tester.pumpWidget(
       MaterialApp(
         theme: AppTheme.lightTheme('purple'),
@@ -41,7 +42,8 @@ void main() {
     expect(find.byIcon(Icons.chevron_right), findsOneWidget);
   });
 
-  testWidgets('PaginationBar prev button triggers onPageChanged', (tester) async {
+  testWidgets('PaginationBar prev button triggers onPageChanged',
+      (tester) async {
     int? requestedPage;
     await tester.pumpWidget(
       MaterialApp(
@@ -86,7 +88,8 @@ void main() {
     expect(find.text('跳转'), findsOneWidget);
   });
 
-  testWidgets('PaginationBar page indicator meets 48dp touch target', (tester) async {
+  testWidgets('PaginationBar page indicator meets 48dp touch target',
+      (tester) async {
     await tester.pumpWidget(
       MaterialApp(
         theme: AppTheme.lightTheme('purple'),
@@ -106,6 +109,9 @@ void main() {
         matching: find.byType(InkWell),
       ),
     );
-    expect(indicatorBox.height, greaterThanOrEqualTo(S1BottomBarStyle.minTouchTarget));
+    expect(
+      indicatorBox.height,
+      greaterThanOrEqualTo(S1BottomBarStyle.minTouchTarget),
+    );
   });
 }

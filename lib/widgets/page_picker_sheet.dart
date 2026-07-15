@@ -123,7 +123,9 @@ class _PagePickerSheetState extends State<PagePickerSheet> {
                       ),
                       Container(
                         padding: const EdgeInsets.symmetric(
-                            horizontal: 10, vertical: 4,),
+                          horizontal: 10,
+                          vertical: 4,
+                        ),
                         decoration: BoxDecoration(
                           color: scheme.secondaryContainer,
                           borderRadius: S1Shape.medium,
@@ -243,8 +245,11 @@ class _PagePickerSheetState extends State<PagePickerSheet> {
                             child: Row(
                               mainAxisAlignment: MainAxisAlignment.center,
                               children: [
-                                Icon(Icons.more_horiz,
-                                    size: 16, color: scheme.outlineVariant,),
+                                Icon(
+                                  Icons.more_horiz,
+                                  size: 16,
+                                  color: scheme.outlineVariant,
+                                ),
                               ],
                             ),
                           ),
@@ -297,8 +302,11 @@ class _PagePickerSheetState extends State<PagePickerSheet> {
                               ),
                             ),
                             trailing: isCurrent
-                                ? Icon(Icons.check_circle,
-                                    color: scheme.primary, size: 22,)
+                                ? Icon(
+                                    Icons.check_circle,
+                                    color: scheme.primary,
+                                    size: 22,
+                                  )
                                 : Icon(
                                     Icons.chevron_right,
                                     color: scheme.onSurfaceVariant

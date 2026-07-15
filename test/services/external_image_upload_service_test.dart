@@ -13,7 +13,10 @@ void main() {
         filename: '鲈鱼千秋.png',
         isWeb: false,
       );
-      expect(url, startsWith('https://p.sda1.dev/api/v1/upload_external_noform'));
+      expect(
+        url,
+        startsWith('https://p.sda1.dev/api/v1/upload_external_noform'),
+      );
       expect(url, contains(Uri.encodeQueryComponent('鲈鱼千秋.png')));
     });
 

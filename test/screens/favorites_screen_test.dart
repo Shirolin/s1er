@@ -148,7 +148,10 @@ void main() {
       );
       await tester.pumpAndSettle();
 
-      expect(_TrackingFavoriteListNotifier.builtSegments, [FavoriteSegment.all]);
+      expect(
+        _TrackingFavoriteListNotifier.builtSegments,
+        [FavoriteSegment.all],
+      );
 
       await tester.tap(find.text('帖子'));
       await tester.pumpAndSettle();

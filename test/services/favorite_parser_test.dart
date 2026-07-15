@@ -52,8 +52,7 @@ void main() {
     });
 
     test('returns empty list for empty-state HTML', () {
-      const html =
-          '<div class="findbox mt10 cl"><h4>您还没有添加任何收藏</h4></div>';
+      const html = '<div class="findbox mt10 cl"><h4>您还没有添加任何收藏</h4></div>';
       final result = ApiService.parseFavoriteListHtml(html);
       expect(result.items, isEmpty);
     });
@@ -100,8 +99,7 @@ void main() {
     });
 
     test('extracts favid from succeed callback', () {
-      const body =
-          "succeedhandle_favorite('收藏成功', '', {'favid':'3093261'})";
+      const body = "succeedhandle_favorite('收藏成功', '', {'favid':'3093261'})";
       final result = ApiService.parseFavoriteMutationResponse(body);
       expect(result.isSuccess, isTrue);
       expect(result.favid, '3093261');

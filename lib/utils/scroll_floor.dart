@@ -156,9 +156,7 @@ abstract class ScrollFloorNavigator {
 
     var targetContext = postKeys[index].currentContext;
     // 目标尚未构建时：以最近已构建楼为锚，按实测行高多轮估算滚入视口。
-    for (var attempt = 0;
-        targetContext == null && attempt < 6;
-        attempt++) {
+    for (var attempt = 0; targetContext == null && attempt < 6; attempt++) {
       var refIndex = -1;
       for (var i = index - 1; i >= 0; i--) {
         if (postKeys[i].currentContext != null) {

@@ -61,29 +61,41 @@ class BbcodeParser {
   static String _convertBbcodeToHtml(String text) {
     var output = text;
 
-    output = output.replaceAllMapped(RegExp(r'\[b\](.*?)\[/b\]', dotAll: true),
-        (m) => '<b>${m.group(1)}</b>',);
-    output = output.replaceAllMapped(RegExp(r'\[i\](.*?)\[/i\]', dotAll: true),
-        (m) => '<i>${m.group(1)}</i>',);
-    output = output.replaceAllMapped(RegExp(r'\[u\](.*?)\[/u\]', dotAll: true),
-        (m) => '<u>${m.group(1)}</u>',);
-    output = output.replaceAllMapped(RegExp(r'\[s\](.*?)\[/s\]', dotAll: true),
-        (m) => '<s>${m.group(1)}</s>',);
+    output = output.replaceAllMapped(
+      RegExp(r'\[b\](.*?)\[/b\]', dotAll: true),
+      (m) => '<b>${m.group(1)}</b>',
+    );
+    output = output.replaceAllMapped(
+      RegExp(r'\[i\](.*?)\[/i\]', dotAll: true),
+      (m) => '<i>${m.group(1)}</i>',
+    );
+    output = output.replaceAllMapped(
+      RegExp(r'\[u\](.*?)\[/u\]', dotAll: true),
+      (m) => '<u>${m.group(1)}</u>',
+    );
+    output = output.replaceAllMapped(
+      RegExp(r'\[s\](.*?)\[/s\]', dotAll: true),
+      (m) => '<s>${m.group(1)}</s>',
+    );
 
     output = output.replaceAllMapped(
-        RegExp(r'\[url=(.*?)\](.*?)\[/url\]', dotAll: true),
-        (m) => '<a href="${m.group(1)}">${m.group(2)}</a>',);
+      RegExp(r'\[url=(.*?)\](.*?)\[/url\]', dotAll: true),
+      (m) => '<a href="${m.group(1)}">${m.group(2)}</a>',
+    );
     output = output.replaceAllMapped(
-        RegExp(r'\[url\](.*?)\[/url\]', dotAll: true),
-        (m) => '<a href="${m.group(1)}">${m.group(1)}</a>',);
+      RegExp(r'\[url\](.*?)\[/url\]', dotAll: true),
+      (m) => '<a href="${m.group(1)}">${m.group(1)}</a>',
+    );
 
     output = output.replaceAllMapped(
-        RegExp(r'\[img\](.*?)\[/img\]', dotAll: true),
-        (m) => '<img src="${m.group(1)}" />',);
+      RegExp(r'\[img\](.*?)\[/img\]', dotAll: true),
+      (m) => '<img src="${m.group(1)}" />',
+    );
 
     output = output.replaceAllMapped(
-        RegExp(r'\[color=(.*?)\](.*?)\[/color\]', dotAll: true),
-        (m) => '<span style="color:${m.group(1)}">${m.group(2)}</span>',);
+      RegExp(r'\[color=(.*?)\](.*?)\[/color\]', dotAll: true),
+      (m) => '<span style="color:${m.group(1)}">${m.group(2)}</span>',
+    );
     output = output.replaceAllMapped(
         RegExp(r'\[size=(\d+)\](.*?)\[/size\]', dotAll: true), (m) {
       final size = int.tryParse(m.group(1)!) ?? 14;
@@ -91,14 +103,17 @@ class BbcodeParser {
     });
 
     output = output.replaceAllMapped(
-        RegExp(r'\[quote\](.*?)\[/quote\]', dotAll: true),
-        (m) => '<blockquote>${m.group(1)}</blockquote>',);
+      RegExp(r'\[quote\](.*?)\[/quote\]', dotAll: true),
+      (m) => '<blockquote>${m.group(1)}</blockquote>',
+    );
     output = output.replaceAllMapped(
-        RegExp(r'\[code\](.*?)\[/code\]', dotAll: true),
-        (m) => '<pre>${m.group(1)}</pre>',);
+      RegExp(r'\[code\](.*?)\[/code\]', dotAll: true),
+      (m) => '<pre>${m.group(1)}</pre>',
+    );
     output = output.replaceAllMapped(
-        RegExp(r'\[hide\](.*?)\[/hide\]', dotAll: true),
-        (m) => '<span class="hide-content">${m.group(1)}</span>',);
+      RegExp(r'\[hide\](.*?)\[/hide\]', dotAll: true),
+      (m) => '<span class="hide-content">${m.group(1)}</span>',
+    );
 
     output =
         output.replaceAll(RegExp(r'\[hr\]', caseSensitive: false), '<hr/>');

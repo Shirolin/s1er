@@ -1,11 +1,11 @@
 {
-    "name": "s1_app",
-    "short_name": "s1_app",
+    "name": "S1 Client",
+    "short_name": "S1 Client",
     "start_url": ".",
     "display": "standalone",
-    "background_color": "#0175C2",
-    "theme_color": "#0175C2",
-    "description": "A new Flutter project.",
+    "background_color": "#1a1a2e",
+    "theme_color": "#1a1a2e",
+    "description": "Stage1st 论坛非官方第三方客户端",
     "orientation": "portrait-primary",
     "prefer_related_applications": false,
     "icons": [

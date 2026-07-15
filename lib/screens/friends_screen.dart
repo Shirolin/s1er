@@ -106,9 +106,8 @@ class _FriendTile extends StatelessWidget {
   Widget build(BuildContext context) {
     final scheme = Theme.of(context).colorScheme;
     final textTheme = Theme.of(context).textTheme;
-    final letter = friend.username.isNotEmpty
-        ? friend.username[0].toUpperCase()
-        : '?';
+    final letter =
+        friend.username.isNotEmpty ? friend.username[0].toUpperCase() : '?';
 
     return ListTile(
       contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),

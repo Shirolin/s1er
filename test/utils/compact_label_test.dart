@@ -4,7 +4,8 @@ import 'package:s1_app/theme/app_theme.dart';
 import 'package:s1_app/utils/compact_label.dart';
 
 void main() {
-  testWidgets('CompactLabel.text keeps theme line height (not forced to 1.0)', (tester) async {
+  testWidgets('CompactLabel.text keeps theme line height (not forced to 1.0)',
+      (tester) async {
     late TextStyle themeLabelSmall;
     await tester.pumpWidget(
       MaterialApp(

@@ -62,7 +62,8 @@ void main() {
     );
   }
 
-  testWidgets('S1SwipePagination hides PageView when only one page', (tester) async {
+  testWidgets('S1SwipePagination hides PageView when only one page',
+      (tester) async {
     await tester.pumpWidget(
       buildHarness(
         currentPage: 1,
@@ -75,7 +76,8 @@ void main() {
     expect(find.text('Page 1'), findsOneWidget);
   });
 
-  testWidgets('S1SwipePagination shows PageView for multiple pages', (tester) async {
+  testWidgets('S1SwipePagination shows PageView for multiple pages',
+      (tester) async {
     await tester.pumpWidget(
       buildHarness(
         currentPage: 2,
@@ -88,7 +90,8 @@ void main() {
     expect(find.text('Page 2'), findsOneWidget);
   });
 
-  testWidgets('S1SwipePagination right swipe requests previous page', (tester) async {
+  testWidgets('S1SwipePagination right swipe requests previous page',
+      (tester) async {
     int? requestedPage;
 
     await tester.pumpWidget(
@@ -107,7 +110,9 @@ void main() {
     expect(requestedPage, 2);
   });
 
-  testWidgets('S1SwipePagination drag right requests previous page with nested ListView', (tester) async {
+  testWidgets(
+      'S1SwipePagination drag right requests previous page with nested ListView',
+      (tester) async {
     int? requestedPage;
 
     await tester.pumpWidget(
@@ -125,7 +130,8 @@ void main() {
               child: ListView.builder(
                 controller: scrollController,
                 itemCount: 30,
-                itemBuilder: (context, index) => ListTile(title: Text('Item $index')),
+                itemBuilder: (context, index) =>
+                    ListTile(title: Text('Item $index')),
               ),
             ),
           ),
@@ -150,7 +156,8 @@ void main() {
     expect(requestedPage, 2);
   });
 
-  testWidgets('S1SwipePagination left swipe requests next page', (tester) async {
+  testWidgets('S1SwipePagination left swipe requests next page',
+      (tester) async {
     int? requestedPage;
 
     await tester.pumpWidget(
@@ -169,7 +176,9 @@ void main() {
     expect(requestedPage, 3);
   });
 
-  testWidgets('S1SwipePagination right swipe on first page does not request page', (tester) async {
+  testWidgets(
+      'S1SwipePagination right swipe on first page does not request page',
+      (tester) async {
     var requestCount = 0;
 
     await tester.pumpWidget(
@@ -195,7 +204,8 @@ void main() {
     expect(requestCount, 0);
   });
 
-  testWidgets('S1SwipePagination left swipe on last page does not request page', (tester) async {
+  testWidgets('S1SwipePagination left swipe on last page does not request page',
+      (tester) async {
     var requestCount = 0;
 
     await tester.pumpWidget(
@@ -214,7 +224,8 @@ void main() {
     expect(requestCount, 0);
   });
 
-  testWidgets('S1SwipePagination shows loading bar while paging', (tester) async {
+  testWidgets('S1SwipePagination shows loading bar while paging',
+      (tester) async {
     final completer = Completer<void>();
 
     await tester.pumpWidget(
@@ -240,7 +251,8 @@ void main() {
     await tester.pump();
   });
 
-  testWidgets('S1SwipePagination resets scroll when currentPage changes externally',
+  testWidgets(
+      'S1SwipePagination resets scroll when currentPage changes externally',
       (tester) async {
     final key = GlobalKey<S1SwipePaginationState>();
     var currentPage = 1;
@@ -303,9 +315,8 @@ void main() {
     await tester.pump();
 
     final state = key.currentState!;
-    final controller = tester
-        .widget<ListView>(find.byType(ListView))
-        .controller!;
+    final controller =
+        tester.widget<ListView>(find.byType(ListView)).controller!;
     controller.jumpTo(500);
     await tester.pump();
 
@@ -329,9 +340,8 @@ void main() {
     await tester.pump();
 
     final state = key.currentState!;
-    final controller = tester
-        .widget<ListView>(find.byType(ListView))
-        .controller!;
+    final controller =
+        tester.widget<ListView>(find.byType(ListView)).controller!;
     expect(controller.offset, 0);
 
     unawaited(state.scrollToBottom());
@@ -358,9 +368,8 @@ void main() {
     expect(lastMetrics, isNotNull);
     expect(lastMetrics!.maxScrollExtent, greaterThan(0));
 
-    final controller = tester
-        .widget<ListView>(find.byType(ListView))
-        .controller!;
+    final controller =
+        tester.widget<ListView>(find.byType(ListView)).controller!;
     controller.jumpTo(200);
     await tester.pump();
 

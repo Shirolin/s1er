@@ -59,11 +59,14 @@ void main() {
     );
   }
 
-  testWidgets('short posts on single-page thread start below app bar', (tester) async {
-    await tester.pumpWidget(buildThreadDetailLikeHarness(
-      totalPages: 1,
-      currentPage: 1,
-    ),);
+  testWidgets('short posts on single-page thread start below app bar',
+      (tester) async {
+    await tester.pumpWidget(
+      buildThreadDetailLikeHarness(
+        totalPages: 1,
+        currentPage: 1,
+      ),
+    );
     await tester.pumpAndSettle();
 
     final appBarBottom = tester.getBottomLeft(find.byType(AppBar)).dy;
@@ -75,11 +78,14 @@ void main() {
     expect(firstPostTop, lessThan(viewportHeight * 0.35));
   });
 
-  testWidgets('short posts on multi-page thread page 1 start below app bar', (tester) async {
-    await tester.pumpWidget(buildThreadDetailLikeHarness(
-      totalPages: 5,
-      currentPage: 1,
-    ),);
+  testWidgets('short posts on multi-page thread page 1 start below app bar',
+      (tester) async {
+    await tester.pumpWidget(
+      buildThreadDetailLikeHarness(
+        totalPages: 5,
+        currentPage: 1,
+      ),
+    );
     await tester.pumpAndSettle();
 
     final appBarBottom = tester.getBottomLeft(find.byType(AppBar)).dy;
@@ -89,14 +95,17 @@ void main() {
     expect(firstPostTop, lessThan(appBarBottom + 40));
   });
 
-  testWidgets('stale scroll offset does not pin short posts to bottom', (tester) async {
+  testWidgets('stale scroll offset does not pin short posts to bottom',
+      (tester) async {
     ScrollController? controller;
 
-    await tester.pumpWidget(buildThreadDetailLikeHarness(
-      totalPages: 1,
-      currentPage: 1,
-      onControllerCreated: (c) => controller = c,
-    ),);
+    await tester.pumpWidget(
+      buildThreadDetailLikeHarness(
+        totalPages: 1,
+        currentPage: 1,
+        onControllerCreated: (c) => controller = c,
+      ),
+    );
     await tester.pumpAndSettle();
 
     controller!.jumpTo(400);
@@ -104,10 +113,12 @@ void main() {
 
     expect(controller!.offset, 400);
 
-    await tester.pumpWidget(buildThreadDetailLikeHarness(
-      totalPages: 1,
-      currentPage: 1,
-    ),);
+    await tester.pumpWidget(
+      buildThreadDetailLikeHarness(
+        totalPages: 1,
+        currentPage: 1,
+      ),
+    );
     await tester.pumpAndSettle();
 
     final appBarBottom = tester.getBottomLeft(find.byType(AppBar)).dy;

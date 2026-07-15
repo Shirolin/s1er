@@ -13,8 +13,7 @@ PmListState samplePmListState() {
         preview: '那就好',
         dateline: 1718585640,
         isOutgoing: true,
-        avatarUrl:
-            'https://avatar.stage1st.com/000/53/50/36_avatar_small.jpg',
+        avatarUrl: 'https://avatar.stage1st.com/000/53/50/36_avatar_small.jpg',
       ),
     ],
   );

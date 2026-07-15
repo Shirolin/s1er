@@ -106,13 +106,16 @@ void main() {
   });
 
   test('预览中途失败不写入本地数据', () async {
-    final service = _FakeForumToolsService({
-      1: const ServerBlacklistPage(
-        page: 1,
-        totalPages: 2,
-        items: [ServerBlacklistUser(uid: '2', username: '新增用户')],
-      ),
-    }, failOnPage: 2,);
+    final service = _FakeForumToolsService(
+      {
+        1: const ServerBlacklistPage(
+          page: 1,
+          totalPages: 2,
+          items: [ServerBlacklistUser(uid: '2', username: '新增用户')],
+        ),
+      },
+      failOnPage: 2,
+    );
     final container = createContainer(service);
 
     await expectLater(

@@ -100,6 +100,7 @@ app.*.map.json
 /android/build/
 /android/local.properties
 /android/key.properties
+/android/app/key.properties
 
 # iOS / macOS
 *.xcworkspace
@@ -139,6 +140,11 @@ Pods/
 .vibe/
 .mimocode/
 .codex/
+.cursor/
+
+# 本地计划与报告
+plans/
+reports/
 
 # CORS 代理日志
 proxy_server.log

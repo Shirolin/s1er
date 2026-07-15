@@ -356,8 +356,8 @@ class _ForumHitTile extends StatelessWidget {
       ),
       isThreeLine: hit.snippet.isNotEmpty,
       onTap: () => context.push(
-            ThreadRouteCodec.encodePath(ResumeThread(hit.tid)),
-          ),
+        ThreadRouteCodec.encodePath(ResumeThread(hit.tid)),
+      ),
     );
   }
 }

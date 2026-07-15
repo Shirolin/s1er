@@ -26,7 +26,8 @@ void main() {
     });
 
     test('BBCode full conversion', () {
-      const input = '[b]Bold[/b] [i]Italic[/i] [img]http://test.com/pic.jpg[/img]';
+      const input =
+          '[b]Bold[/b] [i]Italic[/i] [img]http://test.com/pic.jpg[/img]';
       final html = BbcodeParser.parse(input);
 
       expect(html, contains('<b>Bold</b>'));

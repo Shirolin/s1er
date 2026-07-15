@@ -145,7 +145,10 @@ class UserSpaceNotifier extends AsyncNotifier<UserSpaceState> {
       final threads = isSelf
           ? await _apiService.getMySpaceList(type: 'thread', page: 1)
           : await _apiService.getUserSpaceList(
-              uid: uid, type: 'thread', page: 1,);
+              uid: uid,
+              type: 'thread',
+              page: 1,
+            );
       var next = UserSpaceState(
         threads: threads.items,
         threadTotalPages: threads.totalPages,

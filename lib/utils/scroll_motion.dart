@@ -26,7 +26,8 @@ abstract class S1ScrollMotion {
         ? bottomMaxDuration.inMilliseconds
         : maxDuration.inMilliseconds;
     return Duration(
-        milliseconds: ms.round().clamp(minDuration.inMilliseconds, cap),);
+      milliseconds: ms.round().clamp(minDuration.inMilliseconds, cap),
+    );
   }
 
   static Curve curveForDelta(double delta, double viewport) {
@@ -75,8 +76,11 @@ abstract class S1ScrollMotion {
         position,
         max,
         duration: pass == 0
-            ? durationForDelta(delta, position.viewportDimension,
-                toBottom: true,)
+            ? durationForDelta(
+                delta,
+                position.viewportDimension,
+                toBottom: true,
+              )
             : correctionDuration,
         curve: pass == 0 ? null : Curves.easeOut,
       );

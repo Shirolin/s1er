@@ -33,13 +33,11 @@ void main() {
     });
 
     test('throws LoginRequiredException', () {
-      final json =
-          jsonDecode(
-                File(
-                  'test/fixtures/friend_list_login_required.json',
-                ).readAsStringSync(),
-              )
-              as Map<String, dynamic>;
+      final json = jsonDecode(
+        File(
+          'test/fixtures/friend_list_login_required.json',
+        ).readAsStringSync(),
+      ) as Map<String, dynamic>;
       expect(
         () => ForumToolsService.parseFriendListJson(json),
         throwsA(isA<LoginRequiredException>()),
@@ -85,8 +83,7 @@ void main() {
     });
 
     test('handles commas inside quoted message', () {
-      const body =
-          "succeedhandle_x('','恭喜，今日签到成功，奖励：死鱼 1 条，积分 +2',{});";
+      const body = "succeedhandle_x('','恭喜，今日签到成功，奖励：死鱼 1 条，积分 +2',{});";
       final result = ForumToolsService.parseAttendanceResponse(body);
       expect(result.outcome, AttendanceOutcome.signedNow);
       expect(result.message, contains('死鱼 1 条，积分 +2'));
@@ -114,11 +111,9 @@ void main() {
     });
 
     test('parses list-shaped data', () {
-      final json =
-          jsonDecode(
-                File('test/fixtures/dark_room_list.json').readAsStringSync(),
-              )
-              as Map<String, dynamic>;
+      final json = jsonDecode(
+        File('test/fixtures/dark_room_list.json').readAsStringSync(),
+      ) as Map<String, dynamic>;
       final page = ForumToolsService.parseDarkRoomJson(
         json,
         requestCursor: '78648',
@@ -129,22 +124,23 @@ void main() {
     });
 
     test('stops when cursor does not advance', () {
-      final page = ForumToolsService.parseDarkRoomJson({
-        'message': '1|100',
-        'data': {
-          '1': {
-            'cid': '99',
-            'uid': '1',
-            'username': 'x',
-            'operatorid': '',
-            'operator': '',
-            'action': '禁止发言',
-            'reason': '',
-            'dateline': '',
-            'groupexpiry': '',
+      final page = ForumToolsService.parseDarkRoomJson(
+        {
+          'message': '1|100',
+          'data': {
+            '1': {
+              'cid': '99',
+              'uid': '1',
+              'username': 'x',
+              'operatorid': '',
+              'operator': '',
+              'action': '禁止发言',
+              'reason': '',
+              'dateline': '',
+              'groupexpiry': '',
+            },
           },
         },
-      },
         requestCursor: '100',
       );
       expect(page.hasMore, isFalse);

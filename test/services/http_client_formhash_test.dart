@@ -9,7 +9,8 @@ import 'package:s1_app/services/http_client.dart';
 
 void main() {
   group('ensureFormhash force refresh contract', () {
-    test('force clears cached formhash and fetches a fresh thread formhash', () async {
+    test('force clears cached formhash and fetches a fresh thread formhash',
+        () async {
       final container = ProviderContainer();
       addTearDown(container.dispose);
       container.read(formhashProvider.notifier).update('consumed_after_login');
@@ -31,7 +32,8 @@ void main() {
       expect(adapter.requestedUrls.single, contains('tid=123'));
     });
 
-    test('without force reuses cached formhash without network fetch', () async {
+    test('without force reuses cached formhash without network fetch',
+        () async {
       final container = ProviderContainer();
       addTearDown(container.dispose);
       container.read(formhashProvider.notifier).update('cached_formhash');

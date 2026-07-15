@@ -31,6 +31,7 @@
 | Cookie 管理 | dio_cookie_manager / cookie_jar | ^3.1.1 / ^4.0.8 |
 | 安全存储 | flutter_secure_storage | ^10.x |
 | 加密 | cryptography | ^2.x |
+| 崩溃监控 | sentry_flutter（可选，通过 --dart-define 注入 DSN 启用） | ^8.0.0 |
 | 包管理 | flutter pub | — |
 | Lint | flutter_lints | ^6.0.0 |
 | 运行环境 | Flutter SDK >=3.4 | 支持 Web / Android / iOS / Windows / macOS / Linux |

@@ -145,7 +145,8 @@ List<String> _collectDartFiles(Directory root) {
   return files;
 }
 
-void _checkMissingExplicitElevation(String path, List<String> lines, List<AuditFinding> findings) {
+void _checkMissingExplicitElevation(
+    String path, List<String> lines, List<AuditFinding> findings) {
   if (!path.startsWith('lib/')) return;
 
   for (var i = 0; i < lines.length; i++) {
@@ -184,7 +185,8 @@ List<AuditFinding> _auditLibFile(String path) {
       final window = lines.sublist(i, windowEnd).join('\n');
       final elevMatch = RegExp(r'elevation:\s*([1-9]\d*)').firstMatch(window);
       if (elevMatch != null) {
-        final elevLine = i + window.substring(0, elevMatch.start).split('\n').length;
+        final elevLine =
+            i + window.substring(0, elevMatch.start).split('\n').length;
         findings.add(
           AuditFinding(
             ruleId: 'nonzero-card-appbar-elevation',
@@ -221,15 +223,16 @@ List<AuditFinding> _auditLibFile(String path) {
 
 List<AuditFinding> _auditTestFile(String path) {
   final findings = <AuditFinding>[];
-  if (path.contains('test/helpers/') || path.contains('test/tool/audit_m3_test.dart')) {
+  if (path.contains('test/helpers/') ||
+      path.contains('test/tool/audit_m3_test.dart')) {
     return findings;
   }
 
   final content = File(path).readAsLinesSync().join('\n');
   if (!content.contains('MaterialApp')) return findings;
 
-  final usesAppTheme = content.contains('AppTheme.') ||
-      content.contains('wrapWithAppTheme');
+  final usesAppTheme =
+      content.contains('AppTheme.') || content.contains('wrapWithAppTheme');
 
   if (!usesAppTheme) {
     findings.add(
@@ -238,7 +241,8 @@ List<AuditFinding> _auditTestFile(String path) {
         severity: AuditSeverity.warn,
         file: path,
         line: 1,
-        message: 'Widget test uses MaterialApp without AppTheme / wrapWithAppTheme',
+        message:
+            'Widget test uses MaterialApp without AppTheme / wrapWithAppTheme',
         snippet: 'MaterialApp(...)',
       ),
     );

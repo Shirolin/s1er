@@ -50,5 +50,5 @@ class DailyAttendanceNotifier extends Notifier<DailyAttendanceState> {
 
 final dailyAttendanceProvider =
     NotifierProvider.autoDispose<DailyAttendanceNotifier, DailyAttendanceState>(
-      DailyAttendanceNotifier.new,
-    );
+  DailyAttendanceNotifier.new,
+);

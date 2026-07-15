@@ -16,7 +16,8 @@ void main() {
         overrides: [
           settingsProvider.overrideWith(
             () => SettingsNotifier(
-              initial: const AppSettings(avatarLoadPolicy: ImageLoadPolicy.manual),
+              initial:
+                  const AppSettings(avatarLoadPolicy: ImageLoadPolicy.manual),
             ),
           ),
           wifiConnectedProvider.overrideWith((ref) => Stream.value(true)),
@@ -38,13 +39,15 @@ void main() {
     expect(find.text('A'), findsOneWidget);
   });
 
-  testWidgets('WebAvatar tap requests load under manual policy', (tester) async {
+  testWidgets('WebAvatar tap requests load under manual policy',
+      (tester) async {
     await tester.pumpWidget(
       ProviderScope(
         overrides: [
           settingsProvider.overrideWith(
             () => SettingsNotifier(
-              initial: const AppSettings(avatarLoadPolicy: ImageLoadPolicy.manual),
+              initial:
+                  const AppSettings(avatarLoadPolicy: ImageLoadPolicy.manual),
             ),
           ),
           wifiConnectedProvider.overrideWith((ref) => Stream.value(true)),

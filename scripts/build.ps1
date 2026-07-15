@@ -2,6 +2,17 @@
 # Interactive menu for build options
 
 # Auto-detect Java/keytool path
+# ── Sentry DSN ────────────────────────────────────────────
+$script:SentryDsn = $env:S1_SENTRY_DSN
+if (-not $script:SentryDsn) {
+    $script:SentryDsn = "https://7ea0cea034d3c0a13de3bbbf862e8ae7@o4511738264944640.ingest.us.sentry.io/4511738316128256"
+}
+function Build-WithDsn {
+    param([string[]]$Args)
+    $allArgs = $Args + "--dart-define=SENTRY_DSN=$script:SentryDsn"
+    flutter $allArgs
+}
+
 function Find-Keytool {
     $paths = @(
         "$env:JAVA_HOME\bin\keytool.exe",
@@ -51,13 +62,13 @@ function Show-Menu {
     Write-Host ""
     
     # Check signing status
-    $keystoreExists = Test-Path "android\app\s1-release.jks"
-    $keyPropsExists = Test-Path "android\key.properties"
+    $keystoreExists = Test-Path "android\key.jks"
+    $keyPropsExists = Test-Path "android\app\key.properties"
     
     if ($keystoreExists -and $keyPropsExists) {
         Write-Host "  [Status] Signing configured" -ForegroundColor Green
     } else {
-        Write-Host "  [Status] Signing NOT configured (run option 7 first)" -ForegroundColor Red
+        Write-Host "  [Status] Signing NOT configured" -ForegroundColor Red
     }
     Write-Host ""
     
@@ -88,8 +99,8 @@ function Show-Menu {
 }
 
 function Test-SigningConfig {
-    $keystorePath = "android\app\s1-release.jks"
-    $keyPropsPath = "android\key.properties"
+    $keystorePath = "android\key.jks"
+    $keyPropsPath = "android\app\key.properties"
     
     if (-not (Test-Path $keystorePath)) {
         Write-Host ""
@@ -112,7 +123,7 @@ function Build-SplitAPK {
 
     Write-Host ""
     Write-Host "Building Split APKs with release signing + obfuscate..." -ForegroundColor Green
-    flutter build apk --split-per-abi --obfuscate --split-debug-info=build/debug-info
+    Build-WithDsn @("build", "apk", "--split-per-abi", "--obfuscate", "--split-debug-info=build/debug-info")
     if ($LASTEXITCODE -eq 0) {
         Write-Host ""
         Write-Host "Build successful!" -ForegroundColor Green
@@ -137,7 +148,7 @@ function Build-SingleAPK {
 
     Write-Host ""
     Write-Host "Building single APK with release signing + obfuscate..." -ForegroundColor Green
-    flutter build apk --obfuscate --split-debug-info=build/debug-info
+    Build-WithDsn @("build", "apk", "--obfuscate", "--split-debug-info=build/debug-info")
     if ($LASTEXITCODE -eq 0) {
         $apk = Get-ChildItem build\app\outputs\flutter-apk\app-release.apk -ErrorAction SilentlyContinue
         if ($apk) {
@@ -161,7 +172,7 @@ function Build-AAB {
 
     Write-Host ""
     Write-Host "Building Android App Bundle with release signing + obfuscate..." -ForegroundColor Green
-    flutter build appbundle --obfuscate --split-debug-info=build/debug-info
+    Build-WithDsn @("build", "appbundle", "--obfuscate", "--split-debug-info=build/debug-info")
     if ($LASTEXITCODE -eq 0) {
         Write-Host ""
         Write-Host "Build successful!" -ForegroundColor Green
@@ -184,7 +195,7 @@ function Build-AAB {
 function Build-Debug {
     Write-Host ""
     Write-Host "Building Debug version (auto-signed with debug key)..." -ForegroundColor Green
-    flutter build apk --debug
+    Build-WithDsn @("build", "apk", "--debug")
     if ($LASTEXITCODE -eq 0) {
         $apk = Get-ChildItem build\app\outputs\flutter-apk\app-debug.apk -ErrorAction SilentlyContinue
         if ($apk) {
@@ -204,13 +215,13 @@ function Analyze-APK {
     Write-Host ""
     Write-Host "Analyzing APK size..." -ForegroundColor Magenta
     Write-Host "Building and analyzing arm64 version..." -ForegroundColor Gray
-    flutter build apk --target-platform android-arm64 --analyze-size --obfuscate --split-debug-info=build/debug-info
+    Build-WithDsn @("build", "apk", "--target-platform", "android-arm64", "--analyze-size", "--obfuscate", "--split-debug-info=build/debug-info")
 }
 
 function Build-Web {
     Write-Host ""
     Write-Host "Building Web version..." -ForegroundColor Cyan
-    flutter build web --release
+    Build-WithDsn @("build", "web", "--release")
     if ($LASTEXITCODE -eq 0) {
         Write-Host ""
         Write-Host "Build successful!" -ForegroundColor Green

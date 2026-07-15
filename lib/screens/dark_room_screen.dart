@@ -112,9 +112,8 @@ class _DarkRoomCard extends StatelessWidget {
   Widget build(BuildContext context) {
     final scheme = Theme.of(context).colorScheme;
     final textTheme = Theme.of(context).textTheme;
-    final letter = entry.username.isNotEmpty
-        ? entry.username[0].toUpperCase()
-        : '?';
+    final letter =
+        entry.username.isNotEmpty ? entry.username[0].toUpperCase() : '?';
     final avatarUrl = entry.uid.isEmpty
         ? null
         : User.resolveAvatarUrl(

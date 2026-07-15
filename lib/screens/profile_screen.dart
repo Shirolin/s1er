@@ -132,9 +132,8 @@ class _ProfileBodyState extends ConsumerState<ProfileBody> {
   Future<void> _openExternalUrl(String url) async {
     final uri = Uri.parse(url);
     try {
-      final didLaunch =
-          await (widget.externalUrlLauncher?.call(uri) ??
-              launchUrl(uri, mode: LaunchMode.externalApplication));
+      final didLaunch = await (widget.externalUrlLauncher?.call(uri) ??
+          launchUrl(uri, mode: LaunchMode.externalApplication));
       if (!didLaunch && mounted) {
         S1SnackBar.show(context, message: '无法打开链接');
       }
@@ -679,20 +678,20 @@ class _ProjectSupportCard extends StatelessWidget {
     final textTheme = Theme.of(context).textTheme;
 
     Widget divider() => Padding(
-      padding: const EdgeInsets.symmetric(
-        horizontal: _ProfileListMetrics.hPadding,
-      ),
-      child: Divider(
-        height: 1,
-        color: colorScheme.outlineVariant.withValues(alpha: S1Alpha.half),
-      ),
-    );
+          padding: const EdgeInsets.symmetric(
+            horizontal: _ProfileListMetrics.hPadding,
+          ),
+          child: Divider(
+            height: 1,
+            color: colorScheme.outlineVariant.withValues(alpha: S1Alpha.half),
+          ),
+        );
 
     Widget externalIcon() => Icon(
-      Icons.open_in_new,
-      size: _ProfileListMetrics.iconSize,
-      color: colorScheme.onSurfaceVariant,
-    );
+          Icons.open_in_new,
+          size: _ProfileListMetrics.iconSize,
+          color: colorScheme.onSurfaceVariant,
+        );
 
     return Card(
       elevation: 0,
@@ -796,8 +795,7 @@ class _ProfileTwoLineRow extends StatelessWidget {
               SizedBox(
                 width: _ProfileListMetrics.iconSize,
                 height: _ProfileListMetrics.iconSize,
-                child:
-                    leading ??
+                child: leading ??
                     Icon(
                       icon,
                       size: _ProfileListMetrics.iconSize,

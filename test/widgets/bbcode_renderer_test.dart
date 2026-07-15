@@ -283,8 +283,7 @@ void main() {
           StatefulBuilder(
             builder: (context, setState) {
               return BbcodeRenderer(
-                bbcode:
-                    '[img]https://example.com/1.jpg[/img]'
+                bbcode: '[img]https://example.com/1.jpg[/img]'
                     '[img]https://example.com/2.jpg[/img]'
                     '[img]https://example.com/3.jpg[/img]',
                 imageIndexCounter: counter,

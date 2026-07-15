@@ -38,8 +38,7 @@ class _NextFloorHarness extends StatefulWidget {
 
 class _NextFloorHarnessState extends State<_NextFloorHarness> {
   final _swipeKey = GlobalKey<S1SwipePaginationState>();
-  late final List<GlobalKey> _postKeys =
-      List.generate(4, (_) => GlobalKey());
+  late final List<GlobalKey> _postKeys = List.generate(4, (_) => GlobalKey());
   final _scrollFabVisibility =
       ValueNotifier(const _ScrollFabVisibility(showScrollDown: true));
 
@@ -244,9 +243,8 @@ void main() {
     );
     await tester.pumpAndSettle();
 
-    final controller = tester
-        .widget<ListView>(find.byType(ListView))
-        .controller!;
+    final controller =
+        tester.widget<ListView>(find.byType(ListView)).controller!;
     expect(controller.offset, 0);
 
     final post2TopBefore = await topOffset(tester, find.text('Post 2'));
@@ -271,9 +269,8 @@ void main() {
     );
     await tester.pumpAndSettle();
 
-    final controller = tester
-        .widget<ListView>(find.byType(ListView))
-        .controller!;
+    final controller =
+        tester.widget<ListView>(find.byType(ListView)).controller!;
     expect(find.text('Post 2'), findsNothing);
 
     await tester.tap(find.byKey(const ValueKey('scroll_nav_down')));
@@ -292,9 +289,8 @@ void main() {
     );
     await tester.pumpAndSettle();
 
-    final controller = tester
-        .widget<ListView>(find.byType(ListView))
-        .controller!;
+    final controller =
+        tester.widget<ListView>(find.byType(ListView)).controller!;
 
     await tester.longPress(find.byKey(const ValueKey('scroll_nav_down')));
     await tester.pumpAndSettle();
@@ -312,9 +308,8 @@ void main() {
     );
     await tester.pumpAndSettle();
 
-    final controller = tester
-        .widget<ListView>(find.byType(ListView))
-        .controller!;
+    final controller =
+        tester.widget<ListView>(find.byType(ListView)).controller!;
     expect(controller.offset, 0);
 
     await tester.longPress(find.byKey(const ValueKey('scroll_nav_down')));
@@ -354,7 +349,8 @@ void main() {
     expect(_harnessRequestedPage, 2);
   });
 
-  testWidgets('long press on forward still scrolls to page bottom', (tester) async {
+  testWidgets('long press on forward still scrolls to page bottom',
+      (tester) async {
     _harnessRequestedPage = null;
 
     await tester.pumpWidget(
@@ -369,9 +365,8 @@ void main() {
     );
     await tester.pumpAndSettle();
 
-    final controller = tester
-        .widget<ListView>(find.byType(ListView))
-        .controller!;
+    final controller =
+        tester.widget<ListView>(find.byType(ListView)).controller!;
 
     await tester.longPress(find.byKey(const ValueKey('scroll_nav_down')));
     await tester.pumpAndSettle();
@@ -389,7 +384,8 @@ void main() {
     expect(_harnessRequestedPage, isNull);
   });
 
-  testWidgets('FAB at-bottom update does not shift scroll offset', (tester) async {
+  testWidgets('FAB at-bottom update does not shift scroll offset',
+      (tester) async {
     await tester.pumpWidget(
       MaterialApp(
         theme: AppTheme.lightTheme('purple'),
@@ -402,9 +398,8 @@ void main() {
     );
     await tester.pumpAndSettle();
 
-    final controller = tester
-        .widget<ListView>(find.byType(ListView))
-        .controller!;
+    final controller =
+        tester.widget<ListView>(find.byType(ListView)).controller!;
     await tester.longPress(find.byKey(const ValueKey('scroll_nav_down')));
     await tester.pumpAndSettle();
 

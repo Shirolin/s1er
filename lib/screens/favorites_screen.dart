@@ -263,8 +263,8 @@ class _FavoriteThreadTile extends StatelessWidget {
       margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
       child: InkWell(
         onTap: () => context.push(
-              ThreadRouteCodec.encodePath(ResumeThread(item.id)),
-            ),
+          ThreadRouteCodec.encodePath(ResumeThread(item.id)),
+        ),
         child: Padding(
           padding: const EdgeInsets.fromLTRB(16, 12, 8, 12),
           child: Row(

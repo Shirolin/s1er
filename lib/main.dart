@@ -5,6 +5,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:talker_dio_logger/talker_dio_logger.dart';
+import 'package:sentry_flutter/sentry_flutter.dart';
 import 'app.dart';
 import 'config/env_config.dart';
 import 'models/emoticon_catalog.dart';
@@ -28,6 +29,15 @@ Future<void> _loadEmoticonManifest() async {
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
+
+  if (EnvConfig.sentryEnabled) {
+    await SentryFlutter.init(
+      (options) {
+        options.dsn = EnvConfig.sentryDsn;
+        options.tracesSampleRate = 0.2;
+      },
+    );
+  }
 
   if (kIsWeb) {
     final originalOnError = FlutterError.onError;

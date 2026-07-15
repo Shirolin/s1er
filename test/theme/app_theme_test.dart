@@ -51,7 +51,10 @@ void main() {
     });
 
     test('themeSeeds contains all expected keys', () {
-      expect(AppTheme.themeSeeds.keys, containsAll(['blue', 'purple', 'sage', 'indigo', 'orange']));
+      expect(
+        AppTheme.themeSeeds.keys,
+        containsAll(['blue', 'purple', 'sage', 'indigo', 'orange']),
+      );
     });
 
     test('custom and unknown theme colors fall back to the default preset', () {
@@ -88,7 +91,10 @@ void main() {
 
     test('badgeTheme and checkboxTheme are configured', () {
       final theme = AppTheme.lightTheme('purple');
-      expect(theme.badgeTheme.backgroundColor, theme.colorScheme.secondaryContainer);
+      expect(
+        theme.badgeTheme.backgroundColor,
+        theme.colorScheme.secondaryContainer,
+      );
       expect(theme.checkboxTheme.checkColor, isNotNull);
     });
 

@@ -20,6 +20,9 @@ class ServerBlacklistPage {
 
   static ServerBlacklistPage fromHtml(String html, {required int page}) {
     final document = parse(html);
+    if (document.querySelector('#friend_ul') == null) {
+      throw const FormatException('网页黑名单页面结构异常');
+    }
     final items = <ServerBlacklistUser>[];
     final seen = <String>{};
     for (final node in document.querySelectorAll('#friend_ul li')) {

@@ -27,4 +27,11 @@ void main() {
     expect(result.items, isEmpty);
     expect(result.totalPages, 3);
   });
+
+  test('rejects unexpected html without blacklist container', () {
+    expect(
+      () => ServerBlacklistPage.fromHtml('<main>错误页面</main>', page: 1),
+      throwsA(isA<FormatException>()),
+    );
+  });
 }

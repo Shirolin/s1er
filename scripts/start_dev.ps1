@@ -33,7 +33,8 @@ if (-not $script:SentryDsn) {
 }
 function Start-Flutter {
     param([string[]]$Args)
-    $allArgs = $Args + '--dart-define=SENTRY_DSN=' + $script:SentryDsn
+    $dartDefine = '--dart-define=SENTRY_DSN=' + $script:SentryDsn
+    $allArgs = $Args + , $dartDefine
     flutter $allArgs
 }
 
@@ -60,6 +61,10 @@ function Show-Menu {
     Write-Host '      -> Start CORS proxy only, no Flutter'
     Write-Host ''
 
+    Write-Host '  [C] Clean port 19080' -ForegroundColor DarkYellow
+    Write-Host '      -> Kill any process on proxy port'
+    Write-Host ''
+
     Write-Host '  [S] Toggle Sentry' -ForegroundColor White
     if ($script:SentryDsn) {
         Write-Host '      -> Currently: ENABLED' -ForegroundColor Green
@@ -78,18 +83,22 @@ function Show-Menu {
 function Start-Proxy {
     $proxyUrl = $null
 
-    # ── 端口冲突清理 ────────────────────────────────────────
-    $connections = Get-NetTCPConnection -LocalPort 19080 -ErrorAction SilentlyContinue
-    if ($connections) {
-        Write-Message "Port 19080 in use, stopping old proxy..." "DarkYellow"
+    # ── 端口冲突强制清理 ────────────────────────────────────
+    $cleaned = $false
+    for ($try = 0; $try -lt 3; $try++) {
+        $connections = Get-NetTCPConnection -LocalPort 19080 -ErrorAction SilentlyContinue
+        if (-not $connections) { break }
+        Write-Message "Port 19080 occupied, killing old process (attempt $($try+1))..." "DarkYellow"
         $connections |
             Select-Object -ExpandProperty OwningProcess -Unique |
             Where-Object { $_ -gt 0 } |
-            ForEach-Object {
-                Stop-Process -Id $_ -Force -ErrorAction SilentlyContinue
-            }
+            ForEach-Object { Stop-Process -Id $_ -Force -ErrorAction SilentlyContinue }
         Start-Sleep -Seconds 1
+        $cleaned = $true
     }
+    if ($cleaned) { Write-Message "Port 19080 freed" "Green" }
+
+    # ── 上游代理自动检测 ────────────────────────────────────
 
     # ── 上游代理自动检测 ────────────────────────────────────
     if (-not ($env:HTTPS_PROXY -or $env:HTTP_PROXY -or $env:ALL_PROXY)) {
@@ -165,7 +174,7 @@ function Wait-FlutterAndPause {
 
 do {
     Show-Menu
-    $choice = Read-Host 'Select (0-4, S)'
+    $choice = Read-Host 'Select (0-4, C, S)'
 
     switch ($choice) {
         '1' {
@@ -188,6 +197,22 @@ do {
             Write-Host 'Press Enter to stop proxy and return to menu...' -ForegroundColor Gray
             Read-Host
             Stop-Proxy
+        }
+        'C' {
+            Write-Message "Killing processes on port 19080..." "DarkYellow"
+            $connections = Get-NetTCPConnection -LocalPort 19080 -ErrorAction SilentlyContinue
+            if (-not $connections) {
+                Write-Message "Port 19080 is free" "Green"
+            } else {
+                $connections |
+                    Select-Object -ExpandProperty OwningProcess -Unique |
+                    Where-Object { $_ -gt 0 } |
+                    ForEach-Object { Stop-Process -Id $_ -Force -ErrorAction SilentlyContinue }
+                Start-Sleep -Seconds 1
+                Write-Message "Port 19080 freed" "Green"
+            }
+            Write-Host 'Press any key to return to menu...' -ForegroundColor Gray
+            $null = $Host.UI.RawUI.ReadKey('NoEcho,IncludeKeyDown')
         }
         'S' {
             if ($script:SentryDsn) {

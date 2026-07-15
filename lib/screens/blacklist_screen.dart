@@ -3,7 +3,9 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../models/blacklist_record.dart';
 import '../providers/blacklist_provider.dart';
+import '../providers/server_blacklist_import_provider.dart';
 import '../theme/app_theme.dart';
+import '../utils/s1_snack_bar.dart';
 import '../widgets/s1_confirm_dialog.dart';
 
 class BlacklistScreen extends ConsumerWidget {
@@ -12,6 +14,7 @@ class BlacklistScreen extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final entries = ref.watch(blacklistProvider);
+    final importState = ref.watch(serverBlacklistImportProvider);
     final scheme = Theme.of(context).colorScheme;
     final textTheme = Theme.of(context).textTheme;
 
@@ -21,6 +24,13 @@ class BlacklistScreen extends ConsumerWidget {
         elevation: 0,
         title: Text('本地黑名单', style: textTheme.titleLarge),
         actions: [
+          IconButton(
+            tooltip: '从网页导入',
+            onPressed: importState.isLoading
+                ? null
+                : () => _importFromWeb(context, ref),
+            icon: const Icon(Icons.cloud_download_outlined),
+          ),
           if (entries.isNotEmpty)
             IconButton(
               tooltip: '清空',
@@ -49,6 +59,58 @@ class BlacklistScreen extends ConsumerWidget {
               },
             ),
     );
+  }
+
+  Future<void> _importFromWeb(BuildContext context, WidgetRef ref) async {
+    final notifier = ref.read(serverBlacklistImportProvider.notifier);
+    BlacklistImportPreview preview;
+    try {
+      preview = await notifier.loadPreview();
+    } catch (error) {
+      if (!context.mounted) return;
+      final message = error.toString().replaceFirst('Exception: ', '');
+      S1SnackBar.show(context, message: message);
+      return;
+    }
+    if (!context.mounted) return;
+    if (!preview.hasChanges) {
+      S1SnackBar.show(context, message: '网页黑名单没有需要导入的变化');
+      return;
+    }
+    final confirmed = await showS1ConfirmDialog(
+      context,
+      title: '导入网页黑名单',
+      content: _importSummary(preview),
+      confirmLabel: '导入',
+    );
+    if (!confirmed || !context.mounted) return;
+    try {
+      final result = await notifier.apply(preview);
+      if (!context.mounted) return;
+      S1SnackBar.show(
+        context,
+        message: '已导入 ${result.added} 个新增用户，更新 ${result.updated} 个本地记录',
+      );
+    } catch (error) {
+      if (!context.mounted) return;
+      S1SnackBar.show(
+        context,
+        message: '导入失败：${error.toString().replaceFirst('Exception: ', '')}',
+      );
+    }
+  }
+
+  String _importSummary(BlacklistImportPreview preview) {
+    final names = [
+      ...preview.added.map((user) => '新增：${user.username}（${user.uid}）'),
+      ...preview.updated.map((user) => '更新：${user.username}（${user.uid}）'),
+    ];
+    final visible = names.take(20).join('\n');
+    final suffix = names.length > 20 ? '\n……其余 ${names.length - 20} 个用户' : '';
+    return '网页共 ${preview.users.length} 人；新增 ${preview.added.length} 人，'
+        '更新 ${preview.updated.length} 人，无变化 ${preview.unchanged.length} 人。\n\n'
+        '只合并主题列表和帖内楼层，不影响私信、备注，也不会删除本地记录。\n\n'
+        '$visible$suffix';
   }
 
   Future<void> _confirmClearAll(BuildContext context, WidgetRef ref) async {

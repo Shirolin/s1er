@@ -12,6 +12,32 @@ import 'package:s1_app/services/http_client.dart';
 
 void main() {
   group('ForumToolsService transport', () {
+    test('server blacklist uses GET HTML endpoint and parses page', () async {
+      final container = ProviderContainer();
+      addTearDown(container.dispose);
+      final adapter = _CaptureAdapter(
+        responseBody: '''
+          <ul id="friend_ul"><li><h4><a href="?uid=7">blocked</a></h4></li></ul>
+          <div class="pg"><a href="?page=2">2</a></div>
+        ''',
+      );
+      final dio = Dio()..httpClientAdapter = adapter;
+      final client = S1HttpClient.test(container, dio);
+      final service = ForumToolsService(client);
+
+      final result =
+          await service.getServerBlacklistPage(uid: '426519', page: 1);
+
+      expect(result.items.single.uid, '7');
+      expect(result.totalPages, 2);
+      expect(adapter.requests, hasLength(1));
+      final request = adapter.requests.single;
+      expect(request.method, 'GET');
+      expect(request.path, contains('view=blacklist'));
+      expect(request.path, contains('uid=426519'));
+      expect(request.path, contains('page=1'));
+    });
+
     test('friend list uses GET module=friend version=1', () async {
       final container = ProviderContainer();
       addTearDown(container.dispose);

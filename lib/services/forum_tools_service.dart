@@ -7,6 +7,7 @@ import '../models/app_exceptions.dart';
 import '../models/attendance_result.dart';
 import '../models/dark_room_entry.dart';
 import '../models/friend_summary.dart';
+import '../models/server_blacklist.dart';
 import '../utils/error_handler.dart';
 import 'http_client.dart';
 
@@ -29,6 +30,28 @@ class ForumToolsService {
     } catch (e, st) {
       if (e is LoginRequiredException) rethrow;
       throw Exception(friendlyError(e, '好友列表', st));
+    }
+  }
+
+  Future<ServerBlacklistPage> getServerBlacklistPage({
+    required String uid,
+    required int page,
+  }) async {
+    try {
+      final response = await _httpClient.get(
+        ApiConfig.serverBlacklistUrl(uid: uid, page: page),
+        options: Options(responseType: ResponseType.plain),
+      );
+      final html = response.data?.toString() ?? '';
+      if (html.contains('id="loginform') ||
+          html.contains("id='loginform") ||
+          html.contains('name="login"')) {
+        throw LoginRequiredException();
+      }
+      return ServerBlacklistPage.fromHtml(html, page: page);
+    } catch (e, st) {
+      if (e is LoginRequiredException) rethrow;
+      throw Exception(friendlyError(e, '网页黑名单', st));
     }
   }
 

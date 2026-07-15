@@ -38,7 +38,7 @@ S1-Next 同时打 Discuz Mobile / `forum.php`，以及独立 App API（`https://
 | 发私信 | `module=sendpm` | 会话内纯文本编辑器 + 预检 + 单次提交 | 已实现；真实发送未验证 |
 | 编辑帖子 | `forum.php action=edit` | 普通主题/回复编辑器 + 只读预检 + 冲突检测 + 单次提交 | 已实现；真实写入未验证 |
 | 举报 | `misc.php?mod=report` | 举报弹窗 + `fetchReportForm` / `submitReport` | 已实现 |
-| 服务端黑名单 | `home.php friend&view=blacklist` | 不同步网页黑名单 | 周边 |
+| 服务端黑名单 | `home.php friend&view=blacklist` | 手动单向导入本地；不反向写入、不自动同步 | 周边 |
 | 本地黑名单 | 本地库 hide/del | Drift + `/blacklist` UI；`thread`/`post`/`pm` 均生效 | 已实现 |
 
 ## Discuz 接口全表
@@ -72,7 +72,7 @@ S1-Next 同时打 Discuz Mobile / `forum.php`，以及独立 App API（`https://
 | 用户主题/回复 | `home.php space thread/reply` | `getUserSpaceList` / `getMySpaceList` | 已实现 |
 | 每日签到 | `study_daily_attendance…` GET + formhash | 资料页手动签到（`dailySign`） | 已实现 |
 | 小黑屋 | `forum.php showdarkroom ajaxdata=json` | `getDarkRoom` + `/dark-room` cursor | 已实现 |
-| 服务端黑名单 | `home.php friend&view=blacklist` | —（不同步网页黑名单） | 未实现 |
+| 服务端黑名单 | `home.php friend&view=blacklist` | 只读分页读取，确认后合并到本地 `thread`/`post` 作用域 | 已实现 |
 | 本地黑名单 | 本地库 hide/del | Drift + `/blacklist`；`thread` 滤列表、`post` 折叠楼层、`pm` 隐藏会话；备份 `blacklist.json` | 已实现 |
 | 交易贴信息 | `viewthread&do=tradeinfo` | — | 不做/边缘 |
 
@@ -94,7 +94,7 @@ S1-Next 同时打 Discuz Mobile / `forum.php`，以及独立 App API（`https://
    发新帖 `newthread` → 发私信 `sendpm` → 编辑帖子 `forum.php action=edit`
    （手动 Discuz 签到已落地；自动签到为后续 opt-in。）
 3. **剩余社交周边**  
-   服务端黑名单同步
+   服务端黑名单单向导入
 
 ## 实现差异备注
 
@@ -109,5 +109,5 @@ S1-Next 同时打 Discuz Mobile / `forum.php`，以及独立 App API（`https://
 - **小黑屋**：公开 `ajaxdata=json`；`data` 可为 Map/List；下一 cursor 取自 `message` 的 `dataexist|cid`，不能用末项 `cid`。
 - **forumdisplay `typeid`**：请求使用 `filter=typeid&typeid=...&tpp=50`，分类切换与分页已接入。
 - **登出**：双方都是清 Cookie/会话，无独立 Discuz logout module 依赖。
-- **本地黑名单**：设备级（主键被拉黑 `uid`）；`scope`=`thread`/`post`/`pm`；楼层默认折叠可展开，PM 会话隐藏；与 `blacklist.json` 备份往返兼容。不接网页好友黑名单同步。
+- **本地黑名单**：设备级（主键被拉黑 `uid`）；`scope`=`thread`/`post`/`pm`；楼层默认折叠可展开，PM 会话隐藏；与 `blacklist.json` 备份往返兼容。网页黑名单仅支持手动单向导入，默认合并 `thread`/`post`，不反向写入论坛。
 - **死常量**：`ApiConfig.moduleSendMessage` / `moduleFavThread` / `moduleFavForum` 已声明；`moduleSendMessage` 接 `sendpm`、或切 Mobile 收藏时复用 `moduleFav*`。

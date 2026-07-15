@@ -93,6 +93,10 @@ class ApiConfig {
   static String friendsBrowserUrl(String uid) =>
       '$baseUrl/home.php?mod=space&uid=$uid&do=friend&view=me&mobile=2';
 
+  static String serverBlacklistUrl({required String uid, required int page}) =>
+      '$baseUrl/home.php?mod=space&do=friend&view=blacklist'
+      '&uid=${Uri.encodeQueryComponent(uid)}&page=$page&mobile=2';
+
   static String darkRoomBrowserUrl() =>
       '$forumPostUrl?mod=misc&action=showdarkroom&mobile=2';
 

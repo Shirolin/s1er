@@ -1,0 +1,27 @@
+{
+  "message": "1|78648",
+  "data": {
+    "223056": {
+      "cid": "78650",
+      "uid": "223056",
+      "operatorid": "245",
+      "operator": "管理员甲",
+      "action": "禁止发言",
+      "reason": "测试原因",
+      "dateline": "2026-7-14 14:02",
+      "username": "example_user",
+      "groupexpiry": "2026-7-17 14:02"
+    },
+    "100001": {
+      "cid": "78649",
+      "uid": "100001",
+      "operatorid": "1",
+      "operator": "管理员乙",
+      "action": "禁止访问",
+      "reason": "",
+      "dateline": "2026-7-13 10:00",
+      "username": "banned_forever",
+      "groupexpiry": "永不过期"
+    }
+  }
+}

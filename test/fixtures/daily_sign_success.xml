@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="utf-8"?>
+<root><![CDATA[<script type="text/javascript" reload="1">
+if(typeof succeedhandle_study_daily_attendance=='function') {
+  succeedhandle_study_daily_attendance('', '签到成功，获得 2 条死鱼', {});
+}
+</script>]]></root>

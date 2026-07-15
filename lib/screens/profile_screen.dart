@@ -7,10 +7,12 @@ import '../config/api_config.dart';
 import '../theme/app_theme.dart';
 import '../utils/format_utils.dart';
 import '../providers/auth_provider.dart';
+import '../providers/daily_attendance_provider.dart';
 import '../providers/favorite_membership_provider.dart';
 import '../providers/reading_history_provider.dart';
 import '../models/user.dart';
 import '../widgets/app_bar_more_menu.dart';
+import '../widgets/daily_sign_card.dart';
 import '../widgets/web_avatar.dart';
 import '../widgets/s1_confirm_dialog.dart';
 import '../utils/s1_snack_bar.dart';
@@ -130,8 +132,9 @@ class _ProfileBodyState extends ConsumerState<ProfileBody> {
   Future<void> _openExternalUrl(String url) async {
     final uri = Uri.parse(url);
     try {
-      final didLaunch = await (widget.externalUrlLauncher?.call(uri) ??
-          launchUrl(uri, mode: LaunchMode.externalApplication));
+      final didLaunch =
+          await (widget.externalUrlLauncher?.call(uri) ??
+              launchUrl(uri, mode: LaunchMode.externalApplication));
       if (!didLaunch && mounted) {
         S1SnackBar.show(context, message: '无法打开链接');
       }
@@ -167,6 +170,8 @@ class _ProfileBodyState extends ConsumerState<ProfileBody> {
         ),
         if (authState.isLoggedIn && user != null && user.uid.isNotEmpty) ...[
           const SizedBox(height: 16),
+          const _DailySignSection(),
+          const SizedBox(height: 16),
           _StatsCard(user: user),
           const SizedBox(height: 16),
           _S1StatsCard(user: user),
@@ -178,6 +183,8 @@ class _ProfileBodyState extends ConsumerState<ProfileBody> {
           const _FavoritesEntryCard(),
           const SizedBox(height: 16),
         ],
+        const _ForumToolsCard(),
+        const SizedBox(height: 16),
         const _SystemGroupCard(),
         const SizedBox(height: 16),
         _ProjectSupportCard(
@@ -190,6 +197,21 @@ class _ProfileBodyState extends ConsumerState<ProfileBody> {
           ),
         const SizedBox(height: 24),
       ],
+    );
+  }
+}
+
+class _DailySignSection extends ConsumerWidget {
+  const _DailySignSection();
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final state = ref.watch(dailyAttendanceProvider);
+    return DailySignCard(
+      isSubmitting: state.isSubmitting,
+      result: state.result,
+      onSign: () =>
+          unawaited(ref.read(dailyAttendanceProvider.notifier).sign()),
     );
   }
 }
@@ -293,7 +315,9 @@ class _StatsCard extends StatelessWidget {
         child: IntrinsicHeight(
           child: Row(
             children: [
-              Expanded(child: _StatItem(label: '积分', value: user.credits)),
+              Expanded(
+                child: _StatItem(label: '积分', value: user.credits),
+              ),
               _VerticalDivider(),
               Expanded(
                 child: _StatItem(
@@ -315,7 +339,13 @@ class _StatsCard extends StatelessWidget {
                 ),
               ),
               _VerticalDivider(),
-              Expanded(child: _StatItem(label: '好友', value: user.friends)),
+              Expanded(
+                child: _StatItem(
+                  label: '好友',
+                  value: user.friends,
+                  onTap: () => context.push('/friends'),
+                ),
+              ),
             ],
           ),
         ),
@@ -360,11 +390,7 @@ class _S1StatsCard extends StatelessWidget {
                 ],
               ),
             ),
-            Container(
-              width: 1,
-              height: 40,
-              color: colorScheme.outlineVariant,
-            ),
+            Container(width: 1, height: 40, color: colorScheme.outlineVariant),
             Expanded(
               child: Column(
                 children: [
@@ -510,9 +536,7 @@ class _InfoTile extends StatelessWidget {
           ),
           Text(
             value,
-            style: textTheme.bodyMedium?.copyWith(
-              fontWeight: FontWeight.w500,
-            ),
+            style: textTheme.bodyMedium?.copyWith(fontWeight: FontWeight.w500),
           ),
         ],
       ),
@@ -565,13 +589,32 @@ class _FavoritesEntryCard extends ConsumerWidget {
   }
 }
 
+class _ForumToolsCard extends StatelessWidget {
+  const _ForumToolsCard();
+
+  @override
+  Widget build(BuildContext context) {
+    return Card(
+      elevation: 0,
+      clipBehavior: Clip.antiAlias,
+      child: _ProfileTwoLineRow(
+        icon: Icons.gavel_outlined,
+        title: '小黑屋',
+        subtitle: '论坛公开处罚记录',
+        onTap: () => context.push('/dark-room'),
+      ),
+    );
+  }
+}
+
 class _SystemGroupCard extends ConsumerWidget {
   const _SystemGroupCard();
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final count =
-        ref.watch(readingHistoryProvider.select((s) => s.records.length));
+    final count = ref.watch(
+      readingHistoryProvider.select((s) => s.records.length),
+    );
     final colorScheme = Theme.of(context).colorScheme;
 
     return Card(
@@ -606,9 +649,7 @@ class _SystemGroupCard extends ConsumerWidget {
             ),
             child: Divider(
               height: 1,
-              color: colorScheme.outlineVariant.withValues(
-                alpha: S1Alpha.half,
-              ),
+              color: colorScheme.outlineVariant.withValues(alpha: S1Alpha.half),
             ),
           ),
           _ProfileTwoLineRow(
@@ -638,22 +679,20 @@ class _ProjectSupportCard extends StatelessWidget {
     final textTheme = Theme.of(context).textTheme;
 
     Widget divider() => Padding(
-          padding: const EdgeInsets.symmetric(
-            horizontal: _ProfileListMetrics.hPadding,
-          ),
-          child: Divider(
-            height: 1,
-            color: colorScheme.outlineVariant.withValues(
-              alpha: S1Alpha.half,
-            ),
-          ),
-        );
+      padding: const EdgeInsets.symmetric(
+        horizontal: _ProfileListMetrics.hPadding,
+      ),
+      child: Divider(
+        height: 1,
+        color: colorScheme.outlineVariant.withValues(alpha: S1Alpha.half),
+      ),
+    );
 
     Widget externalIcon() => Icon(
-          Icons.open_in_new,
-          size: _ProfileListMetrics.iconSize,
-          color: colorScheme.onSurfaceVariant,
-        );
+      Icons.open_in_new,
+      size: _ProfileListMetrics.iconSize,
+      color: colorScheme.onSurfaceVariant,
+    );
 
     return Card(
       elevation: 0,
@@ -757,7 +796,8 @@ class _ProfileTwoLineRow extends StatelessWidget {
               SizedBox(
                 width: _ProfileListMetrics.iconSize,
                 height: _ProfileListMetrics.iconSize,
-                child: leading ??
+                child:
+                    leading ??
                     Icon(
                       icon,
                       size: _ProfileListMetrics.iconSize,

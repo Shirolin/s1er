@@ -38,6 +38,29 @@ class ApiConfig {
   static const String moduleFavThread = 'favthread';
   static const String moduleFavForum = 'favforum';
   static const String moduleSendReply = 'sendreply';
+  static const String moduleFriend = 'friend';
+
+  /// 好友 Mobile API 使用 version=1（与 S1-Next 一致；实测响应 `Version:"1"`）。
+  static const String friendApiVersion = '1';
+
+  /// Discuz 每日签到插件（GET，需 formhash；会产生服务端写入）。
+  static String dailyAttendanceUrl({required String formhash}) =>
+      '$baseUrl/study_daily_attendance-daily_attendance.html'
+      '?inajax=1&formhash=${Uri.encodeComponent(formhash)}';
+
+  /// 小黑屋公开处罚列表（cursor 分页）。
+  static String darkRoomUrl({String? cursor}) {
+    final cid = cursor == null || cursor.isEmpty
+        ? ''
+        : '&cid=${Uri.encodeComponent(cursor)}';
+    return '$forumPostUrl?mod=misc&action=showdarkroom&ajaxdata=json$cid';
+  }
+
+  static String friendsBrowserUrl(String uid) =>
+      '$baseUrl/home.php?mod=space&uid=$uid&do=friend&view=me&mobile=2';
+
+  static String darkRoomBrowserUrl() =>
+      '$forumPostUrl?mod=misc&action=showdarkroom&mobile=2';
 
   /// Discuz 搜索（HTML）：主题 / 用户。
   static String searchForumUrl({int? page}) {

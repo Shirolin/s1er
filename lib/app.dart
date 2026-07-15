@@ -18,6 +18,8 @@ import 'screens/settings_screen.dart';
 import 'screens/reading_history_screen.dart';
 import 'screens/blacklist_screen.dart';
 import 'screens/favorites_screen.dart';
+import 'screens/friends_screen.dart';
+import 'screens/dark_room_screen.dart';
 import 'screens/image_viewer_screen.dart';
 import 'screens/user_space_screen.dart';
 import 'screens/pm_conversation_screen.dart';
@@ -60,15 +62,11 @@ ImageViewerScreen? _parseImageViewerRoute(GoRouterState state) {
 final _router = GoRouter(
   initialLocation: '/',
   routes: [
-    GoRoute(
-      path: '/',
-      builder: (context, state) => const HomeScreen(),
-    ),
+    GoRoute(path: '/', builder: (context, state) => const HomeScreen()),
     GoRoute(
       path: '/forum/:fid',
-      builder: (context, state) => ForumListScreen(
-        fid: state.pathParameters['fid']!,
-      ),
+      builder: (context, state) =>
+          ForumListScreen(fid: state.pathParameters['fid']!),
     ),
     GoRoute(
       path: '/thread/:tid',
@@ -87,10 +85,7 @@ final _router = GoRouter(
         );
       },
     ),
-    GoRoute(
-      path: '/login',
-      builder: (context, state) => const LoginScreen(),
-    ),
+    GoRoute(path: '/login', builder: (context, state) => const LoginScreen()),
     GoRoute(
       path: '/pm/:touid',
       builder: (context, state) => PmConversationScreen(
@@ -129,6 +124,14 @@ final _router = GoRouter(
       builder: (context, state) => const FavoritesScreen(),
     ),
     GoRoute(
+      path: '/friends',
+      builder: (context, state) => const FriendsScreen(),
+    ),
+    GoRoute(
+      path: '/dark-room',
+      builder: (context, state) => const DarkRoomScreen(),
+    ),
+    GoRoute(
       path: '/user-space/:uid',
       builder: (context, state) => UserSpaceScreen(
         uid: state.pathParameters['uid']!,
@@ -143,10 +146,7 @@ final _router = GoRouter(
         final screen = _parseImageViewerRoute(state);
         if (screen != null) return screen;
         return Scaffold(
-          appBar: AppBar(
-            elevation: 0,
-            title: const Text('图片'),
-          ),
+          appBar: AppBar(elevation: 0, title: const Text('图片')),
           body: Center(
             child: Column(
               mainAxisSize: MainAxisSize.min,
@@ -200,8 +200,9 @@ class _S1AppState extends ConsumerState<S1App> with WidgetsBindingObserver {
 
     final themeModeStr = ref.watch(settingsProvider.select((s) => s.themeMode));
     final themeColor = ref.watch(settingsProvider.select((s) => s.themeColor));
-    final textScaleFactor =
-        ref.watch(settingsProvider.select((s) => s.textScaleFactor));
+    final textScaleFactor = ref.watch(
+      settingsProvider.select((s) => s.textScaleFactor),
+    );
 
     final themeMode = switch (themeModeStr) {
       'light' => ThemeMode.light,
@@ -211,9 +212,7 @@ class _S1AppState extends ConsumerState<S1App> with WidgetsBindingObserver {
 
     return TalkerWrapper(
       talker: talker,
-      options: const TalkerWrapperOptions(
-        enableErrorAlerts: true,
-      ),
+      options: const TalkerWrapperOptions(enableErrorAlerts: true),
       child: MaterialApp.router(
         title: 'S1 Client',
         theme: AppTheme.lightTheme(themeColor),
@@ -222,9 +221,9 @@ class _S1AppState extends ConsumerState<S1App> with WidgetsBindingObserver {
         routerConfig: _router,
         builder: (context, child) {
           return MediaQuery(
-            data: MediaQuery.of(context).copyWith(
-              textScaler: TextScaler.linear(textScaleFactor),
-            ),
+            data: MediaQuery.of(
+              context,
+            ).copyWith(textScaler: TextScaler.linear(textScaleFactor)),
             child: child!,
           );
         },

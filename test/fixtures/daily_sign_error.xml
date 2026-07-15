@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="utf-8"?>
+<root><![CDATA[<script type="text/javascript" reload="1">
+if(typeof errorhandle_study_daily_attendance=='function') {
+  errorhandle_study_daily_attendance('抱歉，您的用户组不允许签到', {});
+}
+</script>]]></root>

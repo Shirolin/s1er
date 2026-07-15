@@ -10,6 +10,7 @@ import '../services/api_service.dart';
 import '../services/http_client.dart';
 import '../services/poll_vote_cache.dart';
 import '../services/rate_log_service.dart';
+import '../services/talker.dart';
 import '../utils/thread_navigation.dart';
 import 'api_service_provider.dart';
 import 'reading_history_provider.dart';
@@ -205,7 +206,12 @@ class PostNotifier extends AsyncNotifier<PostListState> {
     if (!ref.mounted) return loaded;
 
     unawaited(
-      ref.read(threadRateLogsProvider(tid).notifier).ensurePageRateLogs(page),
+      ref
+          .read(threadRateLogsProvider(tid).notifier)
+          .ensurePageRateLogs(page)
+          .catchError((Object e, StackTrace st) {
+        talker.handle(e, st, 'ensurePageRateLogs failed tid=$tid page=$page');
+      }),
     );
     return loaded;
   }

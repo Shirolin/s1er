@@ -6,7 +6,7 @@ void main() {
     test('keeps known scopes in order and drops unknowns', () {
       expect(
         BlacklistRecord.normalizeScopes(
-            ['pm', 'thread', 'nope', 'post', 'thread'],
+          ['pm', 'thread', 'nope', 'post', 'thread'],
         ),
         ['pm', 'thread', 'post'],
       );

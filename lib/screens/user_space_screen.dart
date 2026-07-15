@@ -5,7 +5,10 @@ import '../config/api_config.dart';
 import '../models/thread_destination.dart';
 import '../models/user_space_item.dart';
 import '../providers/reading_history_provider.dart';
+import '../providers/auth_provider.dart';
+import '../providers/blacklist_provider.dart';
 import '../providers/user_space_provider.dart';
+import '../models/blacklist_record.dart';
 import '../theme/app_theme.dart';
 import '../utils/format_utils.dart';
 import '../utils/thread_navigation.dart';
@@ -77,6 +80,13 @@ class _UserSpaceScreenState extends ConsumerState<UserSpaceScreen>
   @override
   Widget build(BuildContext context) {
     final async = ref.watch(userSpaceProvider(_params));
+    final auth = ref.watch(authStateProvider);
+    final pmBlocked = ref.watch(
+      blacklistHasScopeProvider(
+        (uid: widget.uid, scope: BlacklistRecord.scopePm),
+      ),
+    );
+    final isSelf = widget.isSelf || auth.user?.uid == widget.uid;
     final title = widget.username != null && widget.username!.isNotEmpty
         ? '${widget.username} 的空间'
         : '用户空间';
@@ -86,6 +96,20 @@ class _UserSpaceScreenState extends ConsumerState<UserSpaceScreen>
         elevation: 0,
         title: Text(title),
         actions: [
+          if (auth.isLoggedIn && !isSelf && !pmBlocked)
+            IconButton(
+              tooltip: '发私信',
+              icon: const Icon(Icons.mail_outline),
+              onPressed: () => context.push(
+                Uri(
+                  path: '/pm/${widget.uid}',
+                  queryParameters: {
+                    if (widget.username?.trim().isNotEmpty == true)
+                      'name': widget.username!.trim(),
+                  },
+                ).toString(),
+              ),
+            ),
           AppBarMoreMenu(
             onRefresh: () =>
                 ref.read(userSpaceProvider(_params).notifier).refresh(),

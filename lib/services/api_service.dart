@@ -17,6 +17,7 @@ import '../models/private_message.dart';
 import '../models/notice_item.dart';
 import '../models/favorite_item.dart';
 import '../models/message_list_result.dart';
+import '../models/pm_send_result.dart';
 import '../models/rate_form.dart';
 import '../models/report_form.dart';
 import '../models/search_result.dart';
@@ -1766,9 +1767,8 @@ class ApiService {
     final location = response.headers.value('location');
     if (location != null) {
       final redirected = Uri.parse(location);
-      final page =
-          int.tryParse(redirected.queryParameters['page'] ?? '') ??
-              _pageFromPseudoStaticPath(redirected.path);
+      final page = int.tryParse(redirected.queryParameters['page'] ?? '') ??
+          _pageFromPseudoStaticPath(redirected.path);
       if (page != null && page >= 1) {
         _pageCache[cacheKey] = page;
         return page;
@@ -1849,6 +1849,135 @@ class ApiService {
     final json = ensureJson(response.data);
     checkAuthError(json);
     return parsePmConversationJson(json, partnerUid: touid, page: page);
+  }
+
+  static PmSendFormInfo parsePmSendForm(Map<String, dynamic> json) {
+    final variables = json['Variables'] as Map<String, dynamic>?;
+    final formhash = variables?['formhash']?.toString();
+    final message = json['Message'];
+    final messageval =
+        message is Map ? message['messageval']?.toString() : null;
+    final messagestr =
+        message is Map ? message['messagestr']?.toString() : null;
+    final hasError = messageval != null &&
+        messageval.isNotEmpty &&
+        !_isPmSuccessStatus(messageval);
+    return PmSendFormInfo(
+      formhash: formhash,
+      error: hasError
+          ? friendlyDiscuzApiError(
+              messageval: messageval,
+              messagestr: messagestr,
+              fallback: '当前无法发送私信',
+            )
+          : null,
+    );
+  }
+
+  Future<PmSendFormInfo> fetchPmSendForm() async {
+    try {
+      final response = await _httpClient.get(
+        buildApiUrl(module: ApiConfig.moduleSendMessage),
+      );
+      _httpClient.cacheFormhashFromResponse(response.data);
+      final result = parsePmSendForm(ensureJson(response.data));
+      if (result.formhash == null || result.formhash!.trim().isEmpty) {
+        return PmSendFormInfo(error: result.error ?? '无法获取私信表单验证串');
+      }
+      return result;
+    } catch (e, st) {
+      return PmSendFormInfo(error: friendlyError(e, '加载私信表单', st));
+    }
+  }
+
+  Future<PmSendResult> sendPrivateMessage({
+    required String touid,
+    required String message,
+  }) async {
+    final recipient = touid.trim();
+    final content = message.trim();
+    if (recipient.isEmpty) return const PmSendResult.rejected('缺少收件人');
+    if (!RegExp(r'^\d+$').hasMatch(recipient)) {
+      return const PmSendResult.rejected('收件人无效');
+    }
+    if (content.isEmpty) return const PmSendResult.rejected('请输入私信内容');
+
+    final form = await fetchPmSendForm();
+    if (!form.canSend) {
+      return PmSendResult.rejected(form.error ?? '当前无法发送私信');
+    }
+
+    final url = buildApiUrl(
+      module: ApiConfig.moduleSendMessage,
+      params: {'pmsubmit': 'true'},
+    );
+    try {
+      final response = await _httpClient.post(
+        url,
+        data: <String, String>{'touid': recipient, 'message': content},
+        options: Options(contentType: Headers.formUrlEncodedContentType),
+      );
+      return parsePmSendResponse(response.data);
+    } catch (e, st) {
+      talker.handle(e, st, 'sendPrivateMessage uncertain');
+      return const PmSendResult.uncertain('发送状态未知，请刷新会话确认后再决定是否重试');
+    }
+  }
+
+  static bool _isPmSuccessStatus(String status) {
+    return status.endsWith('_succeed') ||
+        status.endsWith('_success') ||
+        status.endsWith('_succeed_mobile');
+  }
+
+  static PmSendResult parsePmSendResponse(dynamic data) {
+    if (data is String) {
+      final trimmed = data.trimLeft();
+      if (trimmed.startsWith('{')) {
+        try {
+          return parsePmSendResponse(jsonDecode(trimmed));
+        } catch (_) {
+          return const PmSendResult.uncertain('发送状态未知，请刷新会话确认后再决定是否重试');
+        }
+      }
+      return const PmSendResult.uncertain('发送状态未知，请刷新会话确认后再决定是否重试');
+    }
+    if (data is! Map) {
+      return const PmSendResult.uncertain('发送状态未知，请刷新会话确认后再决定是否重试');
+    }
+    final map = Map<String, dynamic>.from(data);
+    if (map['error'] != null) {
+      return PmSendResult.rejected(
+        friendlyDiscuzApiError(
+          messageval: map['error']?.toString(),
+          messagestr: map['error']?.toString(),
+          fallback: '私信发送失败',
+        ),
+      );
+    }
+    final message = map['Message'];
+    final messageval =
+        message is Map ? message['messageval']?.toString() : null;
+    final messagestr =
+        message is Map ? message['messagestr']?.toString() : null;
+    if (messageval != null && _isPmSuccessStatus(messageval)) {
+      final variables = map['Variables'];
+      final pmid = variables is Map ? variables['pmid']?.toString() : null;
+      if (pmid == null || pmid.trim().isEmpty) {
+        return const PmSendResult.uncertain('服务器已返回成功状态，但缺少私信编号，请刷新会话确认');
+      }
+      return PmSendResult.success(pmid: pmid, message: messagestr);
+    }
+    if (messageval != null || messagestr != null) {
+      return PmSendResult.rejected(
+        friendlyDiscuzApiError(
+          messageval: messageval,
+          messagestr: messagestr,
+          fallback: '私信发送失败',
+        ),
+      );
+    }
+    return const PmSendResult.uncertain('发送状态未知，请刷新会话确认后再决定是否重试');
   }
 
   /// 获取提醒列表（v3 JSON 优先，同分类 HTML 兜底）。

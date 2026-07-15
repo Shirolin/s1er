@@ -218,6 +218,7 @@ class ApiService {
       params: {'fid': fid, 'extra': '', 'topicsubmit': 'yes'},
     );
     final data = <String, String>{
+      'formhash': form.formhash!,
       'posttime': (DateTime.now().millisecondsSinceEpoch ~/ 1000).toString(),
       if (typeId != null && typeId.trim().isNotEmpty) 'typeid': typeId.trim(),
       'subject': subject.trim(),
@@ -2099,7 +2100,11 @@ class ApiService {
     try {
       final response = await _httpClient.post(
         url,
-        data: <String, String>{'touid': recipient, 'message': content},
+        data: <String, String>{
+          'formhash': form.formhash!,
+          'touid': recipient,
+          'message': content,
+        },
         options: Options(contentType: Headers.formUrlEncodedContentType),
       );
       return parsePmSendResponse(response.data);

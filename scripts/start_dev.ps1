@@ -30,15 +30,11 @@ function Show-Menu {
     Write-Host '      -> Start CORS proxy + Edge browser'
     Write-Host ''
 
-    Write-Host '  [3] Web (no proxy)' -ForegroundColor Yellow
-    Write-Host '      -> Direct Chrome, no proxy'
-    Write-Host ''
-
-    Write-Host '  [4] Android device' -ForegroundColor Magenta
+    Write-Host '  [3] Android device' -ForegroundColor Magenta
     Write-Host '      -> Run on connected Android device/emulator'
     Write-Host ''
 
-    Write-Host '  [5] Just Proxy' -ForegroundColor Cyan
+    Write-Host '  [4] Just Proxy' -ForegroundColor Cyan
     Write-Host '      -> Start CORS proxy only, no Flutter'
     Write-Host ''
 
@@ -119,22 +115,17 @@ function Start-FlutterWithProxy {
 
 do {
     Show-Menu
-    $choice = Read-Host 'Select (0-5, S)'
+    $choice = Read-Host 'Select (0-4, S)'
 
     switch ($choice) {
         '1' { Start-FlutterWithProxy 'chrome'; break }
         '2' { Start-FlutterWithProxy 'edge'; break }
         '3' {
             Write-Host ''
-            Write-Host 'Starting Flutter on Chrome (no proxy)...' -ForegroundColor Yellow
-            Start-Flutter @('run', '-d', 'chrome')
-        }
-        '4' {
-            Write-Host ''
             Write-Host 'Starting Flutter on Android...' -ForegroundColor Yellow
             Start-Flutter @('run', '-d', 'android')
         }
-        '5' {
+        '4' {
             Start-Proxy
             Write-Host ''
             Write-Host 'Proxy running. Press Enter to stop...' -ForegroundColor Yellow

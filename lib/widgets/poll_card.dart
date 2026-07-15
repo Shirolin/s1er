@@ -178,7 +178,7 @@ class _PollCardState extends ConsumerState<PollCard> {
             ),
             if (poll.canVote && !isLoggedIn) ...[
               const SizedBox(height: 16),
-              const Divider(height: 1),
+              Divider(height: 1, color: scheme.outlineVariant),
               const SizedBox(height: 16),
               Text(
                 '登录后可参与投票',
@@ -197,7 +197,7 @@ class _PollCardState extends ConsumerState<PollCard> {
               ),
             ] else if (canInteract) ...[
               const SizedBox(height: 16),
-              const Divider(height: 1),
+              Divider(height: 1, color: scheme.outlineVariant),
               const SizedBox(height: 16),
               SizedBox(
                 width: double.infinity,

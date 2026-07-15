@@ -132,6 +132,14 @@ final _libRules = <AuditRule>[
         !path.endsWith('lib/utils/s1_snack_bar.dart') &&
         !path.endsWith('lib/theme/app_theme.dart'),
   ),
+  AuditRule(
+    id: 'opacity-raw-value',
+    severity: AuditSeverity.p1,
+    message: 'Raw opacity literal in Opacity widget — use S1Alpha token',
+    // Exclude 0.0 and 1.0 which are common animation endpoints
+    pattern: RegExp(r'Opacity\(opacity:.*\b(?![01]\.0\b)0\.\d+'),
+    lineFilter: (line, _) => !line.contains('S1Alpha'),
+  ),
 ];
 
 List<String> _collectDartFiles(Directory root) {
@@ -170,11 +178,45 @@ void _checkMissingExplicitElevation(
   }
 }
 
+void _checkDividerColor(
+    String path, List<String> lines, List<AuditFinding> findings) {
+  if (!path.startsWith('lib/')) return;
+  // Skip the theme file - Divider there is DividerThemeData.
+  if (path.endsWith('lib/theme/app_theme.dart')) return;
+
+  for (var i = 0; i < lines.length; i++) {
+    final line = lines[i];
+    if (!RegExp(r'\b(Divider|VerticalDivider)\s*\(').hasMatch(line)) continue;
+    // Skip commented-out code
+    if (line.trimLeft().startsWith('//')) continue;
+    // Skip DividerThemeData constructors
+    if (line.contains('DividerThemeData')) continue;
+
+    // Look ahead up to 6 lines for the color parameter
+    final windowEnd = (i + 6).clamp(0, lines.length);
+    final window = lines.sublist(i, windowEnd).join('\n');
+    if (RegExp(r'\bcolor:\s*').hasMatch(window)) continue;
+
+    findings.add(
+      AuditFinding(
+        ruleId: 'divider-without-color',
+        severity: AuditSeverity.p1,
+        file: path,
+        line: i + 1,
+        message:
+            'Divider/VerticalDivider without explicit color — should use colorScheme.outlineVariant',
+        snippet: line.trim(),
+      ),
+    );
+  }
+}
+
 List<AuditFinding> _auditLibFile(String path) {
   final findings = <AuditFinding>[];
   final lines = File(path).readAsLinesSync();
 
   _checkMissingExplicitElevation(path, lines, findings);
+  _checkDividerColor(path, lines, findings);
 
   for (var i = 0; i < lines.length; i++) {
     final line = lines[i];

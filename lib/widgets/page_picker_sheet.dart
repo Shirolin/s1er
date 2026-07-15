@@ -221,7 +221,7 @@ class _PagePickerSheetState extends State<PagePickerSheet> {
               ),
             ),
             const SizedBox(height: 12),
-            const Divider(height: 1),
+            Divider(height: 1, color: scheme.outlineVariant),
             Flexible(
               child: ClipRect(
                 child: ListView.builder(

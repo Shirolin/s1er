@@ -166,7 +166,7 @@ class _DownloadCacheSettingsSectionState
             ),
             const SizedBox(height: 8),
             Opacity(
-              opacity: settings.showImages ? 1 : 0.5,
+              opacity: settings.showImages ? 1 : S1Alpha.half,
               child: IgnorePointer(
                 ignoring: !settings.showImages,
                 child: Padding(

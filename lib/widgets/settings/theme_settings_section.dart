@@ -14,6 +14,7 @@ class ThemeSettingsSection extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final settings = ref.watch(settingsProvider);
     final notifier = ref.read(settingsProvider.notifier);
+    final scheme = Theme.of(context).colorScheme;
 
     return Card(
       elevation: 0,
@@ -31,7 +32,7 @@ class ThemeSettingsSection extends ConsumerWidget {
               onChanged: notifier.setThemeMode,
             ),
             const SizedBox(height: 20),
-            const Divider(height: 1),
+            Divider(height: 1, color: scheme.outlineVariant),
             const SizedBox(height: 20),
             const SettingsSubsectionLabel(label: '主题配色'),
             const SizedBox(height: 16),

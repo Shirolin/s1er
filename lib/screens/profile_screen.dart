@@ -495,20 +495,41 @@ class _InfoCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final scheme = Theme.of(context).colorScheme;
     return Card(
       elevation: 0,
       child: Column(
         children: [
           _InfoTile(label: 'UID', value: user.uid),
           if (user.regdate.isNotEmpty) ...[
-            const Divider(height: 1, indent: 16, endIndent: 16),
+            Divider(
+              height: 1,
+              indent: 16,
+              endIndent: 16,
+              color: scheme.outlineVariant,
+            ),
             _InfoTile(label: '注册时间', value: user.regdate),
           ],
-          const Divider(height: 1, indent: 16, endIndent: 16),
+          Divider(
+            height: 1,
+            indent: 16,
+            endIndent: 16,
+            color: scheme.outlineVariant,
+          ),
           _InfoTile(label: '关注', value: '${user.following}'),
-          const Divider(height: 1, indent: 16, endIndent: 16),
+          Divider(
+            height: 1,
+            indent: 16,
+            endIndent: 16,
+            color: scheme.outlineVariant,
+          ),
           _InfoTile(label: '粉丝', value: '${user.follower}'),
-          const Divider(height: 1, indent: 16, endIndent: 16),
+          Divider(
+            height: 1,
+            indent: 16,
+            endIndent: 16,
+            color: scheme.outlineVariant,
+          ),
           _InfoTile(label: '在线时长', value: '${user.oltime} 小时'),
         ],
       ),

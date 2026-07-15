@@ -67,7 +67,7 @@ class S1DesktopScaffold extends StatelessWidget {
             ),
           ],
         ),
-        const VerticalDivider(width: 1, thickness: 1),
+        VerticalDivider(width: 1, thickness: 1, color: scheme.outlineVariant),
         Expanded(child: child),
       ],
     );

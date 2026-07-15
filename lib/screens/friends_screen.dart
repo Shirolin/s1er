@@ -56,7 +56,10 @@ class FriendsScreen extends ConsumerWidget {
               child: ListView.separated(
                 padding: const EdgeInsets.symmetric(vertical: 8),
                 itemCount: result.items.length,
-                separatorBuilder: (_, __) => const Divider(height: 1),
+                separatorBuilder: (ctx, _) => Divider(
+                  height: 1,
+                  color: Theme.of(ctx).colorScheme.outlineVariant,
+                ),
                 itemBuilder: (context, index) {
                   return _FriendTile(friend: result.items[index]);
                 },

@@ -102,7 +102,12 @@ class _RateLogCardState extends ConsumerState<RateLogCard> {
                   ),
                   child: Column(
                     children: [
-                      const Divider(height: 1, indent: 12, endIndent: 12),
+                      Divider(
+                        height: 1,
+                        indent: 12,
+                        endIndent: 12,
+                        color: scheme.outlineVariant,
+                      ),
                       const SizedBox(height: 4),
                       ...collapsedEntries.map(
                         (entry) => _EntryRow(
@@ -124,7 +129,12 @@ class _RateLogCardState extends ConsumerState<RateLogCard> {
                   ),
                   child: Column(
                     children: [
-                      const Divider(height: 1, indent: 12, endIndent: 12),
+                      Divider(
+                        height: 1,
+                        indent: 12,
+                        endIndent: 12,
+                        color: scheme.outlineVariant,
+                      ),
                       const SizedBox(height: 4),
                       ...displayEntries.map(
                         (entry) => _EntryRow(

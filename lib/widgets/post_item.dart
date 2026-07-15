@@ -96,7 +96,7 @@ class _PostItemState extends ConsumerState<PostItem> {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             _buildAuthorHeader(context, timeStr, floor),
-            const Divider(height: 16),
+            Divider(height: 16, color: scheme.outlineVariant),
             BbcodeRenderer(
               bbcode: widget.post.message,
               imageIndexCounter: _imageIndexCounter,

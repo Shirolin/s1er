@@ -32,10 +32,10 @@ if (-not $script:SentryDsn) {
     $script:SentryDsn = 'https://7ea0cea034d3c0a13de3bbbf862e8ae7@o4511738264944640.ingest.us.sentry.io/4511738316128256'
 }
 function Start-Flutter {
-    param([string[]]$Args)
+    param([string[]]$FlutterArgs)
     $dartDefine = '--dart-define=SENTRY_DSN=' + $script:SentryDsn
-    $allArgs = $Args + , $dartDefine
-    flutter $allArgs
+    $allArgs = @($FlutterArgs) + @($dartDefine)
+    & flutter @allArgs
 }
 
 function Show-Menu {

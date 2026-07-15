@@ -142,9 +142,13 @@ Pods/
 .codex/
 .cursor/
 
-# 本地计划与报告
-plans/
-reports/
+# 本地计划与报告（仅匹配根目录）
+/plans/
+/reports/
+
+# 但允许归档版本
+!docs/archive/plans/
+!docs/archive/reports/
 
 # CORS 代理日志
 proxy_server.log

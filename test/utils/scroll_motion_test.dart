@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:s1_app/theme/app_theme.dart';
 import 'package:s1_app/utils/scroll_motion.dart';
 
 void main() {
@@ -19,6 +20,7 @@ void main() {
 
     await tester.pumpWidget(
       MaterialApp(
+        theme: AppTheme.lightTheme('purple'),
         home: Scaffold(
           body: SizedBox(
             height: 300,

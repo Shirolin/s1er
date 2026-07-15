@@ -2,6 +2,7 @@ import 'dart:async';
 
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:s1_app/theme/app_theme.dart';
 import 'package:s1_app/utils/scroll_floor.dart';
 
 Widget buildScrollHarness({
@@ -11,6 +12,7 @@ Widget buildScrollHarness({
   double viewportHeight = 400,
 }) {
   return MaterialApp(
+    theme: AppTheme.lightTheme('purple'),
     home: Scaffold(
       body: SizedBox(
         height: viewportHeight,
@@ -110,6 +112,9 @@ void main() {
 
     expect(controller.offset, greaterThan(168));
     // 内容不足时滚到 maxScrollExtent，仍应比当前位置更靠下。
-    expect(controller.offset, lessThanOrEqualTo(controller.position.maxScrollExtent));
+    expect(
+      controller.offset,
+      lessThanOrEqualTo(controller.position.maxScrollExtent),
+    );
   });
 }

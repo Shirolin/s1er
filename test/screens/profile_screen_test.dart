@@ -52,25 +52,29 @@ void main() {
 
   group('ProfileScreen', () {
     testWidgets('GitHub mark has a transparent background', (tester) async {
-      final data = await rootBundle.load(
-        'assets/branding/github_mark.png',
-      );
-      final codec = await ui.instantiateImageCodec(
-        data.buffer.asUint8List(),
-      );
-      final frame = await codec.getNextFrame();
-      final pixels = await frame.image.toByteData(
-        format: ui.ImageByteFormat.rawRgba,
-      );
+      await tester.runAsync(() async {
+        final data = await rootBundle.load(
+          'assets/branding/github_mark.png',
+        );
+        final codec = await ui.instantiateImageCodec(
+          data.buffer.asUint8List(),
+        );
+        final frame = await codec.getNextFrame();
+        try {
+          final pixels = await frame.image.toByteData(
+            format: ui.ImageByteFormat.rawRgba,
+          );
 
-      expect(pixels, isNotNull);
-      expect(pixels!.getUint8(3), 0);
-      final visibleAlphaOffset =
-          ((100 * frame.image.width + frame.image.width ~/ 2) * 4) + 3;
-      expect(pixels.getUint8(visibleAlphaOffset), greaterThan(200));
-
-      frame.image.dispose();
-      codec.dispose();
+          expect(pixels, isNotNull);
+          expect(pixels!.getUint8(3), 0);
+          final visibleAlphaOffset =
+              ((100 * frame.image.width + frame.image.width ~/ 2) * 4) + 3;
+          expect(pixels.getUint8(visibleAlphaOffset), greaterThan(200));
+        } finally {
+          frame.image.dispose();
+          codec.dispose();
+        }
+      });
     });
 
     testWidgets('shows settings entry tile', (tester) async {

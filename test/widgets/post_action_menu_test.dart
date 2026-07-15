@@ -27,11 +27,12 @@ void main() {
 
     expect(find.text('只看该作者'), findsOneWidget);
     expect(find.text('回复'), findsOneWidget);
+    expect(find.text('编辑'), findsOneWidget);
     expect(find.text('评分'), findsOneWidget);
     expect(find.text('加入黑名单'), findsOneWidget);
     expect(find.text('举报'), findsOneWidget);
     expect(find.byType(S1MenuDivider), findsOneWidget);
-    expect(find.byType(MenuItemButton), findsNWidgets(5));
+    expect(find.byType(MenuItemButton), findsNWidgets(6));
 
     await tester.tap(find.text('只看该作者'));
     await tester.pumpAndSettle();

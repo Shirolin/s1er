@@ -208,6 +208,7 @@ void main() {
       addTearDown(sub.close);
 
       await container.read(postProvider('100').future);
+      await pumpEventQueue();
 
       expect(adapter.rateLogRequests, isNotEmpty);
     });
@@ -222,6 +223,7 @@ void main() {
       addTearDown(sub.close);
 
       await container.read(postProvider('100').future);
+      await pumpEventQueue();
 
       expect(adapter.rateLogRequests, isNotEmpty);
     });
@@ -237,6 +239,7 @@ void main() {
       addTearDown(sub.close);
 
       await container.read(postProvider('100').future);
+      await pumpEventQueue();
 
       expect(adapter.rateLogRequests, isNotEmpty);
     });
@@ -269,6 +272,7 @@ void main() {
       addTearDown(sub.close);
 
       final initial = await container.read(postProvider('100').future);
+      await pumpEventQueue();
       final postsBefore = initial.posts;
 
       expect(adapter.rateLogRequests, isNotEmpty);

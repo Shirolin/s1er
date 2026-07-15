@@ -204,9 +204,9 @@ class PostNotifier extends AsyncNotifier<PostListState> {
     final loaded = _buildStateFromResult(result, page);
     if (!ref.mounted) return loaded;
 
-    await ref
-        .read(threadRateLogsProvider(tid).notifier)
-        .ensurePageRateLogs(page);
+    unawaited(
+      ref.read(threadRateLogsProvider(tid).notifier).ensurePageRateLogs(page),
+    );
     return loaded;
   }
 

@@ -2,7 +2,29 @@
 # 交互式菜单，支持 Web / Android / 无代理等模式
 #
 # 可选环境变量：
-#   S1_SENTRY_DSN  - 设置 Sentry DSN（默认已内置）
+#   S1_SENTRY_DSN   - 设置 Sentry DSN（默认已内置）
+#
+# 所有 flutter run 的输出同时写入 logs/ 目录的日志文件，
+# 避免闪退后 Clear-Host 擦除或终端关闭后丢失错误信息。
+
+param()
+
+$projectRoot = Split-Path -Parent $PSScriptRoot
+
+# ── Log directory ────────────────────────────────────────────
+$logDir = Join-Path $projectRoot "logs"
+New-Item -ItemType Directory -Force -Path $logDir | Out-Null
+
+function New-RunLog {
+    $timestamp = Get-Date -Format 'yyyyMMdd_HHmmss'
+    return Join-Path $logDir "flutter_run_${timestamp}.log"
+}
+
+function Write-Message {
+    param([string]$Message, [string]$Color = "White")
+    $now = Get-Date -Format 'HH:mm:ss'
+    Write-Host "[$now] $Message" -ForegroundColor $Color
+}
 
 # ── Sentry DSN ────────────────────────────────────────────
 $script:SentryDsn = $env:S1_SENTRY_DSN
@@ -46,9 +68,10 @@ function Show-Menu {
     }
     Write-Host ''
 
+    Write-Host '  Logs dir: ' -NoNewline; Write-Host $logDir -ForegroundColor DarkGray
+    Write-Host ''
     Write-Host '  [0] Exit' -ForegroundColor Gray
     Write-Host ''
-
     Write-Host '========================================' -ForegroundColor Cyan
 }
 
@@ -58,8 +81,7 @@ function Start-Proxy {
     # ── 端口冲突清理 ────────────────────────────────────────
     $connections = Get-NetTCPConnection -LocalPort 19080 -ErrorAction SilentlyContinue
     if ($connections) {
-        Write-Host ''
-        Write-Host '  Port 19080 in use, stopping old proxy...' -ForegroundColor DarkYellow
+        Write-Message "Port 19080 in use, stopping old proxy..." "DarkYellow"
         $connections |
             Select-Object -ExpandProperty OwningProcess -Unique |
             Where-Object { $_ -gt 0 } |
@@ -80,37 +102,65 @@ function Start-Proxy {
         }
     }
 
-    Write-Host ''
-    Write-Host 'Starting CORS Proxy on http://localhost:19080...' -ForegroundColor Yellow
-    $global:ProxyJob = Start-Process -FilePath 'dart' -ArgumentList 'run', 'scripts/proxy_server.dart' -PassThru -WindowStyle Minimized
+    $proxyLog = Join-Path $logDir "proxy_$(Get-Date -Format 'yyyyMMdd_HHmmss').log"
+    $proxyErrLog = Join-Path $logDir "proxy_$(Get-Date -Format 'yyyyMMdd_HHmmss').err.log"
+
+    Write-Message "Starting CORS Proxy on http://localhost:19080..." "Yellow"
+    Write-Message "Proxy log: $proxyLog" "DarkGray"
+    $global:ProxyJob = Start-Process -FilePath 'dart' -ArgumentList 'run', 'scripts/proxy_server.dart' -PassThru -WindowStyle Hidden -RedirectStandardOutput $proxyLog -RedirectStandardError $proxyErrLog
     if ($proxyUrl) {
-        Write-Host "  Upstream proxy: $proxyUrl" -ForegroundColor Cyan
+        Write-Message "Upstream proxy: $proxyUrl" "Cyan"
     }
     Start-Sleep -Seconds 2
     if ($global:ProxyJob.HasExited) {
-        Write-Host '  Proxy failed to start (exit code: ' $global:ProxyJob.ExitCode ')' -ForegroundColor Red
+        Write-Message "Proxy failed to start (exit code: $($global:ProxyJob.ExitCode))" "Red"
     } else {
-        Write-Host '  Proxy started (PID: ' $global:ProxyJob.Id ')' -ForegroundColor Green
+        Write-Message "Proxy started (PID: $($global:ProxyJob.Id))" "Green"
     }
 }
 
 function Stop-Proxy {
     if ($global:ProxyJob -and -not $global:ProxyJob.HasExited) {
-        Write-Host ''
-        Write-Host 'Shutting down proxy...' -ForegroundColor Yellow
+        Write-Message "Shutting down proxy..." "Yellow"
         Stop-Process -Id $global:ProxyJob.Id -Force -ErrorAction SilentlyContinue
-        Write-Host '  Proxy stopped' -ForegroundColor Green
+        Write-Message "Proxy stopped" "Green"
     }
 }
 
-function Start-FlutterWithProxy {
+function Wait-FlutterAndPause {
     param([string]$Device)
 
-    Start-Proxy
-    Write-Host ''
-    Write-Host 'Starting Flutter on ' $Device '...' -ForegroundColor Yellow
+    $runLog = New-RunLog
+    Write-Message "Starting Flutter on $Device..." "Yellow"
+    Write-Message "All output also saved to: $runLog" "DarkGray"
+
+    # Tee-Object: terminal 显示的同时写入文件
+    # flutter run 是交互式的（r/R/q 等），用 Tee-Object 会阻塞 stdin。
+    # 所以只启动交互式 flutter，退出后用 Get-Content 补一份日志到文件。
+    # 当前终端已有完整输出，日志文件作为持久备份。
+    try {
+        Start-Transcript -Path $runLog -Force | Out-Null
+        $script:TranscriptActive = $true
+    } catch {
+        Write-Message "Transcript not available (saving output directly)" "DarkYellow"
+        $script:TranscriptActive = $false
+    }
+
     Start-Flutter @('run', '-d', $Device)
-    Stop-Proxy
+
+    if ($script:TranscriptActive) {
+        Stop-Transcript -ErrorAction SilentlyContinue | Out-Null
+        $script:TranscriptActive = $false
+    }
+
+    Write-Message "Flutter exited." "Yellow"
+    if (Test-Path $runLog) {
+        Write-Message "Full output saved to: $runLog" "Cyan"
+    }
+    Write-Host ''
+    Write-Host 'Scroll up in this terminal to see the full output.' -ForegroundColor DarkGray
+    Write-Host 'Press any key to return to menu...' -ForegroundColor Gray
+    $null = $Host.UI.RawUI.ReadKey('NoEcho,IncludeKeyDown')
 }
 
 do {
@@ -118,17 +168,24 @@ do {
     $choice = Read-Host 'Select (0-4, S)'
 
     switch ($choice) {
-        '1' { Start-FlutterWithProxy 'chrome'; break }
-        '2' { Start-FlutterWithProxy 'edge'; break }
-        '3' {
-            Write-Host ''
-            Write-Host 'Starting Flutter on Android...' -ForegroundColor Yellow
-            Start-Flutter @('run', '-d', 'android')
+        '1' {
+            Start-Proxy
+            Wait-FlutterAndPause 'chrome'
+            Stop-Proxy
+            break
         }
+        '2' {
+            Start-Proxy
+            Wait-FlutterAndPause 'edge'
+            Stop-Proxy
+            break
+        }
+        '3' { Wait-FlutterAndPause 'android'; break }
         '4' {
             Start-Proxy
             Write-Host ''
-            Write-Host 'Proxy running. Press Enter to stop...' -ForegroundColor Yellow
+            Write-Host 'Proxy running in background (logs in $logDir).' -ForegroundColor Yellow
+            Write-Host 'Press Enter to stop proxy and return to menu...' -ForegroundColor Gray
             Read-Host
             Stop-Proxy
         }

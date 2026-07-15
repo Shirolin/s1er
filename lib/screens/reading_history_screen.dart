@@ -8,6 +8,7 @@ import '../theme/app_theme.dart';
 import '../utils/format_utils.dart';
 import '../utils/thread_navigation.dart';
 import '../widgets/s1_confirm_dialog.dart';
+import '../widgets/s1_desktop_scaffold.dart';
 
 class ReadingHistoryScreen extends ConsumerWidget {
   const ReadingHistoryScreen({super.key});
@@ -17,29 +18,32 @@ class ReadingHistoryScreen extends ConsumerWidget {
     final records = ref.watch(readingHistoryProvider.select((s) => s.records));
     final fidToForumName = ref.watch(fidToForumNameMapProvider);
 
-    return Scaffold(
-      appBar: AppBar(
-        elevation: 0,
-        title: const Text('阅读历史'),
-        actions: [
-          if (records.isNotEmpty)
-            IconButton(
-              tooltip: '清空',
-              icon: const Icon(Icons.delete_sweep_outlined),
-              onPressed: () => _confirmClearAll(context, ref),
-            ),
-        ],
-      ),
-      body: records.isEmpty
-          ? const _EmptyState()
-          : ListView.builder(
-              padding: const EdgeInsets.symmetric(vertical: 8),
-              itemCount: records.length,
-              itemBuilder: (context, index) => _HistoryTile(
-                record: records[index],
-                forumName: fidToForumName[records[index].fid],
+    return S1DesktopScaffold(
+      highlightedTab: 3,
+      child: Scaffold(
+        appBar: AppBar(
+          elevation: 0,
+          title: const Text('阅读历史'),
+          actions: [
+            if (records.isNotEmpty)
+              IconButton(
+                tooltip: '清空',
+                icon: const Icon(Icons.delete_sweep_outlined),
+                onPressed: () => _confirmClearAll(context, ref),
               ),
-            ),
+          ],
+        ),
+        body: records.isEmpty
+            ? const _EmptyState()
+            : ListView.builder(
+                padding: const EdgeInsets.symmetric(vertical: 8),
+                itemCount: records.length,
+                itemBuilder: (context, index) => _HistoryTile(
+                  record: records[index],
+                  forumName: fidToForumName[records[index].fid],
+                ),
+              ),
+      ),
     );
   }
 

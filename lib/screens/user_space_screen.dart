@@ -16,6 +16,7 @@ import '../widgets/app_bar_more_menu.dart';
 import '../widgets/pagination_bar.dart';
 import '../widgets/s1_error_view.dart';
 import '../widgets/s1_swipe_pagination.dart';
+import '../widgets/s1_desktop_scaffold.dart';
 
 class UserSpaceScreen extends ConsumerStatefulWidget {
   const UserSpaceScreen({
@@ -91,79 +92,82 @@ class _UserSpaceScreenState extends ConsumerState<UserSpaceScreen>
         ? '${widget.username} 的空间'
         : '用户空间';
 
-    return Scaffold(
-      appBar: AppBar(
-        elevation: 0,
-        title: Text(title),
-        actions: [
-          if (auth.isLoggedIn && !isSelf && !pmBlocked)
-            IconButton(
-              tooltip: '发私信',
-              icon: const Icon(Icons.mail_outline),
-              onPressed: () => context.push(
-                Uri(
-                  path: '/pm/${widget.uid}',
-                  queryParameters: {
-                    if (widget.username?.trim().isNotEmpty == true)
-                      'name': widget.username!.trim(),
-                  },
-                ).toString(),
+    return S1DesktopScaffold(
+      highlightedTab: 3,
+      child: Scaffold(
+        appBar: AppBar(
+          elevation: 0,
+          title: Text(title),
+          actions: [
+            if (auth.isLoggedIn && !isSelf && !pmBlocked)
+              IconButton(
+                tooltip: '发私信',
+                icon: const Icon(Icons.mail_outline),
+                onPressed: () => context.push(
+                  Uri(
+                    path: '/pm/${widget.uid}',
+                    queryParameters: {
+                      if (widget.username?.trim().isNotEmpty == true)
+                        'name': widget.username!.trim(),
+                    },
+                  ).toString(),
+                ),
               ),
+            AppBarMoreMenu(
+              onRefresh: () =>
+                  ref.read(userSpaceProvider(_params).notifier).refresh(),
+              browserUrl:
+                  '${ApiConfig.baseUrl}/home.php?mod=space&uid=${widget.uid}',
             ),
-          AppBarMoreMenu(
-            onRefresh: () =>
-                ref.read(userSpaceProvider(_params).notifier).refresh(),
-            browserUrl:
-                '${ApiConfig.baseUrl}/home.php?mod=space&uid=${widget.uid}',
+          ],
+          bottom: TabBar(
+            controller: _tabController,
+            tabs: const [
+              Tab(text: '主题'),
+              Tab(text: '回复'),
+            ],
           ),
-        ],
-        bottom: TabBar(
-          controller: _tabController,
-          tabs: const [
-            Tab(text: '主题'),
-            Tab(text: '回复'),
-          ],
         ),
-      ),
-      body: async.when(
-        loading: () => const Column(
-          children: [
-            LinearProgressIndicator(),
-            Expanded(child: SizedBox()),
-          ],
-        ),
-        error: (e, st) => S1ErrorView(
-          error: e,
-          onRetry: () =>
-              ref.read(userSpaceProvider(_params).notifier).refresh(),
-          onLogin: () => context.push('/login'),
-        ),
-        data: (state) => TabBarView(
-          controller: _tabController,
-          physics: const NeverScrollableScrollPhysics(),
-          children: [
-            if (_visitedTabs.contains(0))
-              _ThreadList(
-                items: state.threads,
-                currentPage: state.threadPage,
-                totalPages: state.threadTotalPages,
-                uid: widget.uid,
-                isSelf: widget.isSelf,
-              )
-            else
-              const SizedBox.shrink(),
-            if (_visitedTabs.contains(1))
-              _ReplyList(
-                items: state.replies,
-                currentPage: state.replyPage,
-                totalPages: state.replyTotalPages,
-                uid: widget.uid,
-                isSelf: widget.isSelf,
-                repliesLoaded: state.repliesLoaded,
-              )
-            else
-              const SizedBox.shrink(),
-          ],
+        body: async.when(
+          loading: () => const Column(
+            children: [
+              LinearProgressIndicator(),
+              Expanded(child: SizedBox()),
+            ],
+          ),
+          error: (e, st) => S1ErrorView(
+            error: e,
+            onRetry: () =>
+                ref.read(userSpaceProvider(_params).notifier).refresh(),
+            onLogin: () => context.push('/login'),
+          ),
+          data: (state) => TabBarView(
+            controller: _tabController,
+            physics: const NeverScrollableScrollPhysics(),
+            children: [
+              if (_visitedTabs.contains(0))
+                _ThreadList(
+                  items: state.threads,
+                  currentPage: state.threadPage,
+                  totalPages: state.threadTotalPages,
+                  uid: widget.uid,
+                  isSelf: widget.isSelf,
+                )
+              else
+                const SizedBox.shrink(),
+              if (_visitedTabs.contains(1))
+                _ReplyList(
+                  items: state.replies,
+                  currentPage: state.replyPage,
+                  totalPages: state.replyTotalPages,
+                  uid: widget.uid,
+                  isSelf: widget.isSelf,
+                  repliesLoaded: state.repliesLoaded,
+                )
+              else
+                const SizedBox.shrink(),
+            ],
+          ),
         ),
       ),
     );

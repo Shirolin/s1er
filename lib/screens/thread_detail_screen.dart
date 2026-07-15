@@ -26,6 +26,7 @@ import '../widgets/s1_confirm_dialog.dart';
 import '../widgets/s1_error_view.dart';
 import '../widgets/s1_fab_layout.dart';
 import '../widgets/s1_swipe_pagination.dart';
+import '../widgets/s1_desktop_scaffold.dart';
 import '../models/open_scroll_target.dart';
 import '../models/thread_destination.dart';
 import '../utils/scroll_floor.dart';
@@ -638,170 +639,179 @@ class _ThreadDetailScreenState extends ConsumerState<ThreadDetailScreen> {
       authStateProvider.select((auth) => auth.isLoggedIn),
     );
 
-    return Scaffold(
-      appBar: AppBar(
-        elevation: 0,
-        title: postsAsync.whenOrNull(
-              data: (s) => s.threadSubject != null
-                  ? GestureDetector(
-                      onTap: () => _showFullTitle(context, s.threadSubject!),
-                      child: Text(
-                        s.threadSubject!,
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                      ),
-                    )
-                  : null,
-            ) ??
-            const Text('Thread'),
-        actions: [
-          FavoriteBookmarkButton(
-            type: FavoriteType.thread,
-            id: widget.tid,
-          ),
-          AppBarMoreMenu(
-            onRefresh: () =>
-                ref.read(postProvider(widget.tid).notifier).refresh(),
-            browserUrl: '${ApiConfig.baseUrl}/thread-${widget.tid}-1-1.html',
-          ),
-        ],
-      ),
-      // Keep the post list mounted while consuming OpenScrollTarget so
-      // index-based scroll (pid / floor) can run against live GlobalKeys.
-      // `_pendingInitialNavigation` only gates progress writeback.
-      body: postsAsync.when(
-        loading: _buildLoadingBody,
-        error: (e, st) => S1ErrorView(
-          error: e,
-          onRetry: () => ref.read(postProvider(widget.tid).notifier).refresh(),
-          onLogin: () => context.push('/login'),
-        ),
-        data: (state) {
-          _scheduleEnsurePostKeys(state.posts.length);
-          final showPrimary = isLoggedIn && state.allowReply;
-          final hasNextPage = state.currentPage < state.totalPages;
-          final scheme = Theme.of(context).colorScheme;
-
-          return Column(
-            children: [
-              if (state.isFiltering)
-                Container(
-                  width: double.infinity,
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 16,
-                    vertical: 10,
-                  ),
-                  color: scheme.primaryContainer,
-                  child: Row(
-                    children: [
-                      Icon(
-                        Icons.filter_alt,
-                        size: 18,
-                        color: scheme.onPrimaryContainer,
-                      ),
-                      const SizedBox(width: 8),
-                      Expanded(
+    return S1DesktopScaffold(
+      highlightedTab: 0,
+      child: Scaffold(
+        appBar: AppBar(
+          elevation: 0,
+          title: postsAsync.whenOrNull(
+                data: (s) => s.threadSubject != null
+                    ? GestureDetector(
+                        onTap: () => _showFullTitle(context, s.threadSubject!),
                         child: Text(
-                          '只看「${state.filterAuthorName}」的帖子',
-                          style:
-                              Theme.of(context).textTheme.bodyMedium?.copyWith(
-                                    color: scheme.onPrimaryContainer,
-                                    fontWeight: FontWeight.w500,
-                                  ),
+                          s.threadSubject!,
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
                         ),
-                      ),
-                      TextButton.icon(
-                        onPressed: () => ref
-                            .read(postProvider(widget.tid).notifier)
-                            .clearFilter(),
-                        icon: Icon(
-                          Icons.close,
+                      )
+                    : null,
+              ) ??
+              const Text('Thread'),
+          actions: [
+            FavoriteBookmarkButton(
+              type: FavoriteType.thread,
+              id: widget.tid,
+            ),
+            AppBarMoreMenu(
+              onRefresh: () =>
+                  ref.read(postProvider(widget.tid).notifier).refresh(),
+              browserUrl: '${ApiConfig.baseUrl}/thread-${widget.tid}-1-1.html',
+            ),
+          ],
+        ),
+        // Keep the post list mounted while consuming OpenScrollTarget so
+        // index-based scroll (pid / floor) can run against live GlobalKeys.
+        // `_pendingInitialNavigation` only gates progress writeback.
+        body: postsAsync.when(
+          loading: _buildLoadingBody,
+          error: (e, st) => S1ErrorView(
+            error: e,
+            onRetry: () =>
+                ref.read(postProvider(widget.tid).notifier).refresh(),
+            onLogin: () => context.push('/login'),
+          ),
+          data: (state) {
+            _scheduleEnsurePostKeys(state.posts.length);
+            final showPrimary = isLoggedIn && state.allowReply;
+            final hasNextPage = state.currentPage < state.totalPages;
+            final scheme = Theme.of(context).colorScheme;
+
+            return Column(
+              children: [
+                if (state.isFiltering)
+                  Container(
+                    width: double.infinity,
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 16,
+                      vertical: 10,
+                    ),
+                    color: scheme.primaryContainer,
+                    child: Row(
+                      children: [
+                        Icon(
+                          Icons.filter_alt,
                           size: 18,
                           color: scheme.onPrimaryContainer,
                         ),
-                        label: Text(
-                          '取消',
-                          style:
-                              Theme.of(context).textTheme.labelLarge?.copyWith(
-                                    color: scheme.onPrimaryContainer,
-                                  ),
+                        const SizedBox(width: 8),
+                        Expanded(
+                          child: Text(
+                            '只看「${state.filterAuthorName}」的帖子',
+                            style: Theme.of(context)
+                                .textTheme
+                                .bodyMedium
+                                ?.copyWith(
+                                  color: scheme.onPrimaryContainer,
+                                  fontWeight: FontWeight.w500,
+                                ),
+                          ),
                         ),
-                      ),
-                    ],
+                        TextButton.icon(
+                          onPressed: () => ref
+                              .read(postProvider(widget.tid).notifier)
+                              .clearFilter(),
+                          icon: Icon(
+                            Icons.close,
+                            size: 18,
+                            color: scheme.onPrimaryContainer,
+                          ),
+                          label: Text(
+                            '取消',
+                            style: Theme.of(context)
+                                .textTheme
+                                .labelLarge
+                                ?.copyWith(
+                                  color: scheme.onPrimaryContainer,
+                                ),
+                          ),
+                        ),
+                      ],
+                    ),
                   ),
-                ),
-              Expanded(
-                child: S1ContentFabOverlay(
-                  fab: ValueListenableBuilder<_ScrollFabVisibility>(
-                    valueListenable: _scrollFabVisibility,
-                    builder: (context, fab, _) {
-                      final showScrollAdvance = fab.showScrollDown ||
-                          (fab.atPageBottom && hasNextPage);
-                      final advanceMode = fab.atPageBottom && hasNextPage
-                          ? ScrollNavAdvanceMode.nextPage
-                          : ScrollNavAdvanceMode.nextFloor;
-                      return S1FabStack(
-                        scrollNav: S1ScrollNavConfig(
-                          showScrollToTop: fab.showScrollToTop,
-                          showScrollAdvance: showScrollAdvance,
-                          advanceMode: advanceMode,
-                          onScrollToTop: _scrollToTop,
-                          onScrollToNextFloor: _scrollToNextFloor,
-                          onScrollToBottom: _scrollToBottom,
-                          onGoToNextPage: hasNextPage
-                              ? () => _goToPage(state.currentPage + 1)
+                Expanded(
+                  child: S1ContentFabOverlay(
+                    fab: ValueListenableBuilder<_ScrollFabVisibility>(
+                      valueListenable: _scrollFabVisibility,
+                      builder: (context, fab, _) {
+                        final showScrollAdvance = fab.showScrollDown ||
+                            (fab.atPageBottom && hasNextPage);
+                        final advanceMode = fab.atPageBottom && hasNextPage
+                            ? ScrollNavAdvanceMode.nextPage
+                            : ScrollNavAdvanceMode.nextFloor;
+                        return S1FabStack(
+                          scrollNav: S1ScrollNavConfig(
+                            showScrollToTop: fab.showScrollToTop,
+                            showScrollAdvance: showScrollAdvance,
+                            advanceMode: advanceMode,
+                            onScrollToTop: _scrollToTop,
+                            onScrollToNextFloor: _scrollToNextFloor,
+                            onScrollToBottom: _scrollToBottom,
+                            onGoToNextPage: hasNextPage
+                                ? () => _goToPage(state.currentPage + 1)
+                                : null,
+                          ),
+                          primary: showPrimary
+                              ? S1FabItem(
+                                  heroTag: 'replyDetail',
+                                  icon: Icons.edit_outlined,
+                                  tooltip: '回复',
+                                  onPressed: () => _openCompose(state),
+                                )
                               : null,
-                        ),
-                        primary: showPrimary
-                            ? S1FabItem(
-                                heroTag: 'replyDetail',
-                                icon: Icons.edit_outlined,
-                                tooltip: '回复',
-                                onPressed: () => _openCompose(state),
-                              )
-                            : null,
-                      );
-                    },
-                  ),
-                  child: S1SwipePagination(
-                    key: _swipeKey,
-                    currentPage: state.currentPage,
-                    totalPages: state.totalPages,
-                    onScrollMetricsChanged: _onScrollMetricsChanged,
-                    onPageChanged: _goToPage,
-                    pageBuilder: (context, scrollController) => Scrollbar(
-                      controller: scrollController,
-                      child: state.posts.isEmpty
-                          ? const Center(child: Text('暂无回复'))
-                          : ListView.builder(
-                              controller: scrollController,
-                              padding:
-                                  S1FabLayout.threadDetailScrollBottomPadding,
-                              itemCount: _detailItemCount(state),
-                              itemBuilder: (context, index) => _buildDetailItem(
-                                context,
-                                state,
-                                index,
+                        );
+                      },
+                    ),
+                    child: S1SwipePagination(
+                      key: _swipeKey,
+                      currentPage: state.currentPage,
+                      totalPages: state.totalPages,
+                      onScrollMetricsChanged: _onScrollMetricsChanged,
+                      onPageChanged: _goToPage,
+                      pageBuilder: (context, scrollController) => Scrollbar(
+                        controller: scrollController,
+                        child: state.posts.isEmpty
+                            ? const Center(child: Text('暂无回复'))
+                            : ListView.builder(
+                                controller: scrollController,
+                                padding:
+                                    S1FabLayout.threadDetailScrollBottomPadding,
+                                itemCount: _detailItemCount(state),
+                                itemBuilder: (context, index) =>
+                                    _buildDetailItem(
+                                  context,
+                                  state,
+                                  index,
+                                ),
                               ),
-                            ),
+                      ),
                     ),
                   ),
                 ),
-              ),
-              PaginationBar(
-                currentPage: state.currentPage,
-                totalPages: state.totalPages,
-                sheetSubtitle: state.threadSubject,
-                pageItemLabelBuilder: (page) {
-                  final start = (page - 1) * state.perPage + 1;
-                  final end = page * state.perPage;
-                  return '第 $start - $end 楼';
-                },
-                onPageChanged: _goToPage,
-              ),
-            ],
-          );
-        },
+                PaginationBar(
+                  currentPage: state.currentPage,
+                  totalPages: state.totalPages,
+                  sheetSubtitle: state.threadSubject,
+                  pageItemLabelBuilder: (page) {
+                    final start = (page - 1) * state.perPage + 1;
+                    final end = page * state.perPage;
+                    return '第 $start - $end 楼';
+                  },
+                  onPageChanged: _goToPage,
+                ),
+              ],
+            );
+          },
+        ),
       ),
     );
   }

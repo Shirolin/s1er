@@ -9,6 +9,7 @@ import '../providers/dark_room_provider.dart';
 import '../widgets/app_bar_more_menu.dart';
 import '../widgets/s1_error_view.dart';
 import '../widgets/web_avatar.dart';
+import '../widgets/s1_desktop_scaffold.dart';
 
 class DarkRoomScreen extends ConsumerWidget {
   const DarkRoomScreen({super.key});
@@ -17,66 +18,70 @@ class DarkRoomScreen extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final async = ref.watch(darkRoomProvider);
 
-    return Scaffold(
-      appBar: AppBar(
-        elevation: 0,
-        title: const Text('小黑屋'),
-        actions: [
-          AppBarMoreMenu(
-            onRefresh: () => ref.read(darkRoomProvider.notifier).refresh(),
-            browserUrl: ApiConfig.darkRoomBrowserUrl(),
-          ),
-        ],
-      ),
-      body: async.when(
-        loading: () => const Column(
-          children: [
-            LinearProgressIndicator(),
-            Expanded(child: SizedBox()),
+    return S1DesktopScaffold(
+      highlightedTab: 3,
+      child: Scaffold(
+        appBar: AppBar(
+          elevation: 0,
+          title: const Text('小黑屋'),
+          actions: [
+            AppBarMoreMenu(
+              onRefresh: () => ref.read(darkRoomProvider.notifier).refresh(),
+              browserUrl: ApiConfig.darkRoomBrowserUrl(),
+            ),
           ],
         ),
-        error: (error, stack) => S1ErrorView(
-          error: error,
-          onRetry: () => ref.read(darkRoomProvider.notifier).refresh(),
-          onLogin: () => context.push('/login'),
-        ),
-        data: (state) {
-          if (state.items.isEmpty) {
-            return const _EmptyDarkRoom();
-          }
-          return RefreshIndicator(
-            onRefresh: () => ref.read(darkRoomProvider.notifier).refresh(),
-            child: ListView.builder(
-              padding: const EdgeInsets.fromLTRB(12, 8, 12, 24),
-              itemCount: state.items.length + (state.hasMore ? 1 : 0),
-              itemBuilder: (context, index) {
-                if (index >= state.items.length) {
+        body: async.when(
+          loading: () => const Column(
+            children: [
+              LinearProgressIndicator(),
+              Expanded(child: SizedBox()),
+            ],
+          ),
+          error: (error, stack) => S1ErrorView(
+            error: error,
+            onRetry: () => ref.read(darkRoomProvider.notifier).refresh(),
+            onLogin: () => context.push('/login'),
+          ),
+          data: (state) {
+            if (state.items.isEmpty) {
+              return const _EmptyDarkRoom();
+            }
+            return RefreshIndicator(
+              onRefresh: () => ref.read(darkRoomProvider.notifier).refresh(),
+              child: ListView.builder(
+                padding: const EdgeInsets.fromLTRB(12, 8, 12, 24),
+                itemCount: state.items.length + (state.hasMore ? 1 : 0),
+                itemBuilder: (context, index) {
+                  if (index >= state.items.length) {
+                    return Padding(
+                      padding: const EdgeInsets.symmetric(vertical: 12),
+                      child: Center(
+                        child: state.isLoadingMore
+                            ? const SizedBox(
+                                width: 24,
+                                height: 24,
+                                child:
+                                    CircularProgressIndicator(strokeWidth: 2),
+                              )
+                            : FilledButton.tonal(
+                                onPressed: () => ref
+                                    .read(darkRoomProvider.notifier)
+                                    .loadMore(),
+                                child: const Text('加载更多'),
+                              ),
+                      ),
+                    );
+                  }
                   return Padding(
-                    padding: const EdgeInsets.symmetric(vertical: 12),
-                    child: Center(
-                      child: state.isLoadingMore
-                          ? const SizedBox(
-                              width: 24,
-                              height: 24,
-                              child: CircularProgressIndicator(strokeWidth: 2),
-                            )
-                          : FilledButton.tonal(
-                              onPressed: () => ref
-                                  .read(darkRoomProvider.notifier)
-                                  .loadMore(),
-                              child: const Text('加载更多'),
-                            ),
-                    ),
+                    padding: const EdgeInsets.only(bottom: 8),
+                    child: _DarkRoomCard(entry: state.items[index]),
                   );
-                }
-                return Padding(
-                  padding: const EdgeInsets.only(bottom: 8),
-                  child: _DarkRoomCard(entry: state.items[index]),
-                );
-              },
-            ),
-          );
-        },
+                },
+              ),
+            );
+          },
+        ),
       ),
     );
   }

@@ -154,5 +154,60 @@ void main() {
       expect(page.items, isEmpty);
       expect(page.hasMore, isFalse);
     });
+
+    test('hasMore is false when dataExist is 0', () {
+      final page = ForumToolsService.parseDarkRoomJson(
+        {
+          'message': '0|78661',
+          'data': {
+            '576523': {
+              'cid': '78742',
+              'uid': '576523',
+              'operatorid': '464256',
+              'operator': '活久见',
+              'action': '禁止发言',
+              'reason': '关一个厕所',
+              'dateline': '2026-7-15 14:39',
+              'username': '保真花生大友切',
+              'groupexpiry': '2026-10-13 14:39',
+            },
+          },
+        },
+        requestCursor: '100',
+      );
+      expect(page.hasMore, isFalse);
+      expect(page.dataExist, '0');
+    });
+
+    test('parses non-standard JSON with raw numeric keys', () {
+      const jsonStr =
+          '{"message":"1|78661","data":{576523:{"username":"foo"}}}';
+      final page = ForumToolsService.parseDarkRoomJson(
+        ForumToolsService.ensureJson(jsonStr),
+      );
+      expect(page.items.first.username, 'foo');
+    });
+
+    test('parses map data with integer keys', () {
+      final page = ForumToolsService.parseDarkRoomJson({
+        'message': '1|78661',
+        'data': {
+          576523: {
+            'cid': '78742',
+            'uid': '576523',
+            'operatorid': '464256',
+            'operator': '活久见',
+            'action': '禁止发言',
+            'reason': '关一个厕所',
+            'dateline': '2026-7-15 14:39',
+            'username': '保真花生大友切',
+            'groupexpiry': '2026-10-13 14:39',
+          },
+        },
+      });
+      expect(page.items, hasLength(1));
+      expect(page.items.first.username, '保真花生大友切');
+      expect(page.nextCursor, '78661');
+    });
   });
 }

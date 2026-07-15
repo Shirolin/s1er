@@ -15,6 +15,7 @@ import '../widgets/app_bar_more_menu.dart';
 import '../widgets/daily_sign_card.dart';
 import '../widgets/web_avatar.dart';
 import '../widgets/s1_confirm_dialog.dart';
+import '../widgets/s1_desktop_scaffold.dart';
 import '../utils/s1_snack_bar.dart';
 
 class ProfileScreen extends ConsumerWidget {
@@ -28,20 +29,23 @@ class ProfileScreen extends ConsumerWidget {
       authStateProvider.select((auth) => auth.isLoggedIn),
     );
 
-    return Scaffold(
-      appBar: AppBar(
-        elevation: 0,
-        title: const Text('个人资料'),
-        actions: [
-          if (isLoggedIn)
-            AppBarMoreMenu(
-              onRefresh: () =>
-                  ref.read(authStateProvider.notifier).refreshProfile(),
-              browserUrl: '${ApiConfig.baseUrl}/home.php?mod=space',
-            ),
-        ],
+    return S1DesktopScaffold(
+      highlightedTab: 3,
+      child: Scaffold(
+        appBar: AppBar(
+          elevation: 0,
+          title: const Text('个人资料'),
+          actions: [
+            if (isLoggedIn)
+              AppBarMoreMenu(
+                onRefresh: () =>
+                    ref.read(authStateProvider.notifier).refreshProfile(),
+                browserUrl: '${ApiConfig.baseUrl}/home.php?mod=space',
+              ),
+          ],
+        ),
+        body: ProfileBody(externalUrlLauncher: externalUrlLauncher),
       ),
-      body: ProfileBody(externalUrlLauncher: externalUrlLauncher),
     );
   }
 }

@@ -227,7 +227,10 @@ class ForumToolsService {
 
     final request = requestCursor ?? '';
     final next = nextCursor ?? '';
-    final hasMore = items.isNotEmpty && next.isNotEmpty && next != request;
+    final hasMore = dataExist != '0' &&
+        items.isNotEmpty &&
+        next.isNotEmpty &&
+        next != request;
 
     return DarkRoomPage(
       items: items,
@@ -239,7 +242,9 @@ class ForumToolsService {
 
   static Map<String, dynamic> ensureJson(dynamic data) {
     if (data is Map<String, dynamic>) return data;
-    if (data is Map) return Map<String, dynamic>.from(data);
+    if (data is Map) {
+      return data.map((key, value) => MapEntry(key.toString(), value));
+    }
     if (data is String) {
       final trimmed = data.trimLeft();
       if (trimmed.startsWith('<!DOCTYPE') || trimmed.startsWith('<html')) {
@@ -249,7 +254,17 @@ class ForumToolsService {
           trimmed.contains('name="login"')) {
         throw LoginRequiredException();
       }
-      return jsonDecode(trimmed) as Map<String, dynamic>;
+
+      // 正则匹配裸数字键（如 {576523: 或 ,552941:），自动补齐双引号使之符合标准 JSON 格式
+      final normalized = trimmed.replaceAllMapped(
+        RegExp(r'([{,])\s*(\d+)\s*:'),
+        (match) => '${match.group(1)}"${match.group(2)}":',
+      );
+
+      final decoded = jsonDecode(normalized);
+      if (decoded is Map) {
+        return decoded.map((key, value) => MapEntry(key.toString(), value));
+      }
     }
     throw FormatException('Unexpected response type: ${data.runtimeType}');
   }

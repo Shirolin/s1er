@@ -7,6 +7,7 @@ import '../providers/server_blacklist_import_provider.dart';
 import '../theme/app_theme.dart';
 import '../utils/s1_snack_bar.dart';
 import '../widgets/s1_confirm_dialog.dart';
+import '../widgets/s1_desktop_scaffold.dart';
 
 class BlacklistScreen extends ConsumerWidget {
   const BlacklistScreen({super.key});
@@ -18,46 +19,49 @@ class BlacklistScreen extends ConsumerWidget {
     final scheme = Theme.of(context).colorScheme;
     final textTheme = Theme.of(context).textTheme;
 
-    return Scaffold(
-      backgroundColor: scheme.surface,
-      appBar: AppBar(
-        elevation: 0,
-        title: Text('本地黑名单', style: textTheme.titleLarge),
-        actions: [
-          IconButton(
-            tooltip: '从网页导入',
-            onPressed: importState.isLoading
-                ? null
-                : () => _importFromWeb(context, ref),
-            icon: const Icon(Icons.cloud_download_outlined),
-          ),
-          if (entries.isNotEmpty)
+    return S1DesktopScaffold(
+      highlightedTab: 3,
+      child: Scaffold(
+        backgroundColor: scheme.surface,
+        appBar: AppBar(
+          elevation: 0,
+          title: Text('本地黑名单', style: textTheme.titleLarge),
+          actions: [
             IconButton(
-              tooltip: '清空',
-              icon: const Icon(Icons.delete_sweep_outlined),
-              onPressed: () => _confirmClearAll(context, ref),
+              tooltip: '从网页导入',
+              onPressed: importState.isLoading
+                  ? null
+                  : () => _importFromWeb(context, ref),
+              icon: const Icon(Icons.cloud_download_outlined),
             ),
-        ],
+            if (entries.isNotEmpty)
+              IconButton(
+                tooltip: '清空',
+                icon: const Icon(Icons.delete_sweep_outlined),
+                onPressed: () => _confirmClearAll(context, ref),
+              ),
+          ],
+        ),
+        floatingActionButton: FloatingActionButton.extended(
+          onPressed: () => _showEditor(context, ref),
+          icon: const Icon(Icons.person_add_disabled_outlined),
+          label: const Text('添加'),
+        ),
+        body: entries.isEmpty
+            ? const _EmptyState()
+            : ListView.builder(
+                padding: const EdgeInsets.fromLTRB(8, 8, 8, 88),
+                itemCount: entries.length,
+                itemBuilder: (context, index) {
+                  final entry = entries[index];
+                  return _BlacklistTile(
+                    entry: entry,
+                    onEdit: () => _showEditor(context, ref, existing: entry),
+                    onDelete: () => _confirmDelete(context, ref, entry),
+                  );
+                },
+              ),
       ),
-      floatingActionButton: FloatingActionButton.extended(
-        onPressed: () => _showEditor(context, ref),
-        icon: const Icon(Icons.person_add_disabled_outlined),
-        label: const Text('添加'),
-      ),
-      body: entries.isEmpty
-          ? const _EmptyState()
-          : ListView.builder(
-              padding: const EdgeInsets.fromLTRB(8, 8, 8, 88),
-              itemCount: entries.length,
-              itemBuilder: (context, index) {
-                final entry = entries[index];
-                return _BlacklistTile(
-                  entry: entry,
-                  onEdit: () => _showEditor(context, ref, existing: entry),
-                  onDelete: () => _confirmDelete(context, ref, entry),
-                );
-              },
-            ),
     );
   }
 

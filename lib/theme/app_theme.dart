@@ -227,6 +227,27 @@ class AppTheme {
         indicatorColor: colorScheme.secondaryContainer,
         surfaceTintColor: colorScheme.surfaceTint,
       ),
+      navigationRailTheme: NavigationRailThemeData(
+        elevation: 0,
+        backgroundColor: S1BottomBarStyle.background(colorScheme),
+        indicatorColor: colorScheme.secondaryContainer,
+        selectedIconTheme:
+            IconThemeData(color: colorScheme.onSecondaryContainer),
+        selectedLabelTextStyle: textTheme.labelSmall?.copyWith(height: 1.2),
+        unselectedIconTheme: IconThemeData(color: colorScheme.onSurfaceVariant),
+        unselectedLabelTextStyle: textTheme.labelSmall?.copyWith(
+          color: colorScheme.onSurfaceVariant,
+          height: 1.2,
+        ),
+        labelType: NavigationRailLabelType.all,
+      ),
+      drawerTheme: DrawerThemeData(
+        backgroundColor: colorScheme.surface,
+        elevation: 0,
+        shape: const RoundedRectangleBorder(
+          borderRadius: BorderRadius.horizontal(right: Radius.circular(16)),
+        ),
+      ),
       tabBarTheme: TabBarThemeData(
         indicatorColor: colorScheme.primary,
         labelColor: colorScheme.primary,

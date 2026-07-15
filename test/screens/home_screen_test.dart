@@ -194,7 +194,12 @@ void main() {
     expect(tester.takeException(), isNull);
     expect(find.text('Stage1st'), findsOneWidget);
     expect(find.text('搜索'), findsOneWidget);
-    expect(find.byType(NavigationBar), findsOneWidget);
+    expect(
+      find.byType(NavigationBar).evaluate().isNotEmpty ||
+          find.byType(NavigationRail).evaluate().isNotEmpty,
+      isTrue,
+      reason: 'Expected NavigationBar or NavigationRail to be present',
+    );
   });
 
   testWidgets(

@@ -15,6 +15,7 @@ import '../widgets/app_bar_more_menu.dart';
 import '../widgets/pagination_bar.dart';
 import '../widgets/s1_error_view.dart';
 import '../widgets/s1_swipe_pagination.dart';
+import '../widgets/s1_desktop_scaffold.dart';
 
 class FavoritesScreen extends ConsumerStatefulWidget {
   const FavoritesScreen({super.key});
@@ -81,41 +82,44 @@ class _FavoritesScreenState extends ConsumerState<FavoritesScreen>
         ? '${ApiConfig.baseUrl}/home.php?mod=space&uid=$uid&do=favorite&view=me&mobile=2'
         : '${ApiConfig.baseUrl}/home.php?mod=space&do=favorite&view=me&mobile=2';
 
-    return Scaffold(
-      appBar: AppBar(
-        elevation: 0,
-        title: const Text('我的收藏'),
-        actions: [
-          AppBarMoreMenu(
-            onRefresh: () {
-              final segment = _segments[_tabController.index];
-              ref.read(favoriteListProvider(segment).notifier).refresh();
-              ref.read(favoriteMembershipProvider.notifier).ensureSynced();
-            },
-            browserUrl: browserUrl,
+    return S1DesktopScaffold(
+      highlightedTab: 3,
+      child: Scaffold(
+        appBar: AppBar(
+          elevation: 0,
+          title: const Text('我的收藏'),
+          actions: [
+            AppBarMoreMenu(
+              onRefresh: () {
+                final segment = _segments[_tabController.index];
+                ref.read(favoriteListProvider(segment).notifier).refresh();
+                ref.read(favoriteMembershipProvider.notifier).ensureSynced();
+              },
+              browserUrl: browserUrl,
+            ),
+          ],
+          bottom: TabBar(
+            controller: _tabController,
+            tabs: const [
+              Tab(text: '全部'),
+              Tab(text: '帖子'),
+              Tab(text: '板块'),
+            ],
           ),
-        ],
-        bottom: TabBar(
+        ),
+        body: TabBarView(
           controller: _tabController,
-          tabs: const [
-            Tab(text: '全部'),
-            Tab(text: '帖子'),
-            Tab(text: '板块'),
+          physics: const NeverScrollableScrollPhysics(),
+          children: [
+            for (var i = 0; i < _segments.length; i++)
+              _visitedTabs.contains(i)
+                  ? _FavoriteListBody(
+                      segment: _segments[i],
+                      swipeKey: _swipeKeys[i],
+                    )
+                  : const SizedBox.shrink(),
           ],
         ),
-      ),
-      body: TabBarView(
-        controller: _tabController,
-        physics: const NeverScrollableScrollPhysics(),
-        children: [
-          for (var i = 0; i < _segments.length; i++)
-            _visitedTabs.contains(i)
-                ? _FavoriteListBody(
-                    segment: _segments[i],
-                    swipeKey: _swipeKeys[i],
-                  )
-                : const SizedBox.shrink(),
-        ],
       ),
     );
   }

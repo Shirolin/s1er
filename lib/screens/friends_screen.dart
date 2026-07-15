@@ -9,6 +9,7 @@ import '../providers/friend_list_provider.dart';
 import '../widgets/app_bar_more_menu.dart';
 import '../widgets/s1_error_view.dart';
 import '../widgets/web_avatar.dart';
+import '../widgets/s1_desktop_scaffold.dart';
 
 class FriendsScreen extends ConsumerWidget {
   const FriendsScreen({super.key});
@@ -21,45 +22,48 @@ class FriendsScreen extends ConsumerWidget {
         ? ApiConfig.friendsBrowserUrl(uid)
         : '${ApiConfig.baseUrl}/home.php?mod=space&do=friend&view=me&mobile=2';
 
-    return Scaffold(
-      appBar: AppBar(
-        elevation: 0,
-        title: const Text('我的好友'),
-        actions: [
-          AppBarMoreMenu(
-            onRefresh: () => ref.read(friendListProvider.notifier).refresh(),
-            browserUrl: browserUrl,
-          ),
-        ],
-      ),
-      body: async.when(
-        loading: () => const Column(
-          children: [
-            LinearProgressIndicator(),
-            Expanded(child: SizedBox()),
+    return S1DesktopScaffold(
+      highlightedTab: 3,
+      child: Scaffold(
+        appBar: AppBar(
+          elevation: 0,
+          title: const Text('我的好友'),
+          actions: [
+            AppBarMoreMenu(
+              onRefresh: () => ref.read(friendListProvider.notifier).refresh(),
+              browserUrl: browserUrl,
+            ),
           ],
         ),
-        error: (error, stack) => S1ErrorView(
-          error: error,
-          onRetry: () => ref.read(friendListProvider.notifier).refresh(),
-          onLogin: () => context.push('/login'),
+        body: async.when(
+          loading: () => const Column(
+            children: [
+              LinearProgressIndicator(),
+              Expanded(child: SizedBox()),
+            ],
+          ),
+          error: (error, stack) => S1ErrorView(
+            error: error,
+            onRetry: () => ref.read(friendListProvider.notifier).refresh(),
+            onLogin: () => context.push('/login'),
+          ),
+          data: (result) {
+            if (result.items.isEmpty) {
+              return const _EmptyFriends();
+            }
+            return RefreshIndicator(
+              onRefresh: () => ref.read(friendListProvider.notifier).refresh(),
+              child: ListView.separated(
+                padding: const EdgeInsets.symmetric(vertical: 8),
+                itemCount: result.items.length,
+                separatorBuilder: (_, __) => const Divider(height: 1),
+                itemBuilder: (context, index) {
+                  return _FriendTile(friend: result.items[index]);
+                },
+              ),
+            );
+          },
         ),
-        data: (result) {
-          if (result.items.isEmpty) {
-            return const _EmptyFriends();
-          }
-          return RefreshIndicator(
-            onRefresh: () => ref.read(friendListProvider.notifier).refresh(),
-            child: ListView.separated(
-              padding: const EdgeInsets.symmetric(vertical: 8),
-              itemCount: result.items.length,
-              separatorBuilder: (_, __) => const Divider(height: 1),
-              itemBuilder: (context, index) {
-                return _FriendTile(friend: result.items[index]);
-              },
-            ),
-          );
-        },
       ),
     );
   }

@@ -8,6 +8,7 @@ class PostActionMenu extends StatelessWidget {
     super.key,
     this.onFilterByAuthor,
     this.onReply,
+    this.onEdit,
     this.onRate,
     this.onAddToBlacklist,
     this.onReport,
@@ -15,6 +16,7 @@ class PostActionMenu extends StatelessWidget {
 
   final VoidCallback? onFilterByAuthor;
   final VoidCallback? onReply;
+  final VoidCallback? onEdit;
   final VoidCallback? onRate;
   final VoidCallback? onAddToBlacklist;
   final VoidCallback? onReport;
@@ -32,6 +34,11 @@ class PostActionMenu extends StatelessWidget {
           onPressed: onReply,
           icon: Icons.reply_outlined,
           label: '回复',
+        ),
+        s1MenuItem(
+          onPressed: onEdit,
+          icon: Icons.edit_outlined,
+          label: '编辑',
         ),
         s1MenuItem(
           onPressed: onRate,

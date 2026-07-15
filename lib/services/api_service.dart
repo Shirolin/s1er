@@ -10,6 +10,8 @@ import '../models/quote_info.dart';
 import '../models/reply_submit_result.dart';
 import '../models/new_thread_form_info.dart';
 import '../models/new_thread_submit_result.dart';
+import '../models/edit_post_form_info.dart';
+import '../models/edit_post_submit_result.dart';
 import '../models/forum_category.dart';
 import '../models/user.dart';
 import '../models/private_message_item.dart';
@@ -233,6 +235,189 @@ class ApiService {
     } catch (e, st) {
       return NewThreadSubmitResult(error: friendlyError(e, '发帖', st));
     }
+  }
+
+  /// 只读获取 Discuz Web 编辑页；不触发任何写入。
+  Future<EditPostFormInfo> fetchEditPostForm({
+    required String fid,
+    required String tid,
+    required String pid,
+    required bool isFirst,
+  }) async {
+    try {
+      final response = await _httpClient.get(
+        ApiConfig.editPostFormUrl(fid: fid, tid: tid, pid: pid),
+        options: Options(responseType: ResponseType.plain),
+      );
+      final body = response.data?.toString() ?? '';
+      return parseEditPostFormResponse(body, isFirst: isFirst);
+    } catch (e, st) {
+      return EditPostFormInfo(error: friendlyError(e, '获取编辑表单', st));
+    }
+  }
+
+  static EditPostFormInfo parseEditPostFormResponse(
+    String body, {
+    required bool isFirst,
+  }) {
+    final html = _unwrapAjaxHtml(body);
+    if (html.trim().isEmpty) {
+      return const EditPostFormInfo(error: '编辑表单为空，请稍后重试');
+    }
+    if (html.contains('id="loginform') ||
+        html.contains("id='loginform") ||
+        html.contains('name="login"')) {
+      return const EditPostFormInfo(error: '请先登录');
+    }
+
+    final error = _extractEditPostError(html);
+    if (error != null) return EditPostFormInfo(error: error);
+
+    try {
+      final document = parse(html);
+      final textarea = document.querySelector('textarea#e_textarea');
+      final message = textarea?.text ?? '';
+      final subjectInput = document.querySelector('input#subject');
+      final subject = subjectInput?.attributes['value'] ?? '';
+      final formhash =
+          document.querySelector('input[name="formhash"]')?.attributes['value'];
+      final typeSelect = document.querySelector('select#typeid');
+      final types = <String, String>{};
+      String? selectedTypeId;
+      for (final option in typeSelect?.querySelectorAll('option') ?? []) {
+        final value = option.attributes['value']?.trim() ?? '';
+        if (value.isEmpty) continue;
+        types[value] = option.text.trim();
+        if (option.attributes.containsKey('selected')) selectedTypeId = value;
+      }
+      final permissionSelect = document.querySelector('select#readperm');
+      final permissions = <String>[];
+      String? selectedPermission;
+      for (final option in permissionSelect?.querySelectorAll('option') ?? []) {
+        final value = option.attributes['value']?.trim() ?? '';
+        if (value.isEmpty) continue;
+        permissions.add(value);
+        if (option.attributes.containsKey('selected')) {
+          selectedPermission = value;
+        }
+      }
+      final special = int.tryParse(
+            document
+                    .querySelector('input[name="special"]')
+                    ?.attributes['value'] ??
+                '0',
+          ) ??
+          0;
+      if (message.trim().isEmpty || formhash == null || formhash.isEmpty) {
+        return const EditPostFormInfo(error: '编辑表单缺少正文或验证串');
+      }
+      if (isFirst && special != 0) {
+        return const EditPostFormInfo(error: '暂不支持编辑特殊主题首帖');
+      }
+      return EditPostFormInfo(
+        subject: subject,
+        message: message,
+        threadTypes: types,
+        selectedTypeId: selectedTypeId,
+        readPermissions: permissions,
+        selectedReadPermission: selectedPermission,
+        formhash: formhash,
+        isFirst: isFirst,
+        special: special,
+      );
+    } catch (e) {
+      return EditPostFormInfo(error: '编辑表单解析失败：$e');
+    }
+  }
+
+  static String? _extractEditPostError(String html) {
+    final message = RegExp(
+      r'''id=["']messagetext["'][^>]*>.*?<p>([^<]+)''',
+      dotAll: true,
+    ).firstMatch(html)?.group(1)?.trim();
+    if (message != null && message.isNotEmpty) return message;
+    final handler = RegExp(
+      r"(?:errorhandle_[^\(]*|showmessage)\('([^']*)'",
+    ).firstMatch(html)?.group(1)?.trim();
+    return handler == null || handler.isEmpty ? null : handler;
+  }
+
+  /// 提交编辑前重新读取表单，避免覆盖服务器已经发生的修改。
+  Future<EditPostSubmitResult> submitEditPost({
+    required String fid,
+    required String tid,
+    required String pid,
+    required bool isFirst,
+    required String subject,
+    required String message,
+    String? typeId,
+    String? readPerm,
+    required EditPostFormInfo baseline,
+  }) async {
+    final latest = await fetchEditPostForm(
+      fid: fid,
+      tid: tid,
+      pid: pid,
+      isFirst: isFirst,
+    );
+    if (!latest.canEdit) {
+      return EditPostSubmitResult.rejected(latest.error ?? '当前帖子不可编辑');
+    }
+    if (latest.subject != baseline.subject ||
+        latest.message != baseline.message ||
+        latest.selectedTypeId != baseline.selectedTypeId ||
+        latest.selectedReadPermission != baseline.selectedReadPermission) {
+      return const EditPostSubmitResult.conflict(
+        '服务器内容已发生变化，请重新载入后再编辑',
+      );
+    }
+
+    final data = <String, String>{
+      'fid': fid,
+      'tid': tid,
+      'pid': pid,
+      'formhash': latest.formhash!,
+      'posttime': (DateTime.now().millisecondsSinceEpoch ~/ 1000).toString(),
+      'subject': isFirst ? subject.trim() : latest.subject,
+      'message': message.trim(),
+      'allownoticeauthor': '1',
+      'usesig': '1',
+    };
+    if (typeId != null && typeId.trim().isNotEmpty) data['typeid'] = typeId;
+    if (readPerm != null && readPerm.trim().isNotEmpty) {
+      data['readperm'] = readPerm;
+    }
+    try {
+      final response = await _httpClient.post(
+        ApiConfig.editPostSubmitUrl(),
+        data: data,
+        options: Options(contentType: Headers.formUrlEncodedContentType),
+      );
+      return parseEditPostSubmitResponse(response.data?.toString() ?? '');
+    } catch (e, st) {
+      talker.handle(e, st, 'submitEditPost transport uncertain');
+      return const EditPostSubmitResult.uncertain(
+        '编辑请求状态不确定，请先核对服务器内容，不要直接重复提交',
+      );
+    }
+  }
+
+  static EditPostSubmitResult parseEditPostSubmitResponse(String body) {
+    final trimmed = body.trim();
+    if (RegExp(
+      r'succeedhandle_postform|post_edit_succeed',
+      caseSensitive: false,
+    ).hasMatch(trimmed)) {
+      return const EditPostSubmitResult.success(message: '编辑成功');
+    }
+    final error = _extractEditPostError(trimmed);
+    if (error != null) return EditPostSubmitResult.rejected(error);
+    if (trimmed.isEmpty) {
+      return const EditPostSubmitResult.uncertain('服务器未返回编辑结果');
+    }
+    return const EditPostSubmitResult.uncertain(
+      '服务器返回未知结果，请先核对服务器内容，不要直接重复提交',
+    );
   }
 
   static NewThreadSubmitResult parseNewThreadSubmitResponse(dynamic data) {

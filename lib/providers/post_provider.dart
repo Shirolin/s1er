@@ -24,6 +24,7 @@ class PostListState {
     this.totalPages = 1,
     this.threadSubject,
     this.threadFid,
+    this.threadSpecial = 0,
     this.perPage = S1Constants.postsPerPageFallback,
     this.totalReplies = 0,
     this.poll,
@@ -39,6 +40,7 @@ class PostListState {
   final int totalPages;
   final String? threadSubject;
   final String? threadFid;
+  final int threadSpecial;
   final int perPage;
   final int totalReplies;
   final ThreadPoll? poll;
@@ -60,6 +62,7 @@ class PostListState {
     int? totalPages,
     String? threadSubject,
     String? threadFid,
+    int? threadSpecial,
     int? perPage,
     int? totalReplies,
     ThreadPoll? poll,
@@ -78,6 +81,7 @@ class PostListState {
       totalPages: totalPages ?? this.totalPages,
       threadSubject: threadSubject ?? this.threadSubject,
       threadFid: threadFid ?? this.threadFid,
+      threadSpecial: threadSpecial ?? this.threadSpecial,
       perPage: perPage ?? this.perPage,
       totalReplies: totalReplies ?? this.totalReplies,
       poll: poll ?? this.poll,
@@ -89,8 +93,7 @@ class PostListState {
       openScrollTarget: clearOpenScrollTarget
           ? null
           : (openScrollTarget ?? this.openScrollTarget),
-      locateError:
-          clearLocateError ? null : (locateError ?? this.locateError),
+      locateError: clearLocateError ? null : (locateError ?? this.locateError),
     );
   }
 }
@@ -141,8 +144,7 @@ class PostNotifier extends AsyncNotifier<PostListState> {
     if (record != null &&
         record.isFinished &&
         record.hasNewPages(loaded.totalPages)) {
-      final targetPage =
-          (record.totalPages + 1).clamp(1, loaded.totalPages);
+      final targetPage = (record.totalPages + 1).clamp(1, loaded.totalPages);
       if (loaded.currentPage < targetPage) {
         loaded = await _loadPage(targetPage);
         return loaded.copyWith(openScrollTarget: const ScrollToPageTop());
@@ -218,6 +220,8 @@ class PostNotifier extends AsyncNotifier<PostListState> {
     final totalPosts = totalReplies + 1;
     final totalPages = (totalPosts / perPage).ceil().clamp(1, 9999);
     final allowReply = thread['allowreply']?.toString() != '0';
+    final threadSpecial =
+        int.tryParse(thread['special']?.toString() ?? '') ?? 0;
 
     return PostListState(
       posts: posts,
@@ -225,6 +229,7 @@ class PostNotifier extends AsyncNotifier<PostListState> {
       totalPages: totalPages,
       threadSubject: thread['subject']?.toString(),
       threadFid: thread['fid']?.toString(),
+      threadSpecial: threadSpecial,
       perPage: perPage,
       totalReplies: totalReplies,
       poll: page == 1

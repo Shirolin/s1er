@@ -46,6 +46,17 @@ class ApiConfig {
   static String forumReportReferer(String tid, int page) =>
       '$forumPostUrl?mod=viewthread&tid=$tid&page=$page&mobile=2';
 
+  static String editPostFormUrl({
+    required String fid,
+    required String tid,
+    required String pid,
+  }) =>
+      '$forumPostUrl?mod=post&action=edit&fid=$fid&tid=$tid&pid=$pid';
+
+  static String editPostSubmitUrl() =>
+      '$forumPostUrl?mod=post&action=edit&editsubmit=yes&inajax=yes'
+      '&wysiwyg=1&delete=0';
+
   // API module names
   static const String moduleForumIndex = 'forumindex';
   static const String moduleForumDisplay = 'forumdisplay';

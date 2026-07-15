@@ -7,6 +7,7 @@ import '../config/api_config.dart';
 import '../models/blacklist_record.dart';
 import '../models/post.dart';
 import '../models/reply_submit_result.dart';
+import '../models/edit_post_submit_result.dart';
 import '../providers/blacklist_provider.dart';
 import '../providers/post_provider.dart';
 import '../providers/auth_provider.dart';
@@ -404,6 +405,21 @@ class _ThreadDetailScreenState extends ConsumerState<ThreadDetailScreen> {
     await _afterReplySubmitted(result, state);
   }
 
+  Future<void> _openEdit(PostListState state, Post post) async {
+    final auth = ref.read(authStateProvider);
+    if (!auth.isLoggedIn || auth.user?.uid != post.authorId) return;
+    final fid = state.threadFid;
+    if (fid == null || fid.isEmpty) return;
+    final result = await context.push<EditPostSubmitResult>(
+      '/thread/${widget.tid}/post/${post.pid}/edit'
+      '?fid=${Uri.encodeQueryComponent(fid)}'
+      '&page=${state.currentPage}'
+      '&first=${post.isFirst ? '1' : '0'}',
+    );
+    if (!mounted || result == null || !result.isSuccess) return;
+    await ref.read(postProvider(widget.tid).notifier).refresh();
+  }
+
   bool _canRatePost(Post post) {
     final auth = ref.read(authStateProvider);
     if (!auth.isLoggedIn) return false;
@@ -507,6 +523,9 @@ class _ThreadDetailScreenState extends ConsumerState<ThreadDetailScreen> {
     final currentUid = ref.watch(authStateProvider).user?.uid;
     final canAddToBlacklist =
         post.authorId.isNotEmpty && post.authorId != currentUid;
+    final canEdit = post.authorId.isNotEmpty &&
+        post.authorId == currentUid &&
+        !(post.isFirst && state.threadSpecial != 0);
 
     return RepaintBoundary(
       key: ValueKey(post.pid),
@@ -531,6 +550,7 @@ class _ThreadDetailScreenState extends ConsumerState<ThreadDetailScreen> {
                   displayFloor: displayFloor,
                 )
             : null,
+        onEdit: canEdit ? () => _openEdit(state, post) : null,
         onRate: _canRatePost(post) ? () => _openRateDialog(post) : null,
         onAddToBlacklist:
             canAddToBlacklist ? () => _confirmAddToBlacklist(post) : null,

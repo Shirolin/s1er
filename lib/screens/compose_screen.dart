@@ -8,6 +8,8 @@ import 'package:go_router/go_router.dart';
 import '../models/post.dart';
 import '../models/quote_info.dart';
 import '../models/new_thread_form_info.dart';
+import '../models/edit_post_form_info.dart';
+import '../models/edit_post_submit_result.dart';
 import '../providers/auth_provider.dart';
 import '../providers/compose_provider.dart';
 import '../providers/settings_provider.dart';
@@ -16,6 +18,7 @@ import '../utils/compose_draft_store.dart';
 import '../utils/compose_img_tags.dart';
 import '../utils/compose_message_draft.dart';
 import '../utils/new_thread_draft.dart';
+import '../utils/edit_post_draft.dart';
 import '../utils/post_image_index_counter.dart';
 import '../utils/quote_builder.dart';
 import '../utils/s1_snack_bar.dart';
@@ -35,6 +38,9 @@ class ComposeScreen extends ConsumerStatefulWidget {
     this.reppost,
     this.subject,
     this.newThread = false,
+    this.editPid,
+    this.editPage,
+    this.editIsFirst = false,
   });
 
   final String? tid;
@@ -43,6 +49,9 @@ class ComposeScreen extends ConsumerStatefulWidget {
   final String? reppost;
   final String? subject;
   final bool newThread;
+  final String? editPid;
+  final int? editPage;
+  final bool editIsFirst;
 
   @override
   ConsumerState<ComposeScreen> createState() => _ComposeScreenState();
@@ -77,10 +86,16 @@ class _ComposeScreenState extends ConsumerState<ComposeScreen> {
   NewThreadFormInfo? _newThreadForm;
   bool _newThreadLoading = false;
   String? _selectedTypeId;
+  String? _selectedReadPerm;
+  EditPostFormInfo? _editForm;
+  bool _editLoading = false;
+  bool _editUncertain = false;
+  bool _editConflict = false;
   ({Uint8List bytes, String filename})? _pendingUpload;
 
   bool get _hasValidTid => widget.tid != null && widget.tid!.isNotEmpty;
   bool get _isNewThread => widget.newThread;
+  bool get _isEditing => widget.editPid != null && widget.editPid!.isNotEmpty;
 
   String? get _quotePid => widget.reppost ?? _draft?.post.pid;
 
@@ -92,20 +107,35 @@ class _ComposeScreenState extends ConsumerState<ComposeScreen> {
 
   bool get _quoting => _includeQuote && _quoteInfo != null;
 
-  bool get _isDirty =>
-      _messageController.text.trim().isNotEmpty ||
-      (_isNewThread && _subjectController.text.trim().isNotEmpty) ||
-      _uploadedImages.isNotEmpty;
+  bool get _isDirty {
+    if (_isEditing && _editForm != null) {
+      return _messageController.text != _editForm!.message ||
+          _subjectController.text != _editForm!.subject ||
+          _selectedTypeId != _editForm!.selectedTypeId ||
+          _selectedReadPerm != _editForm!.selectedReadPermission ||
+          _uploadedImages.isNotEmpty;
+    }
+    return _messageController.text.trim().isNotEmpty ||
+        ((_isNewThread || _isEditing) &&
+            _subjectController.text.trim().isNotEmpty) ||
+        _uploadedImages.isNotEmpty;
+  }
 
   bool get _canSubmit {
     final busy = _isSubmitting ||
         _isUploadingImage ||
         _quotePrefetching ||
-        _newThreadLoading;
+        _newThreadLoading ||
+        _editLoading ||
+        _editUncertain ||
+        _editConflict;
     if (busy) return false;
     final hasText = _messageController.text.trim().isNotEmpty;
     if (_isNewThread) {
       return _subjectController.text.trim().isNotEmpty && hasText;
+    }
+    if (_isEditing) {
+      return _editForm != null && hasText;
     }
     return hasText || _quoting;
   }
@@ -134,7 +164,7 @@ class _ComposeScreenState extends ConsumerState<ComposeScreen> {
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (!mounted) return;
       _loadRecentEmoticons();
-      _restoreMessageDraft();
+      if (!_isEditing) _restoreMessageDraft();
       if (!ref.read(authStateProvider).isLoggedIn && !_redirectedToLogin) {
         _redirectedToLogin = true;
         // 勿 pop 再 push：会在 Web 上触发 disposed EngineFlutterView 断言刷屏
@@ -143,6 +173,8 @@ class _ComposeScreenState extends ConsumerState<ComposeScreen> {
       }
       if (_isNewThread) {
         _loadNewThreadForm();
+      } else if (_isEditing) {
+        _loadEditForm();
       } else {
         _prefetchOfficialQuote();
       }
@@ -166,6 +198,145 @@ class _ComposeScreenState extends ConsumerState<ComposeScreen> {
         _selectedTypeId = saved['typeId'] as String?;
       }
     });
+  }
+
+  Future<void> _loadEditForm() async {
+    final fid = widget.fid;
+    final tid = widget.tid;
+    final pid = widget.editPid;
+    if (fid == null ||
+        fid.isEmpty ||
+        tid == null ||
+        tid.isEmpty ||
+        pid == null) {
+      return;
+    }
+    setState(() => _editLoading = true);
+    final form = await ref.read(composeControllerProvider).fetchEditPostForm(
+          fid: fid,
+          tid: tid,
+          pid: pid,
+          isFirst: widget.editIsFirst,
+        );
+    if (!mounted) return;
+    if (form.error != null) {
+      setState(() {
+        _editForm = form;
+        _editLoading = false;
+      });
+      return;
+    }
+    final saved = _readEditDraft(pid);
+    setState(() {
+      _editForm = form;
+      _editLoading = false;
+      _selectedTypeId = form.selectedTypeId;
+      _selectedReadPerm = form.selectedReadPermission;
+      _subjectController.text = form.subject;
+      _messageController.text = form.message;
+    });
+    if (saved != null && _editDraftDiffers(saved, form)) {
+      final restore = await showS1ConfirmDialog(
+        context,
+        title: '恢复编辑草稿？',
+        content: '服务器内容可能已有变化，恢复草稿后仍会再次检查冲突。\n'
+            '点击“确定”恢复草稿，点击“取消”使用服务器内容。',
+        confirmLabel: '恢复草稿',
+      );
+      if (!mounted) return;
+      if (restore) {
+        _suppressDraftSave = true;
+        _subjectController.text = saved['subject'] as String? ?? form.subject;
+        _messageController.text = saved['message'] as String? ?? form.message;
+        _selectedTypeId = saved['typeId'] as String? ?? form.selectedTypeId;
+        _selectedReadPerm =
+            saved['readPerm'] as String? ?? form.selectedReadPermission;
+        _suppressDraftSave = false;
+      } else {
+        _clearEditDraft(pid);
+      }
+    }
+  }
+
+  Map<String, Object?>? _readEditDraft(String pid) {
+    try {
+      final store = ref.read(settingsStoreProvider);
+      return EditPostDraftStore.read(
+        EditPostDraftStore.parse(
+          store.get<Object>(EditPostDraftStore.settingsKey),
+        ),
+        pid,
+      );
+    } on Object {
+      return null;
+    }
+  }
+
+  bool _editDraftDiffers(Map<String, Object?> draft, EditPostFormInfo form) {
+    return (draft['message'] as String? ?? '') != form.message ||
+        (draft['subject'] as String? ?? '') != form.subject ||
+        (draft['typeId'] as String?) != form.selectedTypeId ||
+        (draft['readPerm'] as String?) != form.selectedReadPermission;
+  }
+
+  void _persistEditDraft() {
+    final pid = widget.editPid;
+    final form = _editForm;
+    if (!_isEditing || pid == null || form == null) return;
+    final unchanged = _messageController.text == form.message &&
+        _subjectController.text == form.subject &&
+        _selectedTypeId == form.selectedTypeId &&
+        _selectedReadPerm == form.selectedReadPermission;
+    try {
+      final store = ref.read(settingsStoreProvider);
+      final drafts = EditPostDraftStore.parse(
+        store.get<Object>(EditPostDraftStore.settingsKey),
+      );
+      if (unchanged) {
+        store.put(
+          EditPostDraftStore.settingsKey,
+          EditPostDraftStore.toStoreValue(
+            EditPostDraftStore.remove(drafts, pid),
+          ),
+        );
+        return;
+      }
+      store.put(
+        EditPostDraftStore.settingsKey,
+        EditPostDraftStore.toStoreValue(
+          EditPostDraftStore.upsert(
+            drafts,
+            pid,
+            subject: _subjectController.text,
+            message: _messageController.text,
+            typeId: _selectedTypeId,
+            readPerm: _selectedReadPerm,
+            sourceSubject: form.subject,
+            sourceMessage: form.message,
+            sourceTypeId: form.selectedTypeId,
+            sourceReadPerm: form.selectedReadPermission,
+          ),
+        ),
+      );
+    } on Object {
+      // 测试或无本地设置存储时跳过草稿持久化。
+    }
+  }
+
+  void _clearEditDraft(String? pid) {
+    if (pid == null || pid.isEmpty) return;
+    try {
+      final store = ref.read(settingsStoreProvider);
+      final drafts = EditPostDraftStore.parse(
+        store.get<Object>(EditPostDraftStore.settingsKey),
+      );
+      store.put(
+        EditPostDraftStore.settingsKey,
+        EditPostDraftStore.toStoreValue(EditPostDraftStore.remove(drafts, pid)),
+      );
+    } on Object {
+      // 无本地设置存储时跳过清理。
+    }
   }
 
   Map<String, Object?>? _readNewThreadDraft(String fid) {
@@ -326,10 +497,12 @@ class _ComposeScreenState extends ConsumerState<ComposeScreen> {
     });
     _scheduleDraftSave();
     if (_isNewThread) _persistNewThreadDraft();
+    if (_isEditing) _persistEditDraft();
   }
 
   void _onSubjectChanged() {
     if (_isNewThread) _persistNewThreadDraft();
+    if (_isEditing) _persistEditDraft();
     if (mounted) setState(() {});
   }
 
@@ -370,6 +543,7 @@ class _ComposeScreenState extends ConsumerState<ComposeScreen> {
 
   String get _title {
     if (_isNewThread) return '发新主题';
+    if (_isEditing) return widget.editIsFirst ? '编辑主题' : '编辑回复';
     if (!_hasValidTid) return '无法回复';
     if (_draft != null && _draft!.displayFloor > 0) {
       return '回复 #${_draft!.displayFloor} 楼';
@@ -655,6 +829,83 @@ class _ComposeScreenState extends ConsumerState<ComposeScreen> {
       }
       return;
     }
+    if (_isEditing) {
+      final form = _editForm;
+      final pid = widget.editPid;
+      if (form == null || _editLoading) {
+        S1SnackBar.show(context, message: '编辑表单仍在加载，请稍候', bottomClearance: 72);
+        return;
+      }
+      if (form.error != null || !form.canEdit || pid == null) {
+        S1SnackBar.show(
+          context,
+          message: form.error ?? '当前帖子不可编辑',
+          bottomClearance: 72,
+        );
+        return;
+      }
+      if (userText.isEmpty) {
+        S1SnackBar.show(context, message: '请输入正文', bottomClearance: 72);
+        return;
+      }
+      final confirmed = await showS1ConfirmDialog(
+        context,
+        title: '确认覆盖帖子内容？',
+        content: widget.editIsFirst
+            ? '标题：${_subjectController.text.trim()}\n提交后将覆盖服务器上的主题内容。'
+            : '提交后将覆盖服务器上的回复内容。',
+        confirmLabel: '确认编辑',
+      );
+      if (!mounted || !confirmed) return;
+      setState(() => _isSubmitting = true);
+      try {
+        final result = await ref.read(composeControllerProvider).submitEditPost(
+              fid: widget.fid!,
+              tid: widget.tid!,
+              pid: pid,
+              isFirst: widget.editIsFirst,
+              subject: _subjectController.text,
+              message: userText,
+              typeId: _selectedTypeId,
+              readPerm: _selectedReadPerm,
+              baseline: form,
+            );
+        if (!mounted) return;
+        if (result.isSuccess) {
+          _clearEditDraft(pid);
+          setState(() => _allowPop = true);
+          context.pop(result);
+        } else if (result.isConflict) {
+          setState(() => _editConflict = true);
+          S1SnackBar.show(
+            context,
+            message: result.message ?? '服务器内容已变化，请重新载入',
+            bottomClearance: 72,
+          );
+        } else if (result.isUncertain) {
+          setState(() => _editUncertain = true);
+          S1SnackBar.show(
+            context,
+            message: result.message ?? '编辑状态不确定，请先核对服务器内容',
+            bottomClearance: 72,
+          );
+        } else {
+          S1SnackBar.show(
+            context,
+            message: result.message ?? '编辑失败',
+            bottomClearance: 72,
+          );
+        }
+      } catch (e) {
+        if (mounted) {
+          setState(() => _editUncertain = true);
+          S1SnackBar.show(context, message: '$e', bottomClearance: 72);
+        }
+      } finally {
+        if (mounted) setState(() => _isSubmitting = false);
+      }
+      return;
+    }
     final quoting = _quoting;
     if (userText.isEmpty && !quoting) return;
 
@@ -712,19 +963,73 @@ class _ComposeScreenState extends ConsumerState<ComposeScreen> {
     });
   }
 
+  Future<void> _recheckEditState() async {
+    if (!_isEditing ||
+        widget.fid == null ||
+        widget.tid == null ||
+        widget.editPid == null) {
+      return;
+    }
+    setState(() => _editLoading = true);
+    final latest = await ref.read(composeControllerProvider).fetchEditPostForm(
+          fid: widget.fid!,
+          tid: widget.tid!,
+          pid: widget.editPid!,
+          isFirst: widget.editIsFirst,
+        );
+    if (!mounted) return;
+    final matchesDesired =
+        latest.message.trim() == _messageController.text.trim() &&
+            (!widget.editIsFirst ||
+                latest.subject.trim() == _subjectController.text.trim());
+    if (matchesDesired) {
+      _clearEditDraft(widget.editPid);
+      setState(() {
+        _editLoading = false;
+        _allowPop = true;
+      });
+      context.pop(const EditPostSubmitResult.success(message: '编辑成功'));
+      return;
+    }
+    final baseline = _editForm;
+    final matchesBaseline = baseline != null &&
+        latest.message == baseline.message &&
+        latest.subject == baseline.subject &&
+        latest.selectedTypeId == baseline.selectedTypeId &&
+        latest.selectedReadPermission == baseline.selectedReadPermission;
+    setState(() {
+      _editLoading = false;
+      _editUncertain = false;
+      _editConflict = !matchesBaseline;
+      if (matchesBaseline) _editForm = latest;
+    });
+    S1SnackBar.show(
+      context,
+      message:
+          matchesBaseline ? '服务器内容仍未变化，可以重新确认提交' : '服务器内容与当前编辑不同，请重新载入后再编辑',
+      bottomClearance: 72,
+    );
+  }
+
   Future<void> _handlePop(bool didPop, Object? result) async {
     if (didPop || _allowPop) return;
     if (!_isDirty) return;
 
     final discard = await showS1ConfirmDialog(
       context,
-      title: _isNewThread ? '放弃新主题？' : '放弃回复？',
-      content: _isNewThread ? '放弃后将清除本地新主题草稿。' : '放弃后将清除本回复草稿。',
+      title: _isNewThread ? '放弃新主题？' : (_isEditing ? '放弃编辑？' : '放弃回复？'),
+      content: _isNewThread
+          ? '放弃后将清除本地新主题草稿。'
+          : (_isEditing ? '编辑草稿会保留，下次可继续恢复。' : '放弃本回复草稿。'),
       confirmLabel: '放弃',
       destructive: true,
     );
     if (!mounted || !discard) return;
-    _clearMessageDraft();
+    if (_isEditing) {
+      _persistEditDraft();
+    } else {
+      _clearMessageDraft();
+    }
     setState(() => _allowPop = true);
     context.pop();
   }
@@ -736,8 +1041,11 @@ class _ComposeScreenState extends ConsumerState<ComposeScreen> {
     final busy = _isSubmitting ||
         _isUploadingImage ||
         _quotePrefetching ||
-        _newThreadLoading;
-    final subject = _subjectLabel;
+        _newThreadLoading ||
+        _editLoading ||
+        _editUncertain ||
+        _editConflict;
+    final subject = _isEditing ? null : _subjectLabel;
     final keyboardInset = MediaQuery.viewInsetsOf(context).bottom;
     final showPanel = _showEmoticonPanel && keyboardInset <= 0;
 
@@ -787,6 +1095,33 @@ class _ComposeScreenState extends ConsumerState<ComposeScreen> {
                   });
                 },
               ),
+            if (_isEditing)
+              _EditPostHeader(
+                form: _editForm,
+                controller: _subjectController,
+                selectedTypeId: _selectedTypeId,
+                selectedReadPerm: _selectedReadPerm,
+                onTypeChanged: (value) {
+                  setState(() {
+                    _selectedTypeId = value;
+                    _persistEditDraft();
+                  });
+                },
+                onReadPermChanged: (value) {
+                  setState(() {
+                    _selectedReadPerm = value;
+                    _persistEditDraft();
+                  });
+                },
+              ),
+            if (_isEditing && (_editUncertain || _editConflict))
+              _EditPostStatus(
+                message: _editUncertain
+                    ? '编辑结果不确定，请先核对服务器内容。'
+                    : '服务器内容已变化，请重新载入后再编辑。',
+                actionLabel: '核对服务器',
+                onPressed: _recheckEditState,
+              ),
             if (_includeQuote && !_isNewThread)
               _ComposeQuoteBanner(
                 post: _draft?.post,
@@ -806,7 +1141,9 @@ class _ComposeScreenState extends ConsumerState<ComposeScreen> {
               child: _ComposeMessageField(
                 controller: _messageController,
                 focusNode: _messageFocusNode,
-                hintText: _isNewThread ? '输入主题正文…' : '输入回复内容…',
+                hintText: _isNewThread
+                    ? '输入主题正文…'
+                    : (_isEditing ? '输入编辑后的正文…' : '输入回复内容…'),
                 onTap: () {
                   if (_showEmoticonPanel) {
                     setState(() => _showEmoticonPanel = false);
@@ -842,6 +1179,7 @@ class _ComposeScreenState extends ConsumerState<ComposeScreen> {
               onToggleEmoticon: _toggleEmoticonPanel,
               onPreview: _showPreview,
               onSubmit: _submit,
+              submitLabel: _isEditing ? '保存编辑' : '发送',
             ),
           ],
         ),
@@ -910,6 +1248,139 @@ class _NewThreadHeader extends StatelessWidget {
             ),
           ],
         ],
+      ),
+    );
+  }
+}
+
+class _EditPostHeader extends StatelessWidget {
+  const _EditPostHeader({
+    required this.form,
+    required this.controller,
+    required this.selectedTypeId,
+    required this.selectedReadPerm,
+    required this.onTypeChanged,
+    required this.onReadPermChanged,
+  });
+
+  final EditPostFormInfo? form;
+  final TextEditingController controller;
+  final String? selectedTypeId;
+  final String? selectedReadPerm;
+  final ValueChanged<String?> onTypeChanged;
+  final ValueChanged<String?> onReadPermChanged;
+
+  @override
+  Widget build(BuildContext context) {
+    final form = this.form;
+    final scheme = Theme.of(context).colorScheme;
+    final textTheme = Theme.of(context).textTheme;
+    if (form?.error != null) {
+      return Padding(
+        padding: const EdgeInsets.all(16),
+        child: Text(
+          form!.error!,
+          style: textTheme.bodyMedium?.copyWith(color: scheme.error),
+        ),
+      );
+    }
+    if (form == null) return const LinearProgressIndicator();
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(16, 12, 16, 4),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          if (form.isFirst)
+            TextField(
+              controller: controller,
+              textInputAction: TextInputAction.next,
+              style: textTheme.bodyLarge,
+              decoration: const InputDecoration(labelText: '主题标题'),
+            ),
+          if (form.threadTypes.isNotEmpty) ...[
+            const SizedBox(height: 12),
+            DropdownButtonFormField<String>(
+              initialValue: form.threadTypes.containsKey(selectedTypeId)
+                  ? selectedTypeId
+                  : null,
+              decoration: const InputDecoration(labelText: '主题分类'),
+              items: [
+                const DropdownMenuItem<String>(
+                  value: null,
+                  child: Text('不分类'),
+                ),
+                for (final entry in form.threadTypes.entries)
+                  DropdownMenuItem<String>(
+                    value: entry.key,
+                    child: Text(entry.value),
+                  ),
+              ],
+              onChanged: onTypeChanged,
+            ),
+          ],
+          if (form.readPermissions.isNotEmpty) ...[
+            const SizedBox(height: 12),
+            DropdownButtonFormField<String>(
+              initialValue: form.readPermissions.contains(selectedReadPerm)
+                  ? selectedReadPerm
+                  : null,
+              decoration: const InputDecoration(labelText: '阅读权限'),
+              items: [
+                for (final permission in form.readPermissions)
+                  DropdownMenuItem<String>(
+                    value: permission,
+                    child: Text(permission == '0' ? '不限' : permission),
+                  ),
+              ],
+              onChanged: onReadPermChanged,
+            ),
+          ],
+        ],
+      ),
+    );
+  }
+}
+
+class _EditPostStatus extends StatelessWidget {
+  const _EditPostStatus({
+    required this.message,
+    required this.actionLabel,
+    required this.onPressed,
+  });
+
+  final String message;
+  final String actionLabel;
+  final VoidCallback onPressed;
+
+  @override
+  Widget build(BuildContext context) {
+    final scheme = Theme.of(context).colorScheme;
+    final textTheme = Theme.of(context).textTheme;
+    return Material(
+      color: scheme.errorContainer,
+      child: Padding(
+        padding: const EdgeInsets.fromLTRB(16, 10, 8, 10),
+        child: Row(
+          children: [
+            Expanded(
+              child: Text(
+                message,
+                style: textTheme.bodySmall?.copyWith(
+                  color: scheme.onErrorContainer,
+                ),
+              ),
+            ),
+            TextButton(
+              onPressed: onPressed,
+              child: Text(
+                actionLabel,
+                style: textTheme.labelLarge?.copyWith(
+                  color: scheme.onErrorContainer,
+                ),
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }
@@ -1196,6 +1667,7 @@ class _ComposeBottomBar extends StatelessWidget {
     required this.onToggleEmoticon,
     required this.onPreview,
     required this.onSubmit,
+    this.submitLabel = '发送',
   });
 
   final bool busy;
@@ -1208,6 +1680,7 @@ class _ComposeBottomBar extends StatelessWidget {
   final VoidCallback onToggleEmoticon;
   final VoidCallback onPreview;
   final VoidCallback onSubmit;
+  final String submitLabel;
 
   @override
   Widget build(BuildContext context) {
@@ -1266,7 +1739,7 @@ class _ComposeBottomBar extends StatelessWidget {
                             color: scheme.onPrimary,
                           ),
                         )
-                      : const Text('发送'),
+                      : Text(submitLabel),
                 ),
               ],
             ),

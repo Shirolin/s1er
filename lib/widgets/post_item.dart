@@ -22,6 +22,7 @@ class PostItem extends ConsumerStatefulWidget {
     this.tid,
     this.onFilterByAuthor,
     this.onReply,
+    this.onEdit,
     this.onRate,
     this.onAddToBlacklist,
     this.onReport,
@@ -34,6 +35,7 @@ class PostItem extends ConsumerStatefulWidget {
   final String? tid;
   final VoidCallback? onFilterByAuthor;
   final VoidCallback? onReply;
+  final VoidCallback? onEdit;
   final VoidCallback? onRate;
   final VoidCallback? onAddToBlacklist;
   final VoidCallback? onReport;
@@ -145,7 +147,8 @@ class _PostItemState extends ConsumerState<PostItem> {
             maxLines: 1,
             overflow: TextOverflow.ellipsis,
             style: Theme.of(context).textTheme.labelSmall?.copyWith(
-                color: Theme.of(context).colorScheme.onSurfaceVariant,),
+                  color: Theme.of(context).colorScheme.onSurfaceVariant,
+                ),
           ),
       ],
     );
@@ -157,6 +160,7 @@ class _PostItemState extends ConsumerState<PostItem> {
         PostActionMenu(
           onFilterByAuthor: widget.onFilterByAuthor,
           onReply: widget.onReply,
+          onEdit: widget.onEdit,
           onRate: widget.onRate,
           onAddToBlacklist: widget.onAddToBlacklist,
           onReport: widget.onReport,
@@ -188,6 +192,7 @@ class _PostItemState extends ConsumerState<PostItem> {
             PostActionMenu(
               onFilterByAuthor: widget.onFilterByAuthor,
               onReply: widget.onReply,
+              onEdit: widget.onEdit,
               onRate: widget.onRate,
               onAddToBlacklist: widget.onAddToBlacklist,
               onReport: widget.onReport,

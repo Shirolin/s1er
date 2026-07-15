@@ -8,6 +8,7 @@ class Post {
     required this.authorId,
     required this.dateline,
     required this.floor,
+    this.isFirst = false,
     this.avatar,
     this.images = const [],
   });
@@ -20,6 +21,7 @@ class Post {
       authorId: json['authorid']?.toString() ?? '',
       dateline: int.tryParse(json['dbdateline']?.toString() ?? '') ?? 0,
       floor: int.tryParse(json['number']?.toString() ?? '') ?? 0,
+      isFirst: json['first']?.toString() == '1',
       avatar: User.resolveAvatarUrl(
         'https://avatar.stage1st.com/avatar.php?uid=${json['authorid']}&size=small',
       ),
@@ -31,6 +33,7 @@ class Post {
   final String authorId;
   final int dateline;
   final int floor;
+  final bool isFirst;
   final String? avatar;
   final List<String> images;
 }

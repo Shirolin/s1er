@@ -104,6 +104,16 @@ final _router = GoRouter(
       ),
     ),
     GoRoute(
+      path: '/thread/:tid/post/:pid/edit',
+      builder: (context, state) => ComposeScreen(
+        tid: state.pathParameters['tid'],
+        fid: state.uri.queryParameters['fid'],
+        editPid: state.pathParameters['pid'],
+        editPage: int.tryParse(state.uri.queryParameters['page'] ?? ''),
+        editIsFirst: state.uri.queryParameters['first'] == '1',
+      ),
+    ),
+    GoRoute(
       path: '/forum/:fid/new-thread',
       builder: (context, state) => ComposeScreen(
         fid: state.pathParameters['fid'],

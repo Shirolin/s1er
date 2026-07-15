@@ -6,6 +6,8 @@ import '../models/quote_info.dart';
 import '../models/reply_submit_result.dart';
 import '../models/new_thread_form_info.dart';
 import '../models/new_thread_submit_result.dart';
+import '../models/edit_post_form_info.dart';
+import '../models/edit_post_submit_result.dart';
 import '../services/external_image_upload_service.dart';
 import 'api_service_provider.dart';
 
@@ -53,6 +55,44 @@ class ComposeController {
           subject: subject,
           message: message,
           typeId: typeId,
+        );
+  }
+
+  Future<EditPostFormInfo> fetchEditPostForm({
+    required String fid,
+    required String tid,
+    required String pid,
+    required bool isFirst,
+  }) {
+    return _ref.read(apiServiceProvider).fetchEditPostForm(
+          fid: fid,
+          tid: tid,
+          pid: pid,
+          isFirst: isFirst,
+        );
+  }
+
+  Future<EditPostSubmitResult> submitEditPost({
+    required String fid,
+    required String tid,
+    required String pid,
+    required bool isFirst,
+    required String subject,
+    required String message,
+    String? typeId,
+    String? readPerm,
+    required EditPostFormInfo baseline,
+  }) {
+    return _ref.read(apiServiceProvider).submitEditPost(
+          fid: fid,
+          tid: tid,
+          pid: pid,
+          isFirst: isFirst,
+          subject: subject,
+          message: message,
+          typeId: typeId,
+          readPerm: readPerm,
+          baseline: baseline,
         );
   }
 

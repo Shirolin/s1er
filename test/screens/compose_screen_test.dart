@@ -6,6 +6,7 @@ import 'package:flutter_riverpod/misc.dart' show Override;
 import 'package:s1_app/models/post.dart';
 import 'package:s1_app/models/quote_info.dart';
 import 'package:s1_app/models/reply_submit_result.dart';
+import 'package:s1_app/models/new_thread_form_info.dart';
 import 'package:s1_app/providers/auth_provider.dart';
 import 'package:s1_app/providers/compose_provider.dart';
 import 'package:s1_app/providers/settings_provider.dart';
@@ -87,6 +88,26 @@ void main() {
     expect(find.byTooltip('预览'), findsOneWidget);
     expect(find.byIcon(Icons.image_outlined), findsOneWidget);
     expect(find.byType(FilledButton), findsOneWidget);
+  });
+
+  testWidgets('new thread mode renders title and required category',
+      (tester) async {
+    await tester.pumpWidget(
+      ProviderScope(
+        overrides: buildOverrides(auth: _LoggedInAuthNotifier.new),
+        child: MaterialApp(
+          theme: AppTheme.lightTheme('purple'),
+          home: const ComposeScreen(fid: '4', newThread: true),
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    expect(find.text('发新主题'), findsOneWidget);
+    expect(find.text('主题标题'), findsOneWidget);
+    expect(find.text('主题分类'), findsOneWidget);
+    expect(find.byType(DropdownButtonFormField<String>), findsOneWidget);
+    expect(find.text('发送'), findsOneWidget);
   });
 
   testWidgets('ComposeScreen shows simple quote banner for reppost only',
@@ -245,8 +266,7 @@ void main() {
   });
 
   testWidgets('ComposeScreen expands subject on tap', (tester) async {
-    const longSubject =
-        '很长的主题标题用于测试展开折叠行为一二三四五六七八九十';
+    const longSubject = '很长的主题标题用于测试展开折叠行为一二三四五六七八九十';
     await tester.pumpWidget(
       ProviderScope(
         overrides: buildOverrides(auth: _LoggedInAuthNotifier.new),
@@ -281,8 +301,7 @@ void main() {
     );
     await tester.pumpAndSettle();
 
-    const longName =
-        'QQ截图20260714142502_extra_long_filename.webp';
+    const longName = 'QQ截图20260714142502_extra_long_filename.webp';
     await tester.enterText(
       find.byType(TextField),
       '[img]https://p.sda1.dev/33/abc/$longName[/img]',
@@ -403,6 +422,15 @@ class _StubComposeController extends ComposeController {
     QuoteInfo? quoteInfo,
   }) async {
     return ReplySubmitResult(pid: '1', tid: tid);
+  }
+
+  @override
+  Future<NewThreadFormInfo> fetchNewThreadForm({required String fid}) async {
+    return const NewThreadFormInfo(
+      threadTypes: {'1': '其他'},
+      typeRequired: true,
+      formhash: 'fixture',
+    );
   }
 }
 

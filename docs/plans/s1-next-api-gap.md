@@ -13,9 +13,9 @@
 
 | 状态 | 含义 | 条数 |
 |------|------|------|
-| 已实现 | Discuz 能力功能等价（路径可不同） | 25 |
+| 已实现 | Discuz 能力功能等价（路径可不同） | 26 |
 | 部分 | 有替代路径但不完整 | 0 |
-| 未实现 | 无客户端能力 | 4 |
+| 未实现 | 无客户端能力 | 3 |
 | 不做/边缘 | 可不跟 | 1 + App API 整组 |
 
 计数口径：下表「Discuz 接口全表」每一行算 1 条（不含 App API 子表）。「收藏版块」属我方多出的已实现项。
@@ -34,7 +34,7 @@ S1-Next 同时打 Discuz Mobile / `forum.php`，以及独立 App API（`https://
 | 好友列表 | `module=friend` | `/friends` + 资料统计入口 | 已实现（合成 fixture；登录态列表待一次复核） |
 | 每日签到 | `study_daily_attendance…` | 资料页手动签到卡 | 已实现（手动触发；自动签到后置） |
 | 小黑屋 | `forum.php showdarkroom ajax` | `/dark-room` cursor 分页 | 已实现（公开只读实测 + fixture） |
-| 发新主题 | `module=newthread` + 预取页面 | — | docs 实测可用；写操作暂缓 |
+| 发新主题 | `module=newthread` + 预取页面 | 新主题编辑器 + 只读权限预检 + 单次提交 | 已实现；真实写入未验证 |
 | 发私信 | `module=sendpm` | `ApiConfig.moduleSendMessage` 仅常量 | docs 实测可用；UI/调用未接 |
 | 编辑帖子 | `forum.php action=edit` | — | Mobile `editpost` 禁用，只能走 Web |
 | 举报 | `misc.php?mod=report` | 举报弹窗 + `fetchReportForm` / `submitReport` | 已实现 |
@@ -55,7 +55,7 @@ S1-Next 同时打 Discuz Mobile / `forum.php`，以及独立 App API（`https://
 | 回复插图（外链图床） | `p.sda1.dev upload_external_noform` | `ExternalImageUploadService`（Web 经 `/ext-upload`） | 已实现 |
 | 麻将脸表情 | 本地 assets + 实体码 | `assets/emoticons` + `ComposeEmoticonPanel` | 已实现 |
 | 定位楼层页码 | `forum.php redirect=findpost` | `locatePostPage()` | 已实现 |
-| 发新主题 | `module=newthread` + 预取页面 | — | 未实现 |
+| 发新主题 | `module=newthread` + 预取页面 | `fetchNewThreadForm()` / `submitNewThread()` + `/forum/:fid/new-thread` | 已实现；匿名 GET 可见分类但无权限，禁止使用真实账号做写入验证 |
 | 编辑帖子 | `forum.php action=edit` | — | 未实现 |
 | 搜索（版块/用户） | `search.php mod=forum\|user` | `searchForum()` / `searchUser()` + 搜索 Tab | 已实现 |
 | 投票 | `forum.php action=votepoll` | `votePoll()` | 已实现 |

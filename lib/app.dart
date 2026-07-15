@@ -104,6 +104,13 @@ final _router = GoRouter(
       ),
     ),
     GoRoute(
+      path: '/forum/:fid/new-thread',
+      builder: (context, state) => ComposeScreen(
+        fid: state.pathParameters['fid'],
+        newThread: true,
+      ),
+    ),
+    GoRoute(
       path: '/profile',
       builder: (context, state) => const ProfileScreen(),
     ),

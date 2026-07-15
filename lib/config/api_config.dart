@@ -60,6 +60,7 @@ class ApiConfig {
   static const String moduleFavThread = 'favthread';
   static const String moduleFavForum = 'favforum';
   static const String moduleSendReply = 'sendreply';
+  static const String moduleNewThread = 'newthread';
   static const String moduleFriend = 'friend';
 
   /// 好友 Mobile API 使用 version=1（与 S1-Next 一致；实测响应 `Version:"1"`）。

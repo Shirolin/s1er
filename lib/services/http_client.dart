@@ -194,6 +194,14 @@ class S1HttpClient {
   /// 当前缓存的 formhash；空字符串表示尚未取得。
   String get currentFormhash => _read(formhashProvider);
 
+  /// 缓存任意 Mobile API 响应中的 formhash。
+  ///
+  /// 新主题预检本身就是权限与表单来源，不能再退回到可能不匹配的
+  /// forumindex/viewthread 响应。
+  void cacheFormhashFromResponse(dynamic data) {
+    _cacheFormhash(data);
+  }
+
   /// 发帖前确保 formhash 已从 Mobile API 或回复页 HTML 中缓存。
   ///
   /// [force] 为 true 时丢弃缓存并重新拉取（回复 POST 前必须使用，避免登录等

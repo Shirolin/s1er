@@ -1,12 +1,15 @@
+import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import '../config/api_config.dart';
 import '../providers/forum_name_provider.dart';
+import '../providers/auth_provider.dart';
 import '../providers/thread_list_provider.dart';
 import '../widgets/app_bar_more_menu.dart';
 import '../widgets/favorite_bookmark_button.dart';
 import '../models/favorite_item.dart';
+import '../models/new_thread_submit_result.dart';
 import '../widgets/pagination_bar.dart';
 import '../widgets/s1_error_view.dart';
 import '../widgets/s1_fab_layout.dart';
@@ -36,6 +39,15 @@ class _ForumListScreenState extends ConsumerState<ForumListScreen> {
     }
   }
 
+  Future<void> _openNewThread() async {
+    final result = await context.push<NewThreadSubmitResult>(
+      '/forum/${widget.fid}/new-thread',
+    );
+    if (!mounted || result == null || !result.isSuccess) return;
+    await ref.read(threadListProvider(widget.fid).notifier).refresh();
+    if (mounted) unawaited(context.push('/thread/${result.tid}'));
+  }
+
   @override
   Widget build(BuildContext context) {
     final provider = threadListProvider(widget.fid);
@@ -50,6 +62,9 @@ class _ForumListScreenState extends ConsumerState<ForumListScreen> {
     final forum = ref.watch(forumNameProvider(widget.fid)) ??
         threadsAsync.asData?.value.forumName ??
         '';
+    final isLoggedIn = ref.watch(
+      authStateProvider.select((auth) => auth.isLoggedIn),
+    );
 
     return Scaffold(
       appBar: AppBar(
@@ -95,6 +110,14 @@ class _ForumListScreenState extends ConsumerState<ForumListScreen> {
               Expanded(
                 child: S1ContentFabOverlay(
                   fab: S1FabStack(
+                    primary: isLoggedIn
+                        ? S1FabItem(
+                            heroTag: 'newThread-${widget.fid}',
+                            icon: Icons.create_outlined,
+                            tooltip: '发新主题',
+                            onPressed: () => unawaited(_openNewThread()),
+                          )
+                        : null,
                     scrollNav: S1ScrollNavConfig(
                       showScrollToTop: _showScrollToTop,
                       showScrollAdvance: false,

@@ -4,6 +4,8 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../models/quote_info.dart';
 import '../models/reply_submit_result.dart';
+import '../models/new_thread_form_info.dart';
+import '../models/new_thread_submit_result.dart';
 import '../services/external_image_upload_service.dart';
 import 'api_service_provider.dart';
 
@@ -33,6 +35,24 @@ class ComposeController {
           message: message,
           quoteInfo: quoteInfo,
           noticeAuthorMsg: message,
+        );
+  }
+
+  Future<NewThreadFormInfo> fetchNewThreadForm({required String fid}) {
+    return _ref.read(apiServiceProvider).fetchNewThreadForm(fid: fid);
+  }
+
+  Future<NewThreadSubmitResult> submitNewThread({
+    required String fid,
+    required String subject,
+    required String message,
+    String? typeId,
+  }) {
+    return _ref.read(apiServiceProvider).submitNewThread(
+          fid: fid,
+          subject: subject,
+          message: message,
+          typeId: typeId,
         );
   }
 

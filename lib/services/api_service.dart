@@ -8,6 +8,8 @@ import '../models/user_space_item.dart';
 import '../models/poll.dart';
 import '../models/quote_info.dart';
 import '../models/reply_submit_result.dart';
+import '../models/new_thread_form_info.dart';
+import '../models/new_thread_submit_result.dart';
 import '../models/forum_category.dart';
 import '../models/user.dart';
 import '../models/private_message_item.dart';
@@ -131,6 +133,147 @@ class ApiService {
     final types = threadtypes['types'] as Map<String, dynamic>?;
     if (types == null) return {};
     return types.map((k, v) => MapEntry(k, v.toString()));
+  }
+
+  /// 解析 `module=newthread` 的权限、分类与 formhash。
+  static NewThreadFormInfo parseNewThreadForm(Map<String, dynamic> json) {
+    final variables = json['Variables'] as Map<String, dynamic>?;
+    final threadtypes = variables?['threadtypes'] as Map<String, dynamic>?;
+    final types = threadtypes?['types'] as Map<String, dynamic>?;
+    final parsedTypes = types == null
+        ? const <String, String>{}
+        : types.map((key, value) => MapEntry(key, value.toString()));
+    final required = threadtypes?['required']?.toString() == '1';
+    final formhash = variables?['formhash']?.toString();
+    final message = json['Message'];
+    final messageval =
+        message is Map ? message['messageval']?.toString() : null;
+    final messagestr =
+        message is Map ? message['messagestr']?.toString() : null;
+    final hasPermissionError = messageval != null &&
+        messageval.isNotEmpty &&
+        !messageval.contains('succeed');
+    return NewThreadFormInfo(
+      threadTypes: parsedTypes,
+      typeRequired: required,
+      formhash: formhash,
+      error: hasPermissionError
+          ? friendlyDiscuzApiError(
+              messageval: messageval,
+              messagestr: messagestr,
+              fallback: '当前版块暂不可发帖',
+            )
+          : null,
+    );
+  }
+
+  /// 只读预检新主题权限，并缓存响应中的 formhash。
+  Future<NewThreadFormInfo> fetchNewThreadForm({required String fid}) async {
+    try {
+      final response = await _httpClient.get(
+        buildApiUrl(module: ApiConfig.moduleNewThread, params: {'fid': fid}),
+      );
+      _httpClient.cacheFormhashFromResponse(response.data);
+      final json = ensureJson(response.data);
+      final result = parseNewThreadForm(json);
+      if (result.formhash == null || result.formhash!.isEmpty) {
+        return NewThreadFormInfo(
+          threadTypes: result.threadTypes,
+          typeRequired: result.typeRequired,
+          error: result.error ?? '无法获取发帖表单验证串，请稍后重试',
+        );
+      }
+      if (result.typeRequired && result.threadTypes.isEmpty) {
+        return NewThreadFormInfo(
+          formhash: result.formhash,
+          typeRequired: true,
+          error: '服务器未返回必需的主题分类，请稍后重试',
+        );
+      }
+      return result;
+    } catch (e, st) {
+      return NewThreadFormInfo(error: friendlyError(e, '加载发帖表单', st));
+    }
+  }
+
+  /// 提交一个新主题。提交前必须再次通过只读权限预检。
+  Future<NewThreadSubmitResult> submitNewThread({
+    required String fid,
+    required String subject,
+    required String message,
+    String? typeId,
+  }) async {
+    final form = await fetchNewThreadForm(fid: fid);
+    if (!form.canSubmit) {
+      return NewThreadSubmitResult(error: form.error ?? '当前版块暂不可发帖');
+    }
+    if (form.typeRequired && (typeId == null || typeId.trim().isEmpty)) {
+      return const NewThreadSubmitResult(error: '请选择主题分类');
+    }
+    final url = buildApiUrl(
+      module: ApiConfig.moduleNewThread,
+      params: {'fid': fid, 'extra': '', 'topicsubmit': 'yes'},
+    );
+    final data = <String, String>{
+      'posttime': (DateTime.now().millisecondsSinceEpoch ~/ 1000).toString(),
+      if (typeId != null && typeId.trim().isNotEmpty) 'typeid': typeId.trim(),
+      'subject': subject.trim(),
+      'message': message.trim(),
+      'allownoticeauthor': '1',
+      'usesig': '1',
+    };
+    try {
+      final response = await _httpClient.post(
+        url,
+        data: data,
+        options: Options(contentType: Headers.formUrlEncodedContentType),
+      );
+      return parseNewThreadSubmitResponse(response.data);
+    } catch (e, st) {
+      return NewThreadSubmitResult(error: friendlyError(e, '发帖', st));
+    }
+  }
+
+  static NewThreadSubmitResult parseNewThreadSubmitResponse(dynamic data) {
+    if (data is String) {
+      final trimmed = data.trimLeft();
+      if (trimmed.startsWith('{')) {
+        try {
+          return parseNewThreadSubmitResponse(jsonDecode(trimmed));
+        } catch (_) {}
+      }
+      if (looksLikeDiscuzMessageKey(trimmed) || trimmed.startsWith('mobile:')) {
+        return NewThreadSubmitResult(
+          error: friendlyDiscuzApiError(messageval: trimmed),
+        );
+      }
+      return const NewThreadSubmitResult(error: '服务器返回未知响应');
+    }
+    if (data is! Map) {
+      return const NewThreadSubmitResult(error: '服务器返回未知响应');
+    }
+    final map = Map<String, dynamic>.from(data);
+    final message = map['Message'];
+    final messageval =
+        message is Map ? message['messageval']?.toString() : null;
+    final messagestr =
+        message is Map ? message['messagestr']?.toString() : null;
+    if (messageval != null && messageval.contains('succeed')) {
+      final variables = map['Variables'];
+      final tid = variables is Map ? variables['tid']?.toString() : null;
+      final pid = variables is Map ? variables['pid']?.toString() : null;
+      if (tid == null || tid.isEmpty) {
+        return const NewThreadSubmitResult(error: '服务器未返回新主题编号');
+      }
+      return NewThreadSubmitResult(tid: tid, pid: pid);
+    }
+    return NewThreadSubmitResult(
+      error: friendlyDiscuzApiError(
+        messageval: messageval,
+        messagestr: messagestr,
+        fallback: '发帖失败，请稍后重试',
+      ),
+    );
   }
 
   static List<Thread> parseThreadList(Map<String, dynamic> json) {

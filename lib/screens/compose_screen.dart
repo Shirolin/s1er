@@ -7,6 +7,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import '../models/post.dart';
 import '../models/quote_info.dart';
+import '../models/new_thread_form_info.dart';
 import '../providers/auth_provider.dart';
 import '../providers/compose_provider.dart';
 import '../providers/settings_provider.dart';
@@ -14,6 +15,7 @@ import '../theme/app_theme.dart';
 import '../utils/compose_draft_store.dart';
 import '../utils/compose_img_tags.dart';
 import '../utils/compose_message_draft.dart';
+import '../utils/new_thread_draft.dart';
 import '../utils/post_image_index_counter.dart';
 import '../utils/quote_builder.dart';
 import '../utils/s1_snack_bar.dart';
@@ -32,6 +34,7 @@ class ComposeScreen extends ConsumerStatefulWidget {
     this.draftId,
     this.reppost,
     this.subject,
+    this.newThread = false,
   });
 
   final String? tid;
@@ -39,6 +42,7 @@ class ComposeScreen extends ConsumerStatefulWidget {
   final String? draftId;
   final String? reppost;
   final String? subject;
+  final bool newThread;
 
   @override
   ConsumerState<ComposeScreen> createState() => _ComposeScreenState();
@@ -53,6 +57,7 @@ class _ComposeUploadedImage {
 
 class _ComposeScreenState extends ConsumerState<ComposeScreen> {
   final _messageController = TextEditingController();
+  final _subjectController = TextEditingController();
   final _messageFocusNode = FocusNode();
   bool _isSubmitting = false;
   bool _isUploadingImage = false;
@@ -69,9 +74,13 @@ class _ComposeScreenState extends ConsumerState<ComposeScreen> {
   List<String> _recentEmoticons = [];
   Timer? _draftSaveTimer;
   bool _suppressDraftSave = false;
+  NewThreadFormInfo? _newThreadForm;
+  bool _newThreadLoading = false;
+  String? _selectedTypeId;
   ({Uint8List bytes, String filename})? _pendingUpload;
 
   bool get _hasValidTid => widget.tid != null && widget.tid!.isNotEmpty;
+  bool get _isNewThread => widget.newThread;
 
   String? get _quotePid => widget.reppost ?? _draft?.post.pid;
 
@@ -84,12 +93,20 @@ class _ComposeScreenState extends ConsumerState<ComposeScreen> {
   bool get _quoting => _includeQuote && _quoteInfo != null;
 
   bool get _isDirty =>
-      _messageController.text.trim().isNotEmpty || _uploadedImages.isNotEmpty;
+      _messageController.text.trim().isNotEmpty ||
+      (_isNewThread && _subjectController.text.trim().isNotEmpty) ||
+      _uploadedImages.isNotEmpty;
 
   bool get _canSubmit {
-    final busy = _isSubmitting || _isUploadingImage || _quotePrefetching;
+    final busy = _isSubmitting ||
+        _isUploadingImage ||
+        _quotePrefetching ||
+        _newThreadLoading;
     if (busy) return false;
     final hasText = _messageController.text.trim().isNotEmpty;
+    if (_isNewThread) {
+      return _subjectController.text.trim().isNotEmpty && hasText;
+    }
     return hasText || _quoting;
   }
 
@@ -106,6 +123,7 @@ class _ComposeScreenState extends ConsumerState<ComposeScreen> {
   void initState() {
     super.initState();
     _messageController.addListener(_onMessageChanged);
+    _subjectController.addListener(_onSubjectChanged);
     _messageFocusNode.addListener(_onMessageFocusChanged);
     if (widget.draftId != null) {
       _draft = ComposeDraftStore.take(widget.draftId!);
@@ -123,8 +141,89 @@ class _ComposeScreenState extends ConsumerState<ComposeScreen> {
         context.push('/login');
         return;
       }
-      _prefetchOfficialQuote();
+      if (_isNewThread) {
+        _loadNewThreadForm();
+      } else {
+        _prefetchOfficialQuote();
+      }
     });
+  }
+
+  Future<void> _loadNewThreadForm() async {
+    final fid = widget.fid;
+    if (fid == null || fid.isEmpty) return;
+    setState(() => _newThreadLoading = true);
+    final form =
+        await ref.read(composeControllerProvider).fetchNewThreadForm(fid: fid);
+    if (!mounted) return;
+    final saved = _readNewThreadDraft(fid);
+    setState(() {
+      _newThreadForm = form;
+      _newThreadLoading = false;
+      if (saved != null) {
+        _subjectController.text = saved['subject'] as String? ?? '';
+        _messageController.text = saved['message'] as String? ?? '';
+        _selectedTypeId = saved['typeId'] as String?;
+      }
+    });
+  }
+
+  Map<String, Object?>? _readNewThreadDraft(String fid) {
+    try {
+      final store = ref.read(settingsStoreProvider);
+      return NewThreadDraftStore.read(
+        NewThreadDraftStore.parse(
+          store.get<Object>(NewThreadDraftStore.settingsKey),
+        ),
+        fid,
+      );
+    } on Object {
+      return null;
+    }
+  }
+
+  void _persistNewThreadDraft() {
+    final fid = widget.fid;
+    if (!_isNewThread || fid == null || fid.isEmpty) return;
+    try {
+      final store = ref.read(settingsStoreProvider);
+      final drafts = NewThreadDraftStore.parse(
+        store.get<Object>(NewThreadDraftStore.settingsKey),
+      );
+      store.put(
+        NewThreadDraftStore.settingsKey,
+        NewThreadDraftStore.toStoreValue(
+          NewThreadDraftStore.upsert(
+            drafts,
+            fid,
+            subject: _subjectController.text,
+            message: _messageController.text,
+            typeId: _selectedTypeId,
+          ),
+        ),
+      );
+    } on Object {
+      // 部分测试未注入 SettingsStore 时跳过草稿持久化。
+    }
+  }
+
+  void _clearNewThreadDraft() {
+    final fid = widget.fid;
+    if (!_isNewThread || fid == null || fid.isEmpty) return;
+    try {
+      final store = ref.read(settingsStoreProvider);
+      final drafts = NewThreadDraftStore.parse(
+        store.get<Object>(NewThreadDraftStore.settingsKey),
+      );
+      store.put(
+        NewThreadDraftStore.settingsKey,
+        NewThreadDraftStore.toStoreValue(
+          NewThreadDraftStore.remove(drafts, fid),
+        ),
+      );
+    } on Object {
+      // 部分测试未注入 SettingsStore 时跳过清理。
+    }
   }
 
   void _loadRecentEmoticons() {
@@ -226,6 +325,12 @@ class _ComposeScreenState extends ConsumerState<ComposeScreen> {
         ..addAll(next);
     });
     _scheduleDraftSave();
+    if (_isNewThread) _persistNewThreadDraft();
+  }
+
+  void _onSubjectChanged() {
+    if (_isNewThread) _persistNewThreadDraft();
+    if (mounted) setState(() {});
   }
 
   void _onMessageFocusChanged() {
@@ -264,6 +369,7 @@ class _ComposeScreenState extends ConsumerState<ComposeScreen> {
   }
 
   String get _title {
+    if (_isNewThread) return '发新主题';
     if (!_hasValidTid) return '无法回复';
     if (_draft != null && _draft!.displayFloor > 0) {
       return '回复 #${_draft!.displayFloor} 楼';
@@ -386,8 +492,10 @@ class _ComposeScreenState extends ConsumerState<ComposeScreen> {
       _persistDraft();
     }
     _messageController.removeListener(_onMessageChanged);
+    _subjectController.removeListener(_onSubjectChanged);
     _messageFocusNode.removeListener(_onMessageFocusChanged);
     _messageController.dispose();
+    _subjectController.dispose();
     _messageFocusNode.dispose();
     super.dispose();
   }
@@ -469,10 +577,12 @@ class _ComposeScreenState extends ConsumerState<ComposeScreen> {
   }
 
   Future<void> _submit() async {
-    if (!_hasValidTid || widget.fid == null || widget.fid!.isEmpty) {
+    if ((!_isNewThread && !_hasValidTid) ||
+        widget.fid == null ||
+        widget.fid!.isEmpty) {
       S1SnackBar.show(
         context,
-        message: '缺少主题信息，请返回重试',
+        message: _isNewThread ? '缺少版块信息，请返回重试' : '缺少主题信息，请返回重试',
         bottomClearance: 72,
       );
       return;
@@ -488,6 +598,63 @@ class _ComposeScreenState extends ConsumerState<ComposeScreen> {
     }
 
     final userText = _messageController.text.trim();
+    if (_isNewThread) {
+      final subject = _subjectController.text.trim();
+      final form = _newThreadForm;
+      if (subject.isEmpty || userText.isEmpty) {
+        S1SnackBar.show(context, message: '请输入标题和正文', bottomClearance: 72);
+        return;
+      }
+      if (form == null || _newThreadLoading) {
+        S1SnackBar.show(context, message: '发帖表单仍在加载，请稍候', bottomClearance: 72);
+        return;
+      }
+      if (form.error != null) {
+        S1SnackBar.show(context, message: form.error!, bottomClearance: 72);
+        return;
+      }
+      if (form.typeRequired &&
+          (_selectedTypeId == null || _selectedTypeId!.isEmpty)) {
+        S1SnackBar.show(context, message: '请选择主题分类', bottomClearance: 72);
+        return;
+      }
+      final confirmed = await showS1ConfirmDialog(
+        context,
+        title: '确认发布主题？',
+        content: '版块：${widget.fid}\n标题：$subject\n发布后将对其他用户可见。',
+        confirmLabel: '发布',
+      );
+      if (!mounted || !confirmed) return;
+      setState(() => _isSubmitting = true);
+      try {
+        final result =
+            await ref.read(composeControllerProvider).submitNewThread(
+                  fid: widget.fid!,
+                  subject: subject,
+                  message: userText,
+                  typeId: _selectedTypeId,
+                );
+        if (!mounted) return;
+        if (result.isSuccess) {
+          _clearNewThreadDraft();
+          setState(() => _allowPop = true);
+          context.pop(result);
+        } else {
+          S1SnackBar.show(
+            context,
+            message: result.error ?? '发帖失败',
+            bottomClearance: 72,
+          );
+        }
+      } catch (e) {
+        if (mounted) {
+          S1SnackBar.show(context, message: '$e', bottomClearance: 72);
+        }
+      } finally {
+        if (mounted) setState(() => _isSubmitting = false);
+      }
+      return;
+    }
     final quoting = _quoting;
     if (userText.isEmpty && !quoting) return;
 
@@ -551,8 +718,8 @@ class _ComposeScreenState extends ConsumerState<ComposeScreen> {
 
     final discard = await showS1ConfirmDialog(
       context,
-      title: '放弃回复？',
-      content: '放弃后将清除本回复草稿。',
+      title: _isNewThread ? '放弃新主题？' : '放弃回复？',
+      content: _isNewThread ? '放弃后将清除本地新主题草稿。' : '放弃后将清除本回复草稿。',
       confirmLabel: '放弃',
       destructive: true,
     );
@@ -566,12 +733,15 @@ class _ComposeScreenState extends ConsumerState<ComposeScreen> {
   Widget build(BuildContext context) {
     final scheme = Theme.of(context).colorScheme;
     final textTheme = Theme.of(context).textTheme;
-    final busy = _isSubmitting || _isUploadingImage || _quotePrefetching;
+    final busy = _isSubmitting ||
+        _isUploadingImage ||
+        _quotePrefetching ||
+        _newThreadLoading;
     final subject = _subjectLabel;
     final keyboardInset = MediaQuery.viewInsetsOf(context).bottom;
     final showPanel = _showEmoticonPanel && keyboardInset <= 0;
 
-    if (!_hasValidTid) {
+    if (!_isNewThread && !_hasValidTid) {
       return Scaffold(
         backgroundColor: scheme.surface,
         appBar: AppBar(
@@ -605,7 +775,19 @@ class _ComposeScreenState extends ConsumerState<ComposeScreen> {
         body: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-            if (_includeQuote)
+            if (_isNewThread)
+              _NewThreadHeader(
+                form: _newThreadForm,
+                controller: _subjectController,
+                selectedTypeId: _selectedTypeId,
+                onTypeChanged: (value) {
+                  setState(() {
+                    _selectedTypeId = value;
+                    _persistNewThreadDraft();
+                  });
+                },
+              ),
+            if (_includeQuote && !_isNewThread)
               _ComposeQuoteBanner(
                 post: _draft?.post,
                 displayFloor: _draft?.displayFloor ?? 0,
@@ -613,7 +795,8 @@ class _ComposeScreenState extends ConsumerState<ComposeScreen> {
                 loading: _quotePrefetching,
                 error: _quotePrefetchError,
               ),
-            if (subject != null) _ComposeSubjectLine(subject: subject),
+            if (subject != null && !_isNewThread)
+              _ComposeSubjectLine(subject: subject),
             if (_uploadedImages.isNotEmpty)
               _ComposeImageStrip(
                 images: List.unmodifiable(_uploadedImages),
@@ -623,6 +806,7 @@ class _ComposeScreenState extends ConsumerState<ComposeScreen> {
               child: _ComposeMessageField(
                 controller: _messageController,
                 focusNode: _messageFocusNode,
+                hintText: _isNewThread ? '输入主题正文…' : '输入回复内容…',
                 onTap: () {
                   if (_showEmoticonPanel) {
                     setState(() => _showEmoticonPanel = false);
@@ -667,15 +851,81 @@ class _ComposeScreenState extends ConsumerState<ComposeScreen> {
 }
 
 /// 正文 filled 输入：空态用 Highest 凹槽；有内容 / 聚焦时降到 Low，区分「内容态」。
+class _NewThreadHeader extends StatelessWidget {
+  const _NewThreadHeader({
+    required this.form,
+    required this.controller,
+    required this.selectedTypeId,
+    required this.onTypeChanged,
+  });
+
+  final NewThreadFormInfo? form;
+  final TextEditingController controller;
+  final String? selectedTypeId;
+  final ValueChanged<String?> onTypeChanged;
+
+  @override
+  Widget build(BuildContext context) {
+    final textTheme = Theme.of(context).textTheme;
+    final scheme = Theme.of(context).colorScheme;
+    if (form?.error != null) {
+      return Padding(
+        padding: const EdgeInsets.all(16),
+        child: Text(
+          form!.error!,
+          style: textTheme.bodyMedium?.copyWith(color: scheme.error),
+        ),
+      );
+    }
+    final types = form?.threadTypes ?? const <String, String>{};
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(16, 12, 16, 4),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          TextField(
+            controller: controller,
+            textInputAction: TextInputAction.next,
+            style: textTheme.bodyLarge,
+            decoration: const InputDecoration(labelText: '主题标题'),
+          ),
+          if (types.isNotEmpty) ...[
+            const SizedBox(height: 12),
+            DropdownButtonFormField<String>(
+              initialValue: selectedTypeId,
+              decoration: const InputDecoration(labelText: '主题分类'),
+              items: [
+                if (!(form?.typeRequired ?? false))
+                  const DropdownMenuItem<String>(
+                    value: null,
+                    child: Text('不分类'),
+                  ),
+                for (final entry in types.entries)
+                  DropdownMenuItem<String>(
+                    value: entry.key,
+                    child: Text(entry.value),
+                  ),
+              ],
+              onChanged: onTypeChanged,
+            ),
+          ],
+        ],
+      ),
+    );
+  }
+}
+
 class _ComposeMessageField extends StatelessWidget {
   const _ComposeMessageField({
     required this.controller,
     required this.focusNode,
+    required this.hintText,
     required this.onTap,
   });
 
   final TextEditingController controller;
   final FocusNode focusNode;
+  final String hintText;
   final VoidCallback onTap;
 
   @override
@@ -703,7 +953,7 @@ class _ComposeMessageField extends StatelessWidget {
         decoration: InputDecoration(
           filled: true,
           fillColor: Colors.transparent,
-          hintText: '输入回复内容…',
+          hintText: hintText,
           hintStyle: textTheme.bodyLarge?.copyWith(
             color: scheme.onSurfaceVariant,
           ),

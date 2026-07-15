@@ -16,6 +16,7 @@ import '../models/notice_item.dart';
 import '../models/favorite_item.dart';
 import '../models/message_list_result.dart';
 import '../models/rate_form.dart';
+import '../models/report_form.dart';
 import '../models/search_result.dart';
 import '../models/app_exceptions.dart';
 import '../utils/error_handler.dart';
@@ -1077,6 +1078,138 @@ class ApiService {
     } catch (e) {
       if (e is LoginRequiredException) return '请先登录';
       return friendlyError(e, '评分');
+    }
+  }
+
+  /// 预取 Discuz 举报表单及其隐藏字段。
+  Future<ReportFormOptions> fetchReportForm({
+    required String tid,
+    required String pid,
+    String? fid,
+    int page = 1,
+  }) async {
+    try {
+      final response = await _httpClient.get(
+        ApiConfig.reportFormUrl(tid: tid, pid: pid, fid: fid),
+        options: Options(responseType: ResponseType.plain),
+      );
+      final body = response.data?.toString() ?? '';
+      return parseReportFormResponse(body, tid: tid, page: page);
+    } catch (e) {
+      if (e is LoginRequiredException) {
+        return ReportFormOptions.withDefaults(error: '请先登录');
+      }
+      return ReportFormOptions.withDefaults(
+        error: friendlyError(e, '获取举报表单'),
+        retryable: true,
+      );
+    }
+  }
+
+  static ReportFormOptions parseReportFormResponse(
+    String body, {
+    required String tid,
+    int page = 1,
+  }) {
+    final html = _unwrapAjaxHtml(body);
+    if (html.trim().isEmpty) {
+      return ReportFormOptions.withDefaults(
+        error: '举报表单为空，请稍后重试',
+        retryable: true,
+      );
+    }
+    if (html.contains('id="loginform') ||
+        html.contains("id='loginform") ||
+        html.contains('name="login"')) {
+      return ReportFormOptions.withDefaults(error: '请先登录');
+    }
+    final error = _extractReportError(html);
+    if (error != null) {
+      return ReportFormOptions.withDefaults(error: error);
+    }
+
+    final fields = <String, String>{};
+    for (final input in parse(html).querySelectorAll('input[name]')) {
+      final name = input.attributes['name'];
+      final value = input.attributes['value'] ?? '';
+      if (name != null && name.isNotEmpty && value.isNotEmpty) {
+        fields[name] = value;
+      }
+    }
+    if (fields['formhash'] == null || fields['rid'] == null) {
+      return ReportFormOptions.withDefaults(
+        error: '举报表单无效，请稍后重试',
+        retryable: true,
+        fields: fields,
+      );
+    }
+    fields['rtype'] ??= 'post';
+    fields['tid'] ??= tid;
+    fields['referer'] = ApiConfig.forumReportReferer(tid, page);
+    return ReportFormOptions(
+      reasons: ReportFormOptions.defaultReasons,
+      fields: fields,
+    );
+  }
+
+  static String? _extractReportError(String body) {
+    final message = _extractMessagetextError(body);
+    if (message != null) return message;
+    final match = RegExp(
+      r"(?:errorhandle_[^(]*|showmessage)\('([^']*)'",
+    ).firstMatch(body);
+    return match?.group(1)?.trim().isEmpty == true ? null : match?.group(1);
+  }
+
+  static String? parseReportSubmitResponse(String body) {
+    if (body.contains('report_succeed') || body.contains('举报成功')) {
+      return null;
+    }
+    if (RegExp(r'succeedhandle_[^\(]*report', caseSensitive: false)
+        .hasMatch(body)) {
+      return null;
+    }
+    final error = _extractReportError(body);
+    if (error != null) return error;
+    if (body.trim().isEmpty) return '举报请求无响应，请检查是否已登录';
+    return '服务器返回未知响应';
+  }
+
+  /// 提交举报。成功返回 null，失败返回用户可见错误。
+  Future<String?> submitReport({
+    required String tid,
+    required String pid,
+    String? fid,
+    required String reason,
+    required String message,
+    required ReportFormOptions form,
+  }) async {
+    final trimmedMessage = message.trim();
+    final data = <String, String>{
+      ...form.fields,
+      'tid': form.fields['tid'] ?? tid,
+      'rid': form.fields['rid'] ?? pid,
+      'rtype': form.fields['rtype'] ?? 'post',
+      'reportsubmit': 'true',
+      'report_select': reason,
+      'message': trimmedMessage.length > 200
+          ? trimmedMessage.substring(0, 200)
+          : trimmedMessage,
+    };
+    if (fid != null && fid.isNotEmpty) data['fid'] ??= fid;
+    try {
+      final response = await _httpClient.post(
+        ApiConfig.reportSubmitUrl(),
+        data: data,
+        options: Options(
+          contentType: Headers.formUrlEncodedContentType,
+          responseType: ResponseType.plain,
+        ),
+      );
+      return parseReportSubmitResponse(response.data?.toString() ?? '');
+    } catch (e) {
+      if (e is LoginRequiredException) return '请先登录';
+      return friendlyError(e, '举报');
     }
   }
 

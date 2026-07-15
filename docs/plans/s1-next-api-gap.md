@@ -3,7 +3,7 @@
 > 对照源：[S1-Next](https://github.com/ykrank/S1-Next) `master` @ `20a14fdb43`（`alpha 3.3.95`；最近标签 `v3.0.87-alpha`）  
 > 读取文件：`S1Service` / `ApiForum` / `ApiHome` / `ApiMember` / `AppService`  
 > 我方以 `lib/services/api_service.dart` + `lib/services/forum_tools_service.dart` + `lib/config/api_config.dart` + [`docs/api_reference.md`](../api_reference.md) 为准  
-> 上次更新：2026-07-15（好友列表、手动每日签到、小黑屋）
+> 上次更新：2026-07-15（好友列表、手动每日签到、小黑屋、楼层举报）
 
 对话旁的 Cursor Canvas 副本在本机：
 `~/.cursor/projects/d-Project-s1-app/canvases/s1-next-api-gap.canvas.tsx`  
@@ -13,9 +13,9 @@
 
 | 状态 | 含义 | 条数 |
 |------|------|------|
-| 已实现 | Discuz 能力功能等价（路径可不同） | 24 |
+| 已实现 | Discuz 能力功能等价（路径可不同） | 25 |
 | 部分 | 有替代路径但不完整 | 0 |
-| 未实现 | 无客户端能力 | 5 |
+| 未实现 | 无客户端能力 | 4 |
 | 不做/边缘 | 可不跟 | 1 + App API 整组 |
 
 计数口径：下表「Discuz 接口全表」每一行算 1 条（不含 App API 子表）。「收藏版块」属我方多出的已实现项。
@@ -37,7 +37,7 @@ S1-Next 同时打 Discuz Mobile / `forum.php`，以及独立 App API（`https://
 | 发新主题 | `module=newthread` + 预取页面 | — | docs 实测可用；写操作暂缓 |
 | 发私信 | `module=sendpm` | `ApiConfig.moduleSendMessage` 仅常量 | docs 实测可用；UI/调用未接 |
 | 编辑帖子 | `forum.php action=edit` | — | Mobile `editpost` 禁用，只能走 Web |
-| 举报 | `misc.php?mod=report` | — | 次常用写操作 |
+| 举报 | `misc.php?mod=report` | 举报弹窗 + `fetchReportForm` / `submitReport` | 已实现 |
 | 服务端黑名单 | `home.php friend&view=blacklist` | 不同步网页黑名单 | 周边 |
 | 本地黑名单 | 本地库 hide/del | Drift + `/blacklist` UI；`thread`/`post`/`pm` 均生效 | 已实现 |
 
@@ -60,7 +60,7 @@ S1-Next 同时打 Discuz Mobile / `forum.php`，以及独立 App API（`https://
 | 搜索（版块/用户） | `search.php mod=forum\|user` | `searchForum()` / `searchUser()` + 搜索 Tab | 已实现 |
 | 投票 | `forum.php action=votepoll` | `votePoll()` | 已实现 |
 | 评分 / 评分日志 | `action=rate` + `viewratings` | `fetchRateForm` / `submitRate` / `RateLogService` | 已实现 |
-| 举报 | `misc.php?mod=report` | — | 未实现 |
+| 举报 | `misc.php?mod=report` | `fetchReportForm` / `submitReport` + 举报弹窗 | 已实现 |
 | 收藏主题 增删查 | `myfavthread` / `favthread` | 查：JSON `myfavthread` + HTML；增删：`home.php` HTML（非 Mobile `favthread`） | 已实现 |
 | 收藏版块 | —（S1-Next 仅主题） | `myfavforum` + HTML 增删 | 已实现（我们多出） |
 | 私信会话列表 | `module=mypm` | `getPmList()` JSON + HTML 兜底 | 已实现 |

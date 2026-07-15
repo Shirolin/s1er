@@ -20,6 +20,7 @@ import '../widgets/pagination_bar.dart';
 import '../widgets/post_item.dart';
 import '../widgets/poll_card.dart';
 import '../widgets/rate_dialog.dart';
+import '../widgets/report_dialog.dart';
 import '../widgets/s1_confirm_dialog.dart';
 import '../widgets/s1_error_view.dart';
 import '../widgets/s1_fab_layout.dart';
@@ -424,6 +425,18 @@ class _ThreadDetailScreenState extends ConsumerState<ThreadDetailScreen> {
     );
   }
 
+  Future<void> _openReportDialog(Post post, PostListState state) async {
+    if (!ref.read(authStateProvider).isLoggedIn) return;
+    await showReportDialog(
+      context,
+      ref,
+      tid: widget.tid,
+      pid: post.pid,
+      fid: state.threadFid,
+      page: state.currentPage,
+    );
+  }
+
   Future<void> _afterReplySubmitted(
     ReplySubmitResult result,
     PostListState state,
@@ -521,6 +534,9 @@ class _ThreadDetailScreenState extends ConsumerState<ThreadDetailScreen> {
         onRate: _canRatePost(post) ? () => _openRateDialog(post) : null,
         onAddToBlacklist:
             canAddToBlacklist ? () => _confirmAddToBlacklist(post) : null,
+        onReport: ref.read(authStateProvider).isLoggedIn
+            ? () => _openReportDialog(post, state)
+            : null,
       ),
     );
   }

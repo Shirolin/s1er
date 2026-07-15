@@ -5,7 +5,8 @@ import 'package:s1_app/widgets/post_action_menu.dart';
 import 'package:s1_app/widgets/s1_menu.dart';
 
 void main() {
-  testWidgets('PostActionMenu opens below trigger with all S1 actions', (tester) async {
+  testWidgets('PostActionMenu opens below trigger with all S1 actions',
+      (tester) async {
     var filterTapped = false;
 
     await tester.pumpWidget(
@@ -64,7 +65,8 @@ void main() {
     expect(blacklistTapped, isTrue);
   });
 
-  testWidgets('PostActionMenu shows enabled reply when callback provided', (tester) async {
+  testWidgets('PostActionMenu shows enabled reply when callback provided',
+      (tester) async {
     var replyTapped = false;
 
     await tester.pumpWidget(
@@ -88,7 +90,8 @@ void main() {
     expect(replyTapped, isTrue);
   });
 
-  testWidgets('PostActionMenu shows enabled rate when callback provided', (tester) async {
+  testWidgets('PostActionMenu shows enabled rate when callback provided',
+      (tester) async {
     var rateTapped = false;
 
     await tester.pumpWidget(
@@ -112,7 +115,28 @@ void main() {
     expect(rateTapped, isTrue);
   });
 
-  testWidgets('PostActionMenu shows disabled labels for unimplemented actions', (tester) async {
+  testWidgets('PostActionMenu invokes report callback', (tester) async {
+    var reportTapped = false;
+
+    await tester.pumpWidget(
+      MaterialApp(
+        theme: AppTheme.lightTheme('purple'),
+        home: Scaffold(
+          body: PostActionMenu(onReport: () => reportTapped = true),
+        ),
+      ),
+    );
+
+    await tester.tap(find.byIcon(Icons.more_vert));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('举报'));
+    await tester.pumpAndSettle();
+
+    expect(reportTapped, isTrue);
+  });
+
+  testWidgets('PostActionMenu shows disabled labels for unimplemented actions',
+      (tester) async {
     await tester.pumpWidget(
       MaterialApp(
         theme: AppTheme.lightTheme('purple'),

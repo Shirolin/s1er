@@ -24,6 +24,28 @@ class ApiConfig {
   static String forumRateReferer(String tid, String pid) =>
       '$forumPostUrl?mod=viewthread&tid=$tid&page=0#pid$pid';
 
+  static String reportFormUrl({
+    required String tid,
+    required String pid,
+    String? fid,
+  }) {
+    final params = <String, String>{
+      'mod': 'report',
+      'rtype': 'post',
+      'rid': pid,
+      'tid': tid,
+      'inajax': '1',
+      't': DateTime.now().millisecondsSinceEpoch.toString(),
+    };
+    if (fid != null && fid.isNotEmpty) params['fid'] = fid;
+    return '$baseUrl/misc.php?${Uri(queryParameters: params).query}';
+  }
+
+  static String reportSubmitUrl() => '$baseUrl/misc.php?mod=report&inajax=1';
+
+  static String forumReportReferer(String tid, int page) =>
+      '$forumPostUrl?mod=viewthread&tid=$tid&page=$page&mobile=2';
+
   // API module names
   static const String moduleForumIndex = 'forumindex';
   static const String moduleForumDisplay = 'forumdisplay';

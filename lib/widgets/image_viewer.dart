@@ -15,6 +15,7 @@ import '../theme/app_theme.dart';
 import '../utils/image_load_policy.dart';
 import '../utils/inline_image_decode.dart';
 import 'lazy_visibility_loader.dart';
+import 'force_show_images.dart';
 
 class ImageViewer extends ConsumerStatefulWidget {
   const ImageViewer({
@@ -125,6 +126,7 @@ class _ImageViewerState extends ConsumerState<ImageViewer> {
 
   bool _shouldAutoLoad() {
     if (widget.isEmoticon) return true;
+    if (ForceShowImages.of(context)) return true;
     final settings = ref.read(settingsProvider);
     final wifiConnected = ref.read(wifiConnectedProvider).value ?? true;
     return shouldAutoLoadInlineImages(
@@ -136,7 +138,9 @@ class _ImageViewerState extends ConsumerState<ImageViewer> {
   }
 
   void _load() {
-    if (!widget.isEmoticon && !ref.read(settingsProvider).showImages) {
+    if (!widget.isEmoticon &&
+        !ForceShowImages.of(context) &&
+        !ref.read(settingsProvider).showImages) {
       return;
     }
 
@@ -309,6 +313,7 @@ class _ImageViewerState extends ConsumerState<ImageViewer> {
       ),
       (previous, next) {
         if (widget.isEmoticon) return;
+        if (ForceShowImages.of(context)) return;
         if (widget.deferUntilVisible && !_visibilityLoadTriggered) return;
         if (!_deferredLoad && _hasDisplayableImage) return;
         if (_shouldAutoLoad()) {
@@ -330,6 +335,7 @@ class _ImageViewerState extends ConsumerState<ImageViewer> {
   @override
   Widget build(BuildContext context) {
     final showImages = widget.isEmoticon ||
+        ForceShowImages.of(context) ||
         ref.watch(settingsProvider.select((s) => s.showImages));
 
     _listenForPolicyChanges();

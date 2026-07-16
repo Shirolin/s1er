@@ -35,6 +35,9 @@ abstract class S1Breakpoints {
 
   /// Max content width for Large+ windows (1200dp+).
   static const double contentWidthLarge = 1040;
+
+  /// Max content width for focused form workflows.
+  static const double contentWidthForm = 720;
 }
 
 extension S1WindowSizeX on BuildContext {

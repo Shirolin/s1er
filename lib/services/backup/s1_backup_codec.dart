@@ -153,6 +153,8 @@ class S1BackupSettingsMapper {
     'recordReadingHistory': 'record_reading_history',
     'fontSize': 'font_size',
     'collapsedForums': 'collapsed_forums',
+    'shareImageFormat': 'share_image_format',
+    'sharePixelRatio': 'share_pixel_ratio',
   };
 
   static Map<String, dynamic> toBackup(Map<String, Object?> appSettings) {

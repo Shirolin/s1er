@@ -13,38 +13,51 @@ import '../models/notice_item.dart';
 import '../theme/app_theme.dart';
 import '../widgets/app_bar_more_menu.dart';
 import '../widgets/s1_error_view.dart';
+import '../widgets/s1_content_width.dart';
+import '../widgets/s1_desktop_scaffold.dart';
 import '../utils/compact_label.dart';
 import '../utils/format_utils.dart';
+import '../utils/window_size.dart';
 import 'messages_screen.dart';
 import 'search_screen.dart';
 import 'profile_screen.dart';
 
-class HomeScreen extends ConsumerStatefulWidget {
+class HomeScreen extends ConsumerWidget {
   const HomeScreen({super.key});
 
   @override
-  ConsumerState<HomeScreen> createState() => _HomeScreenState();
-}
-
-class _HomeScreenState extends ConsumerState<HomeScreen> {
-  int _currentTab = 0;
-
-  /// 游客「我的」(index 1) 登录后 index 1 会变成「搜索」，首次重建时改显论坛。
-  bool _showForumAfterLogin = false;
-
-  @override
-  void initState() {
-    super.initState();
-    ref.listenManual<AuthState>(
-      authStateProvider,
-      (previous, next) {
-        final wasLoggedIn = previous?.isLoggedIn ?? false;
-        if (!wasLoggedIn && next.isLoggedIn) {
-          _showForumAfterLogin = true;
-        }
-      },
+  Widget build(BuildContext context, WidgetRef ref) {
+    final router = GoRouter.maybeOf(context);
+    if (router == null) {
+      return const _HomeScreenBody();
+    }
+    final isLoggedIn = ref.watch(
+      authStateProvider.select((auth) => auth.isLoggedIn),
+    );
+    final tab = GoRouterState.of(context).uri.queryParameters['tab'];
+    final highlightedTab = switch ((isLoggedIn, tab)) {
+      (true, 'search') => 1,
+      (true, 'messages') => 2,
+      (true, 'profile') => 3,
+      (false, 'profile') => 1,
+      _ => 0,
+    };
+    return S1DesktopScaffold(
+      highlightedTab: highlightedTab,
+      child: const _HomeScreenBody(),
     );
   }
+}
+
+class _HomeScreenBody extends ConsumerStatefulWidget {
+  const _HomeScreenBody();
+
+  @override
+  ConsumerState<_HomeScreenBody> createState() => _HomeScreenBodyState();
+}
+
+class _HomeScreenBodyState extends ConsumerState<_HomeScreenBody> {
+  int _fallbackTab = 0;
 
   @override
   Widget build(BuildContext context) {
@@ -52,12 +65,23 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
       authStateProvider.select((auth) => auth.isLoggedIn),
     );
 
-    final tabIndex = isLoggedIn
-        ? (_showForumAfterLogin ? 0 : _currentTab.clamp(0, 3))
-        : (_currentTab > 1 ? 0 : _currentTab);
+    final router = GoRouter.maybeOf(context);
+    final requestedTab = router == null
+        ? null
+        : GoRouterState.of(context).uri.queryParameters['tab'];
+    final tabIndex = switch ((isLoggedIn, requestedTab)) {
+      (true, 'search') => 1,
+      (true, 'messages') => 2,
+      (true, 'profile') => 3,
+      (false, 'profile') => 1,
+      _ => 0,
+    };
+    final selectedTab = router == null
+        ? (isLoggedIn ? _fallbackTab.clamp(0, 3) : (_fallbackTab > 0 ? 1 : 0))
+        : tabIndex;
 
-    final isProfileTab = isLoggedIn ? tabIndex == 3 : tabIndex == 1;
-    final isMessagesTab = isLoggedIn && tabIndex == 2;
+    final isProfileTab = isLoggedIn ? selectedTab == 3 : selectedTab == 1;
+    final isMessagesTab = isLoggedIn && selectedTab == 2;
     final messagesSegment =
         isMessagesTab ? ref.watch(messagesSegmentProvider) : 0;
     final noticeFeed = isMessagesTab
@@ -113,42 +137,68 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                       ),
                   ],
       ),
-      body: isLoggedIn
-          ? tabIndex == 0
-              ? const _ForumTab()
-              : tabIndex == 1
-                  ? const SearchScreen()
-                  : tabIndex == 2
-                      ? const MessagesScreen()
-                      : const ProfileBody(
-                          key: ValueKey('profile-logged-in'),
-                        )
-          : tabIndex == 0
-              ? const _ForumTab()
-              : const ProfileBody(key: ValueKey('profile-guest')),
-      bottomNavigationBar: NavigationBar(
-        selectedIndex: tabIndex,
-        onDestinationSelected: (index) {
-          if (_currentTab == 2 && index != 2) {
-            ref.read(messagesSegmentProvider.notifier).select(0);
-          }
-          setState(() {
-            _showForumAfterLogin = false;
-            _currentTab = index;
-          });
-        },
-        destinations: isLoggedIn
-            ? const [
-                NavigationDestination(icon: Icon(Icons.forum), label: '论坛'),
-                NavigationDestination(icon: Icon(Icons.search), label: '搜索'),
-                NavigationDestination(icon: Icon(Icons.message), label: '消息'),
-                NavigationDestination(icon: Icon(Icons.person), label: '我的'),
-              ]
-            : const [
-                NavigationDestination(icon: Icon(Icons.forum), label: '论坛'),
-                NavigationDestination(icon: Icon(Icons.person), label: '我的'),
-              ],
+      body: S1ContentWidth(
+        child: isLoggedIn
+            ? selectedTab == 0
+                ? const _ForumTab()
+                : selectedTab == 1
+                    ? const SearchScreen()
+                    : selectedTab == 2
+                        ? const MessagesScreen()
+                        : const ProfileBody(
+                            key: ValueKey('profile-logged-in'),
+                          )
+            : selectedTab == 0
+                ? const _ForumTab()
+                : const ProfileBody(key: ValueKey('profile-guest')),
       ),
+      bottomNavigationBar: router != null && context.isMediumOrAbove
+          ? null
+          : NavigationBar(
+              selectedIndex: selectedTab,
+              onDestinationSelected: (index) {
+                if (selectedTab == 2 && index != 2) {
+                  ref.read(messagesSegmentProvider.notifier).select(0);
+                }
+                if (router == null) {
+                  setState(() => _fallbackTab = index);
+                  return;
+                }
+                final tab = isLoggedIn
+                    ? const ['forum', 'search', 'messages', 'profile'][index]
+                    : const ['forum', 'profile'][index];
+                context.go(tab == 'forum' ? '/' : '/?tab=$tab');
+              },
+              destinations: isLoggedIn
+                  ? const [
+                      NavigationDestination(
+                        icon: Icon(Icons.forum),
+                        label: '论坛',
+                      ),
+                      NavigationDestination(
+                        icon: Icon(Icons.search),
+                        label: '搜索',
+                      ),
+                      NavigationDestination(
+                        icon: Icon(Icons.message),
+                        label: '消息',
+                      ),
+                      NavigationDestination(
+                        icon: Icon(Icons.person),
+                        label: '我的',
+                      ),
+                    ]
+                  : const [
+                      NavigationDestination(
+                        icon: Icon(Icons.forum),
+                        label: '论坛',
+                      ),
+                      NavigationDestination(
+                        icon: Icon(Icons.person),
+                        label: '我的',
+                      ),
+                    ],
+            ),
     );
   }
 }
@@ -230,14 +280,50 @@ class _ForumTab extends ConsumerWidget {
         return Scrollbar(
           child: RefreshIndicator(
             onRefresh: refresh,
-            child: ListView.builder(
-              primary: true,
-              padding: const EdgeInsets.only(bottom: 16),
-              itemCount: categories.length,
-              itemBuilder: (context, index) =>
-                  _ForumCategoryTile(category: categories[index]),
-            ),
+            child: context.isLargeOrAbove
+                ? _ForumCategoryGrid(categories: categories)
+                : ListView.builder(
+                    primary: true,
+                    padding: const EdgeInsets.only(bottom: 16),
+                    itemCount: categories.length,
+                    itemBuilder: (context, index) =>
+                        _ForumCategoryTile(category: categories[index]),
+                  ),
           ),
+        );
+      },
+    );
+  }
+}
+
+class _ForumCategoryGrid extends StatelessWidget {
+  const _ForumCategoryGrid({required this.categories});
+
+  final List<ForumCategory> categories;
+
+  @override
+  Widget build(BuildContext context) {
+    final rowCount = (categories.length + 1) ~/ 2;
+    return ListView.builder(
+      primary: true,
+      padding: const EdgeInsets.only(bottom: 16),
+      itemCount: rowCount,
+      itemBuilder: (context, rowIndex) {
+        final firstIndex = rowIndex * 2;
+        final secondIndex = firstIndex + 1;
+        return Row(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Expanded(
+              child: _ForumCategoryTile(category: categories[firstIndex]),
+            ),
+            const SizedBox(width: 8),
+            Expanded(
+              child: secondIndex < categories.length
+                  ? _ForumCategoryTile(category: categories[secondIndex])
+                  : const SizedBox.shrink(),
+            ),
+          ],
         );
       },
     );

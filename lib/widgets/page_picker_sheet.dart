@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../theme/app_theme.dart';
+import 's1_adaptive_sheet.dart';
 
 typedef PageItemLabelBuilder = String Function(int page);
 
@@ -16,9 +17,8 @@ Future<void> showPagePickerSheet({
   String? subtitle,
   PageItemLabelBuilder? pageItemLabelBuilder,
 }) {
-  return showModalBottomSheet<void>(
+  return showS1AdaptiveSheet<void>(
     context: context,
-    showDragHandle: true,
     isScrollControlled: true,
     builder: (ctx) => PagePickerSheet(
       totalPages: totalPages,

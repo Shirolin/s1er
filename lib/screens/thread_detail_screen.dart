@@ -32,6 +32,7 @@ import '../models/thread_destination.dart';
 import '../utils/scroll_floor.dart';
 import '../utils/s1_snack_bar.dart';
 import '../utils/thread_navigation.dart';
+import '../providers/post_share_provider.dart';
 import '../theme/app_theme.dart';
 
 bool shouldRecordReadingProgress(AppSettings settings, AuthState auth) {
@@ -551,6 +552,12 @@ class _ThreadDetailScreenState extends ConsumerState<ThreadDetailScreen> {
                   displayFloor: displayFloor,
                 )
             : null,
+        onShare: () => ref.read(postShareProvider.notifier).share(
+              context: context,
+              post: post,
+              displayFloor: displayFloor,
+              threadSubject: state.threadSubject,
+            ),
         onEdit: canEdit ? () => _openEdit(state, post) : null,
         onRate: _canRatePost(post) ? () => _openRateDialog(post) : null,
         onAddToBlacklist:

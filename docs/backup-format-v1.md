@@ -95,6 +95,8 @@ v1 **不使用** JSONL；列表一律为 JSON 数组。
 | `record_reading_history` | bool | |
 | `font_size` | int | |
 | `collapsed_forums` | string[] | 版块 id |
+| `share_image_format` | string | `jpeg` / `png`；分享卡片导出图片格式 |
+| `share_pixel_ratio` | int | `2` / `3`；分享卡片截图清晰度 |
 | `simulate_dynamic` | bool | 调试用，可忽略 |
 
 （实现时可与 App 内命名对齐；若内部仍用 camelCase，导出时映射到上表 snake_case，便于跨语言客户端。）

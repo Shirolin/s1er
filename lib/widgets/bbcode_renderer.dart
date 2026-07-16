@@ -12,6 +12,7 @@ import '../utils/post_image_index_counter.dart';
 import '../utils/post_image_urls.dart';
 import '../utils/quote_jump.dart';
 import 'emoticon_widget.dart';
+import 'force_show_images.dart';
 import 'quote_block.dart';
 import 'image_viewer.dart';
 
@@ -49,23 +50,34 @@ class BbcodeRenderer extends ConsumerWidget {
     // Subscribe to theme updates so memoized HTML blocks rebuild on theme change.
     Theme.of(context).colorScheme;
 
-    final showImages = ref.watch(
-      settingsProvider.select((s) => s.showImages),
-    );
-    final maxImagesPerPost = ref.watch(
-      settingsProvider.select((s) => s.maxImagesPerPost),
-    );
+    final isForce = ForceShowImages.of(context);
+    final showImages = isForce
+        ? true
+        : ref.watch(
+            settingsProvider.select((s) => s.showImages),
+          );
+    final maxImagesPerPost = isForce
+        ? 0
+        : ref.watch(
+            settingsProvider.select((s) => s.maxImagesPerPost),
+          );
+    final effectiveImagesExpanded = isForce ? true : imagesExpanded;
+    final deferImages = !isForce;
+
     final widgets = _buildParts(
       context,
       bbcode,
       showImages: showImages,
       maxImagesPerPost: maxImagesPerPost,
+      deferImages: deferImages,
+      effectiveImagesExpanded: effectiveImagesExpanded,
     );
     final totalImages = imageIndexCounter.assignedCount;
-    final max = maxImagesPerPost;
-    final hiddenCount = (!imagesExpanded && max > 0 && totalImages > max)
-        ? totalImages - max
-        : 0;
+    final maxVal = maxImagesPerPost;
+    final hiddenCount =
+        (!effectiveImagesExpanded && maxVal > 0 && totalImages > maxVal)
+            ? totalImages - maxVal
+            : 0;
 
     if (hiddenCount > 0 && showImages && onExpandImages != null) {
       widgets.add(
@@ -95,6 +107,8 @@ class BbcodeRenderer extends ConsumerWidget {
     String text, {
     required bool showImages,
     required int maxImagesPerPost,
+    bool deferImages = true,
+    bool effectiveImagesExpanded = false,
   }) {
     final widgets = <Widget>[];
     final segments = BbcodeQuoteSplitter.split(text);
@@ -107,7 +121,7 @@ class BbcodeRenderer extends ConsumerWidget {
             depth: quoteDepth,
             currentTid: currentTid,
             imageIndexCounter: imageIndexCounter,
-            imagesExpanded: imagesExpanded,
+            imagesExpanded: effectiveImagesExpanded,
             onExpandImages: onExpandImages,
           ),
         );
@@ -131,9 +145,10 @@ class BbcodeRenderer extends ConsumerWidget {
               html: html,
               showImages: showImages,
               maxImagesPerPost: maxImagesPerPost,
-              imagesExpanded: imagesExpanded,
+              imagesExpanded: effectiveImagesExpanded,
               imageIndexCounter: imageIndexCounter,
               onExpandImages: onExpandImages,
+              deferImages: deferImages,
             ),
           );
         }
@@ -183,6 +198,7 @@ class _MemoizedHtmlBlock extends StatefulWidget {
     required this.imagesExpanded,
     required this.imageIndexCounter,
     this.onExpandImages,
+    this.deferImages = true,
   });
 
   final String html;
@@ -191,6 +207,7 @@ class _MemoizedHtmlBlock extends StatefulWidget {
   final bool imagesExpanded;
   final PostImageIndexCounter imageIndexCounter;
   final VoidCallback? onExpandImages;
+  final bool deferImages;
 
   @override
   State<_MemoizedHtmlBlock> createState() => _MemoizedHtmlBlockState();
@@ -340,7 +357,7 @@ class _MemoizedHtmlBlockState extends State<_MemoizedHtmlBlock> {
                 fullImageUrl: full,
                 showBorder: true,
                 margin: const EdgeInsets.symmetric(vertical: 8),
-                deferUntilVisible: true,
+                deferUntilVisible: widget.deferImages,
               );
             }
 
@@ -399,7 +416,7 @@ class _MemoizedHtmlBlockState extends State<_MemoizedHtmlBlock> {
               fullImageUrl: urls.fullUrl,
               showBorder: true,
               margin: const EdgeInsets.symmetric(vertical: 8),
-              deferUntilVisible: true,
+              deferUntilVisible: widget.deferImages,
             );
           },
         ),

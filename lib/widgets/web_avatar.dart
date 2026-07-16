@@ -8,6 +8,7 @@ import '../providers/settings_provider.dart';
 import '../providers/image_cache_provider.dart';
 import '../utils/image_load_policy.dart';
 import 'avatar_fallback.dart';
+import 'force_show_images.dart';
 
 /// 跨平台头像组件
 /// Web: 通过代理加载（avatar 服务器未返回 CORS 头）
@@ -65,6 +66,7 @@ class _WebAvatarState extends ConsumerState<WebAvatar> {
   }
 
   bool _shouldAutoLoad() {
+    if (ForceShowImages.of(context)) return true;
     final settings = ref.read(settingsProvider);
     final wifiConnected = ref.read(wifiConnectedProvider).value ?? true;
     return shouldAutoLoadInlineImages(

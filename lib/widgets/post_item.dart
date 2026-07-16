@@ -26,6 +26,7 @@ class PostItem extends ConsumerStatefulWidget {
     this.onRate,
     this.onAddToBlacklist,
     this.onReport,
+    this.onShare,
     this.isHighlighted = false,
     this.currentPage,
   });
@@ -39,6 +40,7 @@ class PostItem extends ConsumerStatefulWidget {
   final VoidCallback? onRate;
   final VoidCallback? onAddToBlacklist;
   final VoidCallback? onReport;
+  final VoidCallback? onShare;
   final bool isHighlighted;
   final int? currentPage;
 
@@ -160,6 +162,7 @@ class _PostItemState extends ConsumerState<PostItem> {
         PostActionMenu(
           onFilterByAuthor: widget.onFilterByAuthor,
           onReply: widget.onReply,
+          onShare: widget.onShare,
           onEdit: widget.onEdit,
           onRate: widget.onRate,
           onAddToBlacklist: widget.onAddToBlacklist,
@@ -192,6 +195,7 @@ class _PostItemState extends ConsumerState<PostItem> {
             PostActionMenu(
               onFilterByAuthor: widget.onFilterByAuthor,
               onReply: widget.onReply,
+              onShare: widget.onShare,
               onEdit: widget.onEdit,
               onRate: widget.onRate,
               onAddToBlacklist: widget.onAddToBlacklist,

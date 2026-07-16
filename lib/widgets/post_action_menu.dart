@@ -12,6 +12,7 @@ class PostActionMenu extends StatelessWidget {
     this.onRate,
     this.onAddToBlacklist,
     this.onReport,
+    this.onShare,
   });
 
   final VoidCallback? onFilterByAuthor;
@@ -20,6 +21,7 @@ class PostActionMenu extends StatelessWidget {
   final VoidCallback? onRate;
   final VoidCallback? onAddToBlacklist;
   final VoidCallback? onReport;
+  final VoidCallback? onShare;
 
   @override
   Widget build(BuildContext context) {
@@ -34,6 +36,11 @@ class PostActionMenu extends StatelessWidget {
           onPressed: onReply,
           icon: Icons.reply_outlined,
           label: '回复',
+        ),
+        s1MenuItem(
+          onPressed: onShare,
+          icon: Icons.share_outlined,
+          label: '分享',
         ),
         s1MenuItem(
           onPressed: onEdit,

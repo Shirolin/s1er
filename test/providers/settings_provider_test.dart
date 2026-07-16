@@ -2,6 +2,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:s1_app/config/constants.dart';
 import 'package:s1_app/models/image_load_policy.dart';
+import 'package:s1_app/models/share_image_format.dart';
 import 'package:s1_app/providers/settings_provider.dart';
 import 'package:s1_app/services/settings_store.dart';
 import 'package:s1_app/theme/app_theme.dart';
@@ -55,6 +56,8 @@ void main() {
     expect(state.recordReadingHistory, isTrue);
     expect(state.fontSize, S1Typography.defaultBodySize);
     expect(state.collapsedForums, const {'42'});
+    expect(state.shareImageFormat, ShareImageFormat.jpeg);
+    expect(state.sharePixelRatio, 3);
   });
 
   test('setRecordReadingHistory persists to settings store', () async {
@@ -166,5 +169,50 @@ void main() {
 
     expect(notifications, 0);
     expect(container.read(settingsProvider).showImages, isTrue);
+  });
+
+  test('setShareImageFormat persists to settings store', () async {
+    final container = ProviderContainer(
+      overrides: [
+        settingsProvider.overrideWith(
+          () => SettingsNotifier(store: store, initial: const AppSettings()),
+        ),
+      ],
+    );
+    addTearDown(container.dispose);
+
+    container
+        .read(settingsProvider.notifier)
+        .setShareImageFormat(ShareImageFormat.png);
+
+    expect(
+      container.read(settingsProvider).shareImageFormat,
+      ShareImageFormat.png,
+    );
+    await Future<void>.delayed(const Duration(milliseconds: 50));
+    expect(store.get<String>('shareImageFormat'), 'png');
+  });
+
+  test('setSharePixelRatio clamps to 2-3 and persists', () async {
+    final container = ProviderContainer(
+      overrides: [
+        settingsProvider.overrideWith(
+          () => SettingsNotifier(store: store, initial: const AppSettings()),
+        ),
+      ],
+    );
+    addTearDown(container.dispose);
+
+    container.read(settingsProvider.notifier).setSharePixelRatio(5);
+    expect(container.read(settingsProvider).sharePixelRatio, 3);
+
+    container.read(settingsProvider.notifier).setSharePixelRatio(1);
+    expect(container.read(settingsProvider).sharePixelRatio, 2);
+
+    container.read(settingsProvider.notifier).setSharePixelRatio(2);
+    expect(container.read(settingsProvider).sharePixelRatio, 2);
+
+    await Future<void>.delayed(const Duration(milliseconds: 50));
+    expect(store.get<int>('sharePixelRatio'), 2);
   });
 }

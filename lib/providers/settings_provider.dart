@@ -1,6 +1,7 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../models/image_load_policy.dart';
+import '../models/share_image_format.dart';
 import '../config/constants.dart';
 import '../services/app_local_data.dart';
 import '../services/s1_image_cache.dart';
@@ -19,6 +20,8 @@ class AppSettings {
     this.recordReadingHistory = true,
     this.fontSize = S1Typography.defaultBodySize,
     this.collapsedForums = const {},
+    this.shareImageFormat = ShareImageFormat.jpeg,
+    this.sharePixelRatio = 3,
   });
 
   final String themeMode;
@@ -31,6 +34,8 @@ class AppSettings {
   final bool recordReadingHistory;
   final int fontSize;
   final Set<String> collapsedForums;
+  final ShareImageFormat shareImageFormat;
+  final int sharePixelRatio;
 
   double get textScaleFactor => fontSize / S1Typography.defaultBodySize;
 
@@ -45,6 +50,8 @@ class AppSettings {
     bool? recordReadingHistory,
     int? fontSize,
     Set<String>? collapsedForums,
+    ShareImageFormat? shareImageFormat,
+    int? sharePixelRatio,
   }) {
     return AppSettings(
       themeMode: themeMode ?? this.themeMode,
@@ -57,6 +64,8 @@ class AppSettings {
       recordReadingHistory: recordReadingHistory ?? this.recordReadingHistory,
       fontSize: fontSize ?? this.fontSize,
       collapsedForums: collapsedForums ?? this.collapsedForums,
+      shareImageFormat: shareImageFormat ?? this.shareImageFormat,
+      sharePixelRatio: sharePixelRatio ?? this.sharePixelRatio,
     );
   }
 
@@ -72,7 +81,9 @@ class AppSettings {
         other.imageCacheLimitMb == imageCacheLimitMb &&
         other.recordReadingHistory == recordReadingHistory &&
         other.fontSize == fontSize &&
-        _setEquals(other.collapsedForums, collapsedForums);
+        _setEquals(other.collapsedForums, collapsedForums) &&
+        other.shareImageFormat == shareImageFormat &&
+        other.sharePixelRatio == sharePixelRatio;
   }
 
   static bool _setEquals(Set<String> a, Set<String> b) =>
@@ -90,6 +101,8 @@ class AppSettings {
         recordReadingHistory,
         fontSize,
         Object.hashAllUnordered(collapsedForums),
+        shareImageFormat,
+        sharePixelRatio,
       );
 }
 
@@ -190,6 +203,15 @@ class SettingsNotifier extends Notifier<AppSettings> {
             defaultValue: S1Typography.defaultBodySize,
           ) ??
           S1Typography.defaultBodySize,
+      shareImageFormat: ShareImageFormat.fromStored(
+        settingsStore.get<String>('shareImageFormat'),
+      ),
+      sharePixelRatio: (settingsStore.get<int>(
+                'sharePixelRatio',
+                defaultValue: 3,
+              ) ??
+              3)
+          .clamp(2, 3),
       collapsedForums: Set<String>.from(
         (settingsStore.get<List<dynamic>>('collapsedForums'))?.cast<String>() ??
             [],
@@ -245,6 +267,17 @@ class SettingsNotifier extends Notifier<AppSettings> {
     _persist('fontSize', value);
   }
 
+  void setShareImageFormat(ShareImageFormat value) {
+    _commit(state.copyWith(shareImageFormat: value));
+    _persist('shareImageFormat', value.storageKey);
+  }
+
+  void setSharePixelRatio(int value) {
+    final clamped = value.clamp(2, 3);
+    _commit(state.copyWith(sharePixelRatio: clamped));
+    _persist('sharePixelRatio', clamped);
+  }
+
   void toggleForumCollapse(String fid) {
     final collapsed = Set<String>.from(state.collapsedForums);
     if (collapsed.contains(fid)) {
@@ -268,6 +301,8 @@ class SettingsNotifier extends Notifier<AppSettings> {
       imageCacheLimitMb: defaults.imageCacheLimitMb,
       recordReadingHistory: defaults.recordReadingHistory,
       fontSize: defaults.fontSize,
+      shareImageFormat: defaults.shareImageFormat,
+      sharePixelRatio: defaults.sharePixelRatio,
     );
     _commit(next);
     _persist('themeMode', defaults.themeMode);
@@ -280,6 +315,8 @@ class SettingsNotifier extends Notifier<AppSettings> {
     _applyImageCacheLimit(defaults.imageCacheLimitMb);
     _persist('recordReadingHistory', defaults.recordReadingHistory);
     _persist('fontSize', defaults.fontSize);
+    _persist('shareImageFormat', defaults.shareImageFormat.storageKey);
+    _persist('sharePixelRatio', defaults.sharePixelRatio);
   }
 }
 

@@ -5,6 +5,7 @@ import '../models/user.dart';
 import '../theme/app_theme.dart';
 import '../utils/compact_label.dart';
 import '../utils/format_utils.dart';
+import 's1_adaptive_sheet.dart';
 import 'web_avatar.dart';
 
 /// 展示用户资料 BottomSheet（帖子内点击头像触发）。
@@ -14,10 +15,10 @@ Future<void> showUserProfileSheet(
   VoidCallback? onFilterByAuthor,
   bool isSelf = false,
 }) {
-  return showModalBottomSheet<void>(
+  return showS1AdaptiveSheet<void>(
     context: context,
-    showDragHandle: true,
     isScrollControlled: true,
+    desktopMaxWidth: 400,
     builder: (ctx) => _UserProfileSheet(
       future: future,
       onFilterByAuthor: onFilterByAuthor,

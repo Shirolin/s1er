@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 
 import '../widgets/settings/settings_section.dart';
 import '../widgets/s1_desktop_scaffold.dart';
+import '../widgets/s1_content_width.dart';
 
 class SettingsScreen extends StatelessWidget {
   const SettingsScreen({super.key});
@@ -15,12 +16,14 @@ class SettingsScreen extends StatelessWidget {
           elevation: 0,
           title: const Text('设置'),
         ),
-        body: ListView(
-          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-          children: const [
-            SettingsSection(),
-            SizedBox(height: 24),
-          ],
+        body: S1ContentWidth(
+          child: ListView(
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+            children: const [
+              SettingsSection(),
+              SizedBox(height: 24),
+            ],
+          ),
         ),
       ),
     );

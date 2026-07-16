@@ -22,6 +22,7 @@
 | 路由 | go_router | ^17.0.0 |
 | 本地结构化存储 | drift / drift_flutter | ^2.34.1 / ^0.3.1 |
 | 图片磁盘缓存 | flutter_cache_manager / cached_network_image | ^3.4.1 / ^3.4.1 |
+| 分享卡 JPEG 编码 | image | ^4.8.0 |
 | 网络状态 | connectivity_plus | ^6.1.4 |
 | 备份（L1 ZIP） | archive / file_selector / share_plus | ^4.0.9 / ^1.1.0 / ^13.2.0 |
 | 回复插图 | file_selector + p.sda1.dev 外链图床 | 已有 file_selector；不做 Discuz attach |

@@ -22,8 +22,8 @@ import '../utils/s1_snack_bar.dart';
 import '../utils/forum_list_layout.dart';
 import '../models/thread_open_intent.dart';
 import '../models/thread_destination.dart';
-import '../providers/thread_open_intent_provider.dart';
 import '../utils/thread_navigation.dart';
+import '../widgets/thread_open_intent_scope.dart';
 
 class ForumListScreen extends ConsumerStatefulWidget {
   const ForumListScreen({
@@ -99,13 +99,9 @@ class _ForumListScreenState extends ConsumerState<ForumListScreen> {
 
     if (!shouldOpenForumThreadInPlace(windowWidth) &&
         widget.selectedThreadId != null) {
-      return ProviderScope(
-        key: ValueKey('thread-intent-${widget.selectedThreadId}'),
-        overrides: [
-          threadOpenIntentProvider(widget.selectedThreadId!).overrideWithValue(
-            widget.selectedThreadIntent,
-          ),
-        ],
+      return ThreadOpenIntentScope(
+        tid: widget.selectedThreadId!,
+        intent: widget.selectedThreadIntent,
         child: ThreadDetailScreen(
           tid: widget.selectedThreadId!,
           onClose: () => context.replace('/forum/${widget.fid}'),
@@ -218,14 +214,9 @@ class _ForumListScreenState extends ConsumerState<ForumListScreen> {
                     color: Theme.of(context).colorScheme.outlineVariant,
                   ),
                   Expanded(
-                    child: ProviderScope(
-                      key: ValueKey(
-                        'thread-intent-${widget.selectedThreadId}',
-                      ),
-                      overrides: [
-                        threadOpenIntentProvider(widget.selectedThreadId!)
-                            .overrideWithValue(widget.selectedThreadIntent),
-                      ],
+                    child: ThreadOpenIntentScope(
+                      tid: widget.selectedThreadId!,
+                      intent: widget.selectedThreadIntent,
                       child: ThreadDetailScreen(
                         key: ValueKey(widget.selectedThreadId),
                         tid: widget.selectedThreadId!,

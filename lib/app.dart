@@ -23,10 +23,10 @@ import 'screens/dark_room_screen.dart';
 import 'screens/image_viewer_screen.dart';
 import 'screens/user_space_screen.dart';
 import 'screens/pm_conversation_screen.dart';
-import 'providers/thread_open_intent_provider.dart';
 import 'services/talker.dart';
 import 'theme/app_theme.dart';
 import 'utils/thread_navigation.dart';
+import 'widgets/thread_open_intent_scope.dart';
 
 ImageViewerScreen? _parseImageViewerRoute(GoRouterState state) {
   Map<String, dynamic>? args;
@@ -87,10 +87,9 @@ final _router = GoRouter(
         final intent = ThreadRouteCodec.intentFromUri(state.uri, tid: tid);
         return NoTransitionPage<void>(
           key: ValueKey('thread-$tid'),
-          child: ProviderScope(
-            overrides: [
-              threadOpenIntentProvider(tid).overrideWithValue(intent),
-            ],
+          child: ThreadOpenIntentScope(
+            tid: tid,
+            intent: intent,
             child: ThreadDetailScreen(tid: tid),
           ),
         );

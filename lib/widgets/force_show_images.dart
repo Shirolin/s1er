@@ -19,6 +19,14 @@ class ForceShowImages extends InheritedWidget {
         false;
   }
 
+  /// Reads the flag without registering a dependency.
+  /// Safe to call from [State.initState] or listener callbacks where
+  /// `dependOnInheritedWidgetOfExactType` is not allowed.
+  static bool read(BuildContext context) {
+    return context.getInheritedWidgetOfExactType<ForceShowImages>()?.enabled ??
+        false;
+  }
+
   @override
   bool updateShouldNotify(ForceShowImages oldWidget) {
     return oldWidget.enabled != enabled;

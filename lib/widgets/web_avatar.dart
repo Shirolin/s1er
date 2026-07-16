@@ -66,7 +66,7 @@ class _WebAvatarState extends ConsumerState<WebAvatar> {
   }
 
   bool _shouldAutoLoad() {
-    if (ForceShowImages.of(context)) return true;
+    if (ForceShowImages.read(context)) return true;
     final settings = ref.read(settingsProvider);
     final wifiConnected = ref.read(wifiConnectedProvider).value ?? true;
     return shouldAutoLoadInlineImages(

@@ -65,6 +65,7 @@ class PrivateMessage {
     }
 
     final value = _firstNonEmpty([
+      json['vdateline'],
       json['date'],
       json['pmdate'],
       json['postdatetime'],

@@ -163,7 +163,7 @@ void main() {
                 'msgfromid': '200001',
                 'msgfrom': '示例用户',
                 'message': '第二条',
-                'pmdate': '2024-06-24 16:02',
+                'vdateline': '2025-6-17 09:34',
               },
             ],
             'perpage': '20',
@@ -174,7 +174,10 @@ void main() {
       );
 
       expect(result.items.first.dateline, 1719216060);
-      expect(result.items.last.dateline, greaterThan(0));
+      expect(
+        result.items.last.dateline,
+        DateTime(2025, 6, 17, 9, 34).millisecondsSinceEpoch ~/ 1000,
+      );
     });
 
     test('rejects missing list and login responses', () {

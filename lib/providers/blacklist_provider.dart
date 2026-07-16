@@ -63,8 +63,8 @@ final blacklistProvider =
 );
 
 /// 某用户是否在指定作用域下被屏蔽（随 blacklistProvider 更新）。
-final blacklistHasScopeProvider =
-    Provider.family<bool, ({String uid, String scope})>((ref, args) {
+final blacklistHasScopeProvider = Provider.autoDispose
+    .family<bool, ({String uid, String scope})>((ref, args) {
   final list = ref.watch(blacklistProvider);
   for (final entry in list) {
     if (entry.uid == args.uid && entry.hasScope(args.scope)) return true;

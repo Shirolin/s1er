@@ -37,7 +37,7 @@ class RateActionController {
   }
 }
 
-final rateActionControllerProvider =
-    Provider.family<RateActionController, RateTarget>((ref, target) {
+final rateActionControllerProvider = Provider.autoDispose
+    .family<RateActionController, RateTarget>((ref, target) {
   return RateActionController(ref, target);
 });

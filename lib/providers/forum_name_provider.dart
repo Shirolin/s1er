@@ -10,6 +10,7 @@ final fidToForumNameMapProvider = Provider<Map<String, String>>((ref) {
   return buildFidToForumNameMap(categories);
 });
 
-final forumNameProvider = Provider.family<String?, String>((ref, fid) {
+final forumNameProvider =
+    Provider.autoDispose.family<String?, String>((ref, fid) {
   return ref.watch(fidToForumNameMapProvider)[fid];
 });

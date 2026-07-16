@@ -17,6 +17,6 @@ class PollVoteController {
 }
 
 final pollVoteControllerProvider =
-    Provider.family<PollVoteController, String>((ref, tid) {
+    Provider.autoDispose.family<PollVoteController, String>((ref, tid) {
   return PollVoteController(ref, tid);
 });

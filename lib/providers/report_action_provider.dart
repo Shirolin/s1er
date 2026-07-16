@@ -42,7 +42,7 @@ class ReportActionController {
   }
 }
 
-final reportActionControllerProvider =
-    Provider.family<ReportActionController, ReportTarget>((ref, target) {
+final reportActionControllerProvider = Provider.autoDispose
+    .family<ReportActionController, ReportTarget>((ref, target) {
   return ReportActionController(ref, target);
 });

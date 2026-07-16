@@ -8,6 +8,7 @@ import '../services/api_service.dart';
 class ThreadListState {
   ThreadListState({
     this.threads = const [],
+    this.sourceThreads = const [],
     this.currentPage = 1,
     this.totalPages = 1,
     this.forumName,
@@ -18,6 +19,7 @@ class ThreadListState {
   });
 
   final List<Thread> threads;
+  final List<Thread> sourceThreads;
   final int currentPage;
   final int totalPages;
   final String? forumName;
@@ -28,6 +30,7 @@ class ThreadListState {
 
   ThreadListState copyWith({
     List<Thread>? threads,
+    List<Thread>? sourceThreads,
     int? currentPage,
     int? totalPages,
     String? forumName,
@@ -40,6 +43,7 @@ class ThreadListState {
   }) {
     return ThreadListState(
       threads: threads ?? this.threads,
+      sourceThreads: sourceThreads ?? this.sourceThreads,
       currentPage: currentPage ?? this.currentPage,
       totalPages: totalPages ?? this.totalPages,
       forumName: forumName ?? this.forumName,
@@ -61,8 +65,7 @@ class ThreadListNotifier extends AsyncNotifier<ThreadListState> {
 
   @override
   Future<ThreadListState> build() {
-    // 黑名单变更时重新过滤当前页。
-    ref.watch(blacklistProvider);
+    ref.listen(blacklistProvider, (_, __) => _refilterCurrentPage());
     return _loadPage(1);
   }
 
@@ -77,15 +80,7 @@ class ThreadListNotifier extends AsyncNotifier<ThreadListState> {
     final threads = ApiService.parseThreadList(result);
     final parsedTypes = ApiService.parseThreadTypes(result);
     if (parsedTypes.isNotEmpty) _threadTypes = parsedTypes;
-    final filtered = threads
-        .where(
-          (t) =>
-              t.authorId.isEmpty ||
-              !ref
-                  .read(blacklistServiceProvider)
-                  .hasScope(t.authorId, BlacklistRecord.scopeThread),
-        )
-        .toList();
+    final filtered = _filterThreads(threads);
     final totalPages = ApiService.parseThreadListTotalPages(
       result,
       currentPage: page,
@@ -94,11 +89,32 @@ class ThreadListNotifier extends AsyncNotifier<ThreadListState> {
     );
     return ThreadListState(
       threads: filtered,
+      sourceThreads: threads,
       currentPage: page,
       totalPages: totalPages,
       forumName: ApiService.parseForumDisplayName(result),
       threadTypes: _threadTypes,
       selectedTypeId: _selectedTypeId,
+    );
+  }
+
+  List<Thread> _filterThreads(List<Thread> threads) {
+    return threads
+        .where(
+          (t) =>
+              t.authorId.isEmpty ||
+              !ref
+                  .read(blacklistServiceProvider)
+                  .hasScope(t.authorId, BlacklistRecord.scopeThread),
+        )
+        .toList();
+  }
+
+  void _refilterCurrentPage() {
+    final current = state.asData?.value;
+    if (current == null) return;
+    state = AsyncValue.data(
+      current.copyWith(threads: _filterThreads(current.sourceThreads)),
     );
   }
 
@@ -132,6 +148,7 @@ class ThreadListNotifier extends AsyncNotifier<ThreadListState> {
       state = AsyncValue.data(
         ThreadListState(
           threads: current.threads,
+          sourceThreads: current.sourceThreads,
           currentPage: current.currentPage,
           totalPages: current.totalPages,
           forumName: current.forumName,

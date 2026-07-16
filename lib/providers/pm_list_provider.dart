@@ -8,21 +8,25 @@ import 'blacklist_provider.dart';
 class PmListState {
   PmListState({
     this.items = const [],
+    this.sourceItems = const [],
     this.currentPage = 1,
     this.totalPages = 1,
   });
 
   final List<PrivateMessageItem> items;
+  final List<PrivateMessageItem> sourceItems;
   final int currentPage;
   final int totalPages;
 
   PmListState copyWith({
     List<PrivateMessageItem>? items,
+    List<PrivateMessageItem>? sourceItems,
     int? currentPage,
     int? totalPages,
   }) {
     return PmListState(
       items: items ?? this.items,
+      sourceItems: sourceItems ?? this.sourceItems,
       currentPage: currentPage ?? this.currentPage,
       totalPages: totalPages ?? this.totalPages,
     );
@@ -36,8 +40,8 @@ class PmListNotifier extends AsyncNotifier<PmListState> {
 
   @override
   Future<PmListState> build() async {
+    ref.listen(blacklistProvider, (_, __) => _refilterCurrentPage());
     if (seed != null) return seed!;
-    ref.watch(blacklistProvider);
     return _loadPage(1);
   }
 
@@ -45,15 +49,28 @@ class PmListNotifier extends AsyncNotifier<PmListState> {
 
   Future<PmListState> _loadPage(int page) async {
     final result = await _apiService.getPmList(page: page);
-    final blacklist = ref.read(blacklistServiceProvider);
     return PmListState(
-      items: result.items
-          .where(
-            (item) => !blacklist.hasScope(item.touid, BlacklistRecord.scopePm),
-          )
-          .toList(),
+      items: _filterItems(result.items),
+      sourceItems: result.items,
       currentPage: result.currentPage,
       totalPages: result.totalPages,
+    );
+  }
+
+  List<PrivateMessageItem> _filterItems(List<PrivateMessageItem> items) {
+    final blacklist = ref.read(blacklistServiceProvider);
+    return items
+        .where(
+          (item) => !blacklist.hasScope(item.touid, BlacklistRecord.scopePm),
+        )
+        .toList();
+  }
+
+  void _refilterCurrentPage() {
+    final current = state.asData?.value;
+    if (current == null) return;
+    state = AsyncValue.data(
+      current.copyWith(items: _filterItems(current.sourceItems)),
     );
   }
 

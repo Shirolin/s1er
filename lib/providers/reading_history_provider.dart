@@ -38,7 +38,7 @@ final readingHistoryServiceProvider = Provider<ReadingHistoryService>((ref) {
 /// 按 tid 订阅阅读历史列表中的单条记录（随 [upsert] 增量更新）。
 
 final readingRecordProvider =
-    Provider.family<ReadingRecord?, String>((ref, tid) {
+    Provider.autoDispose.family<ReadingRecord?, String>((ref, tid) {
   return ref.watch(readingHistoryProvider.select((s) => s.byTid[tid]));
 });
 

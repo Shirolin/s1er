@@ -89,8 +89,21 @@ class S1DesktopScaffold extends ConsumerWidget {
               onDestinationSelected: selectDestination,
               labelType: NavigationRailLabelType.all,
               leading: Padding(
-                padding: const EdgeInsets.only(top: 8, bottom: 8),
-                child: Icon(Icons.forum, size: 28, color: scheme.primary),
+                padding: const EdgeInsets.only(top: 4),
+                child: IconButton(
+                  tooltip: '首页',
+                  onPressed: () => GoRouter.of(context).go('/'),
+                  icon: Image.asset(
+                    'assets/branding/s1er_mark.png',
+                    width: 28,
+                    height: 28,
+                    color: scheme.primary,
+                    colorBlendMode: BlendMode.srcIn,
+                    filterQuality: FilterQuality.medium,
+                    gaplessPlayback: true,
+                    excludeFromSemantics: true,
+                  ),
+                ),
               ),
               destinations: isLoggedIn
                   ? const [

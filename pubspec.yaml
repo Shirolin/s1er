@@ -59,6 +59,7 @@ flutter:
   uses-material-design: true
   assets:
     - assets/branding/github_mark.png
+    - assets/branding/s1er_mark.png
     - assets/emoticons/
     - assets/emoticons/face2017/
     - assets/emoticons/carton2017/

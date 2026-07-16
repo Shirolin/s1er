@@ -17,6 +17,7 @@ import '../theme/app_theme.dart';
 import '../utils/s1_snack_bar.dart';
 import '../widgets/web_image_stub.dart'
     if (dart.library.html) '../widgets/web_image_html.dart';
+import '../widgets/s1_adaptive_sheet.dart';
 
 class ImageViewerScreen extends ConsumerStatefulWidget {
   const ImageViewerScreen({
@@ -434,10 +435,9 @@ class _ImageViewerScreenState extends ConsumerState<ImageViewerScreen> {
     final textTheme = Theme.of(context).textTheme;
     final colorScheme = Theme.of(context).colorScheme;
 
-    showModalBottomSheet(
+    showS1AdaptiveSheet<void>(
       context: context,
-      backgroundColor: colorScheme.surfaceContainerHigh,
-      shape: S1Shape.bottomSheetShape,
+      desktopMaxWidth: 560,
       builder: (context) {
         return Padding(
           padding: const EdgeInsets.fromLTRB(24, 16, 24, 24),

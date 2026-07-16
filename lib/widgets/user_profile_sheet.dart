@@ -19,6 +19,7 @@ Future<void> showUserProfileSheet(
     context: context,
     isScrollControlled: true,
     desktopMaxWidth: 400,
+    desktopPresentation: S1DesktopSheetPresentation.sideSheet,
     builder: (ctx) => _UserProfileSheet(
       future: future,
       onFilterByAuthor: onFilterByAuthor,

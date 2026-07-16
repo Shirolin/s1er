@@ -26,6 +26,7 @@ import '../widgets/bbcode_renderer.dart';
 import '../widgets/compose_emoticon_panel.dart';
 import '../widgets/quote_block.dart';
 import '../widgets/s1_confirm_dialog.dart';
+import '../widgets/s1_adaptive_sheet.dart';
 
 const _recentEmoticonsKey = 'compose_recent_emoticons';
 
@@ -600,13 +601,10 @@ class _ComposeScreenState extends ConsumerState<ComposeScreen> {
     final quoteInfo = _quoting ? _quoteInfo : null;
     final tid = widget.tid;
 
-    await showModalBottomSheet<void>(
+    await showS1AdaptiveSheet<void>(
       context: context,
-      elevation: 0,
-      showDragHandle: true,
       isScrollControlled: true,
-      backgroundColor: Theme.of(context).colorScheme.surfaceContainer,
-      shape: S1Shape.bottomSheetShape,
+      desktopMaxWidth: 840,
       builder: (ctx) {
         final textTheme = Theme.of(ctx).textTheme;
         final height = MediaQuery.sizeOf(ctx).height * 0.65;

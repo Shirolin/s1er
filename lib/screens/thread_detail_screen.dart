@@ -27,9 +27,11 @@ import '../widgets/s1_error_view.dart';
 import '../widgets/s1_fab_layout.dart';
 import '../widgets/s1_swipe_pagination.dart';
 import '../widgets/s1_desktop_scaffold.dart';
+import '../widgets/s1_content_width.dart';
 import '../models/open_scroll_target.dart';
 import '../models/thread_destination.dart';
 import '../utils/scroll_floor.dart';
+import '../widgets/s1_adaptive_sheet.dart';
 import '../utils/s1_snack_bar.dart';
 import '../utils/thread_navigation.dart';
 import '../providers/post_share_provider.dart';
@@ -75,8 +77,16 @@ class ThreadDetailScreen extends ConsumerStatefulWidget {
   const ThreadDetailScreen({
     super.key,
     required this.tid,
+    this.embedded = false,
+    this.onClose,
+    this.onDestinationChanged,
   });
   final String tid;
+
+  /// Whether the screen is rendered inside the forum desktop detail pane.
+  final bool embedded;
+  final VoidCallback? onClose;
+  final ValueChanged<ThreadDestination>? onDestinationChanged;
 
   @override
   ConsumerState<ThreadDetailScreen> createState() => _ThreadDetailScreenState();
@@ -349,9 +359,12 @@ class _ThreadDetailScreenState extends ConsumerState<ThreadDetailScreen> {
     });
     await ref.read(postProvider(widget.tid).notifier).goToPage(page);
     if (!mounted) return;
-    context.replace(
-      ThreadRouteCodec.encodePath(ThreadPage(widget.tid, page)),
-    );
+    final destination = ThreadPage(widget.tid, page);
+    if (widget.onDestinationChanged != null) {
+      widget.onDestinationChanged!(destination);
+    } else {
+      context.replace(ThreadRouteCodec.encodePath(destination));
+    }
     final loaded = ref.read(postProvider(widget.tid)).asData?.value;
     if (loaded != null) {
       // Page changes land at top; keys rebuild after the next frame.
@@ -590,8 +603,9 @@ class _ThreadDetailScreenState extends ConsumerState<ThreadDetailScreen> {
   }
 
   void _showFullTitle(BuildContext context, String title) {
-    showModalBottomSheet(
+    showS1AdaptiveSheet<void>(
       context: context,
+      desktopMaxWidth: 560,
       builder: (context) => SafeArea(
         child: Padding(
           padding: const EdgeInsets.fromLTRB(24, 16, 24, 24),
@@ -646,40 +660,47 @@ class _ThreadDetailScreenState extends ConsumerState<ThreadDetailScreen> {
       authStateProvider.select((auth) => auth.isLoggedIn),
     );
 
-    return S1DesktopScaffold(
-      highlightedTab: 0,
-      child: Scaffold(
-        appBar: AppBar(
-          elevation: 0,
-          title: postsAsync.whenOrNull(
-                data: (s) => s.threadSubject != null
-                    ? GestureDetector(
-                        onTap: () => _showFullTitle(context, s.threadSubject!),
-                        child: Text(
-                          s.threadSubject!,
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
-                        ),
-                      )
-                    : null,
-              ) ??
-              const Text('Thread'),
-          actions: [
-            FavoriteBookmarkButton(
-              type: FavoriteType.thread,
-              id: widget.tid,
-            ),
-            AppBarMoreMenu(
-              onRefresh: () =>
-                  ref.read(postProvider(widget.tid).notifier).refresh(),
-              browserUrl: '${ApiConfig.baseUrl}/thread-${widget.tid}-1-1.html',
-            ),
-          ],
-        ),
-        // Keep the post list mounted while consuming OpenScrollTarget so
-        // index-based scroll (pid / floor) can run against live GlobalKeys.
-        // `_pendingInitialNavigation` only gates progress writeback.
-        body: postsAsync.when(
+    final screen = Scaffold(
+      appBar: AppBar(
+        elevation: 0,
+        leading: widget.onClose == null
+            ? null
+            : IconButton(
+                tooltip: '返回主题列表',
+                onPressed: widget.onClose,
+                icon: const Icon(Icons.arrow_back),
+              ),
+        title: postsAsync.whenOrNull(
+              data: (s) => s.threadSubject != null
+                  ? GestureDetector(
+                      onTap: () => _showFullTitle(context, s.threadSubject!),
+                      child: Text(
+                        s.threadSubject!,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                    )
+                  : null,
+            ) ??
+            const Text('Thread'),
+        actions: [
+          FavoriteBookmarkButton(
+            type: FavoriteType.thread,
+            id: widget.tid,
+          ),
+          AppBarMoreMenu(
+            onRefresh: () =>
+                ref.read(postProvider(widget.tid).notifier).refresh(),
+            browserUrl: '${ApiConfig.baseUrl}/thread-${widget.tid}-1-1.html',
+          ),
+        ],
+      ),
+      // Keep the post list mounted while consuming OpenScrollTarget so
+      // index-based scroll (pid / floor) can run against live GlobalKeys.
+      // `_pendingInitialNavigation` only gates progress writeback.
+      body: S1ContentWidth(
+        mode: S1ContentWidthMode.reading,
+        child: postsAsync.when(
           loading: _buildLoadingBody,
           error: (e, st) => S1ErrorView(
             error: e,
@@ -821,6 +842,9 @@ class _ThreadDetailScreenState extends ConsumerState<ThreadDetailScreen> {
         ),
       ),
     );
+    return widget.embedded
+        ? screen
+        : S1DesktopScaffold(highlightedTab: 0, child: screen);
   }
 }
 

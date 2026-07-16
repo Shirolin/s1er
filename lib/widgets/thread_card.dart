@@ -11,10 +11,24 @@ import '../utils/format_utils.dart';
 import '../utils/thread_navigation.dart';
 import 'page_picker_sheet.dart';
 
+typedef ThreadOpenCallback = void Function(
+  ThreadDestination destination, {
+  int? resumePageHint,
+});
+
 /// 从当前用户的阅读历史列表中查出指定 tid 的记录（无则 null）。
 class ThreadCard extends ConsumerWidget {
-  const ThreadCard({super.key, required this.thread});
+  const ThreadCard({
+    super.key,
+    required this.thread,
+    this.onOpenThread,
+    this.selected = false,
+  });
   final Thread thread;
+
+  /// Overrides normal route navigation for the forum desktop detail pane.
+  final ThreadOpenCallback? onOpenThread;
+  final bool selected;
 
   int _calcTotalPages(
     int replies, {
@@ -25,6 +39,17 @@ class ThreadCard extends ConsumerWidget {
 
   /// 点击：按阅读记录解析目标页（续读 / 已读落末页 / 有新回复落新页）。
   void _handleTap(BuildContext context, WidgetRef ref) {
+    if (onOpenThread != null) {
+      final record = ref.read(readingRecordProvider(thread.tid));
+      final liveTotalPages = _calcTotalPages(thread.replies);
+      final targetPage = record?.resolveOpenPage(liveTotalPages);
+      onOpenThread!(
+        ResumeThread(thread.tid),
+        resumePageHint:
+            targetPage != null && targetPage > 1 ? targetPage : null,
+      );
+      return;
+    }
     final record = ref.read(readingRecordProvider(thread.tid));
     final liveTotalPages = _calcTotalPages(thread.replies);
     context.push(
@@ -39,6 +64,10 @@ class ThreadCard extends ConsumerWidget {
   void _showPageSheet(BuildContext context) {
     final totalPages = _calcTotalPages(thread.replies);
     if (totalPages <= 1) {
+      if (onOpenThread != null) {
+        onOpenThread!(ThreadPage(thread.tid, 1));
+        return;
+      }
       context.push(
         ThreadRouteCodec.encodePath(ThreadPage(thread.tid, 1)),
       );
@@ -56,6 +85,10 @@ class ThreadCard extends ConsumerWidget {
         return '第 $start - $end 楼';
       },
       onPageSelected: (page) {
+        if (onOpenThread != null) {
+          onOpenThread!(ThreadPage(thread.tid, page));
+          return;
+        }
         context.push(
           ThreadRouteCodec.encodePath(ThreadPage(thread.tid, page)),
         );
@@ -75,44 +108,53 @@ class ThreadCard extends ConsumerWidget {
       height: 1.2,
     );
 
-    return Card(
-      margin: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-      elevation: 0,
-      color: isSticky ? scheme.primaryContainer : scheme.surfaceContainerLow,
-      shape: S1Shape.cardShape,
-      child: InkWell(
-        onTap: () => _handleTap(context, ref),
-        borderRadius: S1Shape.medium,
-        child: Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              _TitleLine(
-                subject: thread.subject,
-                isSticky: isSticky,
-                hasTag: hasTag,
-                tagName: thread.typeName,
-                scheme: scheme,
-                textTheme: textTheme,
-              ),
-              const SizedBox(height: 8),
-              _MetaLine(
-                author: thread.author,
-                time: formatTimeAgo(thread.dateline),
-                views: formatCount(thread.views),
-                replies: formatCount(thread.replies),
-                totalPages: totalPages,
-                metaStyle: metaStyle,
-                scheme: scheme,
-                onPageTap:
-                    totalPages > 1 ? () => _showPageSheet(context) : null,
-              ),
-              _ReadingProgressBar(
-                tid: thread.tid,
-                liveTotalPages: totalPages,
-              ),
-            ],
+    return Semantics(
+      selected: selected,
+      button: true,
+      label: thread.subject,
+      child: Card(
+        margin: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+        elevation: 0,
+        color: selected
+            ? scheme.secondaryContainer
+            : isSticky
+                ? scheme.primaryContainer
+                : scheme.surfaceContainerLow,
+        shape: S1Shape.cardShape,
+        child: InkWell(
+          onTap: () => _handleTap(context, ref),
+          borderRadius: S1Shape.medium,
+          child: Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                _TitleLine(
+                  subject: thread.subject,
+                  isSticky: isSticky,
+                  hasTag: hasTag,
+                  tagName: thread.typeName,
+                  scheme: scheme,
+                  textTheme: textTheme,
+                ),
+                const SizedBox(height: 8),
+                _MetaLine(
+                  author: thread.author,
+                  time: formatTimeAgo(thread.dateline),
+                  views: formatCount(thread.views),
+                  replies: formatCount(thread.replies),
+                  totalPages: totalPages,
+                  metaStyle: metaStyle,
+                  scheme: scheme,
+                  onPageTap:
+                      totalPages > 1 ? () => _showPageSheet(context) : null,
+                ),
+                _ReadingProgressBar(
+                  tid: thread.tid,
+                  liveTotalPages: totalPages,
+                ),
+              ],
+            ),
           ),
         ),
       ),

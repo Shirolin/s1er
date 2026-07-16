@@ -29,6 +29,38 @@ ReadingRecord _record({
 
 void main() {
   group('ThreadRouteCodec', () {
+    group('forum list-detail route', () {
+      test('encodes a forced page without colliding with forum page', () {
+        expect(
+          ThreadRouteCodec.encodeForumPath('4', const ThreadPage('100', 3)),
+          '/forum/4?tid=100&threadPage=3',
+        );
+      });
+
+      test('pid takes priority and restores the post intent', () {
+        final intent = ThreadRouteCodec.forumIntentFromUri(
+          Uri.parse('/forum/4?tid=100&threadPage=3&pid=999'),
+        );
+        expect(intent?.mode, ThreadOpenMode.post);
+        expect(intent?.pid, '999');
+      });
+
+      test('resume page hint restores resume intent', () {
+        final intent = ThreadRouteCodec.forumIntentFromUri(
+          Uri.parse('/forum/4?tid=100&threadPage=3&resume=1'),
+        );
+        expect(intent?.mode, ThreadOpenMode.resume);
+        expect(intent?.page, 3);
+      });
+
+      test('missing tid does not create a detail intent', () {
+        expect(
+          ThreadRouteCodec.forumIntentFromUri(Uri.parse('/forum/4')),
+          isNull,
+        );
+      });
+    });
+
     test('resume round-trip is bare path', () {
       const dest = ResumeThread('100');
       final uri = ThreadRouteCodec.encode(dest);

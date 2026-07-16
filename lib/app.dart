@@ -65,8 +65,19 @@ final _router = GoRouter(
     GoRoute(path: '/', builder: (context, state) => const HomeScreen()),
     GoRoute(
       path: '/forum/:fid',
-      builder: (context, state) =>
-          ForumListScreen(fid: state.pathParameters['fid']!),
+      pageBuilder: (context, state) {
+        final fid = state.pathParameters['fid']!;
+        return NoTransitionPage<void>(
+          key: ValueKey('forum-$fid'),
+          child: ForumListScreen(
+            fid: fid,
+            selectedThreadId:
+                state.uri.queryParameters[ThreadRouteCodec.forumThreadIdQuery],
+            selectedThreadIntent:
+                ThreadRouteCodec.forumIntentFromUri(state.uri),
+          ),
+        );
+      },
     ),
     GoRoute(
       path: '/thread/:tid',

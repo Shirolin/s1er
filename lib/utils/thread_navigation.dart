@@ -81,6 +81,9 @@ OpenScrollTarget resolveResumeScrollTarget({
 
 /// Destination ↔ URI 编解码。
 abstract final class ThreadRouteCodec {
+  static const forumThreadIdQuery = 'tid';
+  static const forumThreadPageQuery = 'threadPage';
+
   static Uri encode(ThreadDestination destination) {
     final tid = destination.tid;
     switch (destination) {
@@ -102,6 +105,41 @@ abstract final class ThreadRouteCodec {
   /// 将 destination 编为 go_router 可用的 location 字符串。
   static String encodePath(ThreadDestination destination) =>
       encode(destination).toString();
+
+  /// 将详情目标编码为论坛双栏路由。列表页码不占用 `page`，避免歧义。
+  static String encodeForumPath(
+    String fid,
+    ThreadDestination destination, {
+    int? resumePageHint,
+  }) {
+    final query = <String, String>{forumThreadIdQuery: destination.tid};
+    switch (destination) {
+      case ThreadPage(:final page):
+        query[forumThreadPageQuery] = '$page';
+      case ThreadPost(:final pid):
+        query['pid'] = pid;
+      case ResumeThread():
+        if (resumePageHint != null && resumePageHint > 1) {
+          query[forumThreadPageQuery] = '$resumePageHint';
+          query[kThreadResumeQuery] = '1';
+        }
+    }
+    return Uri(path: '/forum/$fid', queryParameters: query).toString();
+  }
+
+  /// 从论坛双栏路由解析详情 Intent。
+  static ThreadOpenIntent? forumIntentFromUri(Uri uri) {
+    final tid = uri.queryParameters[forumThreadIdQuery];
+    if (tid == null || tid.isEmpty) return null;
+    final pid = uri.queryParameters['pid'];
+    if (pid != null && pid.isNotEmpty) return toIntent(ThreadPost(tid, pid));
+    final page = int.tryParse(uri.queryParameters[forumThreadPageQuery] ?? '');
+    final resume = uri.queryParameters[kThreadResumeQuery] == '1';
+    if (page != null && page >= 1 && !resume) {
+      return toIntent(ThreadPage(tid, page));
+    }
+    return toIntent(ResumeThread(tid), resumePageHint: resume ? page : null);
+  }
 
   /// 从路由 URI 解码。非法 / 缺失 page → resume。
   ///

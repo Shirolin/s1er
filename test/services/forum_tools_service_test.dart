@@ -89,20 +89,20 @@ void main() {
       },
     );
 
-    test('dark room GET passes cursor and omits formhash', () async {
+    test('dark room keeps raw non-standard JSON for normalization', () async {
       final container = ProviderContainer();
       addTearDown(container.dispose);
       final adapter = _CaptureAdapter(
-        responseBody: jsonEncode({
-          'message': '1|10',
-          'data': <String, dynamic>{},
-        }),
+        responseBody:
+            '{"message":"1|10","data":{576523:{"cid":"11","uid":"576523","username":"foo"}}}',
       );
       final dio = Dio()..httpClientAdapter = adapter;
       final client = S1HttpClient.test(container, dio);
       final service = ForumToolsService(client);
 
-      await service.getDarkRoom(cursor: '78648');
+      final result = await service.getDarkRoom(cursor: '78648');
+      expect(result.items.single.uid, '576523');
+      expect(result.items.single.username, 'foo');
       expect(adapter.requests, hasLength(1));
       final req = adapter.requests.single;
       expect(req.method, 'GET');
@@ -110,6 +110,7 @@ void main() {
       expect(req.path, contains('ajaxdata=json'));
       expect(req.path, contains('cid=78648'));
       expect(req.path, isNot(contains('formhash=')));
+      expect(req.responseType, ResponseType.plain);
     });
   });
 }

@@ -83,7 +83,14 @@ class ForumToolsService {
   Future<DarkRoomPage> getDarkRoom({String? cursor}) async {
     final url = ApiConfig.darkRoomUrl(cursor: cursor);
     try {
-      final response = await _httpClient.get(url);
+      // S1 returns bare numeric object keys (for example, {576523: ...}),
+      // which are not valid JSON. Keep the raw body so [ensureJson] can
+      // normalize it before Dart decodes it; Android Dio otherwise decodes
+      // application/json eagerly and throws first.
+      final response = await _httpClient.get(
+        url,
+        options: Options(responseType: ResponseType.plain),
+      );
       final json = ensureJson(response.data);
       return parseDarkRoomJson(json, requestCursor: cursor);
     } catch (e, st) {

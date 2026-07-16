@@ -87,6 +87,20 @@ class _HomeScreenBodyState extends ConsumerState<_HomeScreenBody> {
     final noticeFeed = isMessagesTab
         ? ref.watch(noticeFeedSelectionProvider)
         : NoticeFeed.mypost;
+    final messagesPage = !isMessagesTab
+        ? 1
+        : messagesSegment == 0
+            ? ref.watch(
+                pmListProvider.select(
+                  (async) => async.asData?.value.currentPage ?? 1,
+                ),
+              )
+            : ref.watch(
+                noticeListProvider.select((async) {
+                  final state = async.asData?.value;
+                  return state?.feed == noticeFeed ? state!.currentPage : 1;
+                }),
+              );
 
     return Scaffold(
       appBar: AppBar(
@@ -117,6 +131,7 @@ class _HomeScreenBodyState extends ConsumerState<_HomeScreenBody> {
                       browserUrl: messagesBrowserUrl(
                         messagesSegment,
                         noticeFeed: noticeFeed,
+                        page: messagesPage,
                       ),
                     ),
                   ]

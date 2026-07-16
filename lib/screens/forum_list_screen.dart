@@ -126,7 +126,10 @@ class _ForumListScreenState extends ConsumerState<ForumListScreen> {
             AppBarMoreMenu(
               onRefresh: () =>
                   ref.read(threadListProvider(widget.fid).notifier).refresh(),
-              browserUrl: '${ApiConfig.baseUrl}/forum-${widget.fid}-1.html',
+              browserUrl: ApiConfig.forumBrowserUrl(
+                fid: widget.fid,
+                page: threadsAsync.asData?.value.currentPage ?? 1,
+              ),
             ),
           ],
         ),

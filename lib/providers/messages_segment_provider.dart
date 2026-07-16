@@ -28,10 +28,11 @@ final noticeFeedSelectionProvider =
 String messagesBrowserUrl(
   int segment, {
   NoticeFeed noticeFeed = NoticeFeed.mypost,
+  int page = 1,
 }) {
-  if (segment == 1) {
-    return '${ApiConfig.baseUrl}/home.php'
-        '?mod=space&do=notice&view=${noticeFeed.name}&type=&isread=1';
-  }
-  return '${ApiConfig.baseUrl}/home.php?mod=space&do=pm&filter=privatepm';
+  return ApiConfig.messagesBrowserUrl(
+    isNotice: segment == 1,
+    noticeFeed: noticeFeed.name,
+    page: page,
+  );
 }

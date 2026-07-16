@@ -233,8 +233,10 @@ class _PmConversationScreenState extends ConsumerState<PmConversationScreen> {
           actions: [
             AppBarMoreMenu(
               onRefresh: () => ref.read(provider.notifier).refresh(),
-              browserUrl: '${ApiConfig.baseUrl}/home.php'
-                  '?mod=space&do=pm&subop=view&touid=${widget.touid}',
+              browserUrl: ApiConfig.pmConversationBrowserUrl(
+                touid: widget.touid,
+                page: async.asData?.value.currentPage ?? 1,
+              ),
             ),
           ],
         ),

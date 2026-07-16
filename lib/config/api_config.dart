@@ -93,6 +93,71 @@ class ApiConfig {
   static String friendsBrowserUrl(String uid) =>
       '$baseUrl/home.php?mod=space&uid=$uid&do=friend&view=me&mobile=2';
 
+  static String threadBrowserUrl({required String tid, required int page}) =>
+      '$baseUrl/thread-$tid-$page-1.html';
+
+  static String forumBrowserUrl({required String fid, required int page}) =>
+      '$baseUrl/forum-$fid-$page.html';
+
+  static String pmConversationBrowserUrl({
+    required String touid,
+    required int page,
+  }) =>
+      '$baseUrl/home.php?mod=space&do=pm&subop=view&touid=$touid&page=$page';
+
+  static String favoriteBrowserUrl({
+    String? uid,
+    String? type,
+    required int page,
+  }) {
+    final params = <String, String>{
+      'mod': 'space',
+      if (uid != null && uid.isNotEmpty) 'uid': uid,
+      'do': 'favorite',
+      'view': 'me',
+      if (type != null && type.isNotEmpty) 'type': type,
+      'page': page.toString(),
+      'mobile': '2',
+    };
+    return '$baseUrl/home.php?${Uri(queryParameters: params).query}';
+  }
+
+  static String userSpaceBrowserUrl({
+    required String uid,
+    required String type,
+    required int page,
+  }) {
+    final params = <String, String>{
+      'mod': 'space',
+      'uid': uid,
+      'do': 'thread',
+      'view': 'me',
+      'type': type,
+      'from': 'space',
+      'page': page.toString(),
+    };
+    return '$baseUrl/home.php?${Uri(queryParameters: params).query}';
+  }
+
+  static String messagesBrowserUrl({
+    required bool isNotice,
+    String noticeFeed = 'mypost',
+    required int page,
+  }) {
+    final params = <String, String>{
+      'mod': 'space',
+      'do': isNotice ? 'notice' : 'pm',
+      if (isNotice) ...{
+        'view': noticeFeed,
+        'type': '',
+        'isread': '1',
+      } else
+        'filter': 'privatepm',
+      'page': page.toString(),
+    };
+    return '$baseUrl/home.php?${Uri(queryParameters: params).query}';
+  }
+
   static String serverBlacklistUrl({required String uid, required int page}) =>
       '$baseUrl/home.php?mod=space&do=friend&view=blacklist'
       '&uid=${Uri.encodeQueryComponent(uid)}&page=$page&mobile=2';

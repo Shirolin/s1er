@@ -691,7 +691,10 @@ class _ThreadDetailScreenState extends ConsumerState<ThreadDetailScreen> {
           AppBarMoreMenu(
             onRefresh: () =>
                 ref.read(postProvider(widget.tid).notifier).refresh(),
-            browserUrl: '${ApiConfig.baseUrl}/thread-${widget.tid}-1-1.html',
+            browserUrl: ApiConfig.threadBrowserUrl(
+              tid: widget.tid,
+              page: postsAsync.asData?.value.currentPage ?? 1,
+            ),
           ),
         ],
       ),

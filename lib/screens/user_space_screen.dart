@@ -63,9 +63,8 @@ class _UserSpaceScreenState extends ConsumerState<UserSpaceScreen>
   void _onTabChanged() {
     if (_tabController.indexIsChanging) return;
     final index = _tabController.index;
-    if (_visitedTabs.add(index)) {
-      setState(() {});
-    }
+    _visitedTabs.add(index);
+    setState(() {});
     if (index == 1) {
       ref.read(userSpaceProvider(_params).notifier).ensureRepliesLoaded();
     }
@@ -91,6 +90,14 @@ class _UserSpaceScreenState extends ConsumerState<UserSpaceScreen>
     final title = widget.username != null && widget.username!.isNotEmpty
         ? '${widget.username} 的空间'
         : '用户空间';
+    final isReplyTab = _tabController.index == 1;
+    final browserUrl = ApiConfig.userSpaceBrowserUrl(
+      uid: widget.uid,
+      type: isReplyTab ? 'reply' : 'thread',
+      page: isReplyTab
+          ? async.asData?.value.replyPage ?? 1
+          : async.asData?.value.threadPage ?? 1,
+    );
 
     return S1DesktopScaffold(
       highlightedTab: 3,
@@ -116,8 +123,7 @@ class _UserSpaceScreenState extends ConsumerState<UserSpaceScreen>
             AppBarMoreMenu(
               onRefresh: () =>
                   ref.read(userSpaceProvider(_params).notifier).refresh(),
-              browserUrl:
-                  '${ApiConfig.baseUrl}/home.php?mod=space&uid=${widget.uid}',
+              browserUrl: browserUrl,
             ),
           ],
           bottom: TabBar(

@@ -51,9 +51,8 @@ class _FavoritesScreenState extends ConsumerState<FavoritesScreen>
   void _onTabChanged() {
     if (_tabController.indexIsChanging) return;
     final index = _tabController.index;
-    if (_visitedTabs.add(index)) {
-      setState(() {});
-    }
+    _visitedTabs.add(index);
+    setState(() {});
   }
 
   @override
@@ -78,9 +77,18 @@ class _FavoritesScreenState extends ConsumerState<FavoritesScreen>
     final uid = ref.watch(
       authStateProvider.select((auth) => auth.user?.uid),
     );
-    final browserUrl = uid != null
-        ? '${ApiConfig.baseUrl}/home.php?mod=space&uid=$uid&do=favorite&view=me&mobile=2'
-        : '${ApiConfig.baseUrl}/home.php?mod=space&do=favorite&view=me&mobile=2';
+    final activeSegment = _segments[_tabController.index];
+    final activePage = ref
+            .watch(favoriteListProvider(activeSegment))
+            .asData
+            ?.value
+            .currentPage ??
+        1;
+    final browserUrl = ApiConfig.favoriteBrowserUrl(
+      uid: uid,
+      type: activeSegment.apiType,
+      page: activePage,
+    );
 
     return S1DesktopScaffold(
       highlightedTab: 3,

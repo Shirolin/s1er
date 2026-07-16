@@ -20,4 +20,12 @@ void main() {
     final url = messagesBrowserUrl(1, noticeFeed: NoticeFeed.system);
     expect(url, contains('view=system'));
   });
+
+  test('messagesBrowserUrl retains the current page', () {
+    expect(messagesBrowserUrl(0, page: 3), contains('page=3'));
+    expect(
+      messagesBrowserUrl(1, noticeFeed: NoticeFeed.system, page: 4),
+      contains('page=4'),
+    );
+  });
 }

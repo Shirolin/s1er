@@ -102,6 +102,60 @@ void main() {
     expect(find.text('音乐论坛'), findsOneWidget);
   });
 
+  testWidgets('large forum layout lets both columns flow independently',
+      (tester) async {
+    tester.view.devicePixelRatio = 1;
+    tester.view.physicalSize = const Size(1366, 900);
+    addTearDown(() {
+      tester.view.resetDevicePixelRatio();
+      tester.view.resetPhysicalSize();
+    });
+
+    await tester.pumpWidget(
+      ProviderScope(
+        overrides: [
+          authStateProvider.overrideWith(_LoggedOutAuthNotifier.new),
+          forumListProvider.overrideWith(_UnevenForumListNotifier.new),
+          settingsProvider.overrideWith(
+            () => SettingsNotifier(initial: const AppSettings()),
+          ),
+          ...messagesProviderOverrides(),
+        ],
+        child: MaterialApp(
+          theme: AppTheme.lightTheme('purple'),
+          home: const HomeScreen(),
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    final leftSecond = tester.getTopLeft(find.text('左列第二组').first);
+    final rightSecond = tester.getTopLeft(find.text('右列第二组').first);
+
+    expect(leftSecond.dx, lessThan(rightSecond.dx));
+    expect(
+      leftSecond.dy,
+      lessThan(rightSecond.dy),
+      reason: '较短的左列应独立回流，不能再被右列高卡片撑出大段空白',
+    );
+
+    await tester.tap(find.text('右列第一组'));
+    await tester.pumpAndSettle();
+    final collapsedRightSecond = tester.getTopLeft(find.text('右列第二组').first);
+    expect(
+      collapsedRightSecond.dy,
+      lessThan(rightSecond.dy),
+      reason: '折叠右列分类后，右列后续分类应独立向上回流',
+    );
+
+    tester.view.physicalSize = const Size(500, 900);
+    await tester.pumpAndSettle();
+    final compactLeftSecond = tester.getTopLeft(find.text('左列第二组').first);
+    final compactRightSecond = tester.getTopLeft(find.text('右列第二组').first);
+    expect(compactLeftSecond.dx, compactRightSecond.dx);
+    expect(compactLeftSecond.dy, lessThan(compactRightSecond.dy));
+  });
+
   testWidgets('logged in home screen uses chinese labels', (tester) async {
     await tester.pumpWidget(
       ProviderScope(
@@ -449,6 +503,58 @@ class _GuestForumListNotifier extends ForumListNotifier {
             posts: 120,
           ),
         ],
+      ),
+    ];
+  }
+}
+
+class _UnevenForumListNotifier extends ForumListNotifier {
+  @override
+  Future<List<ForumCategory>> build() async {
+    ForumCategory subforum(String fid) => ForumCategory(
+          fid: fid,
+          name: '版块 $fid',
+          description: '说明',
+          threads: 10,
+          posts: 20,
+        );
+
+    return [
+      ForumCategory(
+        fid: 'left-1',
+        name: '左列第一组',
+        description: '',
+        threads: 10,
+        posts: 20,
+        subforums: [subforum('1')],
+      ),
+      ForumCategory(
+        fid: 'right-1',
+        name: '右列第一组',
+        description: '',
+        threads: 10,
+        posts: 20,
+        subforums: [
+          subforum('2'),
+          subforum('3'),
+          subforum('4'),
+          subforum('5'),
+          subforum('6'),
+        ],
+      ),
+      ForumCategory(
+        fid: 'left-2',
+        name: '左列第二组',
+        description: '',
+        threads: 10,
+        posts: 20,
+      ),
+      ForumCategory(
+        fid: 'right-2',
+        name: '右列第二组',
+        description: '',
+        threads: 10,
+        posts: 20,
       ),
     ];
   }

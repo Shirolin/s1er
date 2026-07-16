@@ -303,36 +303,65 @@ class _ForumCategoryGrid extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final rowCount = (categories.length + 1) ~/ 2;
-    return ListView.builder(
+    if (categories.length == 1) {
+      return ListView(
+        primary: true,
+        padding: const EdgeInsets.only(bottom: 16),
+        children: [_ForumCategoryTile(category: categories.single)],
+      );
+    }
+
+    final leftCategories = <ForumCategory>[];
+    final rightCategories = <ForumCategory>[];
+    for (var index = 0; index < categories.length; index++) {
+      (index.isEven ? leftCategories : rightCategories).add(categories[index]);
+    }
+
+    return ListView(
       primary: true,
-      padding: const EdgeInsets.only(bottom: 16),
-      itemCount: rowCount,
-      itemBuilder: (context, rowIndex) {
-        final firstIndex = rowIndex * 2;
-        final secondIndex = firstIndex + 1;
-        return Row(
+      padding: const EdgeInsets.fromLTRB(16, 8, 16, 16),
+      children: [
+        Row(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Expanded(
-              child: _ForumCategoryTile(category: categories[firstIndex]),
+              child: Column(
+                children: [
+                  for (final category in leftCategories)
+                    _ForumCategoryTile(
+                      category: category,
+                      margin: const EdgeInsets.only(bottom: 16),
+                    ),
+                ],
+              ),
             ),
-            const SizedBox(width: 8),
+            const SizedBox(width: 24),
             Expanded(
-              child: secondIndex < categories.length
-                  ? _ForumCategoryTile(category: categories[secondIndex])
-                  : const SizedBox.shrink(),
+              child: Column(
+                children: [
+                  for (final category in rightCategories)
+                    _ForumCategoryTile(
+                      category: category,
+                      margin: const EdgeInsets.only(bottom: 16),
+                    ),
+                ],
+              ),
             ),
           ],
-        );
-      },
+        ),
+      ],
     );
   }
 }
 
 class _ForumCategoryTile extends ConsumerWidget {
-  const _ForumCategoryTile({required this.category});
+  const _ForumCategoryTile({
+    required this.category,
+    this.margin = const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+  });
+
   final ForumCategory category;
+  final EdgeInsetsGeometry margin;
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -344,7 +373,7 @@ class _ForumCategoryTile extends ConsumerWidget {
 
     return Card(
       elevation: 0,
-      margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+      margin: margin,
       clipBehavior: Clip.antiAlias,
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,

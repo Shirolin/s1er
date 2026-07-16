@@ -100,6 +100,7 @@ class _ForumListScreenState extends ConsumerState<ForumListScreen> {
     if (!shouldOpenForumThreadInPlace(windowWidth) &&
         widget.selectedThreadId != null) {
       return ProviderScope(
+        key: ValueKey('thread-intent-${widget.selectedThreadId}'),
         overrides: [
           threadOpenIntentProvider(widget.selectedThreadId!).overrideWithValue(
             widget.selectedThreadIntent,
@@ -134,7 +135,7 @@ class _ForumListScreenState extends ConsumerState<ForumListScreen> {
           ],
         ),
         body: LayoutBuilder(
-          builder: (context, _) {
+          builder: (context, constraints) {
             final opensThreadInPlace =
                 shouldOpenForumThreadInPlace(windowWidth);
             final isSplit = shouldShowForumSplitView(
@@ -145,7 +146,7 @@ class _ForumListScreenState extends ConsumerState<ForumListScreen> {
               children: [
                 if (isSplit)
                   SizedBox(
-                    width: 380,
+                    width: forumListPaneWidth(constraints.maxWidth),
                     child: threadsAsync.when(
                       loading: () => const Column(
                         children: [
@@ -218,6 +219,9 @@ class _ForumListScreenState extends ConsumerState<ForumListScreen> {
                   ),
                   Expanded(
                     child: ProviderScope(
+                      key: ValueKey(
+                        'thread-intent-${widget.selectedThreadId}',
+                      ),
                       overrides: [
                         threadOpenIntentProvider(widget.selectedThreadId!)
                             .overrideWithValue(widget.selectedThreadIntent),

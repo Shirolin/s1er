@@ -25,5 +25,11 @@ void main() {
         isTrue,
       );
     });
+
+    test('list pane width is responsive and bounded', () {
+      expect(forumListPaneWidth(1000), 420);
+      expect(forumListPaneWidth(1280), closeTo(486.4, 0.01));
+      expect(forumListPaneWidth(1600), 520);
+    });
   });
 }

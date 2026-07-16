@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:io' show Directory, File;
 import 'dart:typed_data';
 
@@ -19,7 +20,10 @@ class S1ImageCache {
   static const String cacheKey = 's1ImageCache';
   static const Duration stalePeriod = Duration(days: 14);
   static const int maxNrOfCacheObjects = 500;
+  static const Duration _evictionDebounce = Duration(milliseconds: 500);
   static int _maxCacheBytesOverride = S1Constants.maxImageCacheBytes;
+  static Timer? _pendingEviction;
+  static Future<void>? _runningEviction;
 
   static int get maxCacheBytes => _maxCacheBytesOverride;
 
@@ -30,6 +34,13 @@ class S1ImageCache {
   @visibleForTesting
   static void debugResetMaxCacheBytes() {
     _maxCacheBytesOverride = S1Constants.maxImageCacheBytes;
+  }
+
+  @visibleForTesting
+  static void debugResetEvictionScheduler() {
+    _pendingEviction?.cancel();
+    _pendingEviction = null;
+    _runningEviction = null;
   }
 
   /// Returns true when [url] exists in disk cache (native only).
@@ -80,7 +91,7 @@ class S1ImageCache {
         maxAge: stalePeriod,
         fileExtension: extensionFromUrl(url) ?? 'bin',
       );
-      await _evictToBudget();
+      _scheduleEviction();
     } catch (_) {
       // Disk cache is best-effort; callers still keep memory LRU.
     }
@@ -90,6 +101,9 @@ class S1ImageCache {
   ///
   /// [clearMemoryLru] lets widgets flush their process-local byte maps.
   static Future<void> clear({void Function()? clearMemoryLru}) async {
+    _pendingEviction?.cancel();
+    _pendingEviction = null;
+    await _runningEviction;
     clearMemoryLru?.call();
     PaintingBinding.instance.imageCache.clear();
     PaintingBinding.instance.imageCache.clearLiveImages();
@@ -152,7 +166,27 @@ class S1ImageCache {
     return total;
   }
 
-  static Future<void> evictIfNeeded() => _evictToBudget();
+  static void _scheduleEviction() {
+    _pendingEviction?.cancel();
+    _pendingEviction = Timer(_evictionDebounce, () {
+      _pendingEviction = null;
+      unawaited(evictIfNeeded().catchError((_) {}));
+    });
+  }
+
+  static Future<void> evictIfNeeded() {
+    final running = _runningEviction;
+    if (running != null) return running;
+
+    late final Future<void> future;
+    future = _evictToBudget().whenComplete(() {
+      if (identical(_runningEviction, future)) {
+        _runningEviction = null;
+      }
+    });
+    _runningEviction = future;
+    return future;
+  }
 
   static Future<void> _evictToBudget() async {
     if (kIsWeb) return;

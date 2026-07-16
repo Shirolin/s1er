@@ -11,6 +11,7 @@ void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
 
   tearDown(() {
+    S1ImageCache.debugResetEvictionScheduler();
     S1ImageCache.debugSetManager(null);
     S1ImageCache.debugResetMaxCacheBytes();
   });

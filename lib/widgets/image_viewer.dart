@@ -417,9 +417,6 @@ class _ImageViewerState extends ConsumerState<ImageViewer> {
               fit: BoxFit.contain,
               gaplessPlayback: true,
               frameBuilder: (context, child, frame, wasSynchronouslyLoaded) {
-                if (frame != null) {
-                  evictImageCacheIfNeeded();
-                }
                 if (wasSynchronouslyLoaded) return child;
                 return Stack(
                   alignment: Alignment.center,

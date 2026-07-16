@@ -4,8 +4,11 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import '../config/api_config.dart';
+import '../models/private_message_item.dart';
 import '../providers/pm_conversation_provider.dart';
 import '../providers/settings_provider.dart';
+import '../theme/app_theme.dart';
+import '../utils/window_size.dart';
 import '../widgets/app_bar_more_menu.dart';
 import '../widgets/pagination_bar.dart';
 import '../widgets/pm_message_bubble.dart';
@@ -15,6 +18,7 @@ import '../utils/pm_draft_store.dart';
 import '../utils/s1_snack_bar.dart';
 import '../widgets/s1_confirm_dialog.dart';
 import '../widgets/s1_desktop_scaffold.dart';
+import '../widgets/web_avatar.dart';
 
 class PmConversationScreen extends ConsumerStatefulWidget {
   const PmConversationScreen({
@@ -37,12 +41,16 @@ class _PmComposer extends StatelessWidget {
     required this.focusNode,
     required this.state,
     required this.onSend,
+    required this.isDesktop,
+    required this.partnerName,
   });
 
   final TextEditingController controller;
   final FocusNode focusNode;
   final PmConversationState state;
   final VoidCallback onSend;
+  final bool isDesktop;
+  final String partnerName;
 
   @override
   Widget build(BuildContext context) {
@@ -51,55 +59,87 @@ class _PmComposer extends StatelessWidget {
     final canSend = controller.text.trim().isNotEmpty &&
         !state.isSending &&
         !state.sendStatusUnknown;
-    return SafeArea(
-      top: false,
-      child: Material(
-        color: scheme.surfaceContainer,
-        child: Padding(
-          padding: const EdgeInsets.fromLTRB(12, 8, 12, 8),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.stretch,
+    final composerContent = Padding(
+      padding: const EdgeInsets.all(12),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          if (state.sendStatusUnknown || state.sendError != null)
+            Padding(
+              padding: const EdgeInsets.only(bottom: 6),
+              child: Text(
+                state.sendError ?? '请先刷新会话确认上一条私信状态',
+                style: textTheme.bodySmall?.copyWith(
+                  color: state.sendStatusUnknown
+                      ? scheme.error
+                      : scheme.onSurfaceVariant,
+                ),
+              ),
+            ),
+          Row(
+            crossAxisAlignment: CrossAxisAlignment.end,
             children: [
-              if (state.sendStatusUnknown || state.sendError != null)
-                Padding(
-                  padding: const EdgeInsets.only(bottom: 6),
-                  child: Text(
-                    state.sendError ?? '请先刷新会话确认上一条私信状态',
-                    style: textTheme.bodySmall?.copyWith(
-                      color: state.sendStatusUnknown
-                          ? scheme.error
-                          : scheme.onSurfaceVariant,
-                    ),
+              Expanded(
+                child: TextField(
+                  controller: controller,
+                  focusNode: focusNode,
+                  minLines: 1,
+                  maxLines: 4,
+                  enabled: !state.isSending && !state.sendStatusUnknown,
+                  textInputAction: TextInputAction.newline,
+                  style: textTheme.bodyLarge,
+                  decoration: InputDecoration(
+                    labelText: isDesktop ? '回复 $partnerName' : '私信内容',
+                    hintText: '输入私信…',
                   ),
                 ),
-              Row(
-                crossAxisAlignment: CrossAxisAlignment.end,
-                children: [
-                  Expanded(
-                    child: TextField(
-                      controller: controller,
-                      focusNode: focusNode,
-                      minLines: 1,
-                      maxLines: 4,
-                      enabled: !state.isSending && !state.sendStatusUnknown,
-                      textInputAction: TextInputAction.newline,
-                      style: textTheme.bodyLarge,
-                      decoration: const InputDecoration(
-                        labelText: '私信内容',
-                        hintText: '输入私信…',
+              ),
+              const SizedBox(width: 8),
+              SizedBox(
+                height: S1BottomBarStyle.minTouchTarget,
+                child: isDesktop
+                    ? FilledButton.icon(
+                        onPressed: canSend ? onSend : null,
+                        icon: const Icon(Icons.send_outlined),
+                        label: Text(state.isSending ? '发送中…' : '发送'),
+                      )
+                    : FilledButton(
+                        onPressed: canSend ? onSend : null,
+                        child: Text(state.isSending ? '发送中…' : '发送'),
                       ),
-                    ),
-                  ),
-                  const SizedBox(width: 8),
-                  FilledButton(
-                    onPressed: canSend ? onSend : null,
-                    child: Text(state.isSending ? '发送中…' : '发送'),
-                  ),
-                ],
               ),
             ],
           ),
-        ),
+        ],
+      ),
+    );
+
+    return SafeArea(
+      top: false,
+      child: Material(
+        color: isDesktop ? scheme.surface : scheme.surfaceContainer,
+        child: isDesktop
+            ? Center(
+                child: ConstrainedBox(
+                  constraints: const BoxConstraints(
+                    maxWidth: S1Breakpoints.contentWidthLarge,
+                  ),
+                  child: Card(
+                    key: const ValueKey('pm_desktop_composer'),
+                    elevation: 0,
+                    color: scheme.surfaceContainerLow,
+                    margin: const EdgeInsets.fromLTRB(24, 8, 24, 16),
+                    shape: const RoundedRectangleBorder(
+                      borderRadius: S1Shape.large,
+                    ),
+                    child: composerContent,
+                  ),
+                ),
+              )
+            : Padding(
+                padding: const EdgeInsets.fromLTRB(0, 8, 0, 8),
+                child: composerContent,
+              ),
       ),
     );
   }
@@ -223,13 +263,43 @@ class _PmConversationScreenState extends ConsumerState<PmConversationScreen> {
     final provider = pmConversationProvider(widget.touid);
     final async = ref.watch(provider);
     final title = widget.partnerName?.trim();
+    final displayName = title != null && title.isNotEmpty ? title : '私信会话';
+    final isDesktop = context.isExpandedOrAbove;
 
     return S1DesktopScaffold(
       highlightedTab: 2,
       child: Scaffold(
         appBar: AppBar(
           elevation: 0,
-          title: Text(title != null && title.isNotEmpty ? title : '私信会话'),
+          title: isDesktop
+              ? Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    WebAvatar(
+                      url: PrivateMessageItem.avatarUrlForUid(widget.touid),
+                      radius: 18,
+                      fallbackLetter: displayName.characters.first,
+                    ),
+                    const SizedBox(width: 10),
+                    Column(
+                      mainAxisSize: MainAxisSize.min,
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(displayName),
+                        Text(
+                          'UID ${widget.touid}',
+                          style:
+                              Theme.of(context).textTheme.labelSmall?.copyWith(
+                                    color: Theme.of(context)
+                                        .colorScheme
+                                        .onSurfaceVariant,
+                                  ),
+                        ),
+                      ],
+                    ),
+                  ],
+                )
+              : Text(displayName),
           actions: [
             AppBarMoreMenu(
               onRefresh: () => ref.read(provider.notifier).refresh(),
@@ -270,36 +340,59 @@ class _PmConversationScreenState extends ConsumerState<PmConversationScreen> {
                     totalPages: state.totalPages,
                     onPageChanged: (page) =>
                         ref.read(provider.notifier).goToPage(page),
-                    pageBuilder: (context, scrollController) =>
-                        RefreshIndicator(
-                      onRefresh: () => ref.read(provider.notifier).refresh(),
-                      child: state.items.isEmpty
-                          ? ListView(
-                              controller: scrollController,
-                              children: const [
-                                SizedBox(height: 48),
-                                Center(child: Text('暂无会话内容')),
-                              ],
-                            )
-                          : ListView.builder(
-                              controller: scrollController,
-                              padding: const EdgeInsets.symmetric(vertical: 8),
-                              itemCount: state.items.length,
-                              itemBuilder: (context, index) => PmMessageBubble(
-                                key: ValueKey(
-                                  'pm_message_${state.items[index].id}_$index',
+                    pageBuilder: (context, scrollController) => Center(
+                      child: ConstrainedBox(
+                        key: const ValueKey('pm_conversation_canvas'),
+                        constraints: BoxConstraints(
+                          maxWidth: isDesktop
+                              ? S1Breakpoints.contentWidthLarge
+                              : double.infinity,
+                        ),
+                        child: RefreshIndicator(
+                          onRefresh: () =>
+                              ref.read(provider.notifier).refresh(),
+                          child: state.items.isEmpty
+                              ? ListView(
+                                  controller: scrollController,
+                                  children: const [
+                                    SizedBox(height: 48),
+                                    Center(child: Text('暂无会话内容')),
+                                  ],
+                                )
+                              : ListView.builder(
+                                  controller: scrollController,
+                                  padding: EdgeInsets.symmetric(
+                                    vertical: isDesktop ? 16 : 8,
+                                  ),
+                                  itemCount: state.items.length,
+                                  itemBuilder: (context, index) =>
+                                      PmMessageBubble(
+                                    key: ValueKey(
+                                      'pm_message_${state.items[index].id}_$index',
+                                    ),
+                                    message: state.items[index],
+                                    showIdentity: isDesktop,
+                                  ),
                                 ),
-                                message: state.items[index],
-                              ),
-                            ),
+                        ),
+                      ),
                     ),
                   ),
                 ),
-                PaginationBar(
-                  currentPage: state.currentPage,
-                  totalPages: state.totalPages,
-                  onPageChanged: (page) =>
-                      ref.read(provider.notifier).goToPage(page),
+                Center(
+                  child: ConstrainedBox(
+                    constraints: BoxConstraints(
+                      maxWidth: isDesktop
+                          ? S1Breakpoints.contentWidthLarge
+                          : double.infinity,
+                    ),
+                    child: PaginationBar(
+                      currentPage: state.currentPage,
+                      totalPages: state.totalPages,
+                      onPageChanged: (page) =>
+                          ref.read(provider.notifier).goToPage(page),
+                    ),
+                  ),
                 ),
                 if (!state.isBlocked)
                   _PmComposer(
@@ -307,6 +400,8 @@ class _PmConversationScreenState extends ConsumerState<PmConversationScreen> {
                     focusNode: _messageFocusNode,
                     state: state,
                     onSend: () => _sendMessage(state),
+                    isDesktop: isDesktop,
+                    partnerName: displayName,
                   ),
               ],
             );

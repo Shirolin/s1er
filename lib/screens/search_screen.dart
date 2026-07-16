@@ -42,6 +42,7 @@ class _SearchScreenState extends ConsumerState<SearchScreen> {
     final scheme = Theme.of(context).colorScheme;
     final textTheme = Theme.of(context).textTheme;
     final state = ref.watch(searchProvider);
+    final canSubmit = !state.isLoading && !state.isCoolingDown;
 
     return Column(
       children: [
@@ -90,8 +91,8 @@ class _SearchScreenState extends ConsumerState<SearchScreen> {
                   icon: const Icon(Icons.clear),
                 ),
               IconButton(
-                tooltip: '搜索',
-                onPressed: state.isLoading ? null : _submit,
+                tooltip: state.isCoolingDown ? '搜索冷却中' : '搜索',
+                onPressed: canSubmit ? _submit : null,
                 icon: state.isLoading
                     ? SizedBox(
                         width: 20,
@@ -105,14 +106,14 @@ class _SearchScreenState extends ConsumerState<SearchScreen> {
               ),
             ],
             onChanged: (_) => setState(() {}),
-            onSubmitted: (_) => _submit(),
+            onSubmitted: canSubmit ? (_) => _submit() : null,
           ),
         ),
         if (state.isCoolingDown && state.hasSearched)
           Padding(
             padding: const EdgeInsets.fromLTRB(16, 0, 16, 8),
             child: Text(
-              '搜索冷却中，约 ${state.cooldownRemaining?.inSeconds ?? 0} 秒后可再次提交',
+              '搜索冷却中，${state.cooldownRemainingSeconds} 秒后可再次提交',
               style: textTheme.bodySmall?.copyWith(
                 color: scheme.onSurfaceVariant,
               ),
@@ -232,7 +233,7 @@ class _SearchBody extends ConsumerWidget {
             child: Stack(
               children: [
                 ListView.builder(
-                  padding: const EdgeInsets.only(bottom: 16),
+                  padding: const EdgeInsets.fromLTRB(0, 4, 0, 16),
                   itemCount: state.forumHits.length,
                   itemBuilder: (context, index) {
                     final hit = state.forumHits[index];
@@ -267,7 +268,7 @@ class _SearchBody extends ConsumerWidget {
     return Stack(
       children: [
         ListView.builder(
-          padding: const EdgeInsets.symmetric(vertical: 8),
+          padding: const EdgeInsets.symmetric(vertical: 4),
           itemCount: state.userHits.length,
           itemBuilder: (context, index) {
             final hit = state.userHits[index];
@@ -319,44 +320,78 @@ class _ForumHitTile extends StatelessWidget {
   Widget build(BuildContext context) {
     final scheme = Theme.of(context).colorScheme;
     final textTheme = Theme.of(context).textTheme;
-    final meta = [
-      if (hit.forumName.isNotEmpty) hit.forumName,
-      if (hit.author.isNotEmpty) hit.author,
-      if (hit.dateline.isNotEmpty) hit.dateline,
-    ].join(' · ');
+    final hasMeta = hit.forumName.isNotEmpty ||
+        hit.author.isNotEmpty ||
+        hit.dateline.isNotEmpty;
 
-    return ListTile(
-      title: Text(hit.title, maxLines: 2, overflow: TextOverflow.ellipsis),
-      subtitle: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          if (hit.snippet.isNotEmpty) ...[
-            const SizedBox(height: 4),
-            Text(
-              hit.snippet,
-              maxLines: 2,
-              overflow: TextOverflow.ellipsis,
-              style: textTheme.bodySmall?.copyWith(
-                color: scheme.onSurfaceVariant,
+    return Card(
+      margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
+      elevation: 0,
+      color: scheme.surfaceContainerLow,
+      shape: S1Shape.cardShape,
+      clipBehavior: Clip.antiAlias,
+      child: InkWell(
+        onTap: () => context.push(
+          ThreadRouteCodec.encodePath(ResumeThread(hit.tid)),
+        ),
+        child: Padding(
+          padding: const EdgeInsets.all(16),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                hit.title,
+                maxLines: 2,
+                overflow: TextOverflow.ellipsis,
+                style: textTheme.titleMedium,
               ),
-            ),
-          ],
-          if (meta.isNotEmpty) ...[
-            const SizedBox(height: 4),
-            Text(
-              meta,
-              maxLines: 1,
-              overflow: TextOverflow.ellipsis,
-              style: textTheme.labelSmall?.copyWith(
-                color: scheme.onSurfaceVariant,
-              ),
-            ),
-          ],
-        ],
-      ),
-      isThreeLine: hit.snippet.isNotEmpty,
-      onTap: () => context.push(
-        ThreadRouteCodec.encodePath(ResumeThread(hit.tid)),
+              if (hit.snippet.isNotEmpty) ...[
+                const SizedBox(height: 8),
+                Text(
+                  hit.snippet,
+                  maxLines: 2,
+                  overflow: TextOverflow.ellipsis,
+                  style: textTheme.bodyMedium?.copyWith(
+                    color: scheme.onSurfaceVariant,
+                  ),
+                ),
+              ],
+              if (hasMeta) ...[
+                const SizedBox(height: 12),
+                Wrap(
+                  spacing: 12,
+                  runSpacing: 8,
+                  crossAxisAlignment: WrapCrossAlignment.center,
+                  children: [
+                    if (hit.forumName.isNotEmpty)
+                      Chip(
+                        avatar: Icon(
+                          Icons.forum_outlined,
+                          color: scheme.onSecondaryContainer,
+                        ),
+                        label: Text(hit.forumName),
+                        backgroundColor: scheme.secondaryContainer,
+                        side: BorderSide.none,
+                        labelStyle: textTheme.labelMedium?.copyWith(
+                          color: scheme.onSecondaryContainer,
+                        ),
+                      ),
+                    if (hit.author.isNotEmpty)
+                      _SearchMeta(
+                        icon: Icons.person_outline,
+                        text: hit.author,
+                      ),
+                    if (hit.dateline.isNotEmpty)
+                      _SearchMeta(
+                        icon: Icons.schedule,
+                        text: hit.dateline,
+                      ),
+                  ],
+                ),
+              ],
+            ],
+          ),
+        ),
       ),
     );
   }
@@ -373,19 +408,63 @@ class _UserHitTile extends ConsumerWidget {
       'https://avatar.stage1st.com/avatar.php?uid=${hit.uid}&size=small',
     );
 
-    return ListTile(
-      leading: WebAvatar(
-        url: avatarUrl,
-        radius: 20,
-        fallbackLetter: hit.name.isNotEmpty ? hit.name[0] : '?',
+    final scheme = Theme.of(context).colorScheme;
+    final textTheme = Theme.of(context).textTheme;
+
+    return Card(
+      margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
+      elevation: 0,
+      color: scheme.surfaceContainerLow,
+      shape: S1Shape.cardShape,
+      clipBehavior: Clip.antiAlias,
+      child: ListTile(
+        contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+        leading: WebAvatar(
+          url: avatarUrl,
+          radius: 20,
+          fallbackLetter: hit.name.isNotEmpty ? hit.name[0] : '?',
+        ),
+        title: Text(hit.name, style: textTheme.titleMedium),
+        subtitle: Text(
+          'UID ${hit.uid}',
+          style: textTheme.bodyMedium?.copyWith(
+            color: scheme.onSurfaceVariant,
+          ),
+        ),
+        trailing: const Icon(Icons.chevron_right),
+        onTap: () {
+          showUserProfileSheet(
+            context,
+            future: ref.read(userProfileProvider(hit.uid).future),
+          );
+        },
       ),
-      title: Text(hit.name),
-      onTap: () {
-        showUserProfileSheet(
-          context,
-          future: ref.read(userProfileProvider(hit.uid).future),
-        );
-      },
+    );
+  }
+}
+
+class _SearchMeta extends StatelessWidget {
+  const _SearchMeta({required this.icon, required this.text});
+
+  final IconData icon;
+  final String text;
+
+  @override
+  Widget build(BuildContext context) {
+    final scheme = Theme.of(context).colorScheme;
+    final textTheme = Theme.of(context).textTheme;
+    return Row(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        Icon(icon, size: 16, color: scheme.onSurfaceVariant),
+        const SizedBox(width: 4),
+        Text(
+          text,
+          style: textTheme.labelMedium?.copyWith(
+            color: scheme.onSurfaceVariant,
+          ),
+        ),
+      ],
     );
   }
 }

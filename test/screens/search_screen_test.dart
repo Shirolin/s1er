@@ -1,9 +1,13 @@
+import 'package:dio/dio.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:s1_app/models/search_result.dart';
+import 'package:s1_app/providers/api_service_provider.dart';
 import 'package:s1_app/providers/search_provider.dart';
 import 'package:s1_app/screens/search_screen.dart';
+import 'package:s1_app/services/api_service.dart';
+import 'package:s1_app/services/http_client.dart';
 import 'package:s1_app/theme/app_theme.dart';
 
 class _SeededSearchNotifier extends SearchNotifier {
@@ -23,6 +27,31 @@ class _SeededSearchNotifier extends SearchNotifier {
         ],
         count: 1,
       );
+}
+
+class _FakeSearchApiService extends ApiService {
+  _FakeSearchApiService()
+      : super(S1HttpClient.test(ProviderContainer(), Dio()));
+
+  @override
+  Future<ForumSearchPage> searchForum({
+    required String query,
+    int page = 1,
+    String? pageHref,
+  }) async {
+    return const ForumSearchPage(
+      hits: [
+        ForumSearchHit(
+          tid: '100',
+          title: '倒计时测试主题',
+          forumName: '游戏论坛',
+          author: 'alice',
+          dateline: '2026-7-1',
+        ),
+      ],
+      count: 1,
+    );
+  }
 }
 
 void main() {
@@ -58,5 +87,36 @@ void main() {
     expect(find.text('假帖 switch'), findsOneWidget);
     expect(find.textContaining('找到 1 条'), findsOneWidget);
     expect(find.textContaining('游戏论坛'), findsOneWidget);
+    expect(find.byType(Card), findsOneWidget);
+    expect(find.byType(Chip), findsOneWidget);
+  });
+
+  testWidgets('SearchScreen cooldown countdown updates every second',
+      (tester) async {
+    await tester.pumpWidget(
+      ProviderScope(
+        overrides: [
+          apiServiceProvider.overrideWithValue(_FakeSearchApiService()),
+        ],
+        child: MaterialApp(
+          theme: AppTheme.lightTheme('purple'),
+          home: const Scaffold(body: SearchScreen()),
+        ),
+      ),
+    );
+
+    await tester.enterText(find.byType(SearchBar), 'switch');
+    await tester.tap(find.byTooltip('搜索'));
+    await tester.pump();
+
+    expect(find.text('搜索冷却中，30 秒后可再次提交'), findsOneWidget);
+    expect(find.byTooltip('搜索冷却中'), findsOneWidget);
+
+    await tester.pump(const Duration(seconds: 1));
+    expect(find.text('搜索冷却中，29 秒后可再次提交'), findsOneWidget);
+
+    await tester.pump(const Duration(seconds: 29));
+    expect(find.textContaining('搜索冷却中'), findsNothing);
+    expect(find.byTooltip('搜索'), findsOneWidget);
   });
 }

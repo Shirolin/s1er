@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../models/search_result.dart';
@@ -21,7 +23,7 @@ class SearchUiState {
     this.isLoading = false,
     this.hasSearched = false,
     this.error,
-    this.cooldownUntil,
+    this.cooldownRemainingSeconds = 0,
   });
 
   final SearchType type;
@@ -35,20 +37,9 @@ class SearchUiState {
   final bool isLoading;
   final bool hasSearched;
   final Object? error;
-  final DateTime? cooldownUntil;
+  final int cooldownRemainingSeconds;
 
-  bool get isCoolingDown {
-    final until = cooldownUntil;
-    if (until == null) return false;
-    return DateTime.now().isBefore(until);
-  }
-
-  Duration? get cooldownRemaining {
-    final until = cooldownUntil;
-    if (until == null) return null;
-    final left = until.difference(DateTime.now());
-    return left.isNegative ? Duration.zero : left;
-  }
+  bool get isCoolingDown => cooldownRemainingSeconds > 0;
 
   SearchUiState copyWith({
     SearchType? type,
@@ -63,7 +54,7 @@ class SearchUiState {
     bool? hasSearched,
     Object? error,
     bool clearError = false,
-    DateTime? cooldownUntil,
+    int? cooldownRemainingSeconds,
     bool clearCooldown = false,
   }) {
     return SearchUiState(
@@ -78,15 +69,21 @@ class SearchUiState {
       isLoading: isLoading ?? this.isLoading,
       hasSearched: hasSearched ?? this.hasSearched,
       error: clearError ? null : (error ?? this.error),
-      cooldownUntil:
-          clearCooldown ? null : (cooldownUntil ?? this.cooldownUntil),
+      cooldownRemainingSeconds: clearCooldown
+          ? 0
+          : (cooldownRemainingSeconds ?? this.cooldownRemainingSeconds),
     );
   }
 }
 
 class SearchNotifier extends Notifier<SearchUiState> {
+  Timer? _cooldownTimer;
+
   @override
-  SearchUiState build() => const SearchUiState();
+  SearchUiState build() {
+    ref.onDispose(() => _cooldownTimer?.cancel());
+    return const SearchUiState();
+  }
 
   ApiService get _api => ref.read(apiServiceProvider);
 
@@ -94,7 +91,7 @@ class SearchNotifier extends Notifier<SearchUiState> {
     if (type == state.type) return;
     state = SearchUiState(
       type: type,
-      cooldownUntil: state.cooldownUntil,
+      cooldownRemainingSeconds: state.cooldownRemainingSeconds,
     );
   }
 
@@ -106,7 +103,7 @@ class SearchNotifier extends Notifier<SearchUiState> {
     }
     if (state.isLoading) return;
     if (state.isCoolingDown) {
-      final sec = state.cooldownRemaining?.inSeconds ?? 0;
+      final sec = state.cooldownRemainingSeconds;
       state = state.copyWith(
         error: '搜索过于频繁，请 $sec 秒后再试',
       );
@@ -189,10 +186,8 @@ class SearchNotifier extends Notifier<SearchUiState> {
       pageHref: page.pageHref,
       error: page.error,
       clearError: !page.hasError,
-      cooldownUntil: startCooldown
-          ? DateTime.now().add(searchSubmitCooldown)
-          : state.cooldownUntil,
     );
+    if (startCooldown) _startCooldown();
   }
 
   void _applyUserPage(UserSearchPage page, {required String query}) {
@@ -208,8 +203,24 @@ class SearchNotifier extends Notifier<SearchUiState> {
       pageHref: '',
       error: page.error,
       clearError: !page.hasError,
-      cooldownUntil: DateTime.now().add(searchSubmitCooldown),
     );
+    _startCooldown();
+  }
+
+  void _startCooldown() {
+    _cooldownTimer?.cancel();
+    state = state.copyWith(
+      cooldownRemainingSeconds: searchSubmitCooldown.inSeconds,
+    );
+    _cooldownTimer = Timer.periodic(const Duration(seconds: 1), (timer) {
+      final remaining = state.cooldownRemainingSeconds - 1;
+      if (remaining <= 0) {
+        timer.cancel();
+        state = state.copyWith(clearCooldown: true);
+        return;
+      }
+      state = state.copyWith(cooldownRemainingSeconds: remaining);
+    });
   }
 }
 

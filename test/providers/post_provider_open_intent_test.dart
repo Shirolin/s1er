@@ -244,6 +244,26 @@ void main() {
       expect(adapter.rateLogRequests, isNotEmpty);
     });
 
+    test('reuses the current page rate log cache', () async {
+      container = buildContainer(
+        extraOverrides: [
+          readingRecordProvider('100').overrideWithValue(null),
+        ],
+      );
+      final sub = container.listen(postProvider('100'), (_, __) {});
+      addTearDown(sub.close);
+
+      await container.read(postProvider('100').future);
+      await pumpEventQueue();
+      final requestsAfterLoad = adapter.rateLogRequests.length;
+
+      await container
+          .read(threadRateLogsProvider('100').notifier)
+          .ensurePageRateLogs(1);
+
+      expect(adapter.rateLogRequests, hasLength(requestsAfterLoad));
+    });
+
     test('rate log merge does not mutate postProvider state', () async {
       adapter.commentCount = {'1': 2};
       adapter.rateLogHtml = '''

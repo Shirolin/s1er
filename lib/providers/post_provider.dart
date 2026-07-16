@@ -104,7 +104,7 @@ final rateLogServiceProvider = Provider<RateLogService>((ref) {
 });
 
 final pollVoteCacheProvider =
-    Provider.family<PollVoteCache, String>((ref, uid) {
+    Provider.autoDispose.family<PollVoteCache, String>((ref, uid) {
   ref.watch(pollVotesBootstrapProvider);
   return PollVoteCache(ref.watch(localDataProvider), uid);
 });

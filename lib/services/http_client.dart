@@ -15,13 +15,22 @@ import 'encrypted_cookie_storage.dart';
 import 'talker.dart';
 
 class S1HttpClient {
-  S1HttpClient(this._ref) : _testContainer = null;
+  S1HttpClient(this._ref)
+      : _testContainer = null,
+        _now = DateTime.now,
+        _delay = _defaultDelay;
 
   @visibleForTesting
-  S1HttpClient.test(this._testContainer, Dio dio)
-      : _ref = null,
+  S1HttpClient.test(
+    this._testContainer,
+    Dio dio, {
+    DateTime Function()? now,
+    Future<void> Function(Duration)? delay,
+  })  : _ref = null,
         _dio = dio,
-        _initialized = true;
+        _initialized = true,
+        _now = now ?? DateTime.now,
+        _delay = delay ?? _defaultDelay;
 
   late Dio _dio;
   bool _initialized = false;
@@ -29,9 +38,15 @@ class S1HttpClient {
   final List<DateTime> _requestTimestamps = [];
   final Ref? _ref;
   final ProviderContainer? _testContainer;
+  final DateTime Function() _now;
+  final Future<void> Function(Duration) _delay;
+  Future<void> _rateLimitQueue = Future.value();
 
   static String get _proxyUrl => 'http://localhost:${EnvConfig.proxyPort}';
   static bool get _isWeb => kIsWeb;
+
+  static Future<void> _defaultDelay(Duration duration) =>
+      Future<void>.delayed(duration);
 
   PersistCookieJar get cookieJar => _cookieJar!;
   Dio get dio => _dio;
@@ -160,19 +175,37 @@ class S1HttpClient {
   }
 
   Future<void> _enforceRateLimit() async {
-    final now = DateTime.now();
-    _requestTimestamps.removeWhere(
-      (t) => now.difference(t) > const Duration(seconds: 1),
-    );
-    if (_requestTimestamps.length >= S1Constants.maxRequestsPerSecond) {
-      final oldest = _requestTimestamps.first;
-      final waitTime = const Duration(seconds: 1) - now.difference(oldest);
-      if (!waitTime.isNegative) {
-        await Future.delayed(waitTime);
+    final previous = _rateLimitQueue;
+    final gate = Completer<void>();
+    _rateLimitQueue = gate.future;
+    await previous;
+
+    try {
+      while (true) {
+        final now = _now();
+        _requestTimestamps.removeWhere(
+          (timestamp) =>
+              now.difference(timestamp) >= const Duration(seconds: 1),
+        );
+        if (_requestTimestamps.length < S1Constants.maxRequestsPerSecond) {
+          _requestTimestamps.add(_now());
+          return;
+        }
+
+        final oldest = _requestTimestamps.first;
+        final waitTime = const Duration(seconds: 1) - now.difference(oldest);
+        if (waitTime.isNegative || waitTime == Duration.zero) {
+          continue;
+        }
+        await _delay(waitTime);
       }
+    } finally {
+      gate.complete();
     }
-    _requestTimestamps.add(DateTime.now());
   }
+
+  @visibleForTesting
+  Future<void> debugEnforceRateLimit() => _enforceRateLimit();
 
   Future<Response> get(
     String url, {

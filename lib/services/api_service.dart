@@ -3105,14 +3105,31 @@ class ApiService {
         if (!hasFormhash) {
           return const ForumSearchPage(error: '无法获取表单验证串，请刷新后重试');
         }
-        final response = await _httpClient.post(
+        var response = await _httpClient.post(
           ApiConfig.searchForumUrl(),
           data: <String, String>{'srchtxt': trimmed},
           options: Options(
             contentType: Headers.formUrlEncodedContentType,
             responseType: ResponseType.plain,
+            followRedirects: false,
+            validateStatus: (status) =>
+                status != null && status >= 200 && status < 400,
           ),
         );
+        if (response.statusCode != null &&
+            response.statusCode! >= 300 &&
+            response.statusCode! < 400) {
+          final redirectUrl = _resolveSearchRedirectUrl(
+            response.headers.value('location'),
+          );
+          if (redirectUrl == null) {
+            return const ForumSearchPage(error: '搜索结果跳转地址无效，请稍后重试');
+          }
+          response = await _httpClient.get(
+            redirectUrl,
+            options: Options(responseType: ResponseType.plain),
+          );
+        }
         body = response.data?.toString() ?? '';
       }
       return parseForumSearchHtml(body);
@@ -3179,6 +3196,20 @@ class ApiService {
             '${ApiConfig.baseUrl}/',
           );
     return '$path${join}page=$page';
+  }
+
+  static String? _resolveSearchRedirectUrl(String? location) {
+    if (location == null || location.trim().isEmpty) return null;
+
+    final baseUri = Uri.parse('${ApiConfig.baseUrl}/');
+    final redirectUri = baseUri.resolve(location.trim());
+    if (redirectUri.scheme != baseUri.scheme ||
+        redirectUri.host != baseUri.host ||
+        redirectUri.port != baseUri.port ||
+        !redirectUri.path.startsWith(baseUri.path)) {
+      return null;
+    }
+    return redirectUri.toString();
   }
 
   /// 解析主题搜索 HTML（对齐 S1-Next `ForumSearchWrapper`）。

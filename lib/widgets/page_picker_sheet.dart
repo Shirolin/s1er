@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../theme/app_theme.dart';
+import '../utils/window_size.dart';
 import 's1_adaptive_sheet.dart';
 
 typedef PageItemLabelBuilder = String Function(int page);
@@ -77,7 +78,7 @@ class _PagePickerSheetState extends State<PagePickerSheet> {
     widget.onPageSelected(page);
   }
 
-  List<int> _visiblePages() {
+  List<int> _visiblePages({required int radius}) {
     final total = widget.totalPages;
     if (total <= 50) {
       return List<int>.generate(total, (i) => i + 1);
@@ -85,18 +86,31 @@ class _PagePickerSheetState extends State<PagePickerSheet> {
 
     final anchor = widget.currentPage ?? 1;
     final pages = <int>{1, total, anchor};
-    for (var i = anchor - 5; i <= anchor + 5; i++) {
+    for (var i = anchor - radius; i <= anchor + radius; i++) {
       if (i >= 1 && i <= total) pages.add(i);
     }
     final sorted = pages.toList()..sort();
     return sorted;
   }
 
+  List<int?> _pageEntries(List<int> pages) {
+    final entries = <int?>[];
+    for (var index = 0; index < pages.length; index++) {
+      if (index > 0 && pages[index] - pages[index - 1] > 1) {
+        entries.add(null);
+      }
+      entries.add(pages[index]);
+    }
+    return entries;
+  }
+
   @override
   Widget build(BuildContext context) {
     final scheme = Theme.of(context).colorScheme;
     final textTheme = Theme.of(context).textTheme;
-    final pages = _visiblePages();
+    final isDesktop = context.isExpandedOrAbove;
+    final pages = _visiblePages(radius: isDesktop ? 2 : 5);
+    final pageEntries = _pageEntries(pages);
 
     return SafeArea(
       child: ConstrainedBox(
@@ -108,7 +122,12 @@ class _PagePickerSheetState extends State<PagePickerSheet> {
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
             Padding(
-              padding: const EdgeInsets.fromLTRB(24, 0, 24, 12),
+              padding: EdgeInsets.fromLTRB(
+                24,
+                isDesktop ? 24 : 0,
+                24,
+                12,
+              ),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
@@ -117,7 +136,10 @@ class _PagePickerSheetState extends State<PagePickerSheet> {
                     children: [
                       Text(
                         widget.title,
-                        style: textTheme.titleLarge?.copyWith(
+                        style: (isDesktop
+                                ? textTheme.titleMedium
+                                : textTheme.titleLarge)
+                            ?.copyWith(
                           fontWeight: FontWeight.bold,
                         ),
                       ),
@@ -205,8 +227,7 @@ class _PagePickerSheetState extends State<PagePickerSheet> {
                   ),
                   const SizedBox(width: 12),
                   SizedBox(
-                    height:
-                        44, // Aligns with the denser OutlineInputBorder height
+                    height: S1BottomBarStyle.minTouchTarget,
                     child: FilledButton(
                       onPressed: _submitJump,
                       style: FilledButton.styleFrom(
@@ -224,109 +245,119 @@ class _PagePickerSheetState extends State<PagePickerSheet> {
             Divider(height: 1, color: scheme.outlineVariant),
             Flexible(
               child: ClipRect(
-                child: ListView.builder(
-                  shrinkWrap: true,
-                  padding:
-                      const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-                  itemCount: pages.length,
-                  itemBuilder: (ctx, index) {
-                    final page = pages[index];
-                    final isCurrent = widget.currentPage != null &&
-                        page == widget.currentPage;
-                    final showEllipsisBefore =
-                        index > 0 && page - pages[index - 1] > 1;
-
-                    return Column(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        if (showEllipsisBefore)
-                          Padding(
-                            padding: const EdgeInsets.symmetric(vertical: 8),
-                            child: Row(
-                              mainAxisAlignment: MainAxisAlignment.center,
-                              children: [
-                                Icon(
-                                  Icons.more_horiz,
-                                  size: 16,
-                                  color: scheme.outlineVariant,
-                                ),
-                              ],
-                            ),
-                          ),
-                        Padding(
-                          padding: const EdgeInsets.symmetric(vertical: 2),
-                          child: ListTile(
-                            shape: const RoundedRectangleBorder(
-                              borderRadius: S1Shape.medium,
-                            ),
-                            selected: isCurrent,
-                            selectedTileColor: scheme.primaryContainer
-                                .withValues(alpha: S1Alpha.half),
-                            leading: Container(
-                              constraints: const BoxConstraints(
-                                minWidth: 32,
-                                minHeight: 32,
-                              ),
-                              padding:
-                                  const EdgeInsets.symmetric(horizontal: 6),
-                              decoration: BoxDecoration(
-                                color: isCurrent
-                                    ? scheme.primary
-                                    : scheme.surfaceContainerHighest,
-                                borderRadius: S1Shape.large,
-                              ),
-                              child: Center(
-                                widthFactor: 1,
-                                heightFactor: 1,
-                                child: Text(
-                                  '$page',
-                                  style: textTheme.bodyMedium?.copyWith(
-                                    color: isCurrent
-                                        ? scheme.onPrimary
-                                        : scheme.onSurfaceVariant,
-                                    fontWeight: FontWeight.bold,
-                                  ),
-                                ),
-                              ),
-                            ),
-                            title: Text(
-                              widget.pageItemLabelBuilder?.call(page) ??
-                                  '第 $page 页',
-                              style: textTheme.titleSmall?.copyWith(
-                                color: isCurrent
-                                    ? scheme.primary
-                                    : scheme.onSurface,
-                                fontWeight: isCurrent
-                                    ? FontWeight.bold
-                                    : FontWeight.w500,
-                              ),
-                            ),
-                            trailing: isCurrent
-                                ? Icon(
-                                    Icons.check_circle,
-                                    color: scheme.primary,
-                                    size: 22,
-                                  )
-                                : Icon(
-                                    Icons.chevron_right,
-                                    color: scheme.onSurfaceVariant
-                                        .withValues(alpha: S1Alpha.strong),
-                                    size: 18,
-                                  ),
-                            onTap: isCurrent
-                                ? null
-                                : () => widget.onPageSelected(page),
-                          ),
+                child: isDesktop
+                    ? GridView.builder(
+                        shrinkWrap: true,
+                        padding: const EdgeInsets.all(16),
+                        gridDelegate:
+                            const SliverGridDelegateWithFixedCrossAxisCount(
+                          crossAxisCount: 2,
+                          mainAxisExtent: 56,
+                          crossAxisSpacing: 12,
+                          mainAxisSpacing: 8,
                         ),
-                      ],
-                    );
-                  },
-                ),
+                        itemCount: pageEntries.length,
+                        itemBuilder: (context, index) => _PageEntryTile(
+                          page: pageEntries[index],
+                          currentPage: widget.currentPage,
+                          labelBuilder: widget.pageItemLabelBuilder,
+                          onSelected: widget.onPageSelected,
+                        ),
+                      )
+                    : ListView.builder(
+                        shrinkWrap: true,
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 16,
+                          vertical: 12,
+                        ),
+                        itemCount: pageEntries.length,
+                        itemBuilder: (context, index) => _PageEntryTile(
+                          page: pageEntries[index],
+                          currentPage: widget.currentPage,
+                          labelBuilder: widget.pageItemLabelBuilder,
+                          onSelected: widget.onPageSelected,
+                        ),
+                      ),
               ),
             ),
           ],
         ),
       ),
+    );
+  }
+}
+
+class _PageEntryTile extends StatelessWidget {
+  const _PageEntryTile({
+    required this.page,
+    required this.currentPage,
+    required this.labelBuilder,
+    required this.onSelected,
+  });
+
+  final int? page;
+  final int? currentPage;
+  final PageItemLabelBuilder? labelBuilder;
+  final ValueChanged<int> onSelected;
+
+  @override
+  Widget build(BuildContext context) {
+    final scheme = Theme.of(context).colorScheme;
+    final textTheme = Theme.of(context).textTheme;
+    final page = this.page;
+    if (page == null) {
+      return Center(
+        child: Icon(
+          Icons.more_horiz,
+          size: 18,
+          color: scheme.outline,
+        ),
+      );
+    }
+
+    final isCurrent = currentPage != null && page == currentPage;
+    return ListTile(
+      shape: const RoundedRectangleBorder(borderRadius: S1Shape.medium),
+      selected: isCurrent,
+      selectedTileColor:
+          scheme.primaryContainer.withValues(alpha: S1Alpha.half),
+      contentPadding: const EdgeInsets.symmetric(horizontal: 12),
+      leading: Container(
+        constraints: const BoxConstraints(minWidth: 32, minHeight: 32),
+        padding: const EdgeInsets.symmetric(horizontal: 6),
+        decoration: BoxDecoration(
+          color: isCurrent ? scheme.primary : scheme.surfaceContainerHighest,
+          borderRadius: S1Shape.large,
+        ),
+        child: Center(
+          widthFactor: 1,
+          heightFactor: 1,
+          child: Text(
+            '$page',
+            style: textTheme.bodyMedium?.copyWith(
+              color: isCurrent ? scheme.onPrimary : scheme.onSurfaceVariant,
+              fontWeight: FontWeight.bold,
+            ),
+          ),
+        ),
+      ),
+      title: Text(
+        labelBuilder?.call(page) ?? '第 $page 页',
+        maxLines: 1,
+        overflow: TextOverflow.ellipsis,
+        style: textTheme.titleSmall?.copyWith(
+          color: isCurrent ? scheme.primary : scheme.onSurface,
+          fontWeight: isCurrent ? FontWeight.bold : FontWeight.w500,
+        ),
+      ),
+      trailing: isCurrent
+          ? Icon(Icons.check_circle, color: scheme.primary, size: 22)
+          : Icon(
+              Icons.chevron_right,
+              color: scheme.onSurfaceVariant.withValues(alpha: S1Alpha.strong),
+              size: 18,
+            ),
+      onTap: isCurrent ? null : () => onSelected(page),
     );
   }
 }

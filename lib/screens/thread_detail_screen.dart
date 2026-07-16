@@ -682,7 +682,7 @@ class _ThreadDetailScreenState extends ConsumerState<ThreadDetailScreen> {
                     )
                   : null,
             ) ??
-            const Text('Thread'),
+            const Text('帖子召唤中…'),
         actions: [
           FavoriteBookmarkButton(
             type: FavoriteType.thread,

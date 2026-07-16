@@ -19,7 +19,7 @@ import '../widgets/s1_fab_layout.dart';
 import '../widgets/s1_swipe_pagination.dart';
 import '../widgets/thread_card.dart';
 import '../utils/s1_snack_bar.dart';
-import '../utils/window_size.dart';
+import '../utils/forum_list_layout.dart';
 import '../models/thread_open_intent.dart';
 import '../models/thread_destination.dart';
 import '../providers/thread_open_intent_provider.dart';
@@ -93,8 +93,10 @@ class _ForumListScreenState extends ConsumerState<ForumListScreen> {
     final isLoggedIn = ref.watch(
       authStateProvider.select((auth) => auth.isLoggedIn),
     );
+    final windowWidth = MediaQuery.sizeOf(context).width;
 
-    if (!context.isLargeOrAbove && widget.selectedThreadId != null) {
+    if (!shouldOpenForumThreadInPlace(windowWidth) &&
+        widget.selectedThreadId != null) {
       return ProviderScope(
         overrides: [
           threadOpenIntentProvider(widget.selectedThreadId!).overrideWithValue(
@@ -130,9 +132,13 @@ class _ForumListScreenState extends ConsumerState<ForumListScreen> {
           ],
         ),
         body: LayoutBuilder(
-          builder: (context, constraints) {
-            final isSplit =
-                constraints.maxWidth >= 1200 && widget.selectedThreadId != null;
+          builder: (context, _) {
+            final opensThreadInPlace =
+                shouldOpenForumThreadInPlace(windowWidth);
+            final isSplit = shouldShowForumSplitView(
+              windowWidth,
+              hasSelectedThread: widget.selectedThreadId != null,
+            );
             return Row(
               children: [
                 if (isSplit)
@@ -194,7 +200,7 @@ class _ForumListScreenState extends ConsumerState<ForumListScreen> {
                           showScrollToTop: _showScrollToTop,
                           onScrollMetricsChanged: _onScrollMetricsChanged,
                           onOpenNewThread: _openNewThread,
-                          onOpenThread: null,
+                          onOpenThread: opensThreadInPlace ? _openThread : null,
                           onPageChanged: (page) => ref
                               .read(threadListProvider(widget.fid).notifier)
                               .goToPage(page),

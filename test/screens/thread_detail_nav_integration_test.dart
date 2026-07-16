@@ -9,11 +9,13 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:go_router/go_router.dart';
 import 'package:s1_app/models/user.dart';
 import 'package:s1_app/models/open_scroll_target.dart';
+import 'package:s1_app/models/rate_log.dart';
 import 'package:s1_app/providers/auth_provider.dart';
 import 'package:s1_app/providers/post_provider.dart';
 import 'package:s1_app/providers/reading_history_provider.dart';
 import 'package:s1_app/providers/settings_provider.dart';
 import 'package:s1_app/providers/thread_open_intent_provider.dart';
+import 'package:s1_app/providers/thread_rate_logs_provider.dart';
 import 'package:s1_app/screens/thread_detail_screen.dart';
 import 'package:s1_app/services/http_client.dart';
 import 'package:s1_app/services/reading_history_service.dart';
@@ -22,6 +24,13 @@ import 'package:s1_app/utils/thread_navigation.dart';
 import 'package:s1_app/widgets/pagination_bar.dart';
 
 import '../helpers/test_local_data.dart';
+
+class _TestThreadRateLogsNotifier extends ThreadRateLogsNotifier {
+  _TestThreadRateLogsNotifier(super.tid);
+
+  @override
+  Map<String, PostRateLog> build() => const {};
+}
 
 Future<void> _pumpFrames(WidgetTester tester, int frames) async {
   for (var i = 0; i < frames; i++) {
@@ -77,6 +86,9 @@ void main() {
           ),
         ),
         authStateProvider.overrideWith(_GuestAuthNotifier.new),
+        threadRateLogsProvider(tid).overrideWith(
+          () => _TestThreadRateLogsNotifier(tid),
+        ),
         if (!useNestedIntentOverride)
           threadOpenIntentProvider(tid).overrideWithValue(intent),
       ],

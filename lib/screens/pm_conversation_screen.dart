@@ -103,9 +103,14 @@ class _PmComposer extends StatelessWidget {
                         icon: const Icon(Icons.send_outlined),
                         label: Text(state.isSending ? '发送中…' : '发送'),
                       )
-                    : FilledButton(
+                    : IconButton.filled(
                         onPressed: canSend ? onSend : null,
-                        child: Text(state.isSending ? '发送中…' : '发送'),
+                        tooltip: state.isSending ? '发送中' : '发送私信',
+                        icon: Icon(
+                          state.isSending
+                              ? Icons.hourglass_top
+                              : Icons.send_outlined,
+                        ),
                       ),
               ),
             ],
@@ -271,35 +276,40 @@ class _PmConversationScreenState extends ConsumerState<PmConversationScreen> {
       child: Scaffold(
         appBar: AppBar(
           elevation: 0,
-          title: isDesktop
-              ? Row(
+          title: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              WebAvatar(
+                url: PrivateMessageItem.avatarUrlForUid(widget.touid),
+                radius: isDesktop ? 18 : 16,
+                fallbackLetter: displayName.characters.first,
+              ),
+              const SizedBox(width: 10),
+              if (isDesktop)
+                Column(
                   mainAxisSize: MainAxisSize.min,
+                  crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    WebAvatar(
-                      url: PrivateMessageItem.avatarUrlForUid(widget.touid),
-                      radius: 18,
-                      fallbackLetter: displayName.characters.first,
-                    ),
-                    const SizedBox(width: 10),
-                    Column(
-                      mainAxisSize: MainAxisSize.min,
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(displayName),
-                        Text(
-                          'UID ${widget.touid}',
-                          style:
-                              Theme.of(context).textTheme.labelSmall?.copyWith(
-                                    color: Theme.of(context)
-                                        .colorScheme
-                                        .onSurfaceVariant,
-                                  ),
-                        ),
-                      ],
+                    Text(displayName),
+                    Text(
+                      'UID ${widget.touid}',
+                      style: Theme.of(context).textTheme.labelSmall?.copyWith(
+                            color:
+                                Theme.of(context).colorScheme.onSurfaceVariant,
+                          ),
                     ),
                   ],
                 )
-              : Text(displayName),
+              else
+                Flexible(
+                  child: Text(
+                    displayName,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                ),
+            ],
+          ),
           actions: [
             AppBarMoreMenu(
               onRefresh: () => ref.read(provider.notifier).refresh(),
@@ -371,7 +381,7 @@ class _PmConversationScreenState extends ConsumerState<PmConversationScreen> {
                                       'pm_message_${state.items[index].id}_$index',
                                     ),
                                     message: state.items[index],
-                                    showIdentity: isDesktop,
+                                    compact: !isDesktop,
                                   ),
                                 ),
                         ),

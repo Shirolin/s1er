@@ -23,7 +23,7 @@ class PrivateMessage {
       message: _decodeMessage(
         _firstNonEmpty([json['message'], json['subject']]),
       ),
-      dateline: int.tryParse(json['dateline']?.toString() ?? '') ?? 0,
+      dateline: _parseDateline(json),
       isOutgoing: authorId.isNotEmpty && authorId != partnerUid,
     );
   }
@@ -56,6 +56,37 @@ class PrivateMessage {
         .replaceAll('&#39;', "'")
         .replaceAll('&nbsp;', ' ')
         .trim();
+  }
+
+  static int _parseDateline(Map<String, dynamic> json) {
+    for (final key in ['dateline', 'dbdateline']) {
+      final timestamp = int.tryParse(json[key]?.toString() ?? '');
+      if (timestamp != null && timestamp > 0) return timestamp;
+    }
+
+    final value = _firstNonEmpty([
+      json['date'],
+      json['pmdate'],
+      json['postdatetime'],
+      json['time'],
+    ]).replaceAll('/', '-');
+    if (value.isEmpty) return 0;
+
+    final parsed = DateTime.tryParse(value);
+    if (parsed != null) return parsed.millisecondsSinceEpoch ~/ 1000;
+
+    final match = RegExp(
+      r'^(\d{4})-(\d{1,2})-(\d{1,2})(?:\s+(\d{1,2}):(\d{1,2}))?',
+    ).firstMatch(value);
+    if (match == null) return 0;
+    return DateTime(
+          int.parse(match.group(1)!),
+          int.parse(match.group(2)!),
+          int.parse(match.group(3)!),
+          int.tryParse(match.group(4) ?? '') ?? 0,
+          int.tryParse(match.group(5) ?? '') ?? 0,
+        ).millisecondsSinceEpoch ~/
+        1000;
   }
 }
 

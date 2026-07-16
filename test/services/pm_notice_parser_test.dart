@@ -146,6 +146,37 @@ void main() {
       expect(result.totalPages, 1);
     });
 
+    test('parses alternate conversation time fields', () {
+      final result = ApiService.parsePmConversationJson(
+        {
+          'Variables': {
+            'list': [
+              {
+                'pmid': '103',
+                'msgfromid': '200001',
+                'msgfrom': '示例用户',
+                'message': '第一条',
+                'dbdateline': '1719216060',
+              },
+              {
+                'pmid': '104',
+                'msgfromid': '200001',
+                'msgfrom': '示例用户',
+                'message': '第二条',
+                'pmdate': '2024-06-24 16:02',
+              },
+            ],
+            'perpage': '20',
+            'count': '2',
+          },
+        },
+        partnerUid: '200001',
+      );
+
+      expect(result.items.first.dateline, 1719216060);
+      expect(result.items.last.dateline, greaterThan(0));
+    });
+
     test('rejects missing list and login responses', () {
       expect(
         () => ApiService.parsePmConversationJson(

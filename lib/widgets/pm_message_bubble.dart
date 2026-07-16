@@ -10,11 +10,11 @@ class PmMessageBubble extends StatelessWidget {
   const PmMessageBubble({
     super.key,
     required this.message,
-    this.showIdentity = false,
+    this.compact = false,
   });
 
   final PrivateMessage message;
-  final bool showIdentity;
+  final bool compact;
 
   @override
   Widget build(BuildContext context) {
@@ -30,6 +30,8 @@ class PmMessageBubble extends StatelessWidget {
         ? fallbackName
         : message.authorName.trim();
     final avatarUrl = PrivateMessageItem.avatarUrlForUid(message.authorId);
+    final formattedTime = formatDateTime(message.dateline);
+    final messageTime = formattedTime.isEmpty ? '时间未知' : formattedTime;
 
     final bubble = Card(
       elevation: 0,
@@ -45,33 +47,10 @@ class PmMessageBubble extends StatelessWidget {
               message.message.isEmpty ? '（空消息）' : message.message,
               style: textTheme.bodyMedium?.copyWith(color: foreground),
             ),
-            if (!showIdentity) ...[
-              const SizedBox(height: 6),
-              Text(
-                formatTimeAgo(message.dateline),
-                style: textTheme.labelSmall?.copyWith(
-                  color: message.isOutgoing
-                      ? scheme.onPrimaryContainer
-                      : scheme.onSurfaceVariant,
-                ),
-              ),
-            ],
           ],
         ),
       ),
     );
-
-    if (!showIdentity) {
-      return Align(
-        alignment:
-            message.isOutgoing ? Alignment.centerRight : Alignment.centerLeft,
-        child: Container(
-          constraints: const BoxConstraints(maxWidth: 560),
-          margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
-          child: bubble,
-        ),
-      );
-    }
 
     final messageColumn = Flexible(
       child: ConstrainedBox(
@@ -84,7 +63,7 @@ class PmMessageBubble extends StatelessWidget {
             Padding(
               padding: const EdgeInsets.symmetric(horizontal: 4),
               child: Text(
-                '$displayName  ·  ${formatTimeAgo(message.dateline)}',
+                '$displayName  ·  $messageTime',
                 maxLines: 1,
                 overflow: TextOverflow.ellipsis,
                 style: textTheme.labelSmall?.copyWith(
@@ -101,12 +80,15 @@ class PmMessageBubble extends StatelessWidget {
 
     final avatar = WebAvatar(
       url: avatarUrl,
-      radius: 18,
+      radius: compact ? 16 : 18,
       fallbackLetter: displayName.characters.first,
     );
 
     return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 6),
+      padding: EdgeInsets.symmetric(
+        horizontal: compact ? 12 : 24,
+        vertical: compact ? 5 : 6,
+      ),
       child: Row(
         mainAxisAlignment: message.isOutgoing
             ? MainAxisAlignment.end

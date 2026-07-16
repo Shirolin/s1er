@@ -35,8 +35,16 @@ class _MessagesScreenState extends ConsumerState<MessagesScreen> {
           padding: const EdgeInsets.fromLTRB(16, 8, 16, 8),
           child: SegmentedButton<int>(
             segments: const [
-              ButtonSegment(value: 0, label: Text('我的消息')),
-              ButtonSegment(value: 1, label: Text('我的提醒')),
+              ButtonSegment(
+                value: 0,
+                label: Text('我的消息'),
+                icon: Icon(Icons.mail_outline),
+              ),
+              ButtonSegment(
+                value: 1,
+                label: Text('我的提醒'),
+                icon: Icon(Icons.notifications_outlined),
+              ),
             ],
             selected: {_segment},
             onSelectionChanged: (value) {
@@ -144,6 +152,7 @@ class _NoticeListBody extends ConsumerWidget {
                 ),
               ],
               selected: {state.feed},
+              showSelectedIcon: false,
               onSelectionChanged: (value) {
                 final feed = value.first;
                 ref.read(noticeFeedSelectionProvider.notifier).select(feed);

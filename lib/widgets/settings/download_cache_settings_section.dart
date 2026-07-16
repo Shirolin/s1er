@@ -139,6 +139,7 @@ class _DownloadCacheSettingsSectionState
                         )
                         .toList(),
                     selected: {settings.imageCacheLimitMb},
+                    showSelectedIcon: false,
                     onSelectionChanged: (selection) {
                       notifier.setImageCacheLimitMb(selection.first);
                     },
@@ -199,6 +200,7 @@ class _DownloadCacheSettingsSectionState
                           ),
                         ],
                         selected: {settings.imageLoadPolicy},
+                        showSelectedIcon: false,
                         onSelectionChanged: (selection) {
                           notifier.setImageLoadPolicy(selection.first);
                         },
@@ -232,6 +234,7 @@ class _DownloadCacheSettingsSectionState
                       ),
                     ],
                     selected: {settings.avatarLoadPolicy},
+                    showSelectedIcon: false,
                     onSelectionChanged: (selection) {
                       notifier.setAvatarLoadPolicy(selection.first);
                     },

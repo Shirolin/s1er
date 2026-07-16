@@ -52,6 +52,7 @@ class ShareSettingsSection extends ConsumerWidget {
                         ),
                       ],
                       selected: {settings.shareImageFormat},
+                      showSelectedIcon: false,
                       onSelectionChanged: (selection) {
                         notifier.setShareImageFormat(selection.first);
                       },

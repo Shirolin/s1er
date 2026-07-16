@@ -18,10 +18,25 @@ void main() {
     );
 
     expect(find.text('安全提问'), findsOneWidget);
+    expect(find.text('未设置'), findsOneWidget);
+    expect(find.text('安全提问（未设置请忽略）'), findsNothing);
     expect(find.text('答案'), findsNothing);
 
     await tester.tap(find.byType(DropdownMenu<int>));
     await tester.pumpAndSettle();
+
+    final dropdownWidth = tester.getSize(find.byType(DropdownMenu<int>)).width;
+    final menuItems = tester.widgetList<MenuItemButton>(
+      find.byType(MenuItemButton),
+    );
+    expect(menuItems, hasLength(LoginSecurityQuestions.all.length));
+    for (final item in menuItems) {
+      expect(
+        tester.getSize(find.byWidget(item)).width,
+        closeTo(dropdownWidth, 1),
+        reason: '安全提问菜单项应占满下拉菜单宽度，保证整行 hover',
+      );
+    }
 
     await tester.tap(find.text(LoginSecurityQuestions.byId(1).label).last);
     await tester.pumpAndSettle();

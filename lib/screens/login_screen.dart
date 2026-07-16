@@ -194,6 +194,11 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                           DropdownMenuEntry<int>(
                             value: q.id,
                             label: q.label,
+                            style: const ButtonStyle(
+                              maximumSize: WidgetStatePropertyAll(
+                                Size(double.infinity, double.infinity),
+                              ),
+                            ),
                           ),
                       ],
                       onSelected: (value) {

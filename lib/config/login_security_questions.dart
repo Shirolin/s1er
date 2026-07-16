@@ -10,7 +10,7 @@ class LoginSecurityQuestion {
 
 abstract final class LoginSecurityQuestions {
   static const List<LoginSecurityQuestion> all = [
-    LoginSecurityQuestion(id: 0, label: '安全提问（未设置请忽略）'),
+    LoginSecurityQuestion(id: 0, label: '未设置'),
     LoginSecurityQuestion(id: 1, label: '母亲的名字'),
     LoginSecurityQuestion(id: 2, label: '爷爷的名字'),
     LoginSecurityQuestion(id: 3, label: '父亲出生的城市'),

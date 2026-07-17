@@ -5,6 +5,7 @@ import 'package:flutter_html/flutter_html.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:url_launcher/url_launcher.dart';
 import '../config/constants.dart';
+import '../config/env_config.dart';
 import '../models/emoticon_catalog.dart';
 import '../providers/settings_provider.dart';
 import '../theme/app_theme.dart';
@@ -19,6 +20,29 @@ import 'emoticon_widget.dart';
 import 'force_show_images.dart';
 import 'quote_block.dart';
 import 'image_viewer.dart';
+import 'scroll_pointer_gate.dart';
+
+final _anchorTag = RegExp(r'<a\s', caseSensitive: false);
+
+T _profiledBbcode<T>(
+  String tag,
+  T Function() run, {
+  String Function(T value)? detail,
+}) {
+  if (!EnvConfig.bbcodeProfile) return run();
+  final sw = Stopwatch()..start();
+  final value = run();
+  sw.stop();
+  final ms = sw.elapsedMicroseconds / 1000;
+  final extra = detail?.call(value);
+  debugPrint(
+    '[bbcode-profile] $tag ${ms.toStringAsFixed(1)}ms'
+    '${extra == null || extra.isEmpty ? '' : ' $extra'}',
+  );
+  return value;
+}
+
+int _countAnchors(String html) => _anchorTag.allMatches(html).length;
 
 String _unescapeHtml(String s) {
   return s
@@ -87,14 +111,20 @@ class BbcodeRenderer extends ConsumerWidget {
       widgets.add(
         Padding(
           padding: const EdgeInsets.symmetric(vertical: 8),
-          child: ActionChip(
-            avatar: Icon(
-              Icons.image_outlined,
-              size: 18,
-              color: Theme.of(context).colorScheme.onSurfaceVariant,
+          // 独立 CTA：居中比贴左更易扫读；ExcludeFocus 避免点击抢焦点后
+          // ensureVisible 把列表滚到其它楼层。
+          child: Center(
+            child: ExcludeFocus(
+              child: ActionChip(
+                avatar: Icon(
+                  Icons.image_outlined,
+                  size: 18,
+                  color: Theme.of(context).colorScheme.onSurfaceVariant,
+                ),
+                label: Text('还有 $hiddenCount 张图片，点击展开'),
+                onPressed: onExpandImages,
+              ),
             ),
-            label: Text('还有 $hiddenCount 张图片，点击展开'),
-            onPressed: onExpandImages,
           ),
         ),
       );
@@ -178,9 +208,14 @@ class BbcodeRenderer extends ConsumerWidget {
       _advanceImageIndexFromHtml(cached);
       return cached;
     }
-    final html = BbcodeParser.parse(
-      cleanedText,
-      imageIndexCounter: imageIndexCounter,
+    final html = _profiledBbcode(
+      'parse',
+      () => BbcodeParser.parse(
+        cleanedText,
+        imageIndexCounter: imageIndexCounter,
+      ),
+      detail: (value) =>
+          'cache-miss links=${_countAnchors(value)} len=${value.length}',
     );
     BbcodeCache.put(cacheKey, html);
     return html;
@@ -262,8 +297,9 @@ class _MemoizedHtmlBlockState extends State<_MemoizedHtmlBlock> {
       _cachedThemeToken = themeToken;
       _cachedWidget = null;
     }
+    // 仅在真正重建 Html 时打点；memo hit 不打，避免刷屏。
     _cachedWidget ??= _buildHtml(context);
-    return _cachedWidget!;
+    return ScrollAwareIgnorePointer(child: _cachedWidget!);
   }
 
   Widget _buildHtml(BuildContext context) {
@@ -271,6 +307,7 @@ class _MemoizedHtmlBlockState extends State<_MemoizedHtmlBlock> {
     final showImages = widget.showImages;
     final maxImagesPerPost = widget.maxImagesPerPost;
     final imagesExpanded = widget.imagesExpanded;
+    final profileDetail = 'links=${_countAnchors(html)} len=${html.length}';
 
     final scheme = Theme.of(context).colorScheme;
     final textTheme = Theme.of(context).textTheme;
@@ -285,152 +322,219 @@ class _MemoizedHtmlBlockState extends State<_MemoizedHtmlBlock> {
       return index < maxImagesPerPost;
     }
 
-    return Html(
-      data: html,
-      style: {
-        'body': Style(
-          fontSize: FontSize(bodySize),
-          lineHeight: LineHeight.number(bodyLineHeight),
-          margin: Margins.zero,
-          padding: HtmlPaddings.zero,
-          color: scheme.onSurface,
-          fontFamily: textTheme.bodyMedium?.fontFamily,
+    final style = {
+      'body': Style(
+        fontSize: FontSize(bodySize),
+        lineHeight: LineHeight.number(bodyLineHeight),
+        margin: Margins.zero,
+        padding: HtmlPaddings.zero,
+        color: scheme.onSurface,
+        fontFamily: textTheme.bodyMedium?.fontFamily,
+      ),
+      'a': Style(
+        color: scheme.primary,
+        textDecoration: TextDecoration.none,
+        fontWeight: FontWeight.w500,
+      ),
+      'b': Style(fontWeight: FontWeight.bold),
+      'i': Style(fontStyle: FontStyle.italic),
+      'u': Style(textDecoration: TextDecoration.underline),
+      's': Style(textDecoration: TextDecoration.lineThrough),
+      'pre': Style(
+        backgroundColor: scheme.surfaceContainerHighest,
+        padding: HtmlPaddings.all(12),
+        margin: Margins.symmetric(vertical: 8),
+        fontFamily: codeFontFamily,
+        fontSize: FontSize(codeSize),
+        display: Display.block,
+      ),
+      '.hide-content': Style(
+        color: Colors.transparent,
+        backgroundColor: scheme.outlineVariant,
+      ),
+      'blockquote': Style(display: Display.none),
+      'hr': Style(
+        border: Border(
+          bottom: BorderSide(color: scheme.outlineVariant, width: 0.8),
         ),
-        'a': Style(
-          color: scheme.primary,
-          textDecoration: TextDecoration.none,
-          fontWeight: FontWeight.w500,
-        ),
-        'b': Style(fontWeight: FontWeight.bold),
-        'i': Style(fontStyle: FontStyle.italic),
-        'u': Style(textDecoration: TextDecoration.underline),
-        's': Style(textDecoration: TextDecoration.lineThrough),
-        'pre': Style(
-          backgroundColor: scheme.surfaceContainerHighest,
-          padding: HtmlPaddings.all(12),
-          margin: Margins.symmetric(vertical: 8),
-          fontFamily: codeFontFamily,
-          fontSize: FontSize(codeSize),
-          display: Display.block,
-        ),
-        '.hide-content': Style(
-          color: Colors.transparent,
-          backgroundColor: scheme.outlineVariant,
-        ),
-        'blockquote': Style(display: Display.none),
-        'hr': Style(
-          border: Border(
-            bottom: BorderSide(color: scheme.outlineVariant, width: 0.8),
-          ),
-          margin: Margins.symmetric(vertical: 12),
-        ),
-        'ul': Style(padding: HtmlPaddings.only(left: 16)),
-        'ol': Style(padding: HtmlPaddings.only(left: 16)),
-        'li': Style(margin: Margins.only(bottom: 8)),
-      },
-      onLinkTap: (url, _, __) {
-        if (url == null) return;
-        switch (PostLinkResolver.resolve(url)) {
-          case InternalPostLink(:final location):
-            openInternalLocation(context, location);
-          case ExternalPostLink(:final uri):
-            unawaited(launchUrl(uri, mode: LaunchMode.externalApplication));
-          case InvalidPostLink():
-            break;
-        }
-      },
-      extensions: [
-        TagExtension(
-          tagsToExtend: {'span'},
-          builder: (context) {
-            final element = context.element;
-            if (element == null) return const SizedBox.shrink();
+        margin: Margins.symmetric(vertical: 12),
+      ),
+      'ul': Style(padding: HtmlPaddings.only(left: 16)),
+      'ol': Style(padding: HtmlPaddings.only(left: 16)),
+      'li': Style(margin: Margins.only(bottom: 8)),
+    };
 
-            if (element.classes.contains('post-image')) {
-              final preview =
-                  _unescapeHtml(element.attributes['data-preview'] ?? '');
-              final full = _unescapeHtml(
-                element.attributes['data-full'] ?? preview,
-              );
-              if (preview.isEmpty) return const SizedBox.shrink();
+    final extensions = <HtmlExtension>[
+      TagExtension(
+        tagsToExtend: {'span'},
+        builder: (context) {
+          final element = context.element;
+          if (element == null) return const SizedBox.shrink();
 
-              final index = int.tryParse(
-                    element.attributes['data-image-index'] ?? '',
-                  ) ??
-                  0;
-              if (!shouldShowPostImage(index)) {
-                return const SizedBox.shrink();
-              }
+          if (element.classes.contains('post-image')) {
+            final preview =
+                _unescapeHtml(element.attributes['data-preview'] ?? '');
+            final full = _unescapeHtml(
+              element.attributes['data-full'] ?? preview,
+            );
+            if (preview.isEmpty) return const SizedBox.shrink();
 
-              return ImageViewer(
-                imageUrl: preview,
-                fullImageUrl: full,
-                showBorder: true,
-                margin: const EdgeInsets.symmetric(vertical: 8),
-                deferUntilVisible: widget.deferImages,
-              );
+            final index = int.tryParse(
+                  element.attributes['data-image-index'] ?? '',
+                ) ??
+                0;
+            if (!shouldShowPostImage(index)) {
+              return const SizedBox.shrink();
             }
 
-            if (element.classes.contains('emoticon')) {
-              final src = _unescapeHtml(element.attributes['data-src'] ?? '');
-              final code = element.attributes['data-code'] ?? '';
-              final fromUrl =
-                  src.isNotEmpty ? EmoticonCatalog.fromSmileyUrl(src) : null;
-              final item = fromUrl ?? EmoticonCatalog.findByCode(code);
-              if (item != null) {
-                return Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 2),
-                  child: EmoticonImage(item: item, size: 24),
-                );
-              }
-              if (src.isNotEmpty) {
-                return ImageViewer(
-                  imageUrl: src,
-                  isEmoticon: true,
-                  margin: const EdgeInsets.symmetric(horizontal: 2),
-                );
-              }
-              return EmoticonWidget(code: code);
+            return ImageViewer(
+              imageUrl: preview,
+              fullImageUrl: full,
+              showBorder: true,
+              margin: const EdgeInsets.symmetric(vertical: 8),
+              deferUntilVisible: widget.deferImages,
+            );
+          }
+
+          if (element.classes.contains('emoticon')) {
+            final src = _unescapeHtml(element.attributes['data-src'] ?? '');
+            final code = element.attributes['data-code'] ?? '';
+            final fromUrl =
+                src.isNotEmpty ? EmoticonCatalog.fromSmileyUrl(src) : null;
+            final item = fromUrl ?? EmoticonCatalog.findByCode(code);
+            if (item != null) {
+              return Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 2),
+                child: EmoticonImage(item: item, size: 24),
+              );
             }
-
-            return const SizedBox.shrink();
-          },
-        ),
-        TagExtension(
-          tagsToExtend: {'img'},
-          builder: (context) {
-            final src = _unescapeHtml(context.element?.attributes['src'] ?? '');
-            if (src.isEmpty) return const SizedBox.shrink();
-
-            if (S1Constants.isEmoticon(src)) {
-              final item = EmoticonCatalog.fromSmileyUrl(src);
-              if (item != null) {
-                return Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 2),
-                  child: EmoticonImage(item: item, size: 24),
-                );
-              }
+            if (src.isNotEmpty) {
               return ImageViewer(
                 imageUrl: src,
                 isEmoticon: true,
                 margin: const EdgeInsets.symmetric(horizontal: 2),
               );
             }
+            return EmoticonWidget(code: code);
+          }
 
-            final urls = PostImageUrls.resolve(src: src);
-            if (!shouldShowPostImage(0)) {
-              return const SizedBox.shrink();
+          return const SizedBox.shrink();
+        },
+      ),
+      TagExtension(
+        tagsToExtend: {'img'},
+        builder: (context) {
+          final src = _unescapeHtml(context.element?.attributes['src'] ?? '');
+          if (src.isEmpty) return const SizedBox.shrink();
+
+          if (S1Constants.isEmoticon(src)) {
+            final item = EmoticonCatalog.fromSmileyUrl(src);
+            if (item != null) {
+              return Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 2),
+                child: EmoticonImage(item: item, size: 24),
+              );
             }
             return ImageViewer(
-              imageUrl: urls.previewUrl,
-              fullImageUrl: urls.fullUrl,
-              showBorder: true,
-              margin: const EdgeInsets.symmetric(vertical: 8),
-              deferUntilVisible: widget.deferImages,
+              imageUrl: src,
+              isEmoticon: true,
+              margin: const EdgeInsets.symmetric(horizontal: 2),
             );
-          },
+          }
+
+          final urls = PostImageUrls.resolve(src: src);
+          if (!shouldShowPostImage(0)) {
+            return const SizedBox.shrink();
+          }
+          return ImageViewer(
+            imageUrl: urls.previewUrl,
+            fullImageUrl: urls.fullUrl,
+            showBorder: true,
+            margin: const EdgeInsets.symmetric(vertical: 8),
+            deferUntilVisible: widget.deferImages,
+          );
+        },
+      ),
+    ];
+
+    void onLinkTap(String? url, _, __) {
+      if (url == null) return;
+      switch (PostLinkResolver.resolve(url)) {
+        case InternalPostLink(:final location):
+          openInternalLocation(context, location);
+        case ExternalPostLink(:final uri):
+          unawaited(launchUrl(uri, mode: LaunchMode.externalApplication));
+        case InvalidPostLink():
+          break;
+      }
+    }
+
+    // profiling 开启时先量 DOM 解析，再用 fromElement 避免 Html 内再解析一次。
+    if (EnvConfig.bbcodeProfile) {
+      final documentElement = _profiledBbcode(
+        'html-dom',
+        () => HtmlParser.parseHTML(html),
+        detail: (_) => profileDetail,
+      );
+      return _HtmlSubtreeProbe(
+        detail: profileDetail,
+        child: Html.fromElement(
+          documentElement: documentElement,
+          style: style,
+          onLinkTap: onLinkTap,
+          extensions: extensions,
         ),
-      ],
+      );
+    }
+
+    return Html(
+      data: html,
+      style: style,
+      onLinkTap: onLinkTap,
+      extensions: extensions,
     );
+  }
+}
+
+/// 估算 Html 子树首次挂载成本（含 prepareTree / buildTree / 本帧 layout）。
+/// 同帧多个楼层同时挂载时会互相叠加，慢滑单楼更准。
+class _HtmlSubtreeProbe extends StatefulWidget {
+  const _HtmlSubtreeProbe({
+    required this.detail,
+    required this.child,
+  });
+
+  final String detail;
+  final Widget child;
+
+  @override
+  State<_HtmlSubtreeProbe> createState() => _HtmlSubtreeProbeState();
+}
+
+class _HtmlSubtreeProbeState extends State<_HtmlSubtreeProbe> {
+  final Stopwatch _sw = Stopwatch();
+  bool _logged = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _sw.start();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    if (!_logged) {
+      _logged = true;
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (!_sw.isRunning) return;
+        _sw.stop();
+        final ms = _sw.elapsedMicroseconds / 1000;
+        debugPrint(
+          '[bbcode-profile] html-subtree ${ms.toStringAsFixed(1)}ms '
+          '${widget.detail}',
+        );
+      });
+    }
+    return widget.child;
   }
 }

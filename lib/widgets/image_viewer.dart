@@ -250,6 +250,11 @@ class _ImageViewerState extends ConsumerState<ImageViewer> {
       final data = await ref.read(imageBytesProvider(url).future);
       if (!mounted) return;
       if (data == null) {
+        // 404 / empty: try full URL once for distinct preview→full pairs.
+        if (_shouldTryFullOnMissing(url)) {
+          _fallbackToFullInline();
+          return;
+        }
         setState(() => _loading = false);
         return;
       }
@@ -277,10 +282,15 @@ class _ImageViewerState extends ConsumerState<ImageViewer> {
     }
   }
 
-  bool _shouldFallbackToFull(String url, DioException error) {
+  bool _shouldTryFullOnMissing(String url) {
     if (_previewFailed || url != _previewUrl || !_hasDistinctFull) {
       return false;
     }
+    return true;
+  }
+
+  bool _shouldFallbackToFull(String url, DioException error) {
+    if (!_shouldTryFullOnMissing(url)) return false;
     final status = error.response?.statusCode;
     return status == null || status == 404;
   }
@@ -350,7 +360,9 @@ class _ImageViewerState extends ConsumerState<ImageViewer> {
       },
     );
 
-    if (!showImages) return _wrapDeferred(_buildHiddenPlaceholder());
+    if (!showImages) {
+      return _wrapDeferred(_wrapBlockImage(_buildHiddenPlaceholder()));
+    }
 
     if (widget.deferUntilVisible &&
         !widget.isEmoticon &&
@@ -358,39 +370,84 @@ class _ImageViewerState extends ConsumerState<ImageViewer> {
         !_hasDisplayableImage &&
         !_loading &&
         !_deferredLoad) {
-      return _wrapDeferred(const SizedBox(height: 96));
+      return _wrapDeferred(
+        _wrapBlockImage(_blockPlaceholder(height: 96)),
+      );
     }
 
     if (widget.isEmoticon) return _wrapDeferred(_buildEmoticon(context));
 
     if (_deferredLoad) {
-      return _wrapDeferred(_buildTapToLoadPlaceholder());
+      return _wrapDeferred(_wrapBlockImage(_buildTapToLoadPlaceholder()));
     }
 
     if (_loading) {
       return _wrapDeferred(
-        const SizedBox(
-          height: 96,
-          child: Center(child: CircularProgressIndicator(strokeWidth: 2)),
+        _wrapBlockImage(
+          _blockPlaceholder(
+            height: 96,
+            child: const Center(
+              child: CircularProgressIndicator(strokeWidth: 2),
+            ),
+          ),
         ),
       );
     }
 
     if (_imageProvider != null) {
-      return _wrapDeferred(_buildImage(_imageProvider!));
+      return _wrapDeferred(_wrapBlockImage(_buildImage(_imageProvider!)));
     }
 
     if (_resourceType == ResourceType.publicAsset) {
-      return _wrapDeferred(_buildImage(_publicNetworkProvider(_displayUrl)));
+      return _wrapDeferred(
+        _wrapBlockImage(_buildImage(_publicNetworkProvider(_displayUrl))),
+      );
     }
 
-    return _wrapDeferred(_buildError());
+    return _wrapDeferred(_wrapBlockImage(_buildError()));
   }
 
   Widget _wrapDeferred(Widget child) {
     if (!widget.deferUntilVisible || widget.isEmoticon) return child;
     return LazyVisibilityLoader(
       onVisible: _onBecomeVisible,
+      child: child,
+    );
+  }
+
+  /// 帖内插图在内容栏内居中；表情保持行内。
+  ///
+  /// 宽图跟随父级内容栏（手机全宽 / PC [S1ContentWidth] reading）；
+  /// 窄图按固有宽度居中。不再单独设图片 max——栏宽已由阅读布局约束。
+  Widget _wrapBlockImage(Widget child) {
+    if (widget.isEmoticon) return child;
+
+    if (widget.margin != null) {
+      child = Padding(padding: widget.margin!, child: child);
+    }
+
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final maxWidth = constraints.hasBoundedWidth &&
+                constraints.maxWidth.isFinite &&
+                constraints.maxWidth > 0
+            ? constraints.maxWidth
+            : 300.0;
+        return Align(
+          alignment: Alignment.center,
+          child: ConstrainedBox(
+            constraints: BoxConstraints(maxWidth: maxWidth),
+            child: child,
+          ),
+        );
+      },
+    );
+  }
+
+  Widget _blockPlaceholder({required double height, Widget? child}) {
+    return SizedBox(
+      width: double.infinity,
+      height: height,
       child: child,
     );
   }
@@ -461,10 +518,6 @@ class _ImageViewerState extends ConsumerState<ImageViewer> {
       );
     }
 
-    if (widget.margin != null) {
-      child = Padding(padding: widget.margin!, child: child);
-    }
-
     return child;
   }
 
@@ -473,6 +526,7 @@ class _ImageViewerState extends ConsumerState<ImageViewer> {
     final textTheme = Theme.of(context).textTheme;
 
     return Container(
+      width: double.infinity,
       height: 48,
       alignment: Alignment.center,
       decoration: BoxDecoration(
@@ -490,12 +544,13 @@ class _ImageViewerState extends ConsumerState<ImageViewer> {
     final scheme = Theme.of(context).colorScheme;
     final textTheme = Theme.of(context).textTheme;
 
-    Widget child = Semantics(
+    return Semantics(
       button: true,
       label: '点击加载图片',
       child: GestureDetector(
         onTap: _requestManualLoad,
         child: Container(
+          width: double.infinity,
           height: 96,
           alignment: Alignment.center,
           decoration: BoxDecoration(
@@ -523,12 +578,6 @@ class _ImageViewerState extends ConsumerState<ImageViewer> {
         ),
       ),
     );
-
-    if (widget.margin != null) {
-      child = Padding(padding: widget.margin!, child: child);
-    }
-
-    return child;
   }
 
   Widget _buildError() {
@@ -541,6 +590,7 @@ class _ImageViewerState extends ConsumerState<ImageViewer> {
           _loadAuthOrProxied(_displayUrl);
         },
         child: Container(
+          width: double.infinity,
           height: 80,
           decoration: BoxDecoration(
             color: Theme.of(context).colorScheme.surfaceContainerHighest,
@@ -583,8 +633,8 @@ class _ImageViewerState extends ConsumerState<ImageViewer> {
   }
 
   void _showFullScreen(BuildContext context) {
-    final previewBytes =
-        !_hasDistinctFull || _displayUrl == _previewUrl ? _bytes : null;
+    // Only pass bytes when they already belong to the full URL.
+    final imageBytes = (_displayUrl == _fullUrl) ? _bytes : null;
     final fullType = _resolveType(_fullUrl);
     final query = StringBuffer(
       '/image-viewer?url=${Uri.encodeComponent(_previewUrl)}'
@@ -595,7 +645,7 @@ class _ImageViewerState extends ConsumerState<ImageViewer> {
       query.toString(),
       extra: {
         'imageUrl': _fullUrl,
-        'imageBytes': previewBytes,
+        'imageBytes': imageBytes,
         'resourceType': fullType,
       },
     );

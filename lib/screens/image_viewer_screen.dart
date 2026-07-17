@@ -3,7 +3,6 @@ import 'dart:math' as math;
 import 'dart:typed_data';
 import 'dart:ui' as ui;
 
-import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -12,12 +11,13 @@ import 'package:go_router/go_router.dart';
 
 import '../config/resource_domains.dart';
 import '../providers/image_bytes_provider.dart';
-import '../providers/image_cache_provider.dart';
 import '../theme/app_theme.dart';
 import '../utils/s1_snack_bar.dart';
 import '../widgets/web_image_stub.dart'
     if (dart.library.html) '../widgets/web_image_html.dart';
 import '../widgets/s1_adaptive_sheet.dart';
+
+enum _ViewerLoadState { loading, ready, error }
 
 class ImageViewerScreen extends ConsumerStatefulWidget {
   const ImageViewerScreen({
@@ -29,6 +29,8 @@ class ImageViewerScreen extends ConsumerStatefulWidget {
 
   final String imageUrl;
   final Uint8List? imageBytes;
+
+  /// Kept for route compatibility; loading always goes through [imageBytesProvider].
   final ResourceType resourceType;
 
   @override
@@ -36,7 +38,6 @@ class ImageViewerScreen extends ConsumerStatefulWidget {
 }
 
 class _ImageViewerScreenState extends ConsumerState<ImageViewerScreen> {
-  static const double _minScale = 0.5;
   static const double _maxScale = 5.0;
   static const double _zoomStep = 1.5;
 
@@ -48,25 +49,20 @@ class _ImageViewerScreenState extends ConsumerState<ImageViewerScreen> {
   int? _height;
   Uint8List? _fetchedBytes;
   MemoryImage? _cachedMemoryImage;
+  _ViewerLoadState _loadState = _ViewerLoadState.loading;
   bool _downloading = false;
+  bool _appliedInitialFit = false;
   double _currentScale = 1.0;
   double? _viewportWidth;
   double? _viewportHeight;
 
   bool get _canSaveToGallery => !kIsWeb && !Platform.isLinux;
 
-  ImageProvider? _resolveProvider() {
-    final bytes = widget.imageBytes ?? _fetchedBytes;
-    if (bytes == null) {
-      if (kIsWeb) return null;
-      if (widget.resourceType == ResourceType.publicAsset && !kIsWeb) {
-        return CachedNetworkImageProvider(
-          widget.imageUrl,
-          cacheManager: s1ImageCacheManager,
-        );
-      }
-      return NetworkImage(widget.imageUrl);
-    }
+  Uint8List? get _effectiveBytes => widget.imageBytes ?? _fetchedBytes;
+
+  ImageProvider? get _imageProvider {
+    final bytes = _effectiveBytes;
+    if (bytes == null) return null;
 
     if (_cachedMemoryImage != null &&
         identical(_cachedMemoryImage!.bytes, bytes)) {
@@ -77,10 +73,26 @@ class _ImageViewerScreenState extends ConsumerState<ImageViewerScreen> {
     return _cachedMemoryImage!;
   }
 
+  double get _fitScale {
+    final vw = _viewportWidth;
+    final vh = _viewportHeight;
+    final iw = _width;
+    final ih = _height;
+    if (vw == null || vh == null || iw == null || ih == null) return 1.0;
+    if (iw <= 0 || ih <= 0 || vw <= 0 || vh <= 0) return 1.0;
+    return math.min(vw / iw, vh / ih);
+  }
+
+  /// Allow zooming slightly below fit so large images can still reach「合适」.
+  double get _minScale {
+    final fit = _fitScale;
+    return math.max(fit * 0.5, 0.01);
+  }
+
   @override
   void initState() {
     super.initState();
-    _decodeDimensions();
+    _loadImage();
   }
 
   @override
@@ -90,11 +102,29 @@ class _ImageViewerScreenState extends ConsumerState<ImageViewerScreen> {
     super.dispose();
   }
 
-  Future<void> _decodeDimensions() async {
-    final bytes = widget.imageBytes ?? await _tryFetchBytes();
-    if (bytes == null || !mounted) return;
+  Future<void> _loadImage({bool isRetry = false}) async {
+    if (isRetry) {
+      if (!mounted) return;
+      setState(() {
+        _loadState = _ViewerLoadState.loading;
+        _appliedInitialFit = false;
+        _width = null;
+        _height = null;
+        if (widget.imageBytes == null) {
+          _fetchedBytes = null;
+          _cachedMemoryImage = null;
+        }
+      });
+    }
 
     try {
+      final bytes = widget.imageBytes ?? await _tryFetchBytes();
+      if (!mounted) return;
+      if (bytes == null) {
+        setState(() => _loadState = _ViewerLoadState.error);
+        return;
+      }
+
       final codec = await ui.instantiateImageCodec(bytes);
       final frameInfo = await codec.getNextFrame();
       if (!mounted) {
@@ -106,20 +136,28 @@ class _ImageViewerScreenState extends ConsumerState<ImageViewerScreen> {
       setState(() {
         _width = frameInfo.image.width;
         _height = frameInfo.image.height;
-        _fetchedBytes ??= bytes;
-        _cachedMemoryImage ??= MemoryImage(bytes);
+        _fetchedBytes = bytes;
+        _cachedMemoryImage = MemoryImage(bytes);
+        _loadState = _ViewerLoadState.ready;
       });
       frameInfo.image.dispose();
       codec.dispose();
+
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (mounted) _tryApplyInitialFit();
+      });
     } catch (e, st) {
       FlutterError.reportError(
         FlutterErrorDetails(
           exception: e,
           stack: st,
           library: 'image_viewer_screen',
-          context: ErrorDescription('decode image dimensions'),
+          context: ErrorDescription('load image for viewer'),
         ),
       );
+      if (mounted) {
+        setState(() => _loadState = _ViewerLoadState.error);
+      }
     }
   }
 
@@ -142,19 +180,21 @@ class _ImageViewerScreenState extends ConsumerState<ImageViewerScreen> {
     return 'JPEG';
   }
 
-  Uint8List? get _effectiveBytes => widget.imageBytes ?? _fetchedBytes;
-
   String _formatSize(int bytes) {
     if (bytes < 1024) return '$bytes B';
     if (bytes < 1024 * 1024) return '${(bytes / 1024).toStringAsFixed(1)} KB';
     return '${(bytes / (1024 * 1024)).toStringAsFixed(1)} MB';
   }
 
+  void _setScaleLabel(double scale) {
+    _scaleLabel.value = '${(scale * 100).round()}%';
+  }
+
   void _onInteractionUpdate(ScaleUpdateDetails details) {
     final scale = _transformController.value.getMaxScaleOnAxis();
     if ((scale - _currentScale).abs() > 0.01) {
       _currentScale = scale;
-      _scaleLabel.value = '${(_currentScale * 100).round()}%';
+      _setScaleLabel(_currentScale);
     }
   }
 
@@ -162,52 +202,61 @@ class _ImageViewerScreenState extends ConsumerState<ImageViewerScreen> {
     if (_viewportWidth == width && _viewportHeight == height) return;
     _viewportWidth = width;
     _viewportHeight = height;
+    if (!_appliedInitialFit) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (mounted) _tryApplyInitialFit();
+      });
+    }
   }
 
+  void _tryApplyInitialFit() {
+    if (_appliedInitialFit) return;
+    if (_loadState != _ViewerLoadState.ready) return;
+    if (_viewportWidth == null || _viewportHeight == null) return;
+    if (_width == null || _height == null) return;
+    _appliedInitialFit = true;
+    _fitToScreen();
+  }
+
+  /// Scale relative to 1:1 (image pixel = logical pixel), centered in content area.
   void _applyScale(double newScale) {
     final viewportWidth = _viewportWidth;
     final viewportHeight = _viewportHeight;
-    if (viewportWidth == null || viewportHeight == null) return;
+    final imageWidth = _width;
+    final imageHeight = _height;
+    if (viewportWidth == null ||
+        viewportHeight == null ||
+        imageWidth == null ||
+        imageHeight == null) {
+      return;
+    }
 
     final clampedScale = newScale.clamp(_minScale, _maxScale);
-    final center = Offset(viewportWidth / 2, viewportHeight / 2);
+    final dx = (viewportWidth - imageWidth * clampedScale) / 2;
+    final dy = (viewportHeight - imageHeight * clampedScale) / 2;
+
     final matrix = Matrix4.identity()
-      ..translateByDouble(center.dx, center.dy, 0, 1)
-      ..scaleByDouble(clampedScale, clampedScale, 1, 1)
-      ..translateByDouble(-center.dx, -center.dy, 0, 1);
+      ..translateByDouble(dx, dy, 0, 1)
+      ..scaleByDouble(clampedScale, clampedScale, 1, 1);
 
     _transformController.value = matrix;
     setState(() {
       _currentScale = clampedScale;
-      _scaleLabel.value = '${(_currentScale * 100).round()}%';
-    });
-  }
-
-  void _resetZoom() {
-    _transformController.value = Matrix4.identity();
-    setState(() {
-      _currentScale = 1.0;
-      _scaleLabel.value = '100%';
+      _setScaleLabel(_currentScale);
     });
   }
 
   void _fitToScreen() {
-    final viewportWidth = _viewportWidth;
-    final viewportHeight = _viewportHeight;
-    if (viewportWidth == null ||
-        viewportHeight == null ||
+    if (_viewportWidth == null ||
+        _viewportHeight == null ||
         _width == null ||
         _height == null) {
-      _resetZoom();
       return;
     }
-
-    final scaleX = viewportWidth / _width!;
-    final scaleY = viewportHeight / _height!;
-    _applyScale(math.min(scaleX, scaleY));
+    _applyScale(_fitScale);
   }
 
-  void _zoomTo100() {
+  void _zoomToActualSize() {
     _applyScale(1.0);
   }
 
@@ -260,29 +309,77 @@ class _ImageViewerScreenState extends ConsumerState<ImageViewerScreen> {
     }
   }
 
-  Widget _buildImageContent(ImageProvider? provider, ColorScheme colorScheme) {
-    return LayoutBuilder(
-      builder: (context, constraints) {
-        _updateViewportSize(constraints.maxWidth, constraints.maxHeight);
-        if (provider == null) {
-          return const Center(child: CircularProgressIndicator());
-        }
-        return Image(
-          image: provider,
-          fit: BoxFit.contain,
-          width: constraints.maxWidth,
-          height: constraints.maxHeight,
-          errorBuilder: (_, __, ___) => Center(
-            child: Icon(
-              Icons.broken_image_outlined,
-              color: colorScheme.onInverseSurface
-                  .withValues(alpha: S1Alpha.viewerScrim),
-              size: 48,
+  Widget _buildViewerBody(ColorScheme colorScheme) {
+    return switch (_loadState) {
+      _ViewerLoadState.loading => const Center(
+          child: CircularProgressIndicator(),
+        ),
+      _ViewerLoadState.error => Center(
+          child: Semantics(
+            button: true,
+            label: '重试加载图片',
+            child: GestureDetector(
+              onTap: () => _loadImage(isRetry: true),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Icon(
+                    Icons.broken_image_outlined,
+                    color: colorScheme.onInverseSurface
+                        .withValues(alpha: S1Alpha.viewerScrim),
+                    size: 48,
+                  ),
+                  const SizedBox(height: 12),
+                  Text(
+                    '加载失败，点击重试',
+                    style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                          color: colorScheme.onInverseSurface
+                              .withValues(alpha: S1Alpha.viewerScrim),
+                        ),
+                  ),
+                ],
+              ),
             ),
           ),
-        );
-      },
-    );
+        ),
+      _ViewerLoadState.ready => LayoutBuilder(
+          builder: (context, constraints) {
+            _updateViewportSize(constraints.maxWidth, constraints.maxHeight);
+            final provider = _imageProvider;
+            final width = _width;
+            final height = _height;
+            if (provider == null || width == null || height == null) {
+              return const Center(child: CircularProgressIndicator());
+            }
+            return InteractiveViewer(
+              transformationController: _transformController,
+              constrained: false,
+              minScale: _minScale,
+              maxScale: _maxScale,
+              onInteractionUpdate: _onInteractionUpdate,
+              child: SizedBox(
+                width: width.toDouble(),
+                height: height.toDouble(),
+                child: Image(
+                  image: provider,
+                  fit: BoxFit.fill,
+                  width: width.toDouble(),
+                  height: height.toDouble(),
+                  gaplessPlayback: true,
+                  errorBuilder: (_, __, ___) => Center(
+                    child: Icon(
+                      Icons.broken_image_outlined,
+                      color: colorScheme.onInverseSurface
+                          .withValues(alpha: S1Alpha.viewerScrim),
+                      size: 48,
+                    ),
+                  ),
+                ),
+              ),
+            );
+          },
+        ),
+    };
   }
 
   Widget _buildTopBar(ColorScheme colorScheme) {
@@ -334,7 +431,8 @@ class _ImageViewerScreenState extends ConsumerState<ImageViewerScreen> {
   }
 
   Widget _buildControlBar(ColorScheme colorScheme, TextTheme textTheme) {
-    final bottomPadding = MediaQuery.of(context).padding.bottom;
+    final bottomPadding = MediaQuery.paddingOf(context).bottom;
+    final controlsEnabled = _loadState == _ViewerLoadState.ready;
 
     return Material(
       color: colorScheme.surfaceContainerHigh
@@ -349,13 +447,13 @@ class _ImageViewerScreenState extends ConsumerState<ImageViewerScreen> {
               icon: const Icon(Icons.fit_screen_outlined),
               tooltip: '合适',
               color: colorScheme.onSurface,
-              onPressed: _fitToScreen,
+              onPressed: controlsEnabled ? _fitToScreen : null,
             ),
             IconButton(
               icon: const Icon(Icons.zoom_out_outlined),
               tooltip: '缩小',
               color: colorScheme.onSurface,
-              onPressed: _zoomOut,
+              onPressed: controlsEnabled ? _zoomOut : null,
             ),
             SizedBox(
               width: 52,
@@ -376,19 +474,19 @@ class _ImageViewerScreenState extends ConsumerState<ImageViewerScreen> {
               icon: const Icon(Icons.zoom_in_outlined),
               tooltip: '放大',
               color: colorScheme.onSurface,
-              onPressed: _zoomIn,
+              onPressed: controlsEnabled ? _zoomIn : null,
             ),
             IconButton(
-              icon: const Icon(Icons.filter_1_outlined),
-              tooltip: '100%',
-              color: colorScheme.onSurface,
-              onPressed: _zoomTo100,
-            ),
-            IconButton(
-              icon: const Icon(Icons.restart_alt_outlined),
-              tooltip: '重置',
-              color: colorScheme.onSurface,
-              onPressed: _resetZoom,
+              // Text label — icon metaphors for 1:1 are obscure.
+              icon: Text(
+                '1:1',
+                style: textTheme.labelLarge?.copyWith(
+                  color: colorScheme.onSurface,
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
+              tooltip: '原始大小',
+              onPressed: controlsEnabled ? _zoomToActualSize : null,
             ),
           ],
         ),
@@ -400,32 +498,14 @@ class _ImageViewerScreenState extends ConsumerState<ImageViewerScreen> {
   Widget build(BuildContext context) {
     final colorScheme = Theme.of(context).colorScheme;
     final textTheme = Theme.of(context).textTheme;
-    final provider = _resolveProvider();
 
     return Scaffold(
       backgroundColor: colorScheme.scrim,
-      body: Stack(
-        fit: StackFit.expand,
+      body: Column(
         children: [
-          InteractiveViewer(
-            transformationController: _transformController,
-            minScale: _minScale,
-            maxScale: _maxScale,
-            onInteractionUpdate: _onInteractionUpdate,
-            child: _buildImageContent(provider, colorScheme),
-          ),
-          Positioned(
-            top: 0,
-            left: 0,
-            right: 0,
-            child: _buildTopBar(colorScheme),
-          ),
-          Positioned(
-            left: 0,
-            right: 0,
-            bottom: 0,
-            child: _buildControlBar(colorScheme, textTheme),
-          ),
+          _buildTopBar(colorScheme),
+          Expanded(child: _buildViewerBody(colorScheme)),
+          _buildControlBar(colorScheme, textTheme),
         ],
       ),
     );

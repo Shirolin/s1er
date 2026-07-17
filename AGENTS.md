@@ -156,6 +156,9 @@ flutter run -d chrome
 # 查看所有请求日志
 flutter run -d chrome --dart-define=TALKER_LOG_LEVEL=all
 
+# 正文渲染耗时打点（滑动卡顿排查）
+flutter run -d chrome --dart-define=BBCODE_PROFILE=true
+
 # 关闭 Talker
 flutter run -d chrome --dart-define=TALKER_ENABLED=false
 
@@ -168,6 +171,7 @@ flutter run -d chrome --dart-define=TALKER_LOG_LEVEL=all --dart-define=TALKER_MA
 | `TALKER_ENABLED` | bool | `true` | Talker 日志总开关 |
 | `TALKER_LOG_LEVEL` | String | `error` | `error` 仅错误 / `all` 全部 |
 | `TALKER_MAX_HISTORY` | int | `500` | Talker 历史记录上限 |
+| `BBCODE_PROFILE` | bool | `false` | 正文 BBCode parse / Html build 耗时打点（滑动卡顿排查） |
 | `PROXY_PORT` | int | `19080` | Web CORS 代理端口 |
 | `CONNECT_TIMEOUT` | int | `20` | Dio 连接超时（秒） |
 | `RECEIVE_TIMEOUT` | int | `30` | Dio 响应超时（秒） |

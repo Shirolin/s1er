@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/rendering.dart';
 import 'package:flutter/services.dart';
 
 import '../theme/app_theme.dart';
@@ -99,6 +100,11 @@ abstract class S1FabLayout {
   /// 帖子详情底部留白（固定最大 FAB 栈高，与登录/显隐无关）。
   static final EdgeInsets threadDetailScrollBottomPadding =
       EdgeInsets.only(bottom: threadDetailMaxFabStackHeight);
+
+  /// 帖子详情列表预缓存范围。略大于默认 250，避免一次预建过多楼层
+  ///（链接墙楼层仍在视野时，过大数据会加重同帧卡顿）。
+  static const ScrollCacheExtent threadDetailScrollCacheExtent =
+      ScrollCacheExtent.pixels(400);
 
   /// 距滚动末尾还剩多少。
   static double _remainingToEnd(S1ScrollMetrics metrics) =>

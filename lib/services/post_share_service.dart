@@ -200,6 +200,9 @@ class _SharePreviewSheetState extends ConsumerState<_SharePreviewSheet> {
 
   Future<Uint8List?> _captureBytes() async {
     await _waitUntilReady();
+    if (!mounted) return null;
+    // Let ShareCard rebuild with MemoryImage / letter fallback after prefetch.
+    setState(() {});
     await WidgetsBinding.instance.endOfFrame;
     await WidgetsBinding.instance.endOfFrame;
     if (kIsWeb) {

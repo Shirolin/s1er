@@ -300,6 +300,16 @@ void main() {
 
       expect(find.text('还有 1 张图片，点击展开'), findsOneWidget);
       expect(counter.assignedCount, 3);
+
+      final chip = find.widgetWithText(ActionChip, '还有 1 张图片，点击展开');
+      expect(
+        find.ancestor(of: chip, matching: find.byType(Center)),
+        findsWidgets,
+      );
+
+      await tester.tap(chip);
+      await tester.pump();
+      expect(find.text('还有 1 张图片，点击展开'), findsNothing);
     });
 
     testWidgets('refreshes link color when theme seed changes', (tester) async {

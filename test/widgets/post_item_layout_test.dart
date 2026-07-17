@@ -24,6 +24,45 @@ void main() {
     expect(tester.takeException(), isNull);
     expect(find.byType(PostItem), findsOneWidget);
   });
+
+  testWidgets('PostItem keeps alive after leaving ListView viewport',
+      (tester) async {
+    await tester.binding.setSurfaceSize(const Size(400, 200));
+    addTearDown(() => tester.binding.setSurfaceSize(null));
+
+    await tester.pumpWidget(
+      ProviderScope(
+        child: wrapWithAppTheme(
+          ListView(
+            children: [
+              SizedBox(
+                height: 400,
+                child: PostItem(
+                  post: Post.fromJson({
+                    'pid': 'keep-1',
+                    'message': 'heavy body',
+                    'author': 'author',
+                    'authorid': '1',
+                    'dbdateline': '1700001000',
+                    'number': '1',
+                  }),
+                ),
+              ),
+              const SizedBox(height: 800, child: Text('below')),
+            ],
+          ),
+        ),
+      ),
+    );
+    await tester.pump();
+    expect(find.text('heavy body'), findsOneWidget);
+
+    await tester.drag(find.byType(ListView), const Offset(0, -500));
+    await tester.pumpAndSettle();
+
+    // Offscreen but keep-alive: still in tree (not disposed/rebuilt from scratch).
+    expect(find.text('heavy body', skipOffstage: false), findsOneWidget);
+  });
 }
 
 class _NarrowPostHarness extends StatelessWidget {

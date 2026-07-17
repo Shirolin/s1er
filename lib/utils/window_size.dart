@@ -38,6 +38,13 @@ abstract class S1Breakpoints {
 
   /// Max content width for focused form workflows.
   static const double contentWidthForm = 720;
+
+  /// Max content width for long-form reading (thread detail).
+  ///
+  /// Narrower than [contentWidthExpanded] so body line length stays closer to
+  /// a comfortable reading measure on desktop; still wider than Apple's ~672
+  /// readable guide to leave room for post chrome (avatar row, poll, cards).
+  static const double contentWidthReading = 720;
 }
 
 extension S1WindowSizeX on BuildContext {

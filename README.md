@@ -116,6 +116,7 @@ flutter run -d chrome --dart-define=PROXY_AUTH_TOKEN=replace_with_a_random_value
 | `TALKER_ENABLED` | `true` | 是否启用 Talker |
 | `TALKER_LOG_LEVEL` | `error` | `error` 仅记录错误，`all` 记录全部请求与响应 |
 | `TALKER_MAX_HISTORY` | `500` | 日志历史条数上限 |
+| `BBCODE_PROFILE` | `false` | 正文 BBCode parse / Html build 耗时打点（滑动卡顿排查） |
 | `PROXY_PORT` | `19080` | Web 代理端口；代理与 Flutter 端必须一致 |
 | `PROXY_AUTH_TOKEN` | 空 | 非空时启用本地代理 token 校验 |
 | `CONNECT_TIMEOUT` | `20` | 连接超时，单位为秒 |

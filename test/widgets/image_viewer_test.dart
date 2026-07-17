@@ -262,6 +262,107 @@ void main() {
 
     expect(find.text('点击加载图片'), findsNothing);
   });
+
+  testWidgets('block ImageViewer centers within content; emoticon stays inline',
+      (tester) async {
+    await tester.pumpWidget(
+      ProviderScope(
+        overrides: [
+          settingsProvider.overrideWith(
+            () => SettingsNotifier(
+              initial: const AppSettings(showImages: false),
+            ),
+          ),
+        ],
+        child: MaterialApp(
+          theme: AppTheme.lightTheme('purple'),
+          home: const Scaffold(
+            body: SizedBox(
+              width: 400,
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  ImageViewer(
+                    imageUrl: 'https://example.com/post.jpg',
+                    showBorder: true,
+                  ),
+                  ImageViewer(
+                    imageUrl:
+                        'https://avatar.stage1st.com/000/00/00/01_avatar_small.jpg',
+                    isEmoticon: true,
+                  ),
+                ],
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+    await tester.pump();
+
+    final block = find.ancestor(
+      of: find.text('[图片]'),
+      matching: find.byType(Align),
+    );
+    expect(block, findsWidgets);
+    expect(
+      tester.widget<Align>(block.first).alignment,
+      Alignment.center,
+    );
+
+    final emoticon = find.byWidgetPredicate(
+      (w) =>
+          w is ImageViewer &&
+          w.isEmoticon &&
+          w.imageUrl.contains('avatar_small'),
+    );
+    expect(
+      find.descendant(of: emoticon, matching: find.byType(Align)),
+      findsNothing,
+    );
+  });
+
+  testWidgets('block ImageViewer respects compact full width on phone',
+      (tester) async {
+    tester.view.physicalSize = const Size(390, 800);
+    tester.view.devicePixelRatio = 1.0;
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
+
+    await tester.pumpWidget(
+      ProviderScope(
+        overrides: [
+          settingsProvider.overrideWith(
+            () => SettingsNotifier(
+              initial: const AppSettings(showImages: false),
+            ),
+          ),
+        ],
+        child: MaterialApp(
+          theme: AppTheme.lightTheme('purple'),
+          home: const Scaffold(
+            body: SizedBox(
+              width: 360,
+              child: ImageViewer(
+                imageUrl: 'https://example.com/post.jpg',
+                showBorder: true,
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+    await tester.pump();
+
+    final constrained = find.descendant(
+      of: find.byType(ImageViewer),
+      matching: find.byType(ConstrainedBox),
+    );
+    expect(constrained, findsWidgets);
+    final maxWidth =
+        tester.widget<ConstrainedBox>(constrained.first).constraints.maxWidth;
+    expect(maxWidth, 360);
+  });
 }
 
 class _FakeCacheManager implements CacheManager {

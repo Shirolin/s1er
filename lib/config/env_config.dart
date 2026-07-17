@@ -23,6 +23,12 @@ class EnvConfig {
     defaultValue: 500,
   );
 
+  /// BBCode / Html 构建耗时打点（默认 false；仅调试滑动卡顿用）
+  static const bool bbcodeProfile = bool.fromEnvironment(
+    'BBCODE_PROFILE',
+    defaultValue: false,
+  );
+
   // ── 网络 ──────────────────────────────────────────────
 
   /// Web 端 CORS 代理端口（默认 19080，需与 proxy_server 一致）

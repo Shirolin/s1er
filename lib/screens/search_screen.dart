@@ -53,8 +53,7 @@ class _SearchScreenState extends ConsumerState<SearchScreen> {
     final textTheme = Theme.of(context).textTheme;
     final state = ref.watch(searchProvider);
     final hasQuery = _controller.text.trim().isNotEmpty;
-    final canSubmit =
-        hasQuery && !state.isLoading && !state.isCoolingDown;
+    final canSubmit = hasQuery && !state.isLoading && !state.isCoolingDown;
 
     return Column(
       children: [

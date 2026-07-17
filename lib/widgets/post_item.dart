@@ -48,9 +48,14 @@ class PostItem extends ConsumerStatefulWidget {
   ConsumerState<PostItem> createState() => _PostItemState();
 }
 
-class _PostItemState extends ConsumerState<PostItem> {
+class _PostItemState extends ConsumerState<PostItem>
+    with AutomaticKeepAliveClientMixin {
   bool _imagesExpanded = false;
   late PostImageIndexCounter _imageIndexCounter;
+
+  /// 保留已构建楼层，避免滚出视口后销毁 Html（链接密集楼层重建可达秒级）。
+  @override
+  bool get wantKeepAlive => true;
 
   @override
   void initState() {
@@ -79,8 +84,36 @@ class _PostItemState extends ConsumerState<PostItem> {
     );
   }
 
+  /// 展开折叠图片：锁住当前滚动偏移，避免焦点迁移 / 高度突变把视口甩走。
+  void _expandImages() {
+    FocusManager.instance.primaryFocus?.unfocus();
+    final position = Scrollable.maybeOf(context)?.position;
+    final lockedPixels = position?.pixels;
+
+    setState(() => _imagesExpanded = true);
+
+    void restoreScroll() {
+      if (!mounted || position == null || lockedPixels == null) return;
+      if (!position.hasPixels || !position.hasContentDimensions) return;
+      final target = lockedPixels.clamp(
+        position.minScrollExtent,
+        position.maxScrollExtent,
+      );
+      if ((position.pixels - target).abs() > 1) {
+        position.jumpTo(target);
+      }
+    }
+
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      restoreScroll();
+      // 焦点转移可能发生在首帧之后。
+      WidgetsBinding.instance.addPostFrameCallback((_) => restoreScroll());
+    });
+  }
+
   @override
   Widget build(BuildContext context) {
+    super.build(context);
     final scheme = Theme.of(context).colorScheme;
     final timeStr = formatDateTime(widget.post.dateline);
     final floor = widget.displayFloor ?? widget.post.floor;
@@ -104,7 +137,7 @@ class _PostItemState extends ConsumerState<PostItem> {
               imageIndexCounter: _imageIndexCounter,
               currentTid: widget.tid,
               imagesExpanded: _imagesExpanded,
-              onExpandImages: () => setState(() => _imagesExpanded = true),
+              onExpandImages: _expandImages,
             ),
             if (widget.tid != null)
               _PostRateLogSection(

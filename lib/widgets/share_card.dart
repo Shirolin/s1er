@@ -1,18 +1,24 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+
 import '../config/constants.dart';
 import '../models/post.dart';
+import '../providers/image_bytes_provider.dart';
 import '../theme/app_theme.dart';
 import '../utils/format_utils.dart';
 import '../utils/post_image_index_counter.dart';
+import 'avatar_fallback.dart';
 import 'bbcode_renderer.dart';
 import 'force_show_images.dart';
-import 'web_avatar.dart';
 
 /// A beautifully designed post card for sharing as an image.
 ///
 /// Wraps content in [ForceShowImages] so all images render regardless of
 /// user settings. The card is wrapped in a [RepaintBoundary]; pass a
 /// [captureKey] to access the render object for image capture.
+///
+/// Avatars use [MemoryImage] (or letter fallback) — never [Image.network] —
+/// so Web `RepaintBoundary.toImage` is not poisoned by failed network images.
 class ShareCard extends StatelessWidget {
   ShareCard({
     super.key,
@@ -60,11 +66,8 @@ class ShareCard extends StatelessWidget {
               crossAxisAlignment: CrossAxisAlignment.start,
               mainAxisSize: MainAxisSize.min,
               children: [
-                // Top bar: brand + time
                 _buildTopBar(context, timeStr),
                 const SizedBox(height: 6),
-
-                // Thread subject (if available)
                 if (threadSubject != null && threadSubject!.isNotEmpty)
                   Padding(
                     padding: const EdgeInsets.only(bottom: 8),
@@ -78,20 +81,14 @@ class ShareCard extends StatelessWidget {
                       ),
                     ),
                   ),
-
-                // Divider
                 Divider(
                   height: 1,
                   thickness: 1,
                   color: scheme.outlineVariant,
                 ),
                 const SizedBox(height: 16),
-
-                // Author row with floor badge
                 _buildAuthorRow(context, floor),
                 const SizedBox(height: 16),
-
-                // Post content
                 ForceShowImages(
                   enabled: true,
                   child: BbcodeRenderer(
@@ -100,8 +97,6 @@ class ShareCard extends StatelessWidget {
                     imagesExpanded: true,
                   ),
                 ),
-
-                // Footer — client name from app config (not hardcoded inline)
                 const SizedBox(height: 24),
                 Divider(
                   height: 1,
@@ -134,10 +129,7 @@ class ShareCard extends StatelessWidget {
     );
   }
 
-  Widget _buildTopBar(
-    BuildContext context,
-    String timeStr,
-  ) {
+  Widget _buildTopBar(BuildContext context, String timeStr) {
     final scheme = Theme.of(context).colorScheme;
     final textTheme = Theme.of(context).textTheme;
 
@@ -170,13 +162,14 @@ class ShareCard extends StatelessWidget {
   Widget _buildAuthorRow(BuildContext context, int floor) {
     final scheme = Theme.of(context).colorScheme;
     final textTheme = Theme.of(context).textTheme;
+    final letter = post.author.isNotEmpty ? post.author[0] : '?';
 
     return Row(
       children: [
-        WebAvatar(
+        _ShareCaptureAvatar(
           url: post.avatar,
           radius: 28,
-          fallbackLetter: post.author.isNotEmpty ? post.author[0] : '?',
+          fallbackLetter: letter,
         ),
         const SizedBox(width: 12),
         Expanded(
@@ -202,6 +195,51 @@ class ShareCard extends StatelessWidget {
           padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
         ),
       ],
+    );
+  }
+}
+
+/// Capture-safe avatar: [MemoryImage] from Dio bytes, or letter fallback.
+///
+/// Avoids [Image.network] so a missing CDN avatar (404) cannot break
+/// Web [RenderRepaintBoundary.toImage].
+class _ShareCaptureAvatar extends ConsumerWidget {
+  const _ShareCaptureAvatar({
+    required this.url,
+    required this.radius,
+    required this.fallbackLetter,
+  });
+
+  final String? url;
+  final double radius;
+  final String fallbackLetter;
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final avatarUrl = url;
+    if (avatarUrl == null || avatarUrl.isEmpty) {
+      return AvatarFallbackLetter(radius: radius, letter: fallbackLetter);
+    }
+
+    final asyncBytes = ref.watch(imageBytesProvider(avatarUrl));
+    return asyncBytes.when(
+      data: (bytes) {
+        if (bytes == null || bytes.isEmpty) {
+          return AvatarFallbackLetter(radius: radius, letter: fallbackLetter);
+        }
+        return CircleAvatar(
+          radius: radius,
+          backgroundImage: MemoryImage(bytes),
+        );
+      },
+      loading: () => AvatarFallbackLetter(
+        radius: radius,
+        letter: fallbackLetter,
+      ),
+      error: (_, __) => AvatarFallbackLetter(
+        radius: radius,
+        letter: fallbackLetter,
+      ),
     );
   }
 }

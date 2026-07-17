@@ -36,6 +36,11 @@ class S1ImageBytesService {
 
       await S1ImageCache.putBytes(url, bytes);
       return bytes;
+    } on DioException catch (e, st) {
+      // Missing avatars / deleted attachments commonly 404; treat as empty.
+      if (e.response?.statusCode == 404) return null;
+      talker.handle(e, st, 'Fetch image bytes failed: $url');
+      rethrow;
     } catch (e, st) {
       talker.handle(e, st, 'Fetch image bytes failed: $url');
       rethrow;

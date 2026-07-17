@@ -44,7 +44,7 @@ void main() {
       width: 1200,
       mode: S1ContentWidthMode.reading,
     );
-    expect(tester.getSize(find.byKey(const ValueKey('content'))).width, 840);
+    expect(tester.getSize(find.byKey(const ValueKey('content'))).width, 720);
 
     await pumpAtWidth(
       tester,

@@ -10,6 +10,7 @@ import 'package:go_router/go_router.dart';
 import 'package:s1er/models/user.dart';
 import 'package:s1er/models/open_scroll_target.dart';
 import 'package:s1er/models/rate_log.dart';
+import 'package:s1er/models/thread_destination.dart';
 import 'package:s1er/providers/auth_provider.dart';
 import 'package:s1er/providers/post_provider.dart';
 import 'package:s1er/providers/reading_history_provider.dart';
@@ -105,14 +106,16 @@ void main() {
           path: '/thread/:tid',
           pageBuilder: (context, state) {
             final routeTid = state.pathParameters['tid']!;
+            final routeIntent =
+                ThreadRouteCodec.intentFromUri(state.uri, tid: routeTid);
             final screen = ThreadDetailScreen(tid: routeTid);
             return NoTransitionPage<void>(
-              key: ValueKey('thread-$routeTid'),
+              key: state.pageKey,
               child: useNestedIntentOverride
                   ? ProviderScope(
                       overrides: [
                         threadOpenIntentProvider(routeTid)
-                            .overrideWithValue(intent),
+                            .overrideWithValue(routeIntent),
                       ],
                       child: screen,
                     )
@@ -324,6 +327,37 @@ void main() {
     // Resume floor must not override pid intent.
     expect(state.openScrollTarget, anyOf(isNull, isA<ScrollToPid>()));
     expect(find.textContaining('MARK-FLOOR-6'), findsOneWidget);
+  });
+
+  testWidgets('same-thread replace ?pid= relocates without remount',
+      (tester) async {
+    tester.view.physicalSize = const Size(800, 1200);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.resetPhysicalSize);
+
+    adapter.postsPerPage = 8;
+    adapter.totalReplies = 20;
+    adapter.locatePageForPid['pid-7'] = 1;
+
+    final router = await pumpThread(
+      tester: tester,
+      location: '/thread/100?page=1',
+      useNestedIntentOverride: true,
+    );
+
+    expect(find.textContaining('MARK-FLOOR-1'), findsOneWidget);
+    expect(router.state.uri.queryParameters['page'], '1');
+
+    final ctx = tester.element(find.byType(ThreadDetailScreen));
+    ctx.replace(ThreadRouteCodec.encodePath(const ThreadPost('100', 'pid-7')));
+    await _pumpFrames(tester, 80);
+
+    expect(router.state.uri.queryParameters['pid'], 'pid-7');
+    final container = ProviderScope.containerOf(ctx);
+    final state = container.read(postProvider('100')).asData?.value;
+    expect(state, isNotNull);
+    expect(state!.posts.any((p) => p.pid == 'pid-7'), isTrue);
+    expect(find.textContaining('MARK-FLOOR-7'), findsOneWidget);
   });
 }
 

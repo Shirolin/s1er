@@ -10,7 +10,10 @@ enum ThreadOpenMode {
   post,
 }
 
-/// 帖子详情页一次性打开意图（由路由注入，仅首屏 [PostNotifier.build] 消费）。
+/// 帖子详情页打开意图（由路由注入）。
+///
+/// 首屏由 [PostNotifier.build] 消费；同 tid 站内 `replace` 更新后由
+/// [ThreadDetailScreen] 再消费（例如引用块 `?pid=` 跳转）。
 class ThreadOpenIntent {
   const ThreadOpenIntent({
     required this.mode,

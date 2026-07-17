@@ -16,8 +16,9 @@ enum S1ContentWidthMode {
 /// Constrains content width on wide screens per MD3 canonical layout.
 ///
 /// - Compact / Medium (< 840dp): passes child through unchanged (full width).
-/// - Expanded (840–1199dp): centers child within a max width of 840dp.
-/// - Large+ (>= 1200dp): centers child within a max width of 1040dp.
+/// - Expanded+ with [S1ContentWidthMode.standard]: 840dp (Expanded) / 1040dp (Large+).
+/// - [S1ContentWidthMode.reading]: 720dp (comfortable thread body measure).
+/// - [S1ContentWidthMode.form]: 720dp.
 ///
 /// Usage:
 /// ```dart
@@ -43,7 +44,7 @@ class S1ContentWidth extends StatelessWidget {
 
     final maxWidth = switch (mode) {
       S1ContentWidthMode.form => S1Breakpoints.contentWidthForm,
-      S1ContentWidthMode.reading => S1Breakpoints.contentWidthExpanded,
+      S1ContentWidthMode.reading => S1Breakpoints.contentWidthReading,
       S1ContentWidthMode.standard => context.windowSize == S1WindowSize.expanded
           ? S1Breakpoints.contentWidthExpanded
           : S1Breakpoints.contentWidthLarge,

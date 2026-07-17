@@ -160,13 +160,19 @@ flutter build apk --release
 
 ### Pre-commit 质量检查（推荐）
 
-安装后，每次 `git commit` 会自动运行代码格式化、静态分析、单元测试和 M3 合规检查，失败则阻止提交：
+安装后，每次 `git commit` 会跑质量检查；失败则阻止提交：
 
 ```bash
 .\scripts\install_precommit.ps1     # Windows
 ```
 
-如需临时跳过检查：`git commit --no-verify`
+| 模式 | 用法 | 检查项 |
+|------|------|--------|
+| **full**（默认） | `git commit -m "..."` | format + analyze + test + M3 |
+| **lite** | `$env:S1_PRECOMMIT="lite"; git commit -m "..."` | 仅 format + analyze（小改小修） |
+| **skip** | `$env:S1_PRECOMMIT="skip"; git commit -m "..."` 或 `git commit --no-verify` | 跳过全部 |
+
+钩子是指向 `scripts/pre-commit-hook.sh` 的薄包装，改脚本后一般不必重装。
 
 `scripts/test_api.dart` 与 `scripts/test_post.dart` 会访问真实论坛接口，其中发帖测试可能产生真实内容。除非明确了解影响，否则不要把它们加入自动化测试或针对真实账号反复运行。
 

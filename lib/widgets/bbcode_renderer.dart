@@ -76,6 +76,12 @@ class BbcodeRenderer extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     if (bbcode.isEmpty) return const SizedBox.shrink();
 
+    // Top-level only: nested QuoteBlock shares this counter and must continue
+    // assigning after the parent's non-quote segments in the same frame.
+    if (quoteDepth == 0) {
+      imageIndexCounter.reset();
+    }
+
     // Subscribe to theme updates so memoized HTML blocks rebuild on theme change.
     Theme.of(context).colorScheme;
 
@@ -108,7 +114,12 @@ class BbcodeRenderer extends ConsumerWidget {
             ? totalImages - maxVal
             : 0;
 
-    if (hiddenCount > 0 && showImages && onExpandImages != null) {
+    // Expand chip only on the post root — nested quote renderers share the
+    // counter and must not emit a second CTA.
+    if (quoteDepth == 0 &&
+        hiddenCount > 0 &&
+        showImages &&
+        onExpandImages != null) {
       widgets.add(
         Padding(
           padding: const EdgeInsets.symmetric(vertical: 8),

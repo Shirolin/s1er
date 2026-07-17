@@ -328,6 +328,52 @@ void main() {
       await tester.tap(chip);
       await tester.pump();
       expect(find.text('还有 1 张图片，点击展开'), findsNothing);
+      // Rebuild must re-assign from 0, not accumulate on the shared counter.
+      expect(counter.assignedCount, 3);
+    });
+
+    testWidgets(
+        'does not accumulate image count across rebuilds (false fold chip)',
+        (tester) async {
+      final counter = PostImageIndexCounter();
+      var tick = 0;
+
+      await tester.pumpWidget(
+        _wrapBbcode(
+          StatefulBuilder(
+            builder: (context, setState) {
+              return Column(
+                children: [
+                  Text('tick=$tick'),
+                  BbcodeRenderer(
+                    bbcode:
+                        '<div class="img"><img src="https://p.sda1.dev/1/a.jpg" /></div>',
+                    imageIndexCounter: counter,
+                    onExpandImages: () {},
+                  ),
+                  TextButton(
+                    onPressed: () => setState(() => tick++),
+                    child: const Text('rebuild'),
+                  ),
+                ],
+              );
+            },
+          ),
+        ),
+      );
+      await tester.pump();
+
+      expect(counter.assignedCount, 1);
+      expect(find.textContaining('还有'), findsNothing);
+
+      // Simulate PostItem rebuilds (rate-log / settings / keep-alive).
+      for (var i = 0; i < 20; i++) {
+        await tester.tap(find.text('rebuild'));
+        await tester.pump();
+      }
+
+      expect(counter.assignedCount, 1);
+      expect(find.textContaining('还有'), findsNothing);
     });
 
     testWidgets('refreshes link color when theme seed changes', (tester) async {

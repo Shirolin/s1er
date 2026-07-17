@@ -37,7 +37,7 @@ class ShareCard extends StatelessWidget {
   final String? threadSubject;
 
   /// Fixed logical width at which the card is laid out. The captured image
-  /// is rendered at the share-sheet's configured pixel ratio (default 3x)
+  /// is rendered at the share-sheet's configured pixel ratio (default 2x)
   /// for excellent detail on high-DPI displays and social media platforms.
   static const double cardWidth = 750;
 
@@ -49,79 +49,86 @@ class ShareCard extends StatelessWidget {
     final floor = displayFloor ?? post.floor;
     final imageIndexCounter = PostImageIndexCounter();
 
-    return RepaintBoundary(
-      key: _captureKey,
-      child: SizedBox(
-        width: cardWidth,
-        child: Card(
-          elevation: 0,
-          color: scheme.surfaceContainerLow,
-          shape: const RoundedRectangleBorder(
-            borderRadius: S1Shape.medium,
-          ),
-          margin: EdgeInsets.zero,
-          child: Padding(
-            padding: const EdgeInsets.all(24),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                _buildTopBar(context, timeStr),
-                const SizedBox(height: 6),
-                if (threadSubject != null && threadSubject!.isNotEmpty)
-                  Padding(
-                    padding: const EdgeInsets.only(bottom: 8),
-                    child: Text(
-                      threadSubject!,
-                      maxLines: 2,
-                      overflow: TextOverflow.ellipsis,
-                      style: textTheme.titleLarge?.copyWith(
-                        fontWeight: FontWeight.w600,
-                        height: 1.3,
+    // Share cards are captured as fixed-layout images: ignore the user's
+    // reading text scale so exported size stays consistent.
+    return MediaQuery(
+      data: MediaQuery.of(context).copyWith(
+        textScaler: const TextScaler.linear(1.0),
+      ),
+      child: RepaintBoundary(
+        key: _captureKey,
+        child: SizedBox(
+          width: cardWidth,
+          child: Card(
+            elevation: 0,
+            color: scheme.surfaceContainerLow,
+            shape: const RoundedRectangleBorder(
+              borderRadius: S1Shape.medium,
+            ),
+            margin: EdgeInsets.zero,
+            child: Padding(
+              padding: const EdgeInsets.all(24),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  _buildTopBar(context),
+                  const SizedBox(height: 6),
+                  if (threadSubject != null && threadSubject!.isNotEmpty)
+                    Padding(
+                      padding: const EdgeInsets.only(bottom: 8),
+                      child: Text(
+                        threadSubject!,
+                        maxLines: 2,
+                        overflow: TextOverflow.ellipsis,
+                        style: textTheme.titleLarge?.copyWith(
+                          fontWeight: FontWeight.w600,
+                          height: 1.3,
+                        ),
                       ),
                     ),
+                  Divider(
+                    height: 1,
+                    thickness: 1,
+                    color: scheme.outlineVariant,
                   ),
-                Divider(
-                  height: 1,
-                  thickness: 1,
-                  color: scheme.outlineVariant,
-                ),
-                const SizedBox(height: 16),
-                _buildAuthorRow(context, floor),
-                const SizedBox(height: 16),
-                ForceShowImages(
-                  enabled: true,
-                  child: BbcodeRenderer(
-                    bbcode: post.message,
-                    imageIndexCounter: imageIndexCounter,
-                    imagesExpanded: true,
-                  ),
-                ),
-                const SizedBox(height: 24),
-                Divider(
-                  height: 1,
-                  thickness: 1,
-                  color: scheme.outlineVariant,
-                ),
-                const SizedBox(height: 12),
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    Icon(
-                      Icons.smartphone_outlined,
-                      size: 14,
-                      color: scheme.onSurfaceVariant,
+                  const SizedBox(height: 16),
+                  _buildAuthorRow(context, floor, timeStr),
+                  const SizedBox(height: 16),
+                  ForceShowImages(
+                    enabled: true,
+                    child: BbcodeRenderer(
+                      bbcode: post.message,
+                      imageIndexCounter: imageIndexCounter,
+                      imagesExpanded: true,
                     ),
-                    const SizedBox(width: 6),
-                    Text(
-                      '来自 ${S1Constants.appName}',
-                      style: textTheme.labelSmall?.copyWith(
+                  ),
+                  const SizedBox(height: 24),
+                  Divider(
+                    height: 1,
+                    thickness: 1,
+                    color: scheme.outlineVariant,
+                  ),
+                  const SizedBox(height: 12),
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      Icon(
+                        Icons.smartphone_outlined,
+                        size: 14,
                         color: scheme.onSurfaceVariant,
                       ),
-                    ),
-                  ],
-                ),
-              ],
+                      const SizedBox(width: 6),
+                      Text(
+                        '来自 ${S1Constants.appName} 客户端',
+                        style: textTheme.labelSmall?.copyWith(
+                          color: scheme.onSurfaceVariant,
+                        ),
+                      ),
+                    ],
+                  ),
+                ],
+              ),
             ),
           ),
         ),
@@ -129,7 +136,7 @@ class ShareCard extends StatelessWidget {
     );
   }
 
-  Widget _buildTopBar(BuildContext context, String timeStr) {
+  Widget _buildTopBar(BuildContext context) {
     final scheme = Theme.of(context).colorScheme;
     final textTheme = Theme.of(context).textTheme;
 
@@ -148,18 +155,13 @@ class ShareCard extends StatelessWidget {
             fontWeight: FontWeight.w600,
           ),
         ),
-        const Spacer(),
-        Text(
-          timeStr,
-          style: textTheme.labelSmall?.copyWith(
-            color: scheme.onSurfaceVariant,
-          ),
-        ),
       ],
     );
   }
 
-  Widget _buildAuthorRow(BuildContext context, int floor) {
+  /// Mirrors [PostItem] author header: avatar + name/time column, floor
+  /// pinned to the trailing edge so the two-line block fills the row.
+  Widget _buildAuthorRow(BuildContext context, int floor, String timeStr) {
     final scheme = Theme.of(context).colorScheme;
     final textTheme = Theme.of(context).textTheme;
     final letter = post.author.isNotEmpty ? post.author[0] : '?';
@@ -168,18 +170,32 @@ class ShareCard extends StatelessWidget {
       children: [
         _ShareCaptureAvatar(
           url: post.avatar,
-          radius: 28,
+          radius: 20,
           fallbackLetter: letter,
         ),
-        const SizedBox(width: 12),
+        const SizedBox(width: 10),
         Expanded(
-          child: Text(
-            post.author,
-            maxLines: 1,
-            overflow: TextOverflow.ellipsis,
-            style: textTheme.titleMedium?.copyWith(
-              fontWeight: FontWeight.bold,
-            ),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                post.author,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: textTheme.bodyMedium?.copyWith(
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+              if (timeStr.isNotEmpty)
+                Text(
+                  timeStr,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: textTheme.labelSmall?.copyWith(
+                    color: scheme.onSurfaceVariant,
+                  ),
+                ),
+            ],
           ),
         ),
         const SizedBox(width: 8),

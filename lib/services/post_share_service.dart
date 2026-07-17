@@ -9,7 +9,6 @@ import 'package:flutter/rendering.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:gal/gal.dart';
-import 'package:image/image.dart' as img;
 import 'package:path/path.dart' as p;
 import 'package:path_provider/path_provider.dart';
 import 'package:share_plus/share_plus.dart';
@@ -19,11 +18,15 @@ import '../models/share_image_format.dart';
 import '../providers/image_bytes_provider.dart';
 import '../providers/settings_provider.dart';
 import '../utils/bbcode_parser.dart';
+import '../utils/share_jpeg_encoder.dart';
 import '../theme/app_theme.dart';
 import '../widgets/share_card.dart';
 import '../widgets/s1_click_region.dart';
 import '../widgets/web_image_stub.dart'
     if (dart.library.html) '../widgets/web_image_html.dart';
+import 'share_browser_image_encode_stub.dart'
+    if (dart.library.html) 'share_browser_image_encode_web.dart'
+    as browser_encode;
 
 /// Captures a post as a designed card image and shares or saves it.
 class PostShareService {
@@ -265,14 +268,56 @@ class _SharePreviewSheetState extends ConsumerState<_SharePreviewSheet> {
     final bgB = (scheme.surfaceContainerLow.b * 255).round();
 
     final byteData = await image.toByteData(format: ui.ImageByteFormat.rawRgba);
-    final rgbaBytes = byteData!.buffer.asUint8List();
-
-    final params = _JpegParams(rgbaBytes, width, height, bgR, bgG, bgB);
+    final raw = byteData!;
+    final rgbaBytes = raw.buffer.asUint8List(
+      raw.offsetInBytes,
+      raw.lengthInBytes,
+    );
 
     if (kIsWeb) {
-      return _encodeJpegSync(params);
+      // Browser codecs treat transparent pixels as black — flatten first.
+      final opaqueRgba = flattenRgbaOntoOpaqueRgba(
+        rgba: rgbaBytes,
+        width: width,
+        height: height,
+        bgR: bgR,
+        bgG: bgG,
+        bgB: bgB,
+      );
+      final browserBytes = await browser_encode.encodeRgbaWithBrowser(
+        rgbaBytes: opaqueRgba,
+        width: width,
+        height: height,
+        mimeType: 'image/jpeg',
+        quality: 0.85,
+      );
+      if (browserBytes != null) return browserBytes;
+
+      // Fallback: pure-Dart encode (no real isolates on Web).
+      await Future<void>.delayed(Duration.zero);
+      return encodeShareJpeg(
+        ShareJpegEncodeParams(
+          rgbaBytes: opaqueRgba,
+          width: width,
+          height: height,
+          bgR: bgR,
+          bgG: bgG,
+          bgB: bgB,
+        ),
+      );
     }
-    return compute(_encodeJpegSync, params);
+
+    return compute(
+      encodeShareJpeg,
+      ShareJpegEncodeParams(
+        rgbaBytes: rgbaBytes,
+        width: width,
+        height: height,
+        bgR: bgR,
+        bgG: bgG,
+        bgB: bgB,
+      ),
+    );
   }
 
   Future<void> _shareViaSystem(Uint8List bytes) async {
@@ -466,42 +511,4 @@ class _SharePreviewSheetState extends ConsumerState<_SharePreviewSheet> {
       ),
     );
   }
-}
-
-/// Parameters for background isolate JPEG encoding.
-class _JpegParams {
-  _JpegParams(
-    this.bytes,
-    this.width,
-    this.height,
-    this.bgR,
-    this.bgG,
-    this.bgB,
-  );
-
-  final Uint8List bytes;
-  final int width;
-  final int height;
-  final int bgR;
-  final int bgG;
-  final int bgB;
-}
-
-/// Top-level function for background isolate execution.
-Uint8List _encodeJpegSync(_JpegParams params) {
-  final src = img.Image.fromBytes(
-    width: params.width,
-    height: params.height,
-    bytes: params.bytes.buffer,
-    numChannels: 4,
-  );
-  final bg = img.Image(
-    width: params.width,
-    height: params.height,
-    numChannels: 3,
-  );
-  final c = bg.getColor(params.bgR, params.bgG, params.bgB);
-  bg.clear(c);
-  img.compositeImage(bg, src);
-  return img.encodeJpg(bg, quality: 90);
 }

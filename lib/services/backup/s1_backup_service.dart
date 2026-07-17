@@ -66,7 +66,7 @@ class S1BackupService {
     appSettings.putIfAbsent('fontSize', () => 14);
     appSettings.putIfAbsent('collapsedForums', () => <String>[]);
     appSettings.putIfAbsent('shareImageFormat', () => 'jpeg');
-    appSettings.putIfAbsent('sharePixelRatio', () => 3);
+    appSettings.putIfAbsent('sharePixelRatio', () => 2);
 
     final settingsJson = S1BackupSettingsMapper.toBackup(appSettings);
 

@@ -34,7 +34,7 @@ class ShareSettingsSection extends ConsumerWidget {
                     Text('图片格式', style: textTheme.titleSmall),
                     const SizedBox(height: 4),
                     Text(
-                      'JPEG 体积小，PNG 无损但文件较大',
+                      'JPEG 体积小；PNG 由引擎原生编码通常更快，但文件更大',
                       style: textTheme.bodySmall?.copyWith(
                         color: scheme.onSurfaceVariant,
                       ),

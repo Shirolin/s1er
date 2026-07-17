@@ -57,7 +57,7 @@ void main() {
     expect(state.fontSize, S1Typography.defaultBodySize);
     expect(state.collapsedForums, const {'42'});
     expect(state.shareImageFormat, ShareImageFormat.jpeg);
-    expect(state.sharePixelRatio, 3);
+    expect(state.sharePixelRatio, 2);
   });
 
   test('setRecordReadingHistory persists to settings store', () async {

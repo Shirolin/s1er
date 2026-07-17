@@ -36,12 +36,12 @@ void main() {
 
     // Author name
     expect(find.text('TestUser'), findsOneWidget);
-    // Floor shown in author row (top bar no longer shows floor)
+    // Floor pinned to trailing edge of author row
     expect(find.text('#1'), findsOneWidget);
-    // Forum branding (top bar)
+    // Forum branding (top bar); time sits under the author name
     expect(find.text('Stage1st'), findsOneWidget);
-    // Client name in footer (from config, not hardcoded in widget)
-    expect(find.text('来自 ${S1Constants.appName}'), findsOneWidget);
+    // Client attribution in footer
+    expect(find.text('来自 ${S1Constants.appName} 客户端'), findsOneWidget);
     // Post content
     expect(find.textContaining('测试帖子内容'), findsOneWidget);
   });

@@ -21,7 +21,7 @@ class AppSettings {
     this.fontSize = S1Typography.defaultBodySize,
     this.collapsedForums = const {},
     this.shareImageFormat = ShareImageFormat.jpeg,
-    this.sharePixelRatio = 3,
+    this.sharePixelRatio = 2,
   });
 
   final String themeMode;
@@ -208,9 +208,9 @@ class SettingsNotifier extends Notifier<AppSettings> {
       ),
       sharePixelRatio: (settingsStore.get<int>(
                 'sharePixelRatio',
-                defaultValue: 3,
+                defaultValue: 2,
               ) ??
-              3)
+              2)
           .clamp(2, 3),
       collapsedForums: Set<String>.from(
         (settingsStore.get<List<dynamic>>('collapsedForums'))?.cast<String>() ??

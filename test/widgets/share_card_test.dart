@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:s1_app/config/constants.dart';
 import 'package:s1_app/models/post.dart';
 import 'package:s1_app/widgets/share_card.dart';
 
@@ -37,8 +38,10 @@ void main() {
     expect(find.text('TestUser'), findsOneWidget);
     // Floor shown in author row (top bar no longer shows floor)
     expect(find.text('#1'), findsOneWidget);
-    // Forum branding
+    // Forum branding (top bar)
     expect(find.text('Stage1st'), findsOneWidget);
+    // Client name in footer (from config, not hardcoded in widget)
+    expect(find.text('来自 ${S1Constants.appName}'), findsOneWidget);
     // Post content
     expect(find.textContaining('测试帖子内容'), findsOneWidget);
   });

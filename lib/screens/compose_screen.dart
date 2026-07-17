@@ -621,7 +621,7 @@ class _ComposeScreenState extends ConsumerState<ComposeScreen> {
                 ),
                 Expanded(
                   child: SingleChildScrollView(
-                    padding: const EdgeInsets.fromLTRB(16, 0, 16, 8),
+                    padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.stretch,
                       children: [
@@ -636,16 +636,6 @@ class _ComposeScreenState extends ConsumerState<ComposeScreen> {
                           imageIndexCounter: imageIndexCounter,
                         ),
                       ],
-                    ),
-                  ),
-                ),
-                Padding(
-                  padding: const EdgeInsets.fromLTRB(8, 0, 8, 8),
-                  child: Align(
-                    alignment: Alignment.centerRight,
-                    child: TextButton(
-                      onPressed: () => Navigator.of(ctx).pop(),
-                      child: const Text('关闭'),
                     ),
                   ),
                 ),

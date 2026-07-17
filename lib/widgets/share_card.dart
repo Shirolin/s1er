@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../config/constants.dart';
 import '../models/post.dart';
 import '../theme/app_theme.dart';
 import '../utils/format_utils.dart';
@@ -100,7 +101,7 @@ class ShareCard extends StatelessWidget {
                   ),
                 ),
 
-                // Footer
+                // Footer — client name from app config (not hardcoded inline)
                 const SizedBox(height: 24),
                 Divider(
                   height: 1,
@@ -112,13 +113,13 @@ class ShareCard extends StatelessWidget {
                   mainAxisAlignment: MainAxisAlignment.center,
                   children: [
                     Icon(
-                      Icons.forum_outlined,
+                      Icons.smartphone_outlined,
                       size: 14,
                       color: scheme.onSurfaceVariant,
                     ),
                     const SizedBox(width: 6),
                     Text(
-                      '来自 Stage1st 论坛',
+                      '来自 ${S1Constants.appName}',
                       style: textTheme.labelSmall?.copyWith(
                         color: scheme.onSurfaceVariant,
                       ),

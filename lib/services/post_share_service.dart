@@ -39,6 +39,7 @@ class PostShareService {
       isScrollControlled: true,
       showDragHandle: true,
       shape: S1Shape.bottomSheetShape,
+      // Standard-height sheet: dismiss via drag / scrim / back — no close chrome.
       builder: (_) {
         return _SharePreviewSheet(
           post: post,
@@ -297,33 +298,17 @@ class _SharePreviewSheetState extends ConsumerState<_SharePreviewSheet> {
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            // Title — close button absolutely positioned, title truly centered
-            SizedBox(
-              height: 48,
-              child: Stack(
-                children: [
-                  Positioned(
-                    top: 0,
-                    right: 4,
-                    child: IconButton(
-                      icon: Icon(Icons.close, color: scheme.onSurfaceVariant),
-                      onPressed: () => Navigator.pop(context),
-                      tooltip: '关闭',
-                    ),
-                  ),
-                  Center(
-                    child: Text(
-                      '分享帖子',
-                      style: textTheme.titleMedium?.copyWith(
-                        fontWeight: FontWeight.bold,
-                      ),
-                    ),
-                  ),
-                ],
+            // Title only — dismiss via drag handle / scrim / back (no close chrome)
+            Padding(
+              padding: const EdgeInsets.fromLTRB(16, 8, 16, 8),
+              child: Text(
+                '分享帖子',
+                textAlign: TextAlign.center,
+                style: textTheme.titleMedium?.copyWith(
+                  fontWeight: FontWeight.bold,
+                ),
               ),
             ),
-            Divider(height: 1, color: scheme.outlineVariant),
-            const SizedBox(height: 4),
 
             // Card preview
             Flexible(
@@ -385,14 +370,22 @@ class _SharePreviewSheetState extends ConsumerState<_SharePreviewSheet> {
       );
     }
 
+    // Equal width + single-line labels so long Chinese text does not wrap
+    // when download/save and share appear side by side.
     return Row(
       children: [
         Expanded(
           child: OutlinedButton.icon(
             onPressed: _captureAndSave,
-            icon: Icon(Icons.save_alt_outlined, color: scheme.onSurfaceVariant),
+            icon: Icon(Icons.download_outlined, color: scheme.onSurfaceVariant),
+            style: OutlinedButton.styleFrom(
+              padding: const EdgeInsets.symmetric(horizontal: 12),
+            ),
             label: Text(
-              '保存到相册',
+              '下载图片',
+              maxLines: 1,
+              softWrap: false,
+              overflow: TextOverflow.ellipsis,
               style: textTheme.labelLarge?.copyWith(
                 color: scheme.onSurfaceVariant,
               ),
@@ -401,11 +394,18 @@ class _SharePreviewSheetState extends ConsumerState<_SharePreviewSheet> {
         ),
         const SizedBox(width: 12),
         Expanded(
-          flex: 2,
           child: FilledButton.icon(
             onPressed: _captureAndShare,
             icon: const Icon(Icons.share_outlined),
-            label: const Text('分享'),
+            style: FilledButton.styleFrom(
+              padding: const EdgeInsets.symmetric(horizontal: 12),
+            ),
+            label: Text(
+              '分享',
+              maxLines: 1,
+              softWrap: false,
+              style: textTheme.labelLarge,
+            ),
           ),
         ),
       ],

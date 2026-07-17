@@ -440,23 +440,11 @@ class _ImageViewerScreenState extends ConsumerState<ImageViewerScreen> {
       desktopMaxWidth: 560,
       builder: (context) {
         return Padding(
-          padding: const EdgeInsets.fromLTRB(24, 16, 24, 24),
+          padding: const EdgeInsets.fromLTRB(24, 8, 24, 24),
           child: Column(
             mainAxisSize: MainAxisSize.min,
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Center(
-                child: Container(
-                  width: 32,
-                  height: 4,
-                  decoration: BoxDecoration(
-                    color: colorScheme.onSurfaceVariant
-                        .withValues(alpha: S1Alpha.cardOverlay),
-                    borderRadius: S1Shape.extraSmall,
-                  ),
-                ),
-              ),
-              const SizedBox(height: 16),
               Text('图片信息', style: textTheme.titleMedium),
               const SizedBox(height: 16),
               _infoRow('文件名', _fileName, textTheme, colorScheme),

@@ -59,6 +59,7 @@
 - **层级**：`Card` / `AppBar` 必须显式 `elevation: 0`（含继承主题处也应写明）；浮层 Menu/PopupMenu 可按 M3 使用低 elevation
 - **透明度**：一律用 `S1Alpha.*` token，禁止内联 `withValues(alpha: 0.x)`
 - **排版常量**：`S1Typography.defaultBodySize` 为字号设置标准档，HTML 渲染通过 `S1Typography.bodySize(textTheme)` 桥接
+- **Modal sheet 关闭**：标准高度抽屉 / `showS1AdaptiveSheet` **不放**顶栏关闭按钮；靠 drag handle（紧凑屏已由 API 提供）、点 scrim、系统返回 / Escape。禁止内容区再画一套自定义 drag handle。例外：`AlertDialog` 的取消/关闭 **actions**；全屏 modal 的顶栏关闭；内容错误/空态且无其它主操作时的内容区 CTA（如「关闭」）
 
 **审计**：`dart run scripts/audit_m3.dart --fail-on-error`（CI / 本地均需通过）
 

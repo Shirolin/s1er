@@ -252,6 +252,33 @@ class PostNotifier extends AsyncNotifier<PostListState> {
     state = await AsyncValue.guard(() => _openByPid(pid));
   }
 
+  /// 引用跳转返回：恢复到指定页并滚到绝对楼层（同页不重载）。
+  Future<void> restoreToFloor({
+    required int page,
+    required int absoluteFloor,
+  }) async {
+    final previous = state.asData?.value;
+    if (previous != null && previous.currentPage == page) {
+      state = AsyncValue.data(
+        previous.copyWith(
+          openScrollTarget: ScrollToFloor(absoluteFloor),
+          clearLocateError: true,
+        ),
+      );
+      return;
+    }
+    state = await AsyncValue.guard(() async {
+      final loaded = await _loadPage(page);
+      return loaded.copyWith(
+        openScrollTarget: ScrollToFloor(absoluteFloor),
+        clearLocateError: true,
+      );
+    });
+    if (state.hasError && previous != null) {
+      state = AsyncValue.data(previous);
+    }
+  }
+
   Future<void> goToPage(int page) async {
     final previous = state.asData?.value;
     state = await AsyncValue.guard(() async {

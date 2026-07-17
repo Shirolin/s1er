@@ -4,11 +4,13 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import '../config/api_config.dart';
+import '../config/constants.dart';
 import '../models/blacklist_record.dart';
 import '../models/post.dart';
 import '../models/reply_submit_result.dart';
 import '../models/edit_post_submit_result.dart';
 import '../providers/blacklist_provider.dart';
+import '../providers/in_thread_jump_provider.dart';
 import '../providers/post_provider.dart';
 import '../providers/auth_provider.dart';
 import '../providers/reading_history_provider.dart';
@@ -17,6 +19,7 @@ import '../providers/thread_open_intent_provider.dart';
 import '../utils/compose_draft_store.dart';
 import '../widgets/app_bar_more_menu.dart';
 import '../widgets/favorite_bookmark_button.dart';
+import '../widgets/in_thread_jump_capture.dart';
 import '../models/favorite_item.dart';
 import '../widgets/pagination_bar.dart';
 import '../widgets/post_item.dart';
@@ -121,6 +124,9 @@ class _ThreadDetailScreenState extends ConsumerState<ThreadDetailScreen> {
 
   /// 楼级进度回写节流。
   DateTime? _lastFloorProgressAt;
+
+  /// 正在从跳转栈恢复，避免 intent 监听再次入栈或重复定位。
+  bool _restoringJump = false;
 
   @override
   void dispose() {
@@ -645,17 +651,78 @@ class _ThreadDetailScreenState extends ConsumerState<ThreadDetailScreen> {
     );
   }
 
+  /// 抓拍当前阅读位并压入跳转栈；无可用页码时跳过（首屏 ?pid= 不入栈）。
+  void _captureInThreadJump() {
+    final state = ref.read(postProvider(widget.tid)).asData?.value;
+    final page = state?.currentPage ?? _lastRecordedPage;
+    if (page == null) return;
+
+    final perPage = state?.perPage ?? S1Constants.postsPerPageFallback;
+    final leading = (state != null && state.posts.isNotEmpty)
+        ? ScrollFloorNavigator.findLeadingVisiblePostIndex(postKeys: _postKeys)
+        : null;
+    final floorInPage =
+        leading != null ? leading + 1 : (_lastRecordedFloorInPage ?? 1);
+    ref.read(inThreadJumpStackProvider(widget.tid).notifier).push(
+          InThreadJumpSnapshot(
+            page: page,
+            absoluteFloor: (page - 1) * perPage + floorInPage,
+          ),
+        );
+  }
+
+  Future<void> _restoreInThreadJump() async {
+    final snap = ref.read(inThreadJumpStackProvider(widget.tid).notifier).pop();
+    if (snap == null) return;
+    setState(() {
+      _restoringJump = true;
+      _manualPageChange = false;
+      _openScrollConsumed = false;
+      _highlightPid = null;
+    });
+    try {
+      await ref.read(postProvider(widget.tid).notifier).restoreToFloor(
+            page: snap.page,
+            absoluteFloor: snap.absoluteFloor,
+          );
+      if (!mounted) return;
+      final destination = ThreadPage(widget.tid, snap.page);
+      if (widget.onDestinationChanged != null) {
+        widget.onDestinationChanged!(destination);
+      } else {
+        context.replace(ThreadRouteCodec.encodePath(destination));
+      }
+    } finally {
+      if (mounted) {
+        setState(() => _restoringJump = false);
+      } else {
+        _restoringJump = false;
+      }
+    }
+  }
+
+  /// 系统返回：有跳转栈则恢复，否则交由路由弹出。
+  Future<bool> _onSystemBack() async {
+    if (ref.read(inThreadJumpStackProvider(widget.tid)).isNotEmpty) {
+      await _restoreInThreadJump();
+      return true;
+    }
+    return false;
+  }
+
   /// 同 tid 站内 `replace(?pid=)` 不 remount；需跟随路由 intent 再定位。
   void _onOpenIntentChanged(
     ThreadOpenIntent? previous,
     ThreadOpenIntent? next,
   ) {
+    if (_restoringJump) return;
     if (next == null || next.mode != ThreadOpenMode.post) return;
     final pid = next.pid;
     if (pid == null || pid.isEmpty) return;
     if (previous?.mode == ThreadOpenMode.post && previous?.pid == pid) {
       return;
     }
+    // 抓拍由 openInternalLocation 在 replace 前完成（避免 remount 丢栈）。
     // Intent override 在 ProviderScope.build 中更新；不可同步改 postProvider。
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (!mounted) return;
@@ -687,20 +754,33 @@ class _ThreadDetailScreenState extends ConsumerState<ThreadDetailScreen> {
     });
 
     final postsAsync = ref.watch(postProvider(widget.tid));
+    final jumpStack = ref.watch(inThreadJumpStackProvider(widget.tid));
     final isLoggedIn = ref.watch(
       authStateProvider.select((auth) => auth.isLoggedIn),
     );
 
-    final screen = Scaffold(
+    final scaffold = Scaffold(
       appBar: AppBar(
         elevation: 0,
-        leading: widget.onClose == null
-            ? null
-            : IconButton(
-                tooltip: '返回主题列表',
-                onPressed: widget.onClose,
-                icon: const Icon(Icons.arrow_back),
-              ),
+        leading: IconButton(
+          tooltip: jumpStack.isNotEmpty
+              ? '返回上一位置'
+              : (widget.onClose != null ? '返回主题列表' : '返回'),
+          onPressed: () {
+            if (jumpStack.isNotEmpty) {
+              unawaited(_restoreInThreadJump());
+              return;
+            }
+            if (widget.onClose != null) {
+              widget.onClose!();
+              return;
+            }
+            if (context.canPop()) {
+              context.pop();
+            }
+          },
+          icon: const Icon(Icons.arrow_back),
+        ),
         title: postsAsync.whenOrNull(
               data: (s) => s.threadSubject != null
                   ? S1ClickRegion(
@@ -886,6 +966,24 @@ class _ThreadDetailScreenState extends ConsumerState<ThreadDetailScreen> {
         },
       ),
     );
+
+    final screen = InThreadJumpCapture(
+      onCapture: _captureInThreadJump,
+      child: BackButtonListener(
+        onBackButtonPressed: _onSystemBack,
+        child: PopScope(
+          canPop: jumpStack.isEmpty,
+          onPopInvokedWithResult: (didPop, result) {
+            if (didPop) return;
+            if (ref.read(inThreadJumpStackProvider(widget.tid)).isNotEmpty) {
+              unawaited(_restoreInThreadJump());
+            }
+          },
+          child: scaffold,
+        ),
+      ),
+    );
+
     return widget.embedded
         ? screen
         : S1DesktopScaffold(highlightedTab: 0, child: screen);

@@ -21,8 +21,10 @@ import 'package:s1er/screens/thread_detail_screen.dart';
 import 'package:s1er/services/http_client.dart';
 import 'package:s1er/services/reading_history_service.dart';
 import 'package:s1er/theme/app_theme.dart';
+import 'package:s1er/utils/internal_navigation.dart';
 import 'package:s1er/utils/thread_navigation.dart';
 import 'package:s1er/widgets/pagination_bar.dart';
+import 'package:s1er/providers/in_thread_jump_provider.dart';
 
 import '../helpers/test_local_data.dart';
 
@@ -358,6 +360,126 @@ void main() {
     expect(state, isNotNull);
     expect(state!.posts.any((p) => p.pid == 'pid-7'), isTrue);
     expect(find.textContaining('MARK-FLOOR-7'), findsOneWidget);
+  });
+
+  testWidgets('same-thread replace ?pid= then back restores prior floor',
+      (tester) async {
+    tester.view.physicalSize = const Size(800, 1200);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.resetPhysicalSize);
+
+    adapter.postsPerPage = 8;
+    adapter.totalReplies = 20;
+    // Cross-page pid so relocate is observable (not already on page 1 viewport).
+    adapter.locatePageForPid['pid-15'] = 2;
+
+    final (db, local) = await openTestLocalData();
+    addTearDown(db.close);
+    await local.ensureReadingHistoryLoaded();
+    await local.ensureBlacklistLoaded();
+    await local.ensurePollVotesLoaded();
+
+    final dio = Dio()..httpClientAdapter = adapter;
+    late ProviderContainer container;
+    container = ProviderContainer(
+      overrides: [
+        localDataProvider.overrideWithValue(local),
+        httpClientProvider.overrideWith(
+          (ref) => S1HttpClient.test(container, dio),
+        ),
+        settingsProvider.overrideWith(
+          () => SettingsNotifier(
+            initial: const AppSettings(
+              showImages: false,
+              recordReadingHistory: true,
+            ),
+          ),
+        ),
+        authStateProvider.overrideWith(_GuestAuthNotifier.new),
+        threadRateLogsProvider('100').overrideWith(
+          () => _TestThreadRateLogsNotifier('100'),
+        ),
+      ],
+    );
+    rootContainer = container;
+    container.read(readingHistoryProvider.notifier).refresh();
+
+    final router = GoRouter(
+      initialLocation: '/',
+      routes: [
+        GoRoute(
+          path: '/',
+          builder: (context, state) => const Scaffold(body: Text('home')),
+        ),
+        GoRoute(
+          path: '/thread/:tid',
+          pageBuilder: (context, state) {
+            final routeTid = state.pathParameters['tid']!;
+            final routeIntent =
+                ThreadRouteCodec.intentFromUri(state.uri, tid: routeTid);
+            return NoTransitionPage<void>(
+              key: state.pageKey,
+              child: ProviderScope(
+                overrides: [
+                  threadOpenIntentProvider(routeTid)
+                      .overrideWithValue(routeIntent),
+                ],
+                child: ThreadDetailScreen(tid: routeTid),
+              ),
+            );
+          },
+        ),
+      ],
+    );
+
+    await tester.pumpWidget(
+      UncontrolledProviderScope(
+        container: container,
+        child: MaterialApp.router(
+          theme: AppTheme.lightTheme('purple'),
+          routerConfig: router,
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    unawaited(router.push('/thread/100?page=1'));
+    await _pumpFrames(tester, 80);
+
+    expect(find.textContaining('MARK-FLOOR-1'), findsOneWidget);
+    expect(find.text('home'), findsNothing);
+    expect(find.text('第 1 / 3 页'), findsOneWidget);
+
+    // Context must be under InThreadJumpCapture (descendant of ThreadDetailScreen).
+    final ctx = tester.element(find.byType(PaginationBar));
+    openInternalLocation(
+      ctx,
+      ThreadRouteCodec.encodePath(const ThreadPost('100', 'pid-15')),
+    );
+    await _pumpFrames(tester, 80);
+
+    expect(router.state.uri.queryParameters['pid'], 'pid-15');
+    expect(find.text('第 2 / 3 页'), findsOneWidget);
+    expect(find.textContaining('MARK-FLOOR-15'), findsOneWidget);
+    expect(
+      container.read(inThreadJumpStackProvider('100')),
+      isNotEmpty,
+      reason: 'quote jump should push in-thread back stack',
+    );
+
+    // AppBar back（与用户点击返回一致）优先恢复跳转栈。
+    await tester.tap(find.byTooltip('返回上一位置'));
+    await _pumpFrames(tester, 80);
+
+    // Back restores prior floor; must not exit to thread list / home.
+    expect(find.text('home'), findsNothing);
+    expect(find.byType(ThreadDetailScreen), findsOneWidget);
+    expect(router.state.uri.path, '/thread/100');
+    expect(router.state.uri.queryParameters['page'], '1');
+    expect(router.state.uri.queryParameters.containsKey('pid'), isFalse);
+    expect(find.text('第 1 / 3 页'), findsOneWidget);
+    expect(find.textContaining('MARK-FLOOR-1'), findsOneWidget);
+    expect(container.read(inThreadJumpStackProvider('100')), isEmpty);
   });
 }
 

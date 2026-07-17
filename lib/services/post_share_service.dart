@@ -354,14 +354,14 @@ class _SharePreviewSheetState extends ConsumerState<_SharePreviewSheet> {
         ),
       ),
       child: switch (_state) {
-        _FooterState.idle => _buildActions(scheme, textTheme),
+        _FooterState.idle => _buildActions(),
         _FooterState.capturing => _buildCapturing(scheme, textTheme),
         _FooterState.error => _buildError(scheme, textTheme),
       },
     );
   }
 
-  Widget _buildActions(ColorScheme scheme, TextTheme textTheme) {
+  Widget _buildActions() {
     if (kIsWeb) {
       return FilledButton.icon(
         onPressed: _captureAndSave,
@@ -372,23 +372,22 @@ class _SharePreviewSheetState extends ConsumerState<_SharePreviewSheet> {
 
     // Equal width + single-line labels so long Chinese text does not wrap
     // when download/save and share appear side by side.
+    // Do not override label TextStyle colors — Filled/Outlined inherit
+    // onPrimary / primary from the button theme (MD3 contrast contract).
     return Row(
       children: [
         Expanded(
           child: OutlinedButton.icon(
             onPressed: _captureAndSave,
-            icon: Icon(Icons.download_outlined, color: scheme.onSurfaceVariant),
+            icon: const Icon(Icons.download_outlined),
             style: OutlinedButton.styleFrom(
               padding: const EdgeInsets.symmetric(horizontal: 12),
             ),
-            label: Text(
+            label: const Text(
               '下载图片',
               maxLines: 1,
               softWrap: false,
               overflow: TextOverflow.ellipsis,
-              style: textTheme.labelLarge?.copyWith(
-                color: scheme.onSurfaceVariant,
-              ),
             ),
           ),
         ),
@@ -400,11 +399,11 @@ class _SharePreviewSheetState extends ConsumerState<_SharePreviewSheet> {
             style: FilledButton.styleFrom(
               padding: const EdgeInsets.symmetric(horizontal: 12),
             ),
-            label: Text(
+            label: const Text(
               '分享',
               maxLines: 1,
               softWrap: false,
-              style: textTheme.labelLarge,
+              overflow: TextOverflow.ellipsis,
             ),
           ),
         ),

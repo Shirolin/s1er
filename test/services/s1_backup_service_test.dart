@@ -75,7 +75,7 @@ void main() {
         'avatarLoadPolicy': 'manual',
         'maxImagesPerPost': 20,
         'imageCacheLimitMb': 512,
-        'shareImageFormat': 'png',
+        'shareImageFormat': 'webp',
         'sharePixelRatio': 2,
       });
       expect(backup['theme_mode'], 'dark');
@@ -85,7 +85,7 @@ void main() {
       expect(backup['avatar_load_policy'], 'manual');
       expect(backup['max_images_per_post'], 20);
       expect(backup['image_cache_limit_mb'], 512);
-      expect(backup['share_image_format'], 'png');
+      expect(backup['share_image_format'], 'webp');
       expect(backup['share_pixel_ratio'], 2);
       expect(backup.containsKey('use_dynamic_color'), isFalse);
       expect(backup.containsKey('simulate_dynamic'), isFalse);
@@ -102,7 +102,7 @@ void main() {
       expect(app['avatarLoadPolicy'], 'manual');
       expect(app['maxImagesPerPost'], 20);
       expect(app['imageCacheLimitMb'], 512);
-      expect(app['shareImageFormat'], 'png');
+      expect(app['shareImageFormat'], 'webp');
       expect(app['sharePixelRatio'], 2);
       expect(app.containsKey('useDynamicColor'), isFalse);
       expect(app.containsKey('simulateDynamic'), isFalse);

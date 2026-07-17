@@ -159,6 +159,8 @@ flutter build web
 flutter build apk --release
 ```
 
+分享卡导出（方案 C）：Native 依赖 `ironpress`（预编译 mozjpeg / oxipng / libwebp）；默认 WebP，可选 JPEG / PNG。Web 走浏览器 `canvas.toBlob` 或引擎 PNG。
+
 ### Pre-commit 质量检查（推荐）
 
 安装后，每次 `git commit` 会跑质量检查；失败则阻止提交：

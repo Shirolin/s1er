@@ -35,7 +35,7 @@ class ShareSettingsSection extends ConsumerWidget {
                     Text('图片格式', style: textTheme.titleSmall),
                     const SizedBox(height: 4),
                     Text(
-                      'PNG 无损、引擎原生编码（默认，无质量档位）；JPEG 更小但编码较慢',
+                      'WebP 默认体积小；JPEG 兼容性好（mozjpeg）；PNG 无损（Native oxipng）',
                       style: textTheme.bodySmall?.copyWith(
                         color: scheme.onSurfaceVariant,
                       ),
@@ -44,12 +44,16 @@ class ShareSettingsSection extends ConsumerWidget {
                     SegmentedButton<ShareImageFormat>(
                       segments: const [
                         ButtonSegment(
-                          value: ShareImageFormat.png,
-                          label: Text('PNG（默认）'),
+                          value: ShareImageFormat.webp,
+                          label: Text('WebP'),
                         ),
                         ButtonSegment(
                           value: ShareImageFormat.jpeg,
-                          label: Text('JPEG（更小）'),
+                          label: Text('JPEG'),
+                        ),
+                        ButtonSegment(
+                          value: ShareImageFormat.png,
+                          label: Text('PNG'),
                         ),
                       ],
                       selected: {settings.shareImageFormat},

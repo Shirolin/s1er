@@ -21,7 +21,7 @@ class AppSettings {
     this.recordReadingHistory = true,
     this.fontSize = S1Typography.defaultBodySize,
     this.collapsedForums = const {},
-    this.shareImageFormat = ShareImageFormat.png,
+    this.shareImageFormat = ShareImageFormat.webp,
     this.sharePixelRatio = SharePixelRatio.defaultValue,
   });
 

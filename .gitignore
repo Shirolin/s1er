@@ -161,7 +161,10 @@ scripts/maven-proxy.js
 *.hive
 *.hive.lock
 
-
+# ironpress：flutter test 时从 pub-cache 拷贝的本机库（勿提交）
+/windows/libs/
+/linux/libs/
+/macos/libs/
 
 
 # ── 安全 ──────────────────────────────────────────────

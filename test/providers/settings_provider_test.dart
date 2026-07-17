@@ -56,7 +56,7 @@ void main() {
     expect(state.recordReadingHistory, isTrue);
     expect(state.fontSize, S1Typography.defaultBodySize);
     expect(state.collapsedForums, const {'42'});
-    expect(state.shareImageFormat, ShareImageFormat.png);
+    expect(state.shareImageFormat, ShareImageFormat.webp);
     expect(state.sharePixelRatio, 1.5);
   });
 
@@ -183,14 +183,14 @@ void main() {
 
     container
         .read(settingsProvider.notifier)
-        .setShareImageFormat(ShareImageFormat.jpeg);
+        .setShareImageFormat(ShareImageFormat.png);
 
     expect(
       container.read(settingsProvider).shareImageFormat,
-      ShareImageFormat.jpeg,
+      ShareImageFormat.png,
     );
     await Future<void>.delayed(const Duration(milliseconds: 50));
-    expect(store.get<String>('shareImageFormat'), 'jpeg');
+    expect(store.get<String>('shareImageFormat'), 'png');
   });
 
   test('setSharePixelRatio snaps to 1.5/2/3 and persists', () async {

@@ -3,7 +3,7 @@
 import 'dart:async';
 import 'dart:ui' as ui;
 
-import 'package:flutter/foundation.dart' show kIsWeb, compute;
+import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart';
 import 'package:flutter/rendering.dart';
 import 'package:flutter/services.dart';
@@ -18,7 +18,8 @@ import '../models/share_image_format.dart';
 import '../providers/image_bytes_provider.dart';
 import '../providers/settings_provider.dart';
 import '../utils/bbcode_parser.dart';
-import '../utils/share_jpeg_encoder.dart';
+import '../utils/share_native_image_encoder.dart';
+import '../utils/share_rgba_flatten.dart';
 import '../theme/app_theme.dart';
 import '../widgets/share_card.dart';
 import '../widgets/s1_click_region.dart';
@@ -246,22 +247,81 @@ class _SharePreviewSheetState extends ConsumerState<_SharePreviewSheet> {
   }
 
   Future<Uint8List> _encode(ui.Image image) {
-    if (_shareImageFormat == ShareImageFormat.png) {
-      return _encodePng(image);
+    switch (_shareImageFormat) {
+      case ShareImageFormat.png:
+        return _encodePng(image);
+      case ShareImageFormat.jpeg:
+        return _encodeJpeg(image);
+      case ShareImageFormat.webp:
+        return _encodeWebp(image);
     }
-    return _encodeJpeg(image);
   }
 
+  /// PNG: Skia capture, then Native oxipng via ironpress when available.
   Future<Uint8List> _encodePng(ui.Image image) async {
+    final skiaPng = await _encodePngSkia(image);
+    if (kIsWeb) return skiaPng;
+
+    final optimized = await encodeSharePngOptimized(skiaPng);
+    return optimized ?? skiaPng;
+  }
+
+  Future<Uint8List> _encodePngSkia(ui.Image image) async {
     final byteData = await image.toByteData(format: ui.ImageByteFormat.png);
     return byteData!.buffer.asUint8List();
   }
 
   Future<Uint8List> _encodeJpeg(ui.Image image) async {
+    if (kIsWeb) {
+      final opaque = await _opaqueRgbaFromImage(image);
+      final browserBytes = await browser_encode.encodeRgbaWithBrowser(
+        rgbaBytes: opaque.bytes,
+        width: opaque.width,
+        height: opaque.height,
+        mimeType: 'image/jpeg',
+        quality: 0.85,
+      );
+      if (browserBytes != null) return browserBytes;
+      return _encodePngSkia(image);
+    }
+
+    final skiaPng = await _encodePngSkia(image);
+    final jpeg = await encodeShareJpegFromPng(skiaPng);
+    if (jpeg != null) return jpeg;
+
+    final optimized = await encodeSharePngOptimized(skiaPng);
+    return optimized ?? skiaPng;
+  }
+
+  Future<Uint8List> _encodeWebp(ui.Image image) async {
+    if (kIsWeb) {
+      final opaque = await _opaqueRgbaFromImage(image);
+      final browserBytes = await browser_encode.encodeRgbaWithBrowser(
+        rgbaBytes: opaque.bytes,
+        width: opaque.width,
+        height: opaque.height,
+        mimeType: 'image/webp',
+        quality: 0.85,
+      );
+      if (browserBytes != null) return browserBytes;
+      return _encodePngSkia(image);
+    }
+
+    // ironpress accepts encoded buffers; Skia PNG is a fast intermediate.
+    final skiaPng = await _encodePngSkia(image);
+    final webp = await encodeShareWebpFromPng(skiaPng);
+    if (webp != null) return webp;
+
+    // Native encode failed — fall back to (possibly oxipng) PNG.
+    final optimized = await encodeSharePngOptimized(skiaPng);
+    return optimized ?? skiaPng;
+  }
+
+  Future<({Uint8List bytes, int width, int height})> _opaqueRgbaFromImage(
+    ui.Image image,
+  ) async {
     final width = image.width;
     final height = image.height;
-
-    // Capture background color before async gap for JPEG compositing.
     final scheme = Theme.of(context).colorScheme;
     final bgR = (scheme.surfaceContainerLow.r * 255).round();
     final bgG = (scheme.surfaceContainerLow.g * 255).round();
@@ -274,50 +334,15 @@ class _SharePreviewSheetState extends ConsumerState<_SharePreviewSheet> {
       raw.lengthInBytes,
     );
 
-    if (kIsWeb) {
-      // Browser codecs treat transparent pixels as black — flatten first.
-      final opaqueRgba = flattenRgbaOntoOpaqueRgba(
-        rgba: rgbaBytes,
-        width: width,
-        height: height,
-        bgR: bgR,
-        bgG: bgG,
-        bgB: bgB,
-      );
-      final browserBytes = await browser_encode.encodeRgbaWithBrowser(
-        rgbaBytes: opaqueRgba,
-        width: width,
-        height: height,
-        mimeType: 'image/jpeg',
-        quality: 0.85,
-      );
-      if (browserBytes != null) return browserBytes;
-
-      // Fallback: pure-Dart encode (no real isolates on Web).
-      await Future<void>.delayed(Duration.zero);
-      return encodeShareJpeg(
-        ShareJpegEncodeParams(
-          rgbaBytes: opaqueRgba,
-          width: width,
-          height: height,
-          bgR: bgR,
-          bgG: bgG,
-          bgB: bgB,
-        ),
-      );
-    }
-
-    return compute(
-      encodeShareJpeg,
-      ShareJpegEncodeParams(
-        rgbaBytes: rgbaBytes,
-        width: width,
-        height: height,
-        bgR: bgR,
-        bgG: bgG,
-        bgB: bgB,
-      ),
+    final opaque = flattenRgbaOntoOpaqueRgba(
+      rgba: rgbaBytes,
+      width: width,
+      height: height,
+      bgR: bgR,
+      bgG: bgG,
+      bgB: bgB,
     );
+    return (bytes: opaque, width: width, height: height);
   }
 
   Future<void> _shareViaSystem(Uint8List bytes) async {

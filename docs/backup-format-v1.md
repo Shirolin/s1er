@@ -95,7 +95,7 @@ v1 **不使用** JSONL；列表一律为 JSON 数组。
 | `record_reading_history` | bool | |
 | `font_size` | int | |
 | `collapsed_forums` | string[] | 版块 id |
-| `share_image_format` | string | `png` / `jpeg`；分享卡片导出图片格式（默认 `png`） |
+| `share_image_format` | string | `webp` / `jpeg` / `png`；分享卡片导出图片格式（默认 `webp`） |
 | `share_pixel_ratio` | number | `1.5` / `2` / `3`；分享卡片截图清晰度（默认 `1.5`） |
 | `simulate_dynamic` | bool | 调试用，可忽略 |
 

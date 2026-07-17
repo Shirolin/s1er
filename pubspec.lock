@@ -181,10 +181,10 @@ packages:
     dependency: transitive
     description:
       name: code_assets
-      sha256: bf394f466ba9205f1812a0433b392d6af280f155f56651eda7c18cc32ed493b8
+      sha256: "83ccdaa064c980b5596c35dd64a8d3ecc68620174ab9b90b6343b753aa721687"
       url: "https://pub.dev"
     source: hosted
-    version: "1.2.1"
+    version: "1.0.0"
   collection:
     dependency: transitive
     description:
@@ -588,10 +588,10 @@ packages:
     dependency: transitive
     description:
       name: hooks
-      sha256: "9a62a50b50b769a737bc0a8ff381f333529df3ab746b2f6b02e83760231455ba"
+      sha256: "025f060e86d2d4c3c47b56e33caf7f93bf9283340f26d23424ebcfccf34f621e"
       url: "https://pub.dev"
     source: hosted
-    version: "2.0.2"
+    version: "1.0.3"
   html:
     dependency: "direct main"
     description:
@@ -640,6 +640,14 @@ packages:
       url: "https://pub.dev"
     source: hosted
     version: "1.0.5"
+  ironpress:
+    dependency: "direct main"
+    description:
+      name: ironpress
+      sha256: e672df889c284603856368e5b9f945304b8bd99c4e33ee9047e2fba2dee0991f
+      url: "https://pub.dev"
+    source: hosted
+    version: "0.2.0"
   jni:
     dependency: transitive
     description:
@@ -740,10 +748,10 @@ packages:
     dependency: transitive
     description:
       name: native_toolchain_c
-      sha256: f9c168717100ae6d9fee9ffb0be379bf1f8b26b0f6bcbd4fdddcd931993a6a72
+      sha256: "6ba77bb18063eebe9de401f5e6437e95e1438af0a87a3a39084fbd37c90df572"
       url: "https://pub.dev"
     source: hosted
-    version: "0.19.2"
+    version: "0.17.6"
   nm:
     dependency: transitive
     description:
@@ -764,10 +772,10 @@ packages:
     dependency: transitive
     description:
       name: objective_c
-      sha256: "6cb691c686fa2838c6deb34980d426145c2a5d537491cb83d463c33cdbc726ed"
+      sha256: "100a1c87616ab6ed41ec263b083c0ef3261ee6cd1dc3b0f35f8ddfa4f996fe52"
       url: "https://pub.dev"
     source: hosted
-    version: "9.4.1"
+    version: "9.3.0"
   octo_image:
     dependency: transitive
     description:

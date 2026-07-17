@@ -33,6 +33,79 @@ void main() {
       );
     });
 
+    test('decodes double &amp;amp; and strips messy Discuz tid suffixes', () {
+      expect(
+        _location(
+          'http://bbs.saraba1st.com/2b/forum.php?mod=viewthread&amp;amp;tid=606858.html',
+        ),
+        '/thread/606858',
+      );
+      expect(
+        _location(
+          'http://bbs.saraba1st.com//2b/forum.php?mod=viewthread&amp;amp;tid=911581-page-1.html',
+        ),
+        '/thread/911581?page=1',
+      );
+      expect(
+        _location(
+          'http://bbs.saraba1st.com/2b/forum.php?mod=viewthread&amp;amp;tid=874342-fpage-3-page-2.html',
+        ),
+        '/thread/874342?page=2',
+      );
+      expect(
+        _location(
+          'http://bbs.saraba1st.com/2b/forum.php?mod=viewthread&amp;amp;tid=562154-.html',
+        ),
+        '/thread/562154',
+      );
+      expect(
+        _location(
+          'http://bbs.saraba1st.com//2b/forum.php?mod=viewthread&amp;amp;tid=912331.htm',
+        ),
+        '/thread/912331',
+      );
+      expect(
+        _location(
+          'http://bbs.saraba1st.com//2b/forum.php?mod=viewthread&amp;amp;tid=918850-fpage-2.html',
+        ),
+        '/thread/918850',
+      );
+    });
+
+    test('maps bare numeric fragments as pid (legacy Discuz anchors)', () {
+      expect(
+        _location(
+          'http://bbs.saraba1st.com/2b/read.php?tid=731672&amp;amp;page=2#16352875',
+        ),
+        '/thread/731672?pid=16352875',
+      );
+      expect(
+        _location(
+          'http://bbs.saraba1st.com/2b/forum.php?mod=viewthread&amp;amp;tid=899431-page-2.html#20770218',
+        ),
+        '/thread/899431?pid=20770218',
+      );
+      expect(
+        _location('http://bbs.saraba1st.com/2b/read.php?tid=675176#14653317'),
+        '/thread/675176?pid=14653317',
+      );
+    });
+
+    test('ignores non-pid fragments like #a / #tpc', () {
+      expect(
+        _location(
+          'http://bbs.saraba1st.com/2b/forum.php?mod=viewthread&amp;amp;tid=928599-page-1.html#tpc',
+        ),
+        '/thread/928599?page=1',
+      );
+      expect(
+        _location(
+          'http://bbs.saraba1st.com/2b/forum.php?mod=viewthread&amp;amp;tid=604195-page-e.html#a',
+        ),
+        '/thread/604195',
+      );
+    });
+
     test('maps relative, protocol-relative and rewritten thread links', () {
       expect(
         _location('forum.php?mod=viewthread&amp;tid=123&amp;page=2'),
@@ -75,12 +148,18 @@ void main() {
       final external = PostLinkResolver.resolve('https://example.com/hello');
       expect(external, isA<ExternalPostLink>());
       expect((external as ExternalPostLink).uri.host, 'example.com');
+
+      // 历史帖里的拼写错误域名，不应硬猜成站内。
+      final typo = PostLinkResolver.resolve(
+        'http://www.sarabalst.com/2b/read.php?tid=844143',
+      );
+      expect(typo, isA<ExternalPostLink>());
     });
   });
 }
 
 String _location(String url) {
   final result = PostLinkResolver.resolve(url);
-  expect(result, isA<InternalPostLink>());
+  expect(result, isA<InternalPostLink>(), reason: url);
   return (result as InternalPostLink).location;
 }

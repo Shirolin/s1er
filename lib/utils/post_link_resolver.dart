@@ -37,8 +37,11 @@ abstract final class PostLinkResolver {
     r'(?:^|/)forum-(\d+)-(\d+)(?:-\d+)?\.html$',
     caseSensitive: false,
   );
-  static final _fragmentPid = RegExp(r'^pid(\d+)$', caseSensitive: false);
-  static final _digits = RegExp(r'^\d+$');
+  /// Discuz 锚点：`#pid123` 或旧站纯数字 `#16352875`。
+  static final _fragmentPid = RegExp(r'^(?:pid)?(\d+)$', caseSensitive: false);
+  static final _leadingDigits = RegExp(r'^(\d+)');
+  /// 脏 tid 里嵌的页码，如 `874342-fpage-3-page-2.html`。
+  static final _embeddedPage = RegExp(r'-page-(\d+)', caseSensitive: false);
 
   static PostLinkResolution resolve(String rawUrl) {
     final uri = _resolveUri(rawUrl);
@@ -55,7 +58,11 @@ abstract final class PostLinkResolver {
   }
 
   static Uri? _resolveUri(String rawUrl) {
-    final value = rawUrl.trim().replaceAll('&amp;', '&');
+    var value = rawUrl.trim();
+    // 旧帖 HTML 常见双重实体：`&amp;amp;` → 需解到真正的 `&`。
+    while (value.contains('&amp;')) {
+      value = value.replaceAll('&amp;', '&');
+    }
     if (value.isEmpty) return null;
 
     final baseUri = Uri.parse('${ApiConfig.baseUrl}/');
@@ -71,32 +78,36 @@ abstract final class PostLinkResolver {
 
     final query = uri.queryParameters;
     final mod = query['mod'] ?? query['module'];
-    final tid = query['tid'];
-    if ((mod == 'viewthread' || mod == 'redirect') && _isId(tid)) {
-      return _threadLocation(tid!, uri);
+    final rawTid = query['tid'];
+    final tid = _normalizeId(rawTid);
+    final tidPage = _pageFromMessyValue(rawTid);
+
+    if ((mod == 'viewthread' || mod == 'redirect') && tid != null) {
+      return _threadLocation(tid, uri, fallbackPage: tidPage);
     }
 
     // Discuz 旧版直链：read.php / viewthread.php?tid=
-    if (_isLegacyThreadScript(uri.path) && _isId(tid)) {
-      return _threadLocation(tid!, uri);
+    if (_isLegacyThreadScript(uri.path) && tid != null) {
+      return _threadLocation(tid, uri, fallbackPage: tidPage);
     }
 
-    final ptid = query['ptid'];
-    if (query['goto'] == 'findpost' && _isId(ptid)) {
-      return _threadLocation(ptid!, uri);
+    final ptid = _normalizeId(query['ptid']);
+    if (query['goto'] == 'findpost' && ptid != null) {
+      return _threadLocation(ptid, uri);
     }
 
-    if (mod == 'forumdisplay' && _isId(query['fid'])) {
-      return _forumLocation(query['fid']!, query['page']);
+    final fid = _normalizeId(query['fid']);
+    if (mod == 'forumdisplay' && fid != null) {
+      return _forumLocation(fid, query['page']);
     }
 
-    if (_isLegacyForumScript(uri.path) && _isId(query['fid'])) {
-      return _forumLocation(query['fid']!, query['page']);
+    if (_isLegacyForumScript(uri.path) && fid != null) {
+      return _forumLocation(fid, query['page']);
     }
 
     if (uri.path.endsWith('home.php') &&
         mod == 'space' &&
-        _isId(query['uid'])) {
+        _normalizeId(query['uid']) != null) {
       return _userSpaceLocation(query);
     }
 
@@ -126,7 +137,7 @@ abstract final class PostLinkResolver {
       path.toLowerCase().endsWith('forumdisplay.php');
 
   static bool _isForumHome(Uri uri) {
-    final path = uri.path.replaceFirst(RegExp(r'/$'), '');
+    final path = uri.path.replaceFirst(RegExp(r'/+$'), '');
     return (path.isEmpty || path == '/2b') && uri.queryParameters.isEmpty;
   }
 
@@ -135,9 +146,9 @@ abstract final class PostLinkResolver {
     Uri uri, {
     String? fallbackPage,
   }) {
-    final pid = uri.queryParameters['pid'] ??
+    final pid = _normalizeId(uri.queryParameters['pid']) ??
         _fragmentPid.firstMatch(uri.fragment)?.group(1);
-    if (_isId(pid)) return ThreadRouteCodec.encodePath(ThreadPost(tid, pid!));
+    if (pid != null) return ThreadRouteCodec.encodePath(ThreadPost(tid, pid));
 
     final page = _validPage(uri.queryParameters['page'] ?? fallbackPage);
     if (page != null) {
@@ -162,10 +173,24 @@ abstract final class PostLinkResolver {
     final action = query['do'];
     if (action != null && action.isNotEmpty && action != 'thread') return null;
     final tab = query['type'] == 'reply' ? 1 : 0;
-    return '/user-space/${query['uid']}?tab=$tab';
+    return '/user-space/${_normalizeId(query['uid'])}?tab=$tab';
   }
 
-  static bool _isId(String? value) => value != null && _digits.hasMatch(value);
+  /// 从 `606858.html` / `911581-page-1.html` / `562154-.html` 取出纯数字 id。
+  static String? _normalizeId(String? value) {
+    if (value == null || value.isEmpty) return null;
+    return _leadingDigits.firstMatch(value)?.group(1);
+  }
+
+  static String? _pageFromMessyValue(String? value) {
+    if (value == null || value.isEmpty) return null;
+    // 取最后一个 `-page-N`，避开 `fpage` 误伤（`-fpage-` 不含 `-page-`）。
+    String? page;
+    for (final match in _embeddedPage.allMatches(value)) {
+      page = match.group(1);
+    }
+    return page;
+  }
 
   static int? _validPage(String? value) {
     final page = int.tryParse(value ?? '');

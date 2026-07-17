@@ -27,10 +27,10 @@ void main() {
       expect(ShareImageFormat.fromBackup('png'), ShareImageFormat.png);
     });
 
-    test('default fromStored is jpeg', () {
-      expect(ShareImageFormat.fromStored(null), ShareImageFormat.jpeg);
-      expect(ShareImageFormat.fromStored(''), ShareImageFormat.jpeg);
-      expect(ShareImageFormat.fromStored('unknown'), ShareImageFormat.jpeg);
+    test('default fromStored is png', () {
+      expect(ShareImageFormat.fromStored(null), ShareImageFormat.png);
+      expect(ShareImageFormat.fromStored(''), ShareImageFormat.png);
+      expect(ShareImageFormat.fromStored('unknown'), ShareImageFormat.png);
     });
 
     test('extension matches format', () {

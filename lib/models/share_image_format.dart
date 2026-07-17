@@ -16,11 +16,11 @@ enum ShareImageFormat {
 
   static ShareImageFormat fromStored(String? value) {
     switch (value) {
-      case 'png':
-        return ShareImageFormat.png;
       case 'jpeg':
-      default:
         return ShareImageFormat.jpeg;
+      case 'png':
+      default:
+        return ShareImageFormat.png;
     }
   }
 

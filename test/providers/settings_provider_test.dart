@@ -56,8 +56,8 @@ void main() {
     expect(state.recordReadingHistory, isTrue);
     expect(state.fontSize, S1Typography.defaultBodySize);
     expect(state.collapsedForums, const {'42'});
-    expect(state.shareImageFormat, ShareImageFormat.jpeg);
-    expect(state.sharePixelRatio, 2);
+    expect(state.shareImageFormat, ShareImageFormat.png);
+    expect(state.sharePixelRatio, 1.5);
   });
 
   test('setRecordReadingHistory persists to settings store', () async {
@@ -183,17 +183,17 @@ void main() {
 
     container
         .read(settingsProvider.notifier)
-        .setShareImageFormat(ShareImageFormat.png);
+        .setShareImageFormat(ShareImageFormat.jpeg);
 
     expect(
       container.read(settingsProvider).shareImageFormat,
-      ShareImageFormat.png,
+      ShareImageFormat.jpeg,
     );
     await Future<void>.delayed(const Duration(milliseconds: 50));
-    expect(store.get<String>('shareImageFormat'), 'png');
+    expect(store.get<String>('shareImageFormat'), 'jpeg');
   });
 
-  test('setSharePixelRatio clamps to 2-3 and persists', () async {
+  test('setSharePixelRatio snaps to 1.5/2/3 and persists', () async {
     final container = ProviderContainer(
       overrides: [
         settingsProvider.overrideWith(
@@ -204,15 +204,15 @@ void main() {
     addTearDown(container.dispose);
 
     container.read(settingsProvider.notifier).setSharePixelRatio(5);
-    expect(container.read(settingsProvider).sharePixelRatio, 3);
+    expect(container.read(settingsProvider).sharePixelRatio, 3.0);
 
     container.read(settingsProvider.notifier).setSharePixelRatio(1);
-    expect(container.read(settingsProvider).sharePixelRatio, 2);
+    expect(container.read(settingsProvider).sharePixelRatio, 1.5);
 
     container.read(settingsProvider.notifier).setSharePixelRatio(2);
-    expect(container.read(settingsProvider).sharePixelRatio, 2);
+    expect(container.read(settingsProvider).sharePixelRatio, 2.0);
 
     await Future<void>.delayed(const Duration(milliseconds: 50));
-    expect(store.get<int>('sharePixelRatio'), 2);
+    expect(store.get<Object>('sharePixelRatio'), 2.0);
   });
 }

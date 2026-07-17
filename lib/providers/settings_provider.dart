@@ -2,6 +2,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../models/image_load_policy.dart';
 import '../models/share_image_format.dart';
+import '../models/share_pixel_ratio.dart';
 import '../config/constants.dart';
 import '../services/app_local_data.dart';
 import '../services/s1_image_cache.dart';
@@ -20,8 +21,8 @@ class AppSettings {
     this.recordReadingHistory = true,
     this.fontSize = S1Typography.defaultBodySize,
     this.collapsedForums = const {},
-    this.shareImageFormat = ShareImageFormat.jpeg,
-    this.sharePixelRatio = 2,
+    this.shareImageFormat = ShareImageFormat.png,
+    this.sharePixelRatio = SharePixelRatio.defaultValue,
   });
 
   final String themeMode;
@@ -35,7 +36,7 @@ class AppSettings {
   final int fontSize;
   final Set<String> collapsedForums;
   final ShareImageFormat shareImageFormat;
-  final int sharePixelRatio;
+  final double sharePixelRatio;
 
   double get textScaleFactor => fontSize / S1Typography.defaultBodySize;
 
@@ -51,7 +52,7 @@ class AppSettings {
     int? fontSize,
     Set<String>? collapsedForums,
     ShareImageFormat? shareImageFormat,
-    int? sharePixelRatio,
+    double? sharePixelRatio,
   }) {
     return AppSettings(
       themeMode: themeMode ?? this.themeMode,
@@ -206,12 +207,9 @@ class SettingsNotifier extends Notifier<AppSettings> {
       shareImageFormat: ShareImageFormat.fromStored(
         settingsStore.get<String>('shareImageFormat'),
       ),
-      sharePixelRatio: (settingsStore.get<int>(
-                'sharePixelRatio',
-                defaultValue: 2,
-              ) ??
-              2)
-          .clamp(2, 3),
+      sharePixelRatio: SharePixelRatio.normalize(
+        settingsStore.get<Object>('sharePixelRatio'),
+      ),
       collapsedForums: Set<String>.from(
         (settingsStore.get<List<dynamic>>('collapsedForums'))?.cast<String>() ??
             [],
@@ -272,10 +270,10 @@ class SettingsNotifier extends Notifier<AppSettings> {
     _persist('shareImageFormat', value.storageKey);
   }
 
-  void setSharePixelRatio(int value) {
-    final clamped = value.clamp(2, 3);
-    _commit(state.copyWith(sharePixelRatio: clamped));
-    _persist('sharePixelRatio', clamped);
+  void setSharePixelRatio(double value) {
+    final snapped = SharePixelRatio.normalize(value);
+    _commit(state.copyWith(sharePixelRatio: snapped));
+    _persist('sharePixelRatio', snapped);
   }
 
   void toggleForumCollapse(String fid) {

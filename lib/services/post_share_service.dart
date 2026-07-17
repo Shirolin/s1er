@@ -83,7 +83,7 @@ class _SharePreviewSheetState extends ConsumerState<_SharePreviewSheet> {
   String _statusMessage = '';
 
   late ShareImageFormat _shareImageFormat;
-  late int _sharePixelRatio;
+  late double _sharePixelRatio;
 
   @override
   void initState() {
@@ -216,7 +216,7 @@ class _SharePreviewSheetState extends ConsumerState<_SharePreviewSheet> {
     final renderObject = _captureKey.currentContext?.findRenderObject()
         as RenderRepaintBoundary?;
     if (renderObject == null) return null;
-    final pixelRatio = _sharePixelRatio.toDouble();
+    final pixelRatio = _sharePixelRatio;
 
     return _captureFromRepaint(renderObject, pixelRatio);
   }

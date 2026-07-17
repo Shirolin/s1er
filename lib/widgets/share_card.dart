@@ -36,102 +36,149 @@ class ShareCard extends StatelessWidget {
   final int? displayFloor;
   final String? threadSubject;
 
-  /// Fixed logical width at which the card is laid out. The captured image
-  /// is rendered at the share-sheet's configured pixel ratio (default 2x)
-  /// for excellent detail on high-DPI displays and social media platforms.
-  static const double cardWidth = 750;
+  /// Logical layout width for the share card.
+  ///
+  /// ~600dp × default 1.5x capture ≈ 900px — balanced size/quality for
+  /// phone viewing; 2x≈1200px / 3x≈1800px remain available in settings.
+  static const double cardWidth = 600;
+
+  /// Share-card body size (logical px). Larger than in-app reading default
+  /// so exported images stay readable when viewed as photos on phone/tablet.
+  static const double shareBodySize = 18;
 
   @override
   Widget build(BuildContext context) {
     final scheme = Theme.of(context).colorScheme;
-    final textTheme = Theme.of(context).textTheme;
+    final baseTextTheme = Theme.of(context).textTheme;
+    final textTheme = _shareTextTheme(baseTextTheme);
     final timeStr = formatDateTime(post.dateline);
     final floor = displayFloor ?? post.floor;
     final imageIndexCounter = PostImageIndexCounter();
 
-    // Share cards are captured as fixed-layout images: ignore the user's
-    // reading text scale so exported size stays consistent.
+    // Ignore reading text scale; use a dedicated larger text theme so the
+    // captured image itself has readable body type (not a narrower canvas).
     return MediaQuery(
       data: MediaQuery.of(context).copyWith(
         textScaler: const TextScaler.linear(1.0),
       ),
-      child: RepaintBoundary(
-        key: _captureKey,
-        child: SizedBox(
-          width: cardWidth,
-          child: Card(
-            elevation: 0,
-            color: scheme.surfaceContainerLow,
-            shape: const RoundedRectangleBorder(
-              borderRadius: S1Shape.medium,
-            ),
-            margin: EdgeInsets.zero,
-            child: Padding(
-              padding: const EdgeInsets.all(24),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  _buildTopBar(context),
-                  const SizedBox(height: 6),
-                  if (threadSubject != null && threadSubject!.isNotEmpty)
-                    Padding(
-                      padding: const EdgeInsets.only(bottom: 8),
-                      child: Text(
-                        threadSubject!,
-                        maxLines: 2,
-                        overflow: TextOverflow.ellipsis,
-                        style: textTheme.titleLarge?.copyWith(
-                          fontWeight: FontWeight.w600,
-                          height: 1.3,
+      child: Theme(
+        data: Theme.of(context).copyWith(textTheme: textTheme),
+        child: Builder(
+          builder: (context) {
+            return RepaintBoundary(
+              key: _captureKey,
+              child: SizedBox(
+                width: cardWidth,
+                child: Card(
+                  elevation: 0,
+                  color: scheme.surfaceContainerLow,
+                  shape: const RoundedRectangleBorder(
+                    borderRadius: S1Shape.medium,
+                  ),
+                  margin: EdgeInsets.zero,
+                  child: Padding(
+                    padding: const EdgeInsets.all(24),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        _buildTopBar(context),
+                        const SizedBox(height: 6),
+                        if (threadSubject != null && threadSubject!.isNotEmpty)
+                          Padding(
+                            padding: const EdgeInsets.only(bottom: 8),
+                            child: Text(
+                              threadSubject!,
+                              maxLines: 2,
+                              overflow: TextOverflow.ellipsis,
+                              style: textTheme.titleLarge?.copyWith(
+                                fontWeight: FontWeight.w600,
+                                height: 1.3,
+                              ),
+                            ),
+                          ),
+                        Divider(
+                          height: 1,
+                          thickness: 1,
+                          color: scheme.outlineVariant,
                         ),
-                      ),
-                    ),
-                  Divider(
-                    height: 1,
-                    thickness: 1,
-                    color: scheme.outlineVariant,
-                  ),
-                  const SizedBox(height: 16),
-                  _buildAuthorRow(context, floor, timeStr),
-                  const SizedBox(height: 16),
-                  ForceShowImages(
-                    enabled: true,
-                    child: BbcodeRenderer(
-                      bbcode: post.message,
-                      imageIndexCounter: imageIndexCounter,
-                      imagesExpanded: true,
-                    ),
-                  ),
-                  const SizedBox(height: 24),
-                  Divider(
-                    height: 1,
-                    thickness: 1,
-                    color: scheme.outlineVariant,
-                  ),
-                  const SizedBox(height: 12),
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: [
-                      Icon(
-                        Icons.smartphone_outlined,
-                        size: 14,
-                        color: scheme.onSurfaceVariant,
-                      ),
-                      const SizedBox(width: 6),
-                      Text(
-                        '来自 ${S1Constants.appName} 客户端',
-                        style: textTheme.labelSmall?.copyWith(
-                          color: scheme.onSurfaceVariant,
+                        const SizedBox(height: 16),
+                        _buildAuthorRow(context, floor, timeStr),
+                        const SizedBox(height: 16),
+                        ForceShowImages(
+                          enabled: true,
+                          child: BbcodeRenderer(
+                            bbcode: post.message,
+                            imageIndexCounter: imageIndexCounter,
+                            imagesExpanded: true,
+                          ),
                         ),
-                      ),
-                    ],
+                        const SizedBox(height: 24),
+                        Divider(
+                          height: 1,
+                          thickness: 1,
+                          color: scheme.outlineVariant,
+                        ),
+                        const SizedBox(height: 12),
+                        Row(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            Icon(
+                              Icons.smartphone_outlined,
+                              size: 14,
+                              color: scheme.onSurfaceVariant,
+                            ),
+                            const SizedBox(width: 6),
+                            Text(
+                              '来自 ${S1Constants.appName} 客户端',
+                              style: textTheme.labelSmall?.copyWith(
+                                color: scheme.onSurfaceVariant,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ],
+                    ),
                   ),
-                ],
+                ),
               ),
-            ),
-          ),
+            );
+          },
         ),
+      ),
+    );
+  }
+
+  /// Scale the whole card type ramp from a larger body so hierarchy holds.
+  static TextTheme _shareTextTheme(TextTheme base) {
+    const scale = shareBodySize / S1Typography.defaultBodySize;
+    double scaled(double? size, double fallback) => (size ?? fallback) * scale;
+
+    return base.copyWith(
+      titleLarge: base.titleLarge?.copyWith(
+        fontSize: scaled(base.titleLarge?.fontSize, 22),
+      ),
+      titleMedium: base.titleMedium?.copyWith(
+        fontSize: scaled(base.titleMedium?.fontSize, 16),
+      ),
+      titleSmall: base.titleSmall?.copyWith(
+        fontSize: scaled(base.titleSmall?.fontSize, 14),
+      ),
+      bodyLarge: base.bodyLarge?.copyWith(
+        fontSize: scaled(base.bodyLarge?.fontSize, 16),
+      ),
+      bodyMedium: base.bodyMedium?.copyWith(
+        fontSize: shareBodySize,
+        height: S1Typography.defaultBodyLineHeight,
+      ),
+      bodySmall: base.bodySmall?.copyWith(
+        fontSize: scaled(base.bodySmall?.fontSize, 12),
+      ),
+      labelMedium: base.labelMedium?.copyWith(
+        fontSize: scaled(base.labelMedium?.fontSize, 12),
+      ),
+      labelSmall: base.labelSmall?.copyWith(
+        fontSize: scaled(base.labelSmall?.fontSize, 11),
       ),
     );
   }

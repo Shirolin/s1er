@@ -71,7 +71,7 @@ class EnvConfig {
   static const String updateManifestUrl = String.fromEnvironment(
     'UPDATE_MANIFEST_URL',
     defaultValue:
-        'https://raw.githubusercontent.com/Shirolin/s1-app/main/docs/release/latest.json',
+        'https://raw.githubusercontent.com/Shirolin/s1er/main/docs/release/latest.json',
   );
 
   /// 分发渠道：`github`（默认）或 `play`（上架包 CTA 优先 Play）

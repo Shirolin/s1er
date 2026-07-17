@@ -693,7 +693,7 @@ class _ProjectSupportCard extends StatelessWidget {
 
   static const _afdianUrl = 'https://ifdian.net/a/shirolin';
   static const _koFiUrl = 'https://ko-fi.com/shirolin';
-  static const _githubUrl = 'https://github.com/Shirolin/s1-app';
+  static const _githubUrl = 'https://github.com/Shirolin/s1er';
 
   final ValueChanged<String> onOpenUrl;
 

@@ -53,7 +53,7 @@ class AppUpdateChannels {
     }
 
     final github = optionalUrl('github') ??
-        'https://github.com/Shirolin/s1-app/releases/latest';
+        'https://github.com/Shirolin/s1er/releases/latest';
 
     return AppUpdateChannels(
       github: github,

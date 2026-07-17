@@ -197,7 +197,7 @@ void main() {
         [
           Uri.parse('https://ifdian.net/a/shirolin'),
           Uri.parse('https://ko-fi.com/shirolin'),
-          Uri.parse('https://github.com/Shirolin/s1-app'),
+          Uri.parse('https://github.com/Shirolin/s1er'),
         ],
       );
     });

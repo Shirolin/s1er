@@ -10,7 +10,7 @@ void main() {
         'notes': '修复若干问题',
         'publishedAt': '2026-07-17',
         'channels': {
-          'github': 'https://github.com/Shirolin/s1-app/releases/latest',
+          'github': 'https://github.com/Shirolin/s1er/releases/latest',
           'androidApk': 'https://example.com/app.apk',
           'windows': null,
           'play': 'https://play.google.com/store/apps/details?id=x',
@@ -28,7 +28,7 @@ void main() {
       final m = AppUpdateManifest.fromJson({'latest': '2.0.0'});
       expect(m.minSupported, '2.0.0');
       expect(m.notes, isEmpty);
-      expect(m.channels.github, contains('github.com/Shirolin/s1-app'));
+      expect(m.channels.github, contains('github.com/Shirolin/s1er'));
     });
 
     test('throws when latest missing', () {

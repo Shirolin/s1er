@@ -21,7 +21,7 @@ void main() {
     'notes': '重大更新',
     'publishedAt': '2026-07-17',
     'channels': {
-      'github': 'https://github.com/Shirolin/s1-app/releases/latest',
+      'github': 'https://github.com/Shirolin/s1er/releases/latest',
     },
   };
 

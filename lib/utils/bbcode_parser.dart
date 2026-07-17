@@ -97,6 +97,11 @@ class BbcodeParser {
       (m) => '<span style="color:${m.group(1)}">${m.group(2)}</span>',
     );
     output = output.replaceAllMapped(
+      RegExp(r'\[backcolor=(.*?)\](.*?)\[/backcolor\]', dotAll: true),
+      (m) =>
+          '<span style="background-color:${m.group(1)}">${m.group(2)}</span>',
+    );
+    output = output.replaceAllMapped(
         RegExp(r'\[size=(\d+)\](.*?)\[/size\]', dotAll: true), (m) {
       final size = int.tryParse(m.group(1)!) ?? 14;
       return '<span style="font-size:${size.clamp(10, 24)}px">${m.group(2)}</span>';

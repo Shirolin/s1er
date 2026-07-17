@@ -17,6 +17,23 @@ void main() {
       const b = Color(0xFFE8E8E8);
       expect(ColorContrast.meetsNonTextContrast(a, b), isFalse);
     });
+
+    test('black on white meets text contrast', () {
+      expect(
+        ColorContrast.meetsTextContrast(Colors.black, Colors.white),
+        isTrue,
+      );
+    });
+
+    test('light gray on white fails text contrast', () {
+      expect(
+        ColorContrast.meetsTextContrast(
+          const Color(0xFFCCCCCC),
+          Colors.white,
+        ),
+        isFalse,
+      );
+    });
   });
 
   group('pollBarColor', () {

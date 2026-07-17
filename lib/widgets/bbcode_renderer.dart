@@ -9,6 +9,7 @@ import '../config/env_config.dart';
 import '../models/emoticon_catalog.dart';
 import '../providers/settings_provider.dart';
 import '../theme/app_theme.dart';
+import '../utils/author_color_adapter.dart';
 import '../utils/bbcode_cache.dart';
 import '../utils/bbcode_parser.dart';
 import '../utils/post_image_index_counter.dart';
@@ -306,6 +307,7 @@ class _MemoizedHtmlBlockState extends State<_MemoizedHtmlBlock> {
       scheme.brightness,
       scheme.primary,
       scheme.onSurface,
+      scheme.surface,
       scheme.surfaceContainerHighest,
     );
     if (themeToken != _cachedThemeToken) {
@@ -318,13 +320,13 @@ class _MemoizedHtmlBlockState extends State<_MemoizedHtmlBlock> {
   }
 
   Widget _buildHtml(BuildContext context) {
-    final html = widget.html;
     final showImages = widget.showImages;
     final maxImagesPerPost = widget.maxImagesPerPost;
     final imagesExpanded = widget.imagesExpanded;
-    final profileDetail = 'links=${_countAnchors(html)} len=${html.length}';
 
     final scheme = Theme.of(context).colorScheme;
+    final html = AuthorColorAdapter.adaptHtml(widget.html, scheme);
+    final profileDetail = 'links=${_countAnchors(html)} len=${html.length}';
     final textTheme = Theme.of(context).textTheme;
     final bodySize = S1Typography.bodySize(textTheme);
     final codeSize = S1Typography.codeSize(textTheme);
@@ -381,8 +383,10 @@ class _MemoizedHtmlBlockState extends State<_MemoizedHtmlBlock> {
 
     final extensions = <HtmlExtension>[
       const HtmlClickableAnchorExtension(),
-      TagExtension(
-        tagsToExtend: {'span'},
+      MatcherExtension(
+        matcher: (ctx) =>
+            ctx.classes.contains('post-image') ||
+            ctx.classes.contains('emoticon'),
         builder: (context) {
           final element = context.element;
           if (element == null) return const SizedBox.shrink();
@@ -412,29 +416,25 @@ class _MemoizedHtmlBlockState extends State<_MemoizedHtmlBlock> {
             );
           }
 
-          if (element.classes.contains('emoticon')) {
-            final src = _unescapeHtml(element.attributes['data-src'] ?? '');
-            final code = element.attributes['data-code'] ?? '';
-            final fromUrl =
-                src.isNotEmpty ? EmoticonCatalog.fromSmileyUrl(src) : null;
-            final item = fromUrl ?? EmoticonCatalog.findByCode(code);
-            if (item != null) {
-              return Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 2),
-                child: EmoticonImage(item: item, size: 24),
-              );
-            }
-            if (src.isNotEmpty) {
-              return ImageViewer(
-                imageUrl: src,
-                isEmoticon: true,
-                margin: const EdgeInsets.symmetric(horizontal: 2),
-              );
-            }
-            return EmoticonWidget(code: code);
+          final src = _unescapeHtml(element.attributes['data-src'] ?? '');
+          final code = element.attributes['data-code'] ?? '';
+          final fromUrl =
+              src.isNotEmpty ? EmoticonCatalog.fromSmileyUrl(src) : null;
+          final item = fromUrl ?? EmoticonCatalog.findByCode(code);
+          if (item != null) {
+            return Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 2),
+              child: EmoticonImage(item: item, size: 24),
+            );
           }
-
-          return const SizedBox.shrink();
+          if (src.isNotEmpty) {
+            return ImageViewer(
+              imageUrl: src,
+              isEmoticon: true,
+              margin: const EdgeInsets.symmetric(horizontal: 2),
+            );
+          }
+          return EmoticonWidget(code: code);
         },
       ),
       TagExtension(

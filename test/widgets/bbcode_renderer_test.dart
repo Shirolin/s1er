@@ -13,6 +13,7 @@ import 'package:s1er/widgets/bbcode_renderer.dart';
 Widget _wrapBbcode(
   Widget child, {
   AppSettings settings = const AppSettings(),
+  bool dark = false,
 }) {
   return ProviderScope(
     overrides: [
@@ -21,7 +22,9 @@ Widget _wrapBbcode(
       ),
     ],
     child: MaterialApp(
-      theme: AppTheme.lightTheme(settings.themeColor),
+      theme: dark
+          ? AppTheme.darkTheme(settings.themeColor)
+          : AppTheme.lightTheme(settings.themeColor),
       home: Scaffold(body: child),
     ),
   );
@@ -260,6 +263,65 @@ void main() {
       );
       expect(find.byType(QuoteBlock), findsNothing);
       expect(find.byType(BbcodeRenderer), findsOneWidget);
+    });
+
+    testWidgets('renders colored text in dark theme', (tester) async {
+      await tester.pumpWidget(
+        _wrapBbcode(
+          BbcodeRenderer(
+            bbcode: '[color=red]colored[/color]',
+            imageIndexCounter: PostImageIndexCounter(),
+          ),
+          dark: true,
+        ),
+      );
+      await tester.pump();
+      expect(find.textContaining('colored'), findsOneWidget);
+    });
+
+    testWidgets('renders sized text in dark theme', (tester) async {
+      await tester.pumpWidget(
+        _wrapBbcode(
+          BbcodeRenderer(
+            bbcode: '[size=20]sized text[/size]',
+            imageIndexCounter: PostImageIndexCounter(),
+          ),
+          dark: true,
+        ),
+      );
+      await tester.pump();
+      expect(find.textContaining('sized text'), findsOneWidget);
+    });
+
+    testWidgets('renders hide content span without swallowing text',
+        (tester) async {
+      await tester.pumpWidget(
+        _wrapBbcode(
+          BbcodeRenderer(
+            bbcode: '[hide]secret[/hide]',
+            imageIndexCounter: PostImageIndexCounter(),
+          ),
+          dark: true,
+        ),
+      );
+      await tester.pump();
+      // Text may be transparent via Style, but the span must still build.
+      expect(find.textContaining('secret'), findsOneWidget);
+    });
+
+    testWidgets('renders near-black author color text in dark theme',
+        (tester) async {
+      await tester.pumpWidget(
+        _wrapBbcode(
+          BbcodeRenderer(
+            bbcode: '[color=#000000]near black[/color]',
+            imageIndexCounter: PostImageIndexCounter(),
+          ),
+          dark: true,
+        ),
+      );
+      await tester.pump();
+      expect(find.textContaining('near black'), findsOneWidget);
     });
 
     testWidgets('wraps top-level content in SelectionArea', (tester) async {

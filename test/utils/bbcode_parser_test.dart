@@ -40,6 +40,12 @@ void main() {
       expect(parsed, contains('data-full="$src"'));
     });
 
+    test('[backcolor] becomes background-color span', () {
+      final parsed = BbcodeParser.parse('[backcolor=yellow]mark[/backcolor]');
+      expect(parsed, contains('background-color:yellow'));
+      expect(parsed, contains('mark'));
+    });
+
     test('extractImages reads data-preview attributes', () {
       const html =
           '<span class="post-image" data-preview="https://a/p.jpg" data-full="https://a/f.jpg"></span>';

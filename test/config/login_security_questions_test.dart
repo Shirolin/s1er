@@ -1,5 +1,5 @@
 import 'package:flutter_test/flutter_test.dart';
-import 'package:s1_app/config/login_security_questions.dart';
+import 'package:s1er/config/login_security_questions.dart';
 
 void main() {
   group('LoginSecurityQuestions', () {

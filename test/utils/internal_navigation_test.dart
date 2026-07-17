@@ -1,10 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:go_router/go_router.dart';
-import 'package:s1_app/utils/internal_navigation.dart';
+import 'package:s1er/utils/internal_navigation.dart';
 
 void main() {
-  testWidgets('same thread location replaces instead of pushing', (tester) async {
+  testWidgets('same thread location replaces instead of pushing',
+      (tester) async {
     final router = GoRouter(
       initialLocation: '/thread/100?page=1',
       routes: [

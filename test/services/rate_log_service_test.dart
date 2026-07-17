@@ -1,5 +1,5 @@
 import 'package:flutter_test/flutter_test.dart';
-import 'package:s1_app/services/rate_log_service.dart';
+import 'package:s1er/services/rate_log_service.dart';
 
 void main() {
   group('RateLogService.parseRateLogs', () {

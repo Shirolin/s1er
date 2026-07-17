@@ -1,14 +1,14 @@
 import 'package:drift/native.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:s1_app/models/user.dart';
-import 'package:s1_app/providers/auth_provider.dart';
-import 'package:s1_app/providers/reading_history_coordinator.dart';
-import 'package:s1_app/providers/reading_history_provider.dart';
-import 'package:s1_app/providers/settings_provider.dart';
-import 'package:s1_app/services/app_database.dart';
-import 'package:s1_app/services/app_local_data.dart';
-import 'package:s1_app/services/reading_history_service.dart';
+import 'package:s1er/models/user.dart';
+import 'package:s1er/providers/auth_provider.dart';
+import 'package:s1er/providers/reading_history_coordinator.dart';
+import 'package:s1er/providers/reading_history_provider.dart';
+import 'package:s1er/providers/settings_provider.dart';
+import 'package:s1er/services/app_database.dart';
+import 'package:s1er/services/app_local_data.dart';
+import 'package:s1er/services/reading_history_service.dart';
 
 class _TestAuthNotifier extends AuthNotifier {
   void setUser(User? user) {

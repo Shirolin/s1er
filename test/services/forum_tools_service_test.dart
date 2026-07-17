@@ -4,11 +4,11 @@ import 'dart:typed_data';
 import 'package:dio/dio.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:s1_app/config/api_config.dart';
-import 'package:s1_app/models/attendance_result.dart';
-import 'package:s1_app/services/formhash_service.dart';
-import 'package:s1_app/services/forum_tools_service.dart';
-import 'package:s1_app/services/http_client.dart';
+import 'package:s1er/config/api_config.dart';
+import 'package:s1er/models/attendance_result.dart';
+import 'package:s1er/services/formhash_service.dart';
+import 'package:s1er/services/forum_tools_service.dart';
+import 'package:s1er/services/http_client.dart';
 
 void main() {
   group('ForumToolsService transport', () {

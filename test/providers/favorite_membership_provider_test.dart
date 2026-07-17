@@ -4,10 +4,10 @@ import 'dart:typed_data';
 import 'package:dio/dio.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:s1_app/models/user.dart';
-import 'package:s1_app/providers/auth_provider.dart';
-import 'package:s1_app/providers/favorite_membership_provider.dart';
-import 'package:s1_app/services/http_client.dart';
+import 'package:s1er/models/user.dart';
+import 'package:s1er/providers/auth_provider.dart';
+import 'package:s1er/providers/favorite_membership_provider.dart';
+import 'package:s1er/services/http_client.dart';
 
 void main() {
   group('FavoriteMembershipNotifier', () {

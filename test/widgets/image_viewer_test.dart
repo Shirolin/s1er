@@ -2,12 +2,12 @@ import 'package:flutter/material.dart';
 import 'package:flutter_cache_manager/flutter_cache_manager.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:s1_app/models/image_load_policy.dart';
-import 'package:s1_app/providers/connectivity_provider.dart';
-import 'package:s1_app/providers/settings_provider.dart';
-import 'package:s1_app/services/s1_image_cache.dart';
-import 'package:s1_app/theme/app_theme.dart';
-import 'package:s1_app/widgets/image_viewer.dart';
+import 'package:s1er/models/image_load_policy.dart';
+import 'package:s1er/providers/connectivity_provider.dart';
+import 'package:s1er/providers/settings_provider.dart';
+import 'package:s1er/services/s1_image_cache.dart';
+import 'package:s1er/theme/app_theme.dart';
+import 'package:s1er/widgets/image_viewer.dart';
 
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();

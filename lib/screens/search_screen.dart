@@ -26,11 +26,21 @@ class _SearchScreenState extends ConsumerState<SearchScreen> {
   final _focusNode = FocusNode();
 
   @override
+  void initState() {
+    super.initState();
+    _controller.addListener(_onQueryChanged);
+  }
+
+  @override
   void dispose() {
-    _controller.dispose();
+    _controller
+      ..removeListener(_onQueryChanged)
+      ..dispose();
     _focusNode.dispose();
     super.dispose();
   }
+
+  void _onQueryChanged() => setState(() {});
 
   Future<void> _submit() async {
     FocusScope.of(context).unfocus();
@@ -42,7 +52,9 @@ class _SearchScreenState extends ConsumerState<SearchScreen> {
     final scheme = Theme.of(context).colorScheme;
     final textTheme = Theme.of(context).textTheme;
     final state = ref.watch(searchProvider);
-    final canSubmit = !state.isLoading && !state.isCoolingDown;
+    final hasQuery = _controller.text.trim().isNotEmpty;
+    final canSubmit =
+        hasQuery && !state.isLoading && !state.isCoolingDown;
 
     return Column(
       children: [
@@ -79,19 +91,22 @@ class _SearchScreenState extends ConsumerState<SearchScreen> {
             hintText: state.type == SearchType.forum ? '搜索主题…' : '搜索用户…',
             leading: const Icon(Icons.search),
             trailing: [
-              if (_controller.text.isNotEmpty)
+              if (hasQuery)
                 IconButton(
                   tooltip: '清除',
                   onPressed: state.isLoading
                       ? null
                       : () {
                           _controller.clear();
-                          setState(() {});
                         },
                   icon: const Icon(Icons.clear),
                 ),
               IconButton(
-                tooltip: state.isCoolingDown ? '搜索冷却中' : '搜索',
+                tooltip: state.isCoolingDown
+                    ? '搜索冷却中'
+                    : hasQuery
+                        ? '搜索'
+                        : '请输入搜索关键词',
                 onPressed: canSubmit ? _submit : null,
                 icon: state.isLoading
                     ? SizedBox(
@@ -105,7 +120,6 @@ class _SearchScreenState extends ConsumerState<SearchScreen> {
                     : const Icon(Icons.arrow_forward),
               ),
             ],
-            onChanged: (_) => setState(() {}),
             onSubmitted: canSubmit ? (_) => _submit() : null,
           ),
         ),

@@ -1,7 +1,7 @@
 import 'package:flutter_test/flutter_test.dart';
-import 'package:s1_app/models/thread.dart';
-import 'package:s1_app/utils/bbcode_parser.dart';
-import 'package:s1_app/services/api_service.dart';
+import 'package:s1er/models/thread.dart';
+import 'package:s1er/utils/bbcode_parser.dart';
+import 'package:s1er/services/api_service.dart';
 
 void main() {
   group('Full Integration', () {

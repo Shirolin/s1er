@@ -2,9 +2,9 @@ import 'dart:convert';
 import 'dart:io';
 
 import 'package:flutter_test/flutter_test.dart';
-import 'package:s1_app/models/app_exceptions.dart';
-import 'package:s1_app/models/attendance_result.dart';
-import 'package:s1_app/services/forum_tools_service.dart';
+import 'package:s1er/models/app_exceptions.dart';
+import 'package:s1er/models/attendance_result.dart';
+import 'package:s1er/services/forum_tools_service.dart';
 
 void main() {
   group('parseFriendListJson', () {

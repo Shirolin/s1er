@@ -1,6 +1,6 @@
 import 'package:flutter_test/flutter_test.dart';
-import 'package:s1_app/models/emoticon_catalog.dart';
-import 'package:s1_app/utils/platform_image_url.dart';
+import 'package:s1er/models/emoticon_catalog.dart';
+import 'package:s1er/utils/platform_image_url.dart';
 
 void main() {
   tearDown(EmoticonCatalog.clearManifest);

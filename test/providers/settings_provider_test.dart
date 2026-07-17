@@ -1,11 +1,11 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:s1_app/config/constants.dart';
-import 'package:s1_app/models/image_load_policy.dart';
-import 'package:s1_app/models/share_image_format.dart';
-import 'package:s1_app/providers/settings_provider.dart';
-import 'package:s1_app/services/settings_store.dart';
-import 'package:s1_app/theme/app_theme.dart';
+import 'package:s1er/config/constants.dart';
+import 'package:s1er/models/image_load_policy.dart';
+import 'package:s1er/models/share_image_format.dart';
+import 'package:s1er/providers/settings_provider.dart';
+import 'package:s1er/services/settings_store.dart';
+import 'package:s1er/theme/app_theme.dart';
 import '../helpers/test_local_data.dart';
 
 void main() {

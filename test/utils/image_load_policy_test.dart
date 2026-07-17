@@ -1,6 +1,6 @@
 import 'package:flutter_test/flutter_test.dart';
-import 'package:s1_app/models/image_load_policy.dart';
-import 'package:s1_app/utils/image_load_policy.dart';
+import 'package:s1er/models/image_load_policy.dart';
+import 'package:s1er/utils/image_load_policy.dart';
 
 void main() {
   group('shouldAutoLoadInlineImages', () {

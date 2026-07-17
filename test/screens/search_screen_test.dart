@@ -2,13 +2,13 @@ import 'package:dio/dio.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:s1_app/models/search_result.dart';
-import 'package:s1_app/providers/api_service_provider.dart';
-import 'package:s1_app/providers/search_provider.dart';
-import 'package:s1_app/screens/search_screen.dart';
-import 'package:s1_app/services/api_service.dart';
-import 'package:s1_app/services/http_client.dart';
-import 'package:s1_app/theme/app_theme.dart';
+import 'package:s1er/models/search_result.dart';
+import 'package:s1er/providers/api_service_provider.dart';
+import 'package:s1er/providers/search_provider.dart';
+import 'package:s1er/screens/search_screen.dart';
+import 'package:s1er/services/api_service.dart';
+import 'package:s1er/services/http_client.dart';
+import 'package:s1er/theme/app_theme.dart';
 
 class _SeededSearchNotifier extends SearchNotifier {
   @override
@@ -68,6 +68,26 @@ void main() {
     expect(find.text('搜索主题与帖子'), findsOneWidget);
     expect(find.text('主题'), findsOneWidget);
     expect(find.text('用户'), findsOneWidget);
+    expect(find.byTooltip('请输入搜索关键词'), findsOneWidget);
+  });
+
+  testWidgets('SearchScreen empty query keeps submit disabled', (tester) async {
+    await tester.pumpWidget(
+      ProviderScope(
+        child: MaterialApp(
+          theme: AppTheme.lightTheme('purple'),
+          home: const Scaffold(body: SearchScreen()),
+        ),
+      ),
+    );
+
+    await tester.enterText(find.byType(SearchBar), '   ');
+    await tester.pump();
+    expect(find.byTooltip('请输入搜索关键词'), findsOneWidget);
+
+    await tester.enterText(find.byType(SearchBar), 'switch');
+    await tester.pump();
+    expect(find.byTooltip('搜索'), findsOneWidget);
   });
 
   testWidgets('SearchScreen shows seeded forum hits', (tester) async {
@@ -106,6 +126,7 @@ void main() {
     );
 
     await tester.enterText(find.byType(SearchBar), 'switch');
+    await tester.pump();
     await tester.tap(find.byTooltip('搜索'));
     await tester.pump();
 

@@ -1,20 +1,20 @@
 import 'package:dio/dio.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:s1_app/models/app_exceptions.dart';
-import 'package:s1_app/models/attendance_result.dart';
-import 'package:s1_app/models/dark_room_entry.dart';
-import 'package:s1_app/models/friend_summary.dart';
-import 'package:s1_app/models/user.dart';
-import 'package:s1_app/providers/auth_provider.dart';
-import 'package:s1_app/providers/daily_attendance_provider.dart';
-import 'package:s1_app/providers/dark_room_provider.dart';
-import 'package:s1_app/providers/forum_tools_provider.dart';
-import 'package:s1_app/providers/friend_list_provider.dart';
-import 'package:s1_app/providers/settings_provider.dart';
-import 'package:s1_app/services/forum_tools_service.dart';
-import 'package:s1_app/services/http_client.dart';
-import 'package:s1_app/utils/daily_attendance_store.dart';
+import 'package:s1er/models/app_exceptions.dart';
+import 'package:s1er/models/attendance_result.dart';
+import 'package:s1er/models/dark_room_entry.dart';
+import 'package:s1er/models/friend_summary.dart';
+import 'package:s1er/models/user.dart';
+import 'package:s1er/providers/auth_provider.dart';
+import 'package:s1er/providers/daily_attendance_provider.dart';
+import 'package:s1er/providers/dark_room_provider.dart';
+import 'package:s1er/providers/forum_tools_provider.dart';
+import 'package:s1er/providers/friend_list_provider.dart';
+import 'package:s1er/providers/settings_provider.dart';
+import 'package:s1er/services/forum_tools_service.dart';
+import 'package:s1er/services/http_client.dart';
+import 'package:s1er/utils/daily_attendance_store.dart';
 import '../helpers/test_local_data.dart';
 
 void main() {

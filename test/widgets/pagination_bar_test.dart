@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:s1_app/theme/app_theme.dart';
-import 'package:s1_app/widgets/pagination_bar.dart';
+import 'package:s1er/theme/app_theme.dart';
+import 'package:s1er/widgets/pagination_bar.dart';
 
 void main() {
   testWidgets('PaginationBar hidden when only one page', (tester) async {

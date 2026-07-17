@@ -1,5 +1,5 @@
 import 'package:flutter_test/flutter_test.dart';
-import 'package:s1_app/utils/post_link_resolver.dart';
+import 'package:s1er/utils/post_link_resolver.dart';
 
 void main() {
   group('PostLinkResolver', () {

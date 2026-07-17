@@ -1,8 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:s1_app/theme/app_theme.dart';
-import 'package:s1_app/widgets/post_action_menu.dart';
-import 'package:s1_app/widgets/s1_menu.dart';
+import 'package:s1er/theme/app_theme.dart';
+import 'package:s1er/widgets/post_action_menu.dart';
+import 'package:s1er/widgets/s1_menu.dart';
 
 void main() {
   testWidgets('PostActionMenu opens below trigger with all S1 actions',

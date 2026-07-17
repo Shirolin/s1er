@@ -1,6 +1,6 @@
 import 'package:flutter_test/flutter_test.dart';
-import 'package:s1_app/models/post.dart';
-import 'package:s1_app/utils/quote_builder.dart';
+import 'package:s1er/models/post.dart';
+import 'package:s1er/utils/quote_builder.dart';
 
 void main() {
   final samplePost = Post(

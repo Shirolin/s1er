@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:s1_app/utils/color_contrast.dart';
-import 'package:s1_app/utils/poll_bar_color.dart';
+import 'package:s1er/utils/color_contrast.dart';
+import 'package:s1er/utils/poll_bar_color.dart';
 
 void main() {
   group('ColorContrast', () {

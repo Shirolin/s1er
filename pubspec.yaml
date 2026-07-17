@@ -1,5 +1,5 @@
-name: s1_app
-description: Third-party Stage1st forum client
+name: s1er
+description: Third-party Stage1st forum client (S1er)
 publish_to: 'none'
 version: 1.0.0+1
 

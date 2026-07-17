@@ -1,6 +1,6 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:s1_app/services/formhash_service.dart';
+import 'package:s1er/services/formhash_service.dart';
 
 void main() {
   group('FormhashNotifier', () {

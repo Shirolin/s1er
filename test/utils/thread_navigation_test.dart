@@ -1,9 +1,9 @@
 import 'package:flutter_test/flutter_test.dart';
-import 'package:s1_app/models/open_scroll_target.dart';
-import 'package:s1_app/models/reading_record.dart';
-import 'package:s1_app/models/thread_destination.dart';
-import 'package:s1_app/models/thread_open_intent.dart';
-import 'package:s1_app/utils/thread_navigation.dart';
+import 'package:s1er/models/open_scroll_target.dart';
+import 'package:s1er/models/reading_record.dart';
+import 'package:s1er/models/thread_destination.dart';
+import 'package:s1er/models/thread_open_intent.dart';
+import 'package:s1er/utils/thread_navigation.dart';
 
 ReadingRecord _record({
   int lastReadPage = 1,

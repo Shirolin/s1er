@@ -1,5 +1,5 @@
 import 'package:flutter_test/flutter_test.dart';
-import 'package:s1_app/utils/daily_attendance_store.dart';
+import 'package:s1er/utils/daily_attendance_store.dart';
 
 void main() {
   group('DailyAttendanceStore', () {

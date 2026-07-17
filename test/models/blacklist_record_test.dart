@@ -1,5 +1,5 @@
 import 'package:flutter_test/flutter_test.dart';
-import 'package:s1_app/models/blacklist_record.dart';
+import 'package:s1er/models/blacklist_record.dart';
 
 void main() {
   group('BlacklistRecord.normalizeScopes', () {

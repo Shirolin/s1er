@@ -4,8 +4,8 @@ import 'dart:typed_data';
 import 'package:dio/dio.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:s1_app/providers/user_space_provider.dart';
-import 'package:s1_app/services/http_client.dart';
+import 'package:s1er/providers/user_space_provider.dart';
+import 'package:s1er/services/http_client.dart';
 
 void main() {
   group('UserSpaceNotifier', () {

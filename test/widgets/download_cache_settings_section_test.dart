@@ -1,9 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:s1_app/providers/image_cache_provider.dart';
-import 'package:s1_app/providers/settings_provider.dart';
-import 'package:s1_app/widgets/settings/download_cache_settings_section.dart';
+import 'package:s1er/providers/image_cache_provider.dart';
+import 'package:s1er/providers/settings_provider.dart';
+import 'package:s1er/widgets/settings/download_cache_settings_section.dart';
 
 import '../helpers/test_theme.dart';
 

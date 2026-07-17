@@ -1,6 +1,6 @@
 import 'package:flutter_test/flutter_test.dart';
-import 'package:s1_app/models/quote_info.dart';
-import 'package:s1_app/services/api_service.dart';
+import 'package:s1er/models/quote_info.dart';
+import 'package:s1er/services/api_service.dart';
 
 void main() {
   group('QuoteInfo.tryParse', () {

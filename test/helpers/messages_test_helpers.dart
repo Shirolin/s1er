@@ -1,8 +1,8 @@
 import 'package:flutter_riverpod/misc.dart' show Override;
-import 'package:s1_app/models/notice_item.dart';
-import 'package:s1_app/models/private_message_item.dart';
-import 'package:s1_app/providers/notice_list_provider.dart';
-import 'package:s1_app/providers/pm_list_provider.dart';
+import 'package:s1er/models/notice_item.dart';
+import 'package:s1er/models/private_message_item.dart';
+import 'package:s1er/providers/notice_list_provider.dart';
+import 'package:s1er/providers/pm_list_provider.dart';
 
 PmListState samplePmListState() {
   return PmListState(

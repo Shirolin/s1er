@@ -1,5 +1,5 @@
 import 'package:flutter_test/flutter_test.dart';
-import 'package:s1_app/models/server_blacklist.dart';
+import 'package:s1er/models/server_blacklist.dart';
 
 void main() {
   test('parses users and maximum page from S1 blacklist html', () {

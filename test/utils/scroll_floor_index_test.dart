@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:s1_app/theme/app_theme.dart';
-import 'package:s1_app/utils/scroll_floor.dart';
+import 'package:s1er/theme/app_theme.dart';
+import 'package:s1er/utils/scroll_floor.dart';
 
 void main() {
   testWidgets('scrollToIndex brings a distant index into view', (tester) async {

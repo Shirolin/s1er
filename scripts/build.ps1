@@ -1,4 +1,4 @@
-# S1 App Build Script
+# S1er Build Script
 # Interactive menu for build options
 
 # Auto-detect Java/keytool path

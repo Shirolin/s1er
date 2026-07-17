@@ -1,5 +1,5 @@
 import 'package:flutter_test/flutter_test.dart';
-import 'package:s1_app/utils/post_image_urls.dart';
+import 'package:s1er/utils/post_image_urls.dart';
 
 void main() {
   group('PostImageUrls.resolve', () {

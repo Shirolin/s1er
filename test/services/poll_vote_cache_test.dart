@@ -1,8 +1,8 @@
 import 'package:drift/native.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:s1_app/services/app_database.dart';
-import 'package:s1_app/services/app_local_data.dart';
-import 'package:s1_app/services/poll_vote_cache.dart';
+import 'package:s1er/services/app_database.dart';
+import 'package:s1er/services/app_local_data.dart';
+import 'package:s1er/services/poll_vote_cache.dart';
 
 void main() {
   late AppDatabase db;

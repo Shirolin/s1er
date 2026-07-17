@@ -1,8 +1,8 @@
 import 'dart:io';
 
 import 'package:flutter_test/flutter_test.dart';
-import 'package:s1_app/models/favorite_item.dart';
-import 'package:s1_app/services/api_service.dart';
+import 'package:s1er/models/favorite_item.dart';
+import 'package:s1er/services/api_service.dart';
 
 void main() {
   group('parseFavoriteListHtml', () {

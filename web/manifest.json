@@ -1,6 +1,6 @@
 {
-    "name": "S1 Client",
-    "short_name": "S1 Client",
+    "name": "S1er",
+    "short_name": "S1er",
     "start_url": ".",
     "display": "standalone",
     "background_color": "#1a1a2e",

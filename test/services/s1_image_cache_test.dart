@@ -1,9 +1,9 @@
 import 'dart:typed_data';
 
 import 'package:flutter_test/flutter_test.dart';
-import 'package:s1_app/config/constants.dart';
-import 'package:s1_app/services/s1_image_cache.dart';
-import 'package:s1_app/widgets/image_viewer.dart';
+import 'package:s1er/config/constants.dart';
+import 'package:s1er/services/s1_image_cache.dart';
+import 'package:s1er/widgets/image_viewer.dart';
 
 import '../helpers/memory_cache_info_repository.dart';
 

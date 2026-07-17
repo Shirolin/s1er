@@ -1,6 +1,6 @@
 # Sentry 崩溃监控设置
 
-S1 Client 使用 [Sentry](https://sentry.io/) 收集运行时的崩溃与错误信息。Sentry 默认不启用，需要通过 `--dart-define` 注入 DSN 才能激活。
+S1er 使用 [Sentry](https://sentry.io/) 收集运行时的崩溃与错误信息。Sentry 默认不启用，需要通过 `--dart-define` 注入 DSN 才能激活。
 
 ## 1. 注册 Sentry 账号
 

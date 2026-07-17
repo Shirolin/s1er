@@ -1,5 +1,5 @@
 import 'package:flutter_test/flutter_test.dart';
-import 'package:s1_app/utils/compose_img_tags.dart';
+import 'package:s1er/utils/compose_img_tags.dart';
 
 void main() {
   group('compose_img_tags', () {

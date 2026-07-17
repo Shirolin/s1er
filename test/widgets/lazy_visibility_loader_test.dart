@@ -1,8 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/rendering.dart' show ScrollCacheExtent;
 import 'package:flutter_test/flutter_test.dart';
-import 'package:s1_app/theme/app_theme.dart';
-import 'package:s1_app/widgets/lazy_visibility_loader.dart';
+import 'package:s1er/theme/app_theme.dart';
+import 'package:s1er/widgets/lazy_visibility_loader.dart';
 
 void main() {
   testWidgets('triggers when an initially offscreen child scrolls into view',

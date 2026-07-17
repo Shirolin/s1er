@@ -1,9 +1,9 @@
 import 'package:drift/native.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:s1_app/models/blacklist_record.dart';
-import 'package:s1_app/services/app_database.dart';
-import 'package:s1_app/services/app_local_data.dart';
-import 'package:s1_app/services/blacklist_service.dart';
+import 'package:s1er/models/blacklist_record.dart';
+import 'package:s1er/services/app_database.dart';
+import 'package:s1er/services/app_local_data.dart';
+import 'package:s1er/services/blacklist_service.dart';
 
 void main() {
   late AppDatabase db;

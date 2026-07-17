@@ -1,10 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:s1_app/providers/settings_provider.dart';
-import 'package:s1_app/theme/app_theme.dart';
-import 'package:s1_app/models/user.dart';
-import 'package:s1_app/widgets/user_profile_sheet.dart';
+import 'package:s1er/providers/settings_provider.dart';
+import 'package:s1er/theme/app_theme.dart';
+import 'package:s1er/models/user.dart';
+import 'package:s1er/widgets/user_profile_sheet.dart';
 
 void main() {
   testWidgets('showUserProfileSheet renders stats and details', (tester) async {

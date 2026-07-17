@@ -1,8 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:s1_app/models/post.dart';
-import 'package:s1_app/widgets/post_item.dart';
+import 'package:s1er/models/post.dart';
+import 'package:s1er/widgets/post_item.dart';
 
 import '../helpers/test_theme.dart';
 

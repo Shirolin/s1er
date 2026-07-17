@@ -312,6 +312,13 @@ class AppTheme {
         color: colorScheme.primary,
         linearTrackColor: colorScheme.surfaceContainerHighest,
       ),
+      searchBarTheme: SearchBarThemeData(
+        elevation: const WidgetStatePropertyAll(0),
+        shadowColor: const WidgetStatePropertyAll(Colors.transparent),
+        backgroundColor: WidgetStatePropertyAll(
+          colorScheme.surfaceContainerHigh,
+        ),
+      ),
     );
   }
 }

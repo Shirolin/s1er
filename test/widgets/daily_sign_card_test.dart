@@ -1,8 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:s1_app/models/attendance_result.dart';
-import 'package:s1_app/theme/app_theme.dart';
-import 'package:s1_app/widgets/daily_sign_card.dart';
+import 'package:s1er/models/attendance_result.dart';
+import 'package:s1er/theme/app_theme.dart';
+import 'package:s1er/widgets/daily_sign_card.dart';
 
 void main() {
   testWidgets('DailySignCard shows sign button and invokes callback', (

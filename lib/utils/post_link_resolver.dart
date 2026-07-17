@@ -37,9 +37,11 @@ abstract final class PostLinkResolver {
     r'(?:^|/)forum-(\d+)-(\d+)(?:-\d+)?\.html$',
     caseSensitive: false,
   );
+
   /// Discuz 锚点：`#pid123` 或旧站纯数字 `#16352875`。
   static final _fragmentPid = RegExp(r'^(?:pid)?(\d+)$', caseSensitive: false);
   static final _leadingDigits = RegExp(r'^(\d+)');
+
   /// 脏 tid 里嵌的页码，如 `874342-fpage-3-page-2.html`。
   static final _embeddedPage = RegExp(r'-page-(\d+)', caseSensitive: false);
 

@@ -1,9 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:s1_app/config/constants.dart';
-import 'package:s1_app/models/post.dart';
-import 'package:s1_app/widgets/share_card.dart';
+import 'package:s1er/config/constants.dart';
+import 'package:s1er/models/post.dart';
+import 'package:s1er/widgets/share_card.dart';
 
 import '../helpers/test_theme.dart';
 

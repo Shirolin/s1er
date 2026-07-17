@@ -1,6 +1,6 @@
 import 'package:flutter_test/flutter_test.dart';
-import 'package:s1_app/models/forum_category.dart';
-import 'package:s1_app/utils/fid_forum_name.dart';
+import 'package:s1er/models/forum_category.dart';
+import 'package:s1er/utils/fid_forum_name.dart';
 
 void main() {
   group('buildFidToForumNameMap', () {

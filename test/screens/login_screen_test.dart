@@ -1,9 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:s1_app/config/login_security_questions.dart';
-import 'package:s1_app/screens/login_screen.dart';
-import 'package:s1_app/theme/app_theme.dart';
+import 'package:s1er/config/login_security_questions.dart';
+import 'package:s1er/screens/login_screen.dart';
+import 'package:s1er/theme/app_theme.dart';
 
 void main() {
   testWidgets('login screen shows answer field after picking a question',

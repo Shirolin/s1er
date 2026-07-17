@@ -1,6 +1,6 @@
 # Material 3 UI 组件审计进度交接文档
 
-本文件用于记录 **S1 Client** 项目中所有页面（Screens）与核心 UI 组件（Widgets）的 **Material Design 3 (M3)** 合规性审计进度，方便进度交接。
+本文件用于记录 **S1er** 项目中所有页面（Screens）与核心 UI 组件（Widgets）的 **Material Design 3 (M3)** 合规性审计进度，方便进度交接。
 
 ---
 

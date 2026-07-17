@@ -1,6 +1,6 @@
 #!/bin/sh
 #
-# S1 Client — Git pre-commit checks
+# S1er — Git pre-commit checks
 # Installed as a thin wrapper via: scripts/install_precommit.ps1
 #
 # Modes (env S1_PRECOMMIT):
@@ -42,7 +42,7 @@ else
 fi
 
 echo "────────────────────────────────────────"
-echo "  S1 Client — Pre-commit checks [$LABEL]"
+echo "  S1er — Pre-commit checks [$LABEL]"
 echo "────────────────────────────────────────"
 echo ""
 

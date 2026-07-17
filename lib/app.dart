@@ -5,6 +5,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:talker_flutter/talker_flutter.dart';
+import 'config/constants.dart';
 import 'config/resource_domains.dart';
 import 'providers/reading_history_coordinator.dart';
 import 'providers/settings_provider.dart';
@@ -242,7 +243,7 @@ class _S1AppState extends ConsumerState<S1App> with WidgetsBindingObserver {
       talker: talker,
       options: const TalkerWrapperOptions(enableErrorAlerts: true),
       child: MaterialApp.router(
-        title: 'S1 Client',
+        title: S1Constants.appName,
         theme: AppTheme.lightTheme(themeColor),
         darkTheme: AppTheme.darkTheme(themeColor),
         themeMode: themeMode,

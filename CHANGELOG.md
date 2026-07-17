@@ -1,9 +1,15 @@
 # Changelog
 
-All notable changes to S1 Client will be documented in this file.
+All notable changes to S1er will be documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
+
+## [Unreleased]
+
+### Changed
+
+- **Pre-commit**：支持环境变量 `S1_PRECOMMIT`（`full` 默认全量 / `lite` 仅 format+analyze / `skip` 跳过）；钩子委托 `scripts/pre-commit-hook.sh`，详见 README
 
 ## [1.0.0] - 2026-07-15
 
@@ -29,7 +35,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - **Material 3 合规审计脚本**：`scripts/audit_m3.dart`
 - **Web CORS 开发代理**：`scripts/proxy_server.dart`
-- **持续质量检查**：Git pre-commit hook（dart format + flutter analyze + flutter test + M3 audit）
+- **持续质量检查**：Git pre-commit hook（默认 dart format + flutter analyze + flutter test + M3 audit；可用 `S1_PRECOMMIT=lite|skip`）
 - **崩溃监控**：可选 Sentry 集成（通过 `--dart-define=SENTRY_DSN` 注入）
 
 ### Platform Support

@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:s1_app/theme/app_theme.dart';
-import 'package:s1_app/widgets/page_picker_sheet.dart';
+import 'package:s1er/theme/app_theme.dart';
+import 'package:s1er/widgets/page_picker_sheet.dart';
 
 void main() {
   testWidgets('showPagePickerSheet lists pages without current highlight',

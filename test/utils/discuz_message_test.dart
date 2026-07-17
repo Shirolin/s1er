@@ -1,5 +1,5 @@
 import 'package:flutter_test/flutter_test.dart';
-import 'package:s1_app/utils/discuz_message.dart';
+import 'package:s1er/utils/discuz_message.dart';
 
 void main() {
   group('formatDiscuzMessage', () {

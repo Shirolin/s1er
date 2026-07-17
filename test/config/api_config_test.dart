@@ -1,5 +1,5 @@
 import 'package:flutter_test/flutter_test.dart';
-import 'package:s1_app/config/api_config.dart';
+import 'package:s1er/config/api_config.dart';
 
 void main() {
   test('forumReplyReferer matches Discuz mobile reply pattern', () {

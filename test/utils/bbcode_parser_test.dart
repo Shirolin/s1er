@@ -1,8 +1,8 @@
 import 'dart:io';
 
 import 'package:flutter_test/flutter_test.dart';
-import 'package:s1_app/utils/bbcode_parser.dart';
-import 'package:s1_app/utils/post_image_index_counter.dart';
+import 'package:s1er/utils/bbcode_parser.dart';
+import 'package:s1er/utils/post_image_index_counter.dart';
 
 void main() {
   group('BbcodeParser post images', () {

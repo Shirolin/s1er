@@ -1,4 +1,4 @@
-# S1 Client — Pre-commit hook installer
+# S1er — Pre-commit hook installer
 #
 # Installs a thin wrapper at .git/hooks/pre-commit that always runs
 # scripts/pre-commit-hook.sh from the repo (edits take effect without

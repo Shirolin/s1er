@@ -2,12 +2,12 @@ import 'package:drift/native.dart';
 import 'package:drift/drift.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:package_info_plus/package_info_plus.dart';
-import 'package:s1_app/models/blacklist_record.dart';
-import 'package:s1_app/models/reading_record.dart';
-import 'package:s1_app/services/app_database.dart';
-import 'package:s1_app/services/app_local_data.dart';
-import 'package:s1_app/services/backup/s1_backup_codec.dart';
-import 'package:s1_app/services/backup/s1_backup_service.dart';
+import 'package:s1er/models/blacklist_record.dart';
+import 'package:s1er/models/reading_record.dart';
+import 'package:s1er/services/app_database.dart';
+import 'package:s1er/services/app_local_data.dart';
+import 'package:s1er/services/backup/s1_backup_codec.dart';
+import 'package:s1er/services/backup/s1_backup_service.dart';
 
 void main() {
   late AppDatabase db;

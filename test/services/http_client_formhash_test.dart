@@ -4,8 +4,8 @@ import 'dart:typed_data';
 import 'package:dio/dio.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:s1_app/services/formhash_service.dart';
-import 'package:s1_app/services/http_client.dart';
+import 'package:s1er/services/formhash_service.dart';
+import 'package:s1er/services/http_client.dart';
 
 void main() {
   group('ensureFormhash force refresh contract', () {

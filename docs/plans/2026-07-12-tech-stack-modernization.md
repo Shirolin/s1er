@@ -132,7 +132,7 @@ Cookie → 继续 PersistCookieJar（废弃 Hive `cookies` 死 box）
 | 层 | 内容 | 默认导出 |
 |:---|:---|:---|
 | L1 互通层 | `*.s1backup.zip`（manifest + JSON 数组） | **是**（导出/网盘/第三方） |
-| L2 原生层 | `native/s1_app.db` | 否（高级选项，本 App 快速恢复） |
+| L2 原生层 | `native/s1er.db` | 否（高级选项，本 App 快速恢复） |
 
 原则：**跨客户端只保证 L1**；运行时用 Drift，交换格式用开放 JSON。
 

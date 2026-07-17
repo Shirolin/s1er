@@ -2,13 +2,13 @@
   <img src="assets/branding/s1er_logo_transparent.png" alt="S1er" width="160" />
 </p>
 
-# S1 Client
+# S1er
 
 [![Flutter](https://img.shields.io/badge/Flutter-%3E%3D3.4-02569B?logo=flutter)](https://flutter.dev/)
 [![Dart](https://img.shields.io/badge/Dart-%3E%3D3.4%20%3C4.0-0175C2?logo=dart)](https://dart.dev/)
 [![License: GPL v3+](https://img.shields.io/badge/License-GPL--3.0--or--later-blue.svg)](LICENSE)
 
-S1 Client 是使用 Flutter 开发的非官方 Stage1st（S1）论坛客户端。项目直接对接 Discuz! Mobile API 与必要的论坛页面接口，采用 Material Design 3，并以同一套代码覆盖 Web、Android、iOS、Windows、macOS 与 Linux 目标。
+S1er 是使用 Flutter 开发的非官方 Stage1st（S1）论坛客户端。项目直接对接 Discuz! Mobile API 与必要的论坛页面接口，采用 Material Design 3，并以同一套代码覆盖 Web、Android、iOS、Windows、macOS 与 Linux 目标。
 
 > [!IMPORTANT]
 > 本项目与 Stage1st 官方无隶属、授权或背书关系。使用客户端时仍须遵守 Stage1st 的服务条款与社区规则；论坛接口、游客权限或页面结构变化都可能影响部分功能。
@@ -259,7 +259,7 @@ Issue 与 Pull Request 都欢迎。在开始较大改动前，建议先创建 Is
 
 ## 支持项目
 
-如果你觉得 S1 Client 有帮助，欢迎支持开发者：
+如果你觉得 S1er 有帮助，欢迎支持开发者：
 
 - 爱发电 (Afdian)：[https://ifdian.net/a/shirolin](https://ifdian.net/a/shirolin)
 - Ko-fi：[https://ko-fi.com/shirolin](https://ko-fi.com/shirolin)

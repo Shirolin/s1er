@@ -37,7 +37,7 @@
 ├── blacklist.json          # 可选；JSON 数组
 ├── poll_votes.json         # 可选；JSON 数组
 └── native/                 # 可选；默认导出不包含
-    └── s1_app.db           # 仅本客户端高级选项
+    └── s1er.db           # 仅本客户端高级选项
 ```
 
 v1 **不使用** JSONL；列表一律为 JSON 数组。
@@ -52,7 +52,7 @@ v1 **不使用** JSONL；列表一律为 JSON 数组。
   "format_version": 1,
   "exported_at": "2026-07-12T03:25:00Z",
   "exporter": {
-    "name": "s1_app",
+    "name": "s1er",
     "version": "1.0.0+1",
     "platform": "android"
   },
@@ -167,7 +167,7 @@ v1 **不使用** JSONL；列表一律为 JSON 数组。
 2. 按 `contents` 与实际文件导入；缺可选文件不失败。  
 3. 建议在**单事务**中写入本地库。  
 4. **冲突**：同一逻辑键 **以备份为准覆盖**（v1 简单可预期；「按时间合并」留待更高 `format_version`）。  
-5. 若存在 `native/s1_app.db`：仅同源客户端可提示「是否用于加速恢复」；**默认仍走 JSON 导入**以保证跨版本安全。第三方应忽略 `native/`。
+5. 若存在 `native/s1er.db`：仅同源客户端可提示「是否用于加速恢复」；**默认仍走 JSON 导入**以保证跨版本安全。第三方应忽略 `native/`。
 
 ---
 
@@ -176,7 +176,7 @@ v1 **不使用** JSONL；列表一律为 JSON 数组。
 | 场景 | 行为 |
 |:---|:---|
 | 默认「导出备份」/ 上传网盘 | 仅 L1（无 `native/`） |
-| 「包含原生数据库」高级选项 | 附加 `native/s1_app.db`（导出前应对 SQLite 做安全 checkpoint/备份 API） |
+| 「包含原生数据库」高级选项 | 附加 `native/s1er.db`（导出前应对 SQLite 做安全 checkpoint/备份 API） |
 | 敏感数据 | 不导出 Cookie、密码、token、图片缓存 |
 
 ---

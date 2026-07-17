@@ -1,8 +1,8 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:s1_app/models/forum_category.dart';
-import 'package:s1_app/providers/forum_list_provider.dart';
-import 'package:s1_app/providers/forum_name_provider.dart';
+import 'package:s1er/models/forum_category.dart';
+import 'package:s1er/providers/forum_list_provider.dart';
+import 'package:s1er/providers/forum_name_provider.dart';
 
 void main() {
   group('forumNameProvider', () {

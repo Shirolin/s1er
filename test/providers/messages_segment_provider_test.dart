@@ -1,6 +1,6 @@
 import 'package:flutter_test/flutter_test.dart';
-import 'package:s1_app/models/notice_item.dart';
-import 'package:s1_app/providers/messages_segment_provider.dart';
+import 'package:s1er/models/notice_item.dart';
+import 'package:s1er/providers/messages_segment_provider.dart';
 
 void main() {
   test('messagesBrowserUrl returns pm page for segment 0', () {

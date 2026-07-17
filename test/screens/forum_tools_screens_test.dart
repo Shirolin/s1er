@@ -3,16 +3,16 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:go_router/go_router.dart';
-import 'package:s1_app/models/dark_room_entry.dart';
-import 'package:s1_app/models/friend_summary.dart';
-import 'package:s1_app/models/user.dart';
-import 'package:s1_app/providers/auth_provider.dart';
-import 'package:s1_app/providers/forum_tools_provider.dart';
-import 'package:s1_app/screens/dark_room_screen.dart';
-import 'package:s1_app/screens/friends_screen.dart';
-import 'package:s1_app/services/forum_tools_service.dart';
-import 'package:s1_app/services/http_client.dart';
-import 'package:s1_app/theme/app_theme.dart';
+import 'package:s1er/models/dark_room_entry.dart';
+import 'package:s1er/models/friend_summary.dart';
+import 'package:s1er/models/user.dart';
+import 'package:s1er/providers/auth_provider.dart';
+import 'package:s1er/providers/forum_tools_provider.dart';
+import 'package:s1er/screens/dark_room_screen.dart';
+import 'package:s1er/screens/friends_screen.dart';
+import 'package:s1er/services/forum_tools_service.dart';
+import 'package:s1er/services/http_client.dart';
+import 'package:s1er/theme/app_theme.dart';
 
 void main() {
   testWidgets('FriendsScreen shows empty state', (tester) async {

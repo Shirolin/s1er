@@ -74,7 +74,7 @@ class AppDatabase extends _$AppDatabase {
 
   static QueryExecutor _openExecutor() {
     return driftDatabase(
-      name: 's1_app',
+      name: 's1er',
       web: kIsWeb
           ? DriftWebOptions(
               sqlite3Wasm: Uri.parse('sqlite3.wasm'),

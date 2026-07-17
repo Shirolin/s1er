@@ -2,10 +2,10 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:package_info_plus/package_info_plus.dart';
-import 'package:s1_app/theme/app_theme.dart';
-import 'package:s1_app/providers/settings_provider.dart';
-import 'package:s1_app/providers/talker_provider.dart';
-import 'package:s1_app/screens/settings_screen.dart';
+import 'package:s1er/theme/app_theme.dart';
+import 'package:s1er/providers/settings_provider.dart';
+import 'package:s1er/providers/talker_provider.dart';
+import 'package:s1er/screens/settings_screen.dart';
 
 void main() {
   testWidgets('SettingsScreen displays all settings sections', (tester) async {

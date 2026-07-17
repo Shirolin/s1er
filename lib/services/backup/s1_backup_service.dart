@@ -139,7 +139,7 @@ class S1BackupService {
       'format_version': s1BackupFormatVersion,
       'exported_at': exportedAt.toIso8601String(),
       'exporter': {
-        'name': 's1_app',
+        'name': 's1er',
         'version': '${packageInfo.version}+${packageInfo.buildNumber}',
         'platform': platform,
       },

@@ -7,14 +7,14 @@ import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/misc.dart' show Override;
 import 'package:flutter_test/flutter_test.dart';
 import 'package:package_info_plus/package_info_plus.dart';
-import 'package:s1_app/theme/app_theme.dart';
-import 'package:s1_app/providers/talker_provider.dart';
-import 'package:s1_app/providers/auth_provider.dart';
-import 'package:s1_app/providers/settings_provider.dart';
-import 'package:s1_app/services/app_database.dart';
-import 'package:s1_app/services/app_local_data.dart';
-import 'package:s1_app/models/user.dart';
-import 'package:s1_app/screens/profile_screen.dart';
+import 'package:s1er/theme/app_theme.dart';
+import 'package:s1er/providers/talker_provider.dart';
+import 'package:s1er/providers/auth_provider.dart';
+import 'package:s1er/providers/settings_provider.dart';
+import 'package:s1er/services/app_database.dart';
+import 'package:s1er/services/app_local_data.dart';
+import 'package:s1er/models/user.dart';
+import 'package:s1er/screens/profile_screen.dart';
 
 void main() {
   late AppDatabase db;

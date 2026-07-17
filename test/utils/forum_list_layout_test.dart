@@ -1,5 +1,5 @@
 import 'package:flutter_test/flutter_test.dart';
-import 'package:s1_app/utils/forum_list_layout.dart';
+import 'package:s1er/utils/forum_list_layout.dart';
 
 void main() {
   group('forum list-detail layout', () {

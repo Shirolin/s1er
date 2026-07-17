@@ -1,5 +1,5 @@
 import 'package:flutter_test/flutter_test.dart';
-import 'package:s1_app/models/poll.dart';
+import 'package:s1er/models/poll.dart';
 
 void main() {
   group('ThreadPoll', () {

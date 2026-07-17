@@ -2,13 +2,13 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:go_router/go_router.dart';
-import 'package:s1_app/providers/settings_provider.dart';
-import 'package:s1_app/theme/app_theme.dart';
-import 'package:s1_app/utils/bbcode_parser.dart';
-import 'package:s1_app/utils/post_image_index_counter.dart';
-import 'package:s1_app/widgets/emoticon_widget.dart';
-import 'package:s1_app/widgets/quote_block.dart';
-import 'package:s1_app/widgets/bbcode_renderer.dart';
+import 'package:s1er/providers/settings_provider.dart';
+import 'package:s1er/theme/app_theme.dart';
+import 'package:s1er/utils/bbcode_parser.dart';
+import 'package:s1er/utils/post_image_index_counter.dart';
+import 'package:s1er/widgets/emoticon_widget.dart';
+import 'package:s1er/widgets/quote_block.dart';
+import 'package:s1er/widgets/bbcode_renderer.dart';
 
 Widget _wrapBbcode(
   Widget child, {

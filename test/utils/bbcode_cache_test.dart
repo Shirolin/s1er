@@ -1,5 +1,5 @@
 import 'package:flutter_test/flutter_test.dart';
-import 'package:s1_app/utils/bbcode_cache.dart';
+import 'package:s1er/utils/bbcode_cache.dart';
 
 void main() {
   setUp(BbcodeCache.clear);

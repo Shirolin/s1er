@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:s1_app/theme/app_theme.dart';
-import 'package:s1_app/widgets/s1_fab_layout.dart';
+import 'package:s1er/theme/app_theme.dart';
+import 'package:s1er/widgets/s1_fab_layout.dart';
 
 void main() {
   testWidgets('S1FabStack shows scroll nav group and primary FAB',

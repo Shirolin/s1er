@@ -1,5 +1,5 @@
 import 'package:flutter_test/flutter_test.dart';
-import 'package:s1_app/models/reading_record.dart';
+import 'package:s1er/models/reading_record.dart';
 
 ReadingRecord _make({
   int lastReadPage = 1,

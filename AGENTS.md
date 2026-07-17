@@ -3,7 +3,7 @@
 
 ## 项目信息
 
-- **项目名称**：S1 Client（s1_app）
+- **项目名称**：S1er（s1er）
 - **核心目标**：第三方 Stage1st（S1）论坛客户端，基于 Flutter 构建，支持多平台运行
 - **创建日期**：2026-07-07
 
@@ -235,6 +235,7 @@ flutter run -d chrome --dart-define=TALKER_LOG_LEVEL=all --dart-define=TALKER_MA
 
 - **Flutter SDK**：预装在 `/home/ubuntu/flutter`（stable，Dart 3.12+），已通过 `~/.bashrc` 加入交互式 shell 的 PATH。非交互式脚本请用全路径 `/home/ubuntu/flutter/bin/flutter`。
 - **Lint / Test**：`flutter analyze`（当前 0 issue）与 `flutter test`（250+ 测试）。注意：**首次** `flutter test` 会一次性编译引擎测试产物，可能数分钟无输出（输出被 shell 缓冲），属正常；产物缓存后整套测试约数秒到十几秒。用 `--reporter expanded` 可看到实时进度。
+- **Pre-commit**：安装 `.\scripts\install_precommit.ps1` 后，默认 `S1_PRECOMMIT=full`（format + analyze + test + M3）。小改用 `S1_PRECOMMIT=lite`；完全跳过用 `skip` 或 `git commit --no-verify`（**仅当用户明确要求跳过时**）。源脚本：`scripts/pre-commit-hook.sh`；用法见 README「Pre-commit 质量检查」。
 - **M3 审计**：`dart run scripts/audit_m3.dart --fail-on-error` 扫描 `lib/`（P0/P1）与 `test/`，报告输出至 `reports/m3_audit_<date>.md`。
 - **运行 Web 开发环境（推荐的可测试目标）**：需要同时启动两个进程（标准命令见 `README.md`）：
   1. CORS 代理：`dart run scripts/proxy_server.dart`，监听 `http://localhost:19080`，转发到 `https://stage1st.com/2b/...` 并处理 CORS/Cookie。

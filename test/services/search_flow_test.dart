@@ -4,8 +4,8 @@ import 'dart:typed_data';
 import 'package:dio/dio.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:s1_app/services/api_service.dart';
-import 'package:s1_app/services/http_client.dart';
+import 'package:s1er/services/api_service.dart';
+import 'package:s1er/services/http_client.dart';
 
 void main() {
   test('主题搜索跟随 Discuz POST 302 并解析结果页', () async {

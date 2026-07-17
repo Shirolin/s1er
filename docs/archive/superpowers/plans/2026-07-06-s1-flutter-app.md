@@ -138,7 +138,7 @@ flutter:
 ```dart
 // lib/config/constants.dart
 class S1Constants {
-  static const String appName = 'S1 Client';
+  static const String appName = 'S1er';
   static const String mobileUserAgent =
       'Mozilla/5.0 (iPhone; CPU iPhone OS 17_0 like Mac OS X) '
       'AppleWebKit/605.1.15 (KHTML, like Gecko) '
@@ -254,7 +254,7 @@ class S1App extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final router = ref.watch(routerProvider);
     return MaterialApp.router(
-      title: 'S1 Client',
+      title: 'S1er',
       theme: AppTheme.lightTheme,
       darkTheme: AppTheme.darkTheme,
       themeMode: ThemeMode.system,

@@ -1,15 +1,15 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:s1_app/models/image_load_policy.dart';
-import 'package:s1_app/models/private_message.dart';
-import 'package:s1_app/providers/auth_provider.dart';
-import 'package:s1_app/providers/connectivity_provider.dart';
-import 'package:s1_app/providers/pm_conversation_provider.dart';
-import 'package:s1_app/providers/settings_provider.dart';
-import 'package:s1_app/screens/pm_conversation_screen.dart';
-import 'package:s1_app/theme/app_theme.dart';
-import 'package:s1_app/widgets/web_avatar.dart';
+import 'package:s1er/models/image_load_policy.dart';
+import 'package:s1er/models/private_message.dart';
+import 'package:s1er/providers/auth_provider.dart';
+import 'package:s1er/providers/connectivity_provider.dart';
+import 'package:s1er/providers/pm_conversation_provider.dart';
+import 'package:s1er/providers/settings_provider.dart';
+import 'package:s1er/screens/pm_conversation_screen.dart';
+import 'package:s1er/theme/app_theme.dart';
+import 'package:s1er/widgets/web_avatar.dart';
 
 const _touid = '535036';
 const _sampleState = PmConversationState(

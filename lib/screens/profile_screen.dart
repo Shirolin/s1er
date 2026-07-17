@@ -733,7 +733,7 @@ class _ProjectSupportCard extends StatelessWidget {
                 Text('支持项目', style: textTheme.titleMedium),
                 const SizedBox(height: 4),
                 Text(
-                  '如果 S1 Client 对你有帮助，欢迎支持开发或关注项目。',
+                  '如果 S1er 对你有帮助，欢迎支持开发或关注项目。',
                   style: textTheme.bodySmall?.copyWith(
                     color: colorScheme.onSurfaceVariant,
                   ),

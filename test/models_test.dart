@@ -1,9 +1,9 @@
 import 'package:flutter_test/flutter_test.dart';
-import 'package:s1_app/models/thread.dart';
-import 'package:s1_app/models/post.dart';
-import 'package:s1_app/models/forum_category.dart';
-import 'package:s1_app/models/user.dart';
-import 'package:s1_app/models/emoticon_catalog.dart';
+import 'package:s1er/models/thread.dart';
+import 'package:s1er/models/post.dart';
+import 'package:s1er/models/forum_category.dart';
+import 'package:s1er/models/user.dart';
+import 'package:s1er/models/emoticon_catalog.dart';
 
 void main() {
   group('Thread', () {

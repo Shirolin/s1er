@@ -90,12 +90,12 @@ BEGIN
         BLOCK "040904e4"
         BEGIN
             VALUE "CompanyName", "com.stage1st" "\0"
-            VALUE "FileDescription", "s1_app" "\0"
+            VALUE "FileDescription", "S1er" "\0"
             VALUE "FileVersion", VERSION_AS_STRING "\0"
-            VALUE "InternalName", "s1_app" "\0"
+            VALUE "InternalName", "s1er" "\0"
             VALUE "LegalCopyright", "Copyright (C) 2026 com.stage1st. All rights reserved." "\0"
-            VALUE "OriginalFilename", "s1_app.exe" "\0"
-            VALUE "ProductName", "s1_app" "\0"
+            VALUE "OriginalFilename", "s1er.exe" "\0"
+            VALUE "ProductName", "S1er" "\0"
             VALUE "ProductVersion", VERSION_AS_STRING "\0"
         END
     END

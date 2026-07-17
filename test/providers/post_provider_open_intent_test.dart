@@ -5,14 +5,14 @@ import 'dart:typed_data';
 import 'package:dio/dio.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:s1_app/models/open_scroll_target.dart';
-import 'package:s1_app/models/reading_record.dart';
-import 'package:s1_app/models/thread_open_intent.dart';
-import 'package:s1_app/providers/post_provider.dart';
-import 'package:s1_app/providers/reading_history_provider.dart';
-import 'package:s1_app/providers/thread_open_intent_provider.dart';
-import 'package:s1_app/providers/thread_rate_logs_provider.dart';
-import 'package:s1_app/services/http_client.dart';
+import 'package:s1er/models/open_scroll_target.dart';
+import 'package:s1er/models/reading_record.dart';
+import 'package:s1er/models/thread_open_intent.dart';
+import 'package:s1er/providers/post_provider.dart';
+import 'package:s1er/providers/reading_history_provider.dart';
+import 'package:s1er/providers/thread_open_intent_provider.dart';
+import 'package:s1er/providers/thread_rate_logs_provider.dart';
+import 'package:s1er/services/http_client.dart';
 
 void main() {
   group('PostNotifier open intent', () {

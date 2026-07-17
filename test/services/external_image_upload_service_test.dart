@@ -3,8 +3,8 @@ import 'dart:typed_data';
 
 import 'package:dio/dio.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:s1_app/config/env_config.dart';
-import 'package:s1_app/services/external_image_upload_service.dart';
+import 'package:s1er/config/env_config.dart';
+import 'package:s1er/services/external_image_upload_service.dart';
 
 void main() {
   group('ExternalImageUploadService', () {

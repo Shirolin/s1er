@@ -2,11 +2,11 @@ import 'package:drift/native.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:s1_app/providers/settings_provider.dart';
-import 'package:s1_app/screens/blacklist_screen.dart';
-import 'package:s1_app/services/app_database.dart';
-import 'package:s1_app/services/app_local_data.dart';
-import 'package:s1_app/theme/app_theme.dart';
+import 'package:s1er/providers/settings_provider.dart';
+import 'package:s1er/screens/blacklist_screen.dart';
+import 'package:s1er/services/app_database.dart';
+import 'package:s1er/services/app_local_data.dart';
+import 'package:s1er/theme/app_theme.dart';
 
 void main() {
   late AppDatabase db;

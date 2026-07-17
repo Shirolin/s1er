@@ -1,6 +1,6 @@
 import 'package:flutter_test/flutter_test.dart';
-import 'package:s1_app/config/constants.dart';
-import 'package:s1_app/utils/inline_image_decode.dart';
+import 'package:s1er/config/constants.dart';
+import 'package:s1er/utils/inline_image_decode.dart';
 
 void main() {
   group('inlineDecodeWidthPx', () {

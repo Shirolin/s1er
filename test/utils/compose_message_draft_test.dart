@@ -1,5 +1,5 @@
 import 'package:flutter_test/flutter_test.dart';
-import 'package:s1_app/utils/compose_message_draft.dart';
+import 'package:s1er/utils/compose_message_draft.dart';
 
 void main() {
   group('ComposeMessageDraft.entryKey', () {

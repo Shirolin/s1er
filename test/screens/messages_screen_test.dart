@@ -2,9 +2,9 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:go_router/go_router.dart';
-import 'package:s1_app/providers/messages_segment_provider.dart';
-import 'package:s1_app/screens/messages_screen.dart';
-import 'package:s1_app/widgets/pagination_bar.dart';
+import 'package:s1er/providers/messages_segment_provider.dart';
+import 'package:s1er/screens/messages_screen.dart';
+import 'package:s1er/widgets/pagination_bar.dart';
 import '../helpers/messages_test_helpers.dart';
 import '../helpers/test_theme.dart';
 

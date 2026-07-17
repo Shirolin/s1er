@@ -1,5 +1,5 @@
 import 'package:flutter_test/flutter_test.dart';
-import 'package:s1_app/utils/format_utils.dart';
+import 'package:s1er/utils/format_utils.dart';
 
 void main() {
   group('formatRegDate', () {

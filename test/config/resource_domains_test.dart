@@ -1,5 +1,5 @@
 import 'package:flutter_test/flutter_test.dart';
-import 'package:s1_app/config/resource_domains.dart';
+import 'package:s1er/config/resource_domains.dart';
 
 void main() {
   group('ResourceDomains.isForumHost', () {

@@ -1,6 +1,6 @@
 import 'package:flutter_test/flutter_test.dart';
-import 'package:s1_app/models/user.dart';
-import 'package:s1_app/providers/auth_provider.dart';
+import 'package:s1er/models/user.dart';
+import 'package:s1er/providers/auth_provider.dart';
 
 void main() {
   group('AuthState equality', () {

@@ -2,7 +2,7 @@ import 'dart:io';
 
 import 'package:cryptography/cryptography.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:s1_app/services/encrypted_cookie_storage.dart';
+import 'package:s1er/services/encrypted_cookie_storage.dart';
 
 void main() {
   late Directory tempDir;

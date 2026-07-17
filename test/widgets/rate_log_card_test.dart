@@ -1,12 +1,12 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:s1_app/models/post.dart';
-import 'package:s1_app/models/rate_log.dart';
-import 'package:s1_app/providers/thread_rate_logs_provider.dart';
-import 'package:s1_app/theme/app_theme.dart';
-import 'package:s1_app/widgets/post_item.dart';
-import 'package:s1_app/widgets/rate_log_card.dart';
+import 'package:s1er/models/post.dart';
+import 'package:s1er/models/rate_log.dart';
+import 'package:s1er/providers/thread_rate_logs_provider.dart';
+import 'package:s1er/theme/app_theme.dart';
+import 'package:s1er/widgets/post_item.dart';
+import 'package:s1er/widgets/rate_log_card.dart';
 
 class _SeededRateLogsNotifier extends ThreadRateLogsNotifier {
   _SeededRateLogsNotifier(super.tid, this.seed);

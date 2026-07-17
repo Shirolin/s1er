@@ -1,5 +1,5 @@
 import 'package:flutter_test/flutter_test.dart';
-import 'package:s1_app/models/share_image_format.dart';
+import 'package:s1er/models/share_image_format.dart';
 
 void main() {
   group('ShareImageFormat', () {

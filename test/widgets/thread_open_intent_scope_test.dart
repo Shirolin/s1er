@@ -1,10 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:s1_app/models/thread_open_intent.dart';
-import 'package:s1_app/providers/thread_open_intent_provider.dart';
-import 'package:s1_app/theme/app_theme.dart';
-import 'package:s1_app/widgets/thread_open_intent_scope.dart';
+import 'package:s1er/models/thread_open_intent.dart';
+import 'package:s1er/providers/thread_open_intent_provider.dart';
+import 'package:s1er/theme/app_theme.dart';
+import 'package:s1er/widgets/thread_open_intent_scope.dart';
 
 void main() {
   testWidgets('switching tid rebuilds the provider override scope',

@@ -1,7 +1,7 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:s1_app/models/rate_log.dart';
-import 'package:s1_app/providers/thread_rate_logs_provider.dart';
+import 'package:s1er/models/rate_log.dart';
+import 'package:s1er/providers/thread_rate_logs_provider.dart';
 
 void main() {
   group('ThreadRateLogsNotifier', () {

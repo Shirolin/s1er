@@ -54,3 +54,12 @@ version: 0.1.0+1
 flutter run --dart-define=UPDATE_MANIFEST_URL=https://example.com/latest.json
 flutter run --dart-define=DISTRIBUTION=play
 ```
+
+### 清单必须可公开访问
+
+客户端用**未认证** HTTP GET 拉取 `UPDATE_MANIFEST_URL`。若仓库为 **private**，`raw.githubusercontent.com/.../latest.json` 会对公网返回 **404**，启动检查会静默跳过，关于页「检查更新」会提示「更新清单不存在或不可公开访问」。
+
+可选做法：
+
+1. 将仓库设为 public；或
+2. 把 `latest.json` 挂到任意公开 HTTPS（Gist / 独立 public 仓库 / CDN），并用 `UPDATE_MANIFEST_URL` 指向它。

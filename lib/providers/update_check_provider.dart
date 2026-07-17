@@ -181,6 +181,9 @@ class UpdateCheckNotifier extends Notifier<UpdateCheckState> {
       if (evaluation.shouldShowDialog) {
         state = state.copyWith(pendingPrompt: evaluation);
       }
+    } on UpdateCheckException catch (e) {
+      // 启动静默失败（常见：私有仓库 raw 清单 404）；不按崩溃级别打 exception。
+      talker.warning('Startup update check skipped: ${e.message}');
     } on Object catch (e, st) {
       talker.handle(e, st, 'Startup update check failed');
     }
@@ -264,5 +267,8 @@ final updateCheckProvider =
 
 /// 在应用根 [ref.watch]，冷启动延迟触发升级检查。
 final updateCheckCoordinatorProvider = Provider<void>((ref) {
-  unawaited(ref.read(updateCheckProvider.notifier).runStartupCheck());
+  scheduleMicrotask(() {
+    if (!ref.mounted) return;
+    unawaited(ref.read(updateCheckProvider.notifier).runStartupCheck());
+  });
 });

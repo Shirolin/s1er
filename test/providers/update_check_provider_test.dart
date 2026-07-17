@@ -160,6 +160,42 @@ void main() {
       expect(evaluation.manifest.latest, '2.0.0');
     });
 
+    test('updateCheckCoordinatorProvider defers startup without build mutation',
+        () async {
+      final (db, local) = await openTestLocalData();
+      addTearDown(db.close);
+
+      final dio = Dio()..httpClientAdapter = _JsonAdapter(manifestJson);
+      final container = ProviderContainer(
+        overrides: [
+          localDataProvider.overrideWithValue(local),
+          packageInfoProvider.overrideWith(
+            (_) async => PackageInfo(
+              appName: 'S1er',
+              packageName: 'dev.s1er',
+              version: '1.5.0',
+              buildNumber: '1',
+            ),
+          ),
+          updateCheckServiceProvider.overrideWithValue(
+            UpdateCheckService(
+              dio: dio,
+              manifestUrl: 'https://example.com/latest.json',
+            ),
+          ),
+        ],
+      );
+      addTearDown(container.dispose);
+
+      // Must not assert: Providers cannot modify other providers during build.
+      expect(
+        () => container.read(updateCheckCoordinatorProvider),
+        returnsNormally,
+      );
+      await Future<void>.delayed(Duration.zero);
+      expect(container.read(updateCheckProvider).autoCheckStarted, isTrue);
+    });
+
     test('runStartupCheck sets pendingPrompt', () async {
       final (db, local) = await openTestLocalData();
       addTearDown(db.close);

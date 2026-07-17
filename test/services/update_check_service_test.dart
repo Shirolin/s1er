@@ -37,7 +37,31 @@ void main() {
       );
       expect(
         () => service.fetchManifest(),
-        throwsA(isA<UpdateCheckException>()),
+        throwsA(
+          isA<UpdateCheckException>().having(
+            (e) => e.message,
+            'message',
+            '检查更新超时',
+          ),
+        ),
+      );
+    });
+
+    test('fetchManifest maps HTTP 404 to public-access message', () async {
+      final dio = Dio()..httpClientAdapter = _StatusAdapter(404);
+      final service = UpdateCheckService(
+        dio: dio,
+        manifestUrl: 'https://example.com/latest.json',
+      );
+      expect(
+        () => service.fetchManifest(),
+        throwsA(
+          isA<UpdateCheckException>().having(
+            (e) => e.message,
+            'message',
+            '更新清单不存在或不可公开访问',
+          ),
+        ),
       );
     });
 
@@ -147,6 +171,31 @@ class _FailingAdapter implements HttpClientAdapter {
     throw DioException(
       requestOptions: options,
       type: DioExceptionType.connectionTimeout,
+    );
+  }
+}
+
+class _StatusAdapter implements HttpClientAdapter {
+  _StatusAdapter(this.statusCode);
+
+  final int statusCode;
+
+  @override
+  void close({bool force = false}) {}
+
+  @override
+  Future<ResponseBody> fetch(
+    RequestOptions options,
+    Stream<Uint8List>? requestStream,
+    Future<void>? cancelFuture,
+  ) async {
+    throw DioException(
+      requestOptions: options,
+      type: DioExceptionType.badResponse,
+      response: Response(
+        requestOptions: options,
+        statusCode: statusCode,
+      ),
     );
   }
 }

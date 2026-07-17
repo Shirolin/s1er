@@ -136,6 +136,14 @@ void main() {
 
     expect(find.text('点击加载图片'), findsOneWidget);
     expect(find.byType(CircularProgressIndicator), findsNothing);
+
+    final region = tester.widget<MouseRegion>(
+      find.descendant(
+        of: find.byType(ImageViewer),
+        matching: find.byType(MouseRegion),
+      ),
+    );
+    expect(region.cursor, SystemMouseCursors.click);
   });
 
   testWidgets('ImageViewer auto-loads on wifi when policy is wifiOnly',

@@ -6,6 +6,7 @@ import '../providers/user_profile_provider.dart';
 import '../theme/app_theme.dart';
 import '../utils/format_utils.dart';
 import 'user_profile_sheet.dart';
+import 's1_click_region.dart';
 
 class RateLogCard extends ConsumerStatefulWidget {
   const RateLogCard({super.key, required this.tid, required this.pid});
@@ -301,7 +302,7 @@ class _EntryRow extends ConsumerWidget {
                     : Semantics(
                         button: true,
                         label: '查看 ${entry.username} 的资料',
-                        child: GestureDetector(
+                        child: S1ClickRegion(
                           behavior: HitTestBehavior.opaque,
                           onTap: () => showUserProfileSheet(
                             context,

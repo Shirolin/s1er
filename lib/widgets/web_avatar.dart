@@ -9,6 +9,7 @@ import '../providers/image_cache_provider.dart';
 import '../utils/image_load_policy.dart';
 import 'avatar_fallback.dart';
 import 'force_show_images.dart';
+import 's1_click_region.dart';
 
 /// 跨平台头像组件
 /// Web: 通过代理加载（avatar 服务器未返回 CORS 头）
@@ -99,7 +100,7 @@ class _WebAvatarState extends ConsumerState<WebAvatar> {
 
     final canLoad = _hasDiskCache == true || _shouldAutoLoad();
     if (!canLoad) {
-      return GestureDetector(
+      return S1ClickRegion(
         onTap: _requestLoad,
         child: _fallback(context),
       );

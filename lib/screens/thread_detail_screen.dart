@@ -35,6 +35,7 @@ import '../models/thread_destination.dart';
 import '../models/thread_open_intent.dart';
 import '../utils/scroll_floor.dart';
 import '../widgets/s1_adaptive_sheet.dart';
+import '../widgets/s1_click_region.dart';
 import '../utils/s1_snack_bar.dart';
 import '../utils/thread_navigation.dart';
 import '../providers/post_share_provider.dart';
@@ -702,7 +703,7 @@ class _ThreadDetailScreenState extends ConsumerState<ThreadDetailScreen> {
               ),
         title: postsAsync.whenOrNull(
               data: (s) => s.threadSubject != null
-                  ? GestureDetector(
+                  ? S1ClickRegion(
                       onTap: () => _showFullTitle(context, s.threadSubject!),
                       child: Text(
                         s.threadSubject!,

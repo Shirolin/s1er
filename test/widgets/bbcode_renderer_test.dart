@@ -377,6 +377,41 @@ void main() {
       expect(blueLink, equals(bluePrimary));
     });
 
+    testWidgets('link TextSpans use click mouse cursor', (tester) async {
+      MouseCursor? linkCursor() {
+        MouseCursor? walk(InlineSpan span) {
+          if (span is TextSpan) {
+            if (span.recognizer != null) {
+              return span.mouseCursor;
+            }
+            for (final child in span.children ?? const <InlineSpan>[]) {
+              final found = walk(child);
+              if (found != null) return found;
+            }
+          }
+          return null;
+        }
+
+        for (final rich in tester.widgetList<RichText>(find.byType(RichText))) {
+          final found = walk(rich.text);
+          if (found != null) return found;
+        }
+        return null;
+      }
+
+      await tester.pumpWidget(
+        _wrapBbcode(
+          BbcodeRenderer(
+            bbcode: '[url=https://example.com]clickable link[/url]',
+            imageIndexCounter: PostImageIndexCounter(),
+          ),
+        ),
+      );
+      await tester.pump();
+
+      expect(linkCursor(), SystemMouseCursors.click);
+    });
+
     testWidgets('opens forum links with the App router', (tester) async {
       final router = GoRouter(
         routes: [

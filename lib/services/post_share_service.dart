@@ -21,6 +21,7 @@ import '../providers/settings_provider.dart';
 import '../utils/bbcode_parser.dart';
 import '../theme/app_theme.dart';
 import '../widgets/share_card.dart';
+import '../widgets/s1_click_region.dart';
 import '../widgets/web_image_stub.dart'
     if (dart.library.html) '../widgets/web_image_html.dart';
 
@@ -440,7 +441,7 @@ class _SharePreviewSheetState extends ConsumerState<_SharePreviewSheet> {
   }
 
   Widget _buildError(ColorScheme scheme, TextTheme textTheme) {
-    return GestureDetector(
+    return S1ClickRegion(
       onTap: _dismissError,
       behavior: HitTestBehavior.opaque,
       child: Center(

@@ -16,6 +16,7 @@ import '../utils/image_load_policy.dart';
 import '../utils/inline_image_decode.dart';
 import 'lazy_visibility_loader.dart';
 import 'force_show_images.dart';
+import 's1_click_region.dart';
 
 class ImageViewer extends ConsumerStatefulWidget {
   const ImageViewer({
@@ -459,7 +460,7 @@ class _ImageViewerState extends ConsumerState<ImageViewer> {
     Widget child = Semantics(
       button: true,
       label: '查看大图',
-      child: GestureDetector(
+      child: S1ClickRegion(
         onTap: () => _showFullScreen(context),
         child: LayoutBuilder(
           builder: (context, constraints) {
@@ -547,7 +548,7 @@ class _ImageViewerState extends ConsumerState<ImageViewer> {
     return Semantics(
       button: true,
       label: '点击加载图片',
-      child: GestureDetector(
+      child: S1ClickRegion(
         onTap: _requestManualLoad,
         child: Container(
           width: double.infinity,
@@ -584,7 +585,7 @@ class _ImageViewerState extends ConsumerState<ImageViewer> {
     return Semantics(
       button: true,
       label: '重试加载图片',
-      child: GestureDetector(
+      child: S1ClickRegion(
         onTap: () {
           _userRequestedLoad = true;
           _loadAuthOrProxied(_displayUrl);

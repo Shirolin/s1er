@@ -18,6 +18,7 @@ import '../utils/post_link_resolver.dart';
 import '../utils/quote_jump.dart';
 import 'emoticon_widget.dart';
 import 'force_show_images.dart';
+import 'html_clickable_anchor_extension.dart';
 import 'quote_block.dart';
 import 'image_viewer.dart';
 import 'scroll_pointer_gate.dart';
@@ -368,6 +369,7 @@ class _MemoizedHtmlBlockState extends State<_MemoizedHtmlBlock> {
     };
 
     final extensions = <HtmlExtension>[
+      const HtmlClickableAnchorExtension(),
       TagExtension(
         tagsToExtend: {'span'},
         builder: (context) {

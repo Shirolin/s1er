@@ -16,6 +16,7 @@ import '../utils/s1_snack_bar.dart';
 import '../widgets/web_image_stub.dart'
     if (dart.library.html) '../widgets/web_image_html.dart';
 import '../widgets/s1_adaptive_sheet.dart';
+import '../widgets/s1_click_region.dart';
 
 enum _ViewerLoadState { loading, ready, error }
 
@@ -318,7 +319,7 @@ class _ImageViewerScreenState extends ConsumerState<ImageViewerScreen> {
           child: Semantics(
             button: true,
             label: '重试加载图片',
-            child: GestureDetector(
+            child: S1ClickRegion(
               onTap: () => _loadImage(isRetry: true),
               child: Column(
                 mainAxisSize: MainAxisSize.min,

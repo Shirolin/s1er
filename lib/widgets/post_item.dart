@@ -16,6 +16,7 @@ import 'post_action_menu.dart';
 import 'rate_log_card.dart';
 import 'user_profile_sheet.dart';
 import 'web_avatar.dart';
+import 's1_click_region.dart';
 
 class PostItem extends ConsumerStatefulWidget {
   const PostItem({
@@ -176,7 +177,7 @@ class _PostItemState extends ConsumerState<PostItem>
     final avatar = Semantics(
       button: true,
       label: '查看 ${widget.post.author} 的资料',
-      child: GestureDetector(
+      child: S1ClickRegion(
         onTap: () => _showUserInfo(context, ref),
         child: WebAvatar(
           url: widget.post.avatar,

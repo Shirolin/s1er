@@ -11,3 +11,13 @@ class ServerMaintenanceException implements Exception {
   @override
   String toString() => message;
 }
+
+class UpdateCheckException implements Exception {
+  const UpdateCheckException(this.message, [this.cause]);
+
+  final String message;
+  final Object? cause;
+
+  @override
+  String toString() => message;
+}

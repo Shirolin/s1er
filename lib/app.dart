@@ -9,6 +9,7 @@ import 'config/constants.dart';
 import 'config/resource_domains.dart';
 import 'providers/reading_history_coordinator.dart';
 import 'providers/settings_provider.dart';
+import 'providers/update_check_provider.dart';
 import 'screens/home_screen.dart';
 import 'screens/login_screen.dart';
 import 'screens/forum_list_screen.dart';
@@ -28,6 +29,7 @@ import 'services/talker.dart';
 import 'theme/app_theme.dart';
 import 'utils/thread_navigation.dart';
 import 'widgets/thread_open_intent_scope.dart';
+import 'widgets/update_prompt_host.dart';
 
 ImageViewerScreen? _parseImageViewerRoute(GoRouterState state) {
   Map<String, dynamic>? args;
@@ -226,6 +228,7 @@ class _S1AppState extends ConsumerState<S1App> with WidgetsBindingObserver {
   @override
   Widget build(BuildContext context) {
     ref.watch(readingHistoryCoordinatorProvider);
+    ref.watch(updateCheckCoordinatorProvider);
 
     final themeModeStr = ref.watch(settingsProvider.select((s) => s.themeMode));
     final themeColor = ref.watch(settingsProvider.select((s) => s.themeColor));
@@ -249,11 +252,13 @@ class _S1AppState extends ConsumerState<S1App> with WidgetsBindingObserver {
         themeMode: themeMode,
         routerConfig: _router,
         builder: (context, child) {
-          return MediaQuery(
-            data: MediaQuery.of(
-              context,
-            ).copyWith(textScaler: TextScaler.linear(textScaleFactor)),
-            child: child!,
+          return UpdatePromptHost(
+            child: MediaQuery(
+              data: MediaQuery.of(
+                context,
+              ).copyWith(textScaler: TextScaler.linear(textScaleFactor)),
+              child: child!,
+            ),
           );
         },
       ),

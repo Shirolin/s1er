@@ -173,6 +173,8 @@ flutter run -d chrome --dart-define=TALKER_LOG_LEVEL=all --dart-define=TALKER_MA
 | `RECEIVE_TIMEOUT` | int | `30` | Dio 响应超时（秒） |
 | `SEND_TIMEOUT` | int | `30` | Dio 发送超时（秒） |
 | `IMAGE_UPLOAD_TIMEOUT` | int | `120` | 外链图床上传 send/receive 超时（秒；Web 代理 `/ext-upload` 同上限） |
+| `UPDATE_MANIFEST_URL` | String | GitHub raw `docs/release/latest.json` | 应用升级清单 URL |
+| `DISTRIBUTION` | String | `github` | 分发渠道：`github` / `play`（影响升级 CTA 链接） |
 
 新增配置项规则：
 1. 在 `EnvConfig` 中添加 `static const` 字段，使用 `Xxx.fromEnvironment('KEY', defaultValue: ...)` 

@@ -61,6 +61,19 @@ class EnvConfig {
     defaultValue: 120,
   );
 
+  /// 应用升级清单 URL（默认 GitHub raw latest.json）
+  static const String updateManifestUrl = String.fromEnvironment(
+    'UPDATE_MANIFEST_URL',
+    defaultValue:
+        'https://raw.githubusercontent.com/Shirolin/s1-app/main/docs/release/latest.json',
+  );
+
+  /// 分发渠道：`github`（默认）或 `play`（上架包 CTA 优先 Play）
+  static const String distribution = String.fromEnvironment(
+    'DISTRIBUTION',
+    defaultValue: 'github',
+  );
+
   // ── 监控 ──────────────────────────────────────────────
 
   /// Sentry DSN（通过 --dart-define 注入，为空则禁用 Sentry）

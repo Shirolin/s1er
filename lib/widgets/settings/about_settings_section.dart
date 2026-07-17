@@ -2,8 +2,12 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:talker_flutter/talker_flutter.dart';
 
+import '../../models/app_exceptions.dart';
 import '../../providers/talker_provider.dart';
+import '../../providers/update_check_provider.dart';
 import '../../theme/app_theme.dart';
+import '../../utils/s1_snack_bar.dart';
+import '../app_update_dialog.dart';
 import 'settings_section_header.dart';
 
 class AboutSettingsSection extends StatelessWidget {
@@ -21,6 +25,7 @@ class AboutSettingsSection extends StatelessWidget {
             SettingsSectionHeader(title: '关于'),
             SizedBox(height: 8),
             _VersionTile(),
+            _CheckUpdateTile(),
           ],
         ),
       ),
@@ -95,6 +100,66 @@ class _VersionTileState extends ConsumerState<_VersionTile> {
         contentPadding: const EdgeInsets.symmetric(horizontal: 8),
         shape: itemShape,
       ),
+    );
+  }
+}
+
+class _CheckUpdateTile extends ConsumerStatefulWidget {
+  const _CheckUpdateTile();
+
+  @override
+  ConsumerState<_CheckUpdateTile> createState() => _CheckUpdateTileState();
+}
+
+class _CheckUpdateTileState extends ConsumerState<_CheckUpdateTile> {
+  Future<void> _onTap() async {
+    final notifier = ref.read(updateCheckProvider.notifier);
+    try {
+      final evaluation = await notifier.checkManual();
+      if (!mounted) return;
+      if (evaluation.shouldShowDialog) {
+        await showAppUpdateDialog(
+          context,
+          evaluation: evaluation,
+          onPromptInteracted: notifier.markPromptInteracted,
+          onIgnoreVersion: notifier.ignoreVersion,
+        );
+        return;
+      }
+      final message = evaluation.userMessage ?? '已是最新版本';
+      S1SnackBar.show(context, message: message);
+    } on UpdateCheckException catch (e) {
+      if (!mounted) return;
+      S1SnackBar.show(context, message: e.message);
+    } on Object catch (e) {
+      if (!mounted) return;
+      S1SnackBar.show(context, message: '检查更新失败：$e');
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final checking = ref.watch(
+      updateCheckProvider.select((s) => s.isChecking),
+    );
+    final scheme = Theme.of(context).colorScheme;
+    const itemShape = RoundedRectangleBorder(
+      borderRadius: S1Shape.small,
+    );
+
+    return ListTile(
+      leading: Icon(Icons.system_update_alt, color: scheme.onSurfaceVariant),
+      title: const Text('检查更新'),
+      subtitle: Text(
+        checking ? '正在检查…' : '从发布渠道获取最新版本',
+        style: Theme.of(context).textTheme.bodySmall?.copyWith(
+              color: scheme.onSurfaceVariant,
+            ),
+      ),
+      enabled: !checking,
+      onTap: checking ? null : _onTap,
+      contentPadding: const EdgeInsets.symmetric(horizontal: 8),
+      shape: itemShape,
     );
   }
 }

@@ -44,5 +44,6 @@ void main() {
     expect(find.text('自定义调试种子色 (Hex)'), findsNothing);
     expect(find.text('标准'), findsOneWidget);
     expect(find.text('版本'), findsOneWidget);
+    expect(find.text('检查更新'), findsOneWidget);
   });
 }

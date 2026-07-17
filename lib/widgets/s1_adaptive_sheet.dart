@@ -26,6 +26,10 @@ Future<T?> showS1AdaptiveSheet<T>({
   bool isScrollControlled = true,
   S1DesktopSheetPresentation desktopPresentation =
       S1DesktopSheetPresentation.dialog,
+
+  /// When true with [S1DesktopSheetPresentation.sideSheet], the panel
+  /// height shrinks to its child instead of filling the viewport.
+  bool desktopSideSheetFitContent = false,
 }) {
   if (!context.isExpandedOrAbove) {
     return showModalBottomSheet<T>(
@@ -42,23 +46,41 @@ Future<T?> showS1AdaptiveSheet<T>({
       context: context,
       barrierDismissible: true,
       barrierLabel: MaterialLocalizations.of(context).modalBarrierDismissLabel,
-      pageBuilder: (dialogContext, _, __) => SafeArea(
-        child: Align(
-          alignment: Alignment.centerRight,
-          child: Material(
-            color: Theme.of(dialogContext).colorScheme.surfaceContainerLow,
-            shape: const RoundedRectangleBorder(
-              borderRadius: BorderRadius.horizontal(left: Radius.circular(28)),
-            ),
-            clipBehavior: Clip.antiAlias,
-            child: SizedBox(
-              width: desktopMaxWidth,
-              height: double.infinity,
-              child: builder(dialogContext),
-            ),
+      pageBuilder: (dialogContext, _, __) {
+        return SafeArea(
+          child: LayoutBuilder(
+            builder: (context, constraints) {
+              final panel = Material(
+                color: Theme.of(dialogContext).colorScheme.surfaceContainerLow,
+                shape: const RoundedRectangleBorder(
+                  borderRadius:
+                      BorderRadius.horizontal(left: Radius.circular(28)),
+                ),
+                clipBehavior: Clip.antiAlias,
+                child: SizedBox(
+                  width: desktopMaxWidth,
+                  height: desktopSideSheetFitContent ? null : double.infinity,
+                  child: desktopSideSheetFitContent
+                      ? ConstrainedBox(
+                          constraints: BoxConstraints(
+                            maxHeight: constraints.maxHeight,
+                          ),
+                          child: builder(dialogContext),
+                        )
+                      : builder(dialogContext),
+                ),
+              );
+
+              return Align(
+                alignment: desktopSideSheetFitContent
+                    ? Alignment.topRight
+                    : Alignment.centerRight,
+                child: panel,
+              );
+            },
           ),
-        ),
-      ),
+        );
+      },
       transitionBuilder: (context, animation, secondaryAnimation, child) {
         return SlideTransition(
           position: Tween<Offset>(

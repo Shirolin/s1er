@@ -1,11 +1,16 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
+import '../models/blacklist_record.dart';
 import '../models/user.dart';
+import '../providers/auth_provider.dart';
+import '../providers/blacklist_provider.dart';
 import '../theme/app_theme.dart';
 import '../utils/compact_label.dart';
 import '../utils/format_utils.dart';
 import 's1_adaptive_sheet.dart';
+import 's1_click_region.dart';
 import 'web_avatar.dart';
 
 /// 展示用户资料 BottomSheet（帖子内点击头像触发）。
@@ -20,6 +25,7 @@ Future<void> showUserProfileSheet(
     isScrollControlled: true,
     desktopMaxWidth: 400,
     desktopPresentation: S1DesktopSheetPresentation.sideSheet,
+    desktopSideSheetFitContent: true,
     builder: (ctx) => _UserProfileSheet(
       future: future,
       onFilterByAuthor: onFilterByAuthor,
@@ -89,7 +95,7 @@ class _UserProfileSheet extends StatelessWidget {
   }
 }
 
-class _UserProfileContent extends StatelessWidget {
+class _UserProfileContent extends ConsumerWidget {
   const _UserProfileContent({
     required this.user,
     this.onFilterByAuthor,
@@ -100,16 +106,43 @@ class _UserProfileContent extends StatelessWidget {
   final VoidCallback? onFilterByAuthor;
   final bool isSelf;
 
+  void _openUserSpace(BuildContext context) {
+    Navigator.pop(context);
+    context.push(
+      '/user-space/${user.uid}?username=${Uri.encodeComponent(user.username)}',
+    );
+  }
+
+  void _openPm(BuildContext context) {
+    Navigator.pop(context);
+    context.push(
+      Uri(
+        path: '/pm/${user.uid}',
+        queryParameters: {
+          if (user.username.trim().isNotEmpty) 'name': user.username.trim(),
+        },
+      ).toString(),
+    );
+  }
+
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
     final avatarUrl = User.resolveAvatarUrl(
       user.avatar ??
           'https://avatar.stage1st.com/avatar.php?uid=${user.uid}&size=small',
     );
+    final auth = ref.watch(authStateProvider);
+    final pmBlocked = ref.watch(
+      blacklistHasScopeProvider(
+        (uid: user.uid, scope: BlacklistRecord.scopePm),
+      ),
+    );
+    final canSendPm = auth.isLoggedIn && !isSelf && !pmBlocked;
+    final showFilter = onFilterByAuthor != null;
 
     return SafeArea(
       child: SingleChildScrollView(
-        padding: const EdgeInsets.fromLTRB(24, 0, 24, 24),
+        padding: const EdgeInsets.fromLTRB(24, 16, 24, 24),
         child: Column(
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -126,6 +159,7 @@ class _UserProfileContent extends StatelessWidget {
               posts: user.posts,
               combat: user.combat,
               deadfish: user.deadfish,
+              onPostsTap: isSelf ? null : () => _openUserSpace(context),
             ),
             const SizedBox(height: 12),
             _DetailCard(user: user),
@@ -138,10 +172,10 @@ class _UserProfileContent extends StatelessWidget {
                 },
                 child: const Text('我的资料'),
               ),
-            ] else ...[
+            ] else if (showFilter || canSendPm) ...[
               Row(
                 children: [
-                  if (onFilterByAuthor != null)
+                  if (showFilter)
                     Expanded(
                       child: OutlinedButton(
                         onPressed: () {
@@ -151,19 +185,15 @@ class _UserProfileContent extends StatelessWidget {
                         child: const Text('只看该作者'),
                       ),
                     ),
-                  if (onFilterByAuthor != null) const SizedBox(width: 8),
-                  Expanded(
-                    child: FilledButton.icon(
-                      onPressed: () {
-                        Navigator.pop(context);
-                        context.push(
-                          '/user-space/${user.uid}?username=${Uri.encodeComponent(user.username)}',
-                        );
-                      },
-                      icon: const Icon(Icons.article_outlined, size: 18),
-                      label: const Text('Ta的帖子'),
+                  if (showFilter && canSendPm) const SizedBox(width: 8),
+                  if (canSendPm)
+                    Expanded(
+                      child: FilledButton.icon(
+                        onPressed: () => _openPm(context),
+                        icon: const Icon(Icons.mail_outline, size: 18),
+                        label: const Text('发消息'),
+                      ),
                     ),
-                  ),
                 ],
               ),
             ],
@@ -246,12 +276,14 @@ class _StatsRow extends StatelessWidget {
     required this.posts,
     required this.combat,
     required this.deadfish,
+    this.onPostsTap,
   });
 
   final int credits;
   final int posts;
   final int combat;
   final int deadfish;
+  final VoidCallback? onPostsTap;
 
   @override
   Widget build(BuildContext context) {
@@ -268,7 +300,14 @@ class _StatsRow extends StatelessWidget {
           children: [
             Expanded(child: _StatCell(label: '积分', value: credits)),
             _VerticalDivider(),
-            Expanded(child: _StatCell(label: '帖子', value: posts)),
+            Expanded(
+              child: _StatCell(
+                label: '帖子',
+                value: posts,
+                onTap: onPostsTap,
+                tooltip: onPostsTap != null ? '查看帖子' : null,
+              ),
+            ),
             _VerticalDivider(),
             Expanded(child: _StatCell(label: '战斗力', value: combat)),
             _VerticalDivider(),
@@ -281,17 +320,25 @@ class _StatsRow extends StatelessWidget {
 }
 
 class _StatCell extends StatelessWidget {
-  const _StatCell({required this.label, required this.value});
+  const _StatCell({
+    required this.label,
+    required this.value,
+    this.onTap,
+    this.tooltip,
+  });
 
   final String label;
   final int value;
+  final VoidCallback? onTap;
+  final String? tooltip;
 
   @override
   Widget build(BuildContext context) {
     final scheme = Theme.of(context).colorScheme;
     final textTheme = Theme.of(context).textTheme;
+    final isLink = onTap != null;
 
-    return Column(
+    final cell = Column(
       mainAxisSize: MainAxisSize.min,
       children: [
         CompactLabel.text(
@@ -299,7 +346,7 @@ class _StatCell extends StatelessWidget {
           style: CompactLabel.style(
             context,
             base: textTheme.titleMedium,
-            color: scheme.onSurface,
+            color: isLink ? scheme.primary : scheme.onSurface,
             fontWeight: FontWeight.bold,
           ),
         ),
@@ -308,11 +355,28 @@ class _StatCell extends StatelessWidget {
           label,
           style: CompactLabel.style(
             context,
-            color: scheme.onSurfaceVariant,
+            color: isLink ? scheme.primary : scheme.onSurfaceVariant,
           ),
         ),
       ],
     );
+
+    final tappable = isLink
+        ? S1ClickRegion(
+            onTap: onTap,
+            behavior: HitTestBehavior.opaque,
+            child: Semantics(
+              button: true,
+              label: tooltip ?? label,
+              child: cell,
+            ),
+          )
+        : cell;
+
+    if (tooltip != null) {
+      return Tooltip(message: tooltip!, child: tappable);
+    }
+    return tappable;
   }
 }
 

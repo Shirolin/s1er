@@ -9,9 +9,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
+- **版本约定**：Beta 阶段使用 `0.x`（见 `docs/release/README.md`）；当前 `0.1.0`
 - **Pre-commit**：支持环境变量 `S1_PRECOMMIT`（`full` 默认全量 / `lite` 仅 format+analyze / `skip` 跳过）；钩子委托 `scripts/pre-commit-hook.sh`，详见 README
 
-## [1.0.0] - 2026-07-15
+## [0.1.0] - 2026-07-15
 
 ### Added
 

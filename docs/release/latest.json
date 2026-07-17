@@ -1,7 +1,7 @@
 {
-  "latest": "1.0.0",
-  "minSupported": "1.0.0",
-  "notes": "",
+  "latest": "0.1.0",
+  "minSupported": "0.1.0",
+  "notes": "Beta",
   "publishedAt": "2026-07-17",
   "channels": {
     "github": "https://github.com/Shirolin/s1-app/releases/latest",

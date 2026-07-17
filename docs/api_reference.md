@@ -481,7 +481,7 @@ POST 字段：
 | `tid` | ✅ | 主题 ID |
 | `message` | ✅ | **仅用户正文**（可含 `[img]url[/img]`），不含客户端拼的 `[quote]` |
 | `noticeauthor` | 引用时 | 来自官方 quote helper（服务端编码 ID，非用户名） |
-| `noticetrimstr` | 引用时 | helper 返回的引用片段（含 findpost）；helper 常带 `[post]`，客户端提交前规范为 `[quote]` 以保留跳转链接 |
+| `noticetrimstr` | 引用时 | 有被引楼快照时用完整 `QuoteBuilder`（`[quote][url=findpost]…`）；否则用 helper 片段并将 `[post]` 规范为 `[quote]` |
 | `noticeauthormsg` | 引用时 | 用户正文缩写，上限约 100 字 |
 
 成功：`Message.messageval` 含 `succeed`（如 `post_reply_succeed`）。
@@ -492,12 +492,15 @@ POST 字段：
 GET forum.php?mod=post&action=reply&inajax=yes&tid={tid}&repquote={pid}
 ```
 
-解析 hidden：`noticeauthor`、`noticetrimstr`。Helper 的 `noticetrimstr` 可能为 `[post][url=findpost…]…[/post]`；`sendReply` 经 `QuoteInfo.submitNoticeTrimStr` 改写为 `[quote]…[/quote]` 再提交，否则入库展示会变成无 findpost 的 font 头，引用块无跳转按钮。
+解析 hidden：`noticeauthor`、`noticetrimstr`。提交时（`ComposeController.quoteInfoForSubmit`）：
+1. **有被引楼 `Post` 快照**：`noticeauthor` 仍用官方字段；`noticetrimstr` 换为 `QuoteBuilder.buildQuoteBbcode`（完整 findpost 头）。
+2. **仅有 helper 片段**：经 `QuoteInfo.submitNoticeTrimStr` 把 `[post]` 改成 `[quote]`。
 
 ### 引用块跳转契约
 
 跳转读 **viewthread 展示 HTML**：`QuoteBlock` 从引用段提取 `goto=findpost` 且含 `ptid=`（缺省用当前帖 `currentTid` + `pid`）。
-勿依赖「发帖时客户端嵌进 message 的 BBCode 文本」作为跳转来源；须保证 `noticetrimstr` 以 `[quote]` + findpost 入库。
+须保证 `noticetrimstr` 以带 findpost 的 `[quote]` 入库（优先完整 QuoteBuilder，勿依赖 helper 缩略 `[post]`）。
+**已发出的旧楼**若服务端 HTML 已是无链接 font 头，客户端无法凭空补出跳转按钮，需重新引用回复后才会有图标。
 
 ### 插图
 

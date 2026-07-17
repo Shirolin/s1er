@@ -420,6 +420,7 @@ class _StubComposeController extends ComposeController {
     required String fid,
     required String message,
     QuoteInfo? quoteInfo,
+    Post? quotedPost,
   }) async {
     return ReplySubmitResult(pid: '1', tid: tid);
   }

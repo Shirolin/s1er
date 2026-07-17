@@ -157,7 +157,7 @@ class _ComposeScreenState extends ConsumerState<ComposeScreen> {
     _subjectController.addListener(_onSubjectChanged);
     _messageFocusNode.addListener(_onMessageFocusChanged);
     if (widget.draftId != null) {
-      _draft = ComposeDraftStore.take(widget.draftId!);
+      _draft = ComposeDraftStore.peek(widget.draftId!);
     }
     final pid = _quotePid;
     _includeQuote = pid != null && pid.isNotEmpty;
@@ -918,10 +918,13 @@ class _ComposeScreenState extends ConsumerState<ComposeScreen> {
             fid: widget.fid!,
             message: userText,
             quoteInfo: quoting ? _quoteInfo : null,
+            quotedPost: quoting ? _draft?.post : null,
           );
 
       if (mounted) {
         if (result.isSuccess) {
+          final draftId = widget.draftId;
+          if (draftId != null) ComposeDraftStore.remove(draftId);
           _clearMessageDraft();
           S1SnackBar.show(context, message: '回复成功', bottomClearance: 16);
           setState(() => _allowPop = true);

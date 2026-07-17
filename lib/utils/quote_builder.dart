@@ -19,7 +19,8 @@ class QuoteBuilder {
 
   /// 将引用块与用户正文合并为预览串。
   ///
-  /// **勿用于 `sendReply` 的 message**：提交通道只发用户正文 + 官方 `noticetrimstr`。
+  /// **勿用于 `sendReply` 的 message**：提交通道为用户正文 + `noticetrimstr`
+  ///（有快照时 trim 用 [buildQuoteBbcode]）。
   @Deprecated(
     'Submit via QuoteInfo + sendReply; message must not embed client quotes',
   )

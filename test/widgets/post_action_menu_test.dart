@@ -30,10 +30,11 @@ void main() {
     expect(find.text('编辑'), findsOneWidget);
     expect(find.text('评分'), findsOneWidget);
     expect(find.text('分享'), findsOneWidget);
+    expect(find.text('复制全文'), findsOneWidget);
     expect(find.text('加入黑名单'), findsOneWidget);
     expect(find.text('举报'), findsOneWidget);
     expect(find.byType(S1MenuDivider), findsOneWidget);
-    expect(find.byType(MenuItemButton), findsNWidgets(7));
+    expect(find.byType(MenuItemButton), findsNWidgets(8));
 
     await tester.tap(find.text('只看该作者'));
     await tester.pumpAndSettle();
@@ -137,6 +138,28 @@ void main() {
     expect(reportTapped, isTrue);
   });
 
+  testWidgets('PostActionMenu invokes copy text callback', (tester) async {
+    var copyTapped = false;
+
+    await tester.pumpWidget(
+      MaterialApp(
+        theme: AppTheme.lightTheme('purple'),
+        home: Scaffold(
+          body: PostActionMenu(
+            onCopyText: () => copyTapped = true,
+          ),
+        ),
+      ),
+    );
+
+    await tester.tap(find.byIcon(Icons.more_vert));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('复制全文'));
+    await tester.pumpAndSettle();
+
+    expect(copyTapped, isTrue);
+  });
+
   testWidgets('PostActionMenu shows disabled labels for unimplemented actions',
       (tester) async {
     await tester.pumpWidget(
@@ -154,6 +177,7 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(find.text('回复'), findsOneWidget);
+    expect(find.text('复制全文'), findsOneWidget);
     expect(find.text('举报'), findsOneWidget);
   });
 }

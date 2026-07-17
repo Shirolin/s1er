@@ -130,10 +130,13 @@ class BbcodeRenderer extends ConsumerWidget {
       );
     }
 
-    return Column(
+    final column = Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: widgets,
     );
+    // 仅顶层包 SelectionArea，避免引用区内嵌再包一层切断选区。
+    if (quoteDepth > 0) return column;
+    return SelectionArea(child: column);
   }
 
   List<Widget> _buildParts(

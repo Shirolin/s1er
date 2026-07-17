@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../models/post.dart';
 import '../providers/auth_provider.dart';
@@ -8,6 +9,8 @@ import '../theme/app_theme.dart';
 import '../utils/compact_label.dart';
 import '../utils/format_utils.dart';
 import '../utils/post_image_index_counter.dart';
+import '../utils/post_plain_text.dart';
+import '../utils/s1_snack_bar.dart';
 import 'bbcode_renderer.dart';
 import 'post_action_menu.dart';
 import 'rate_log_card.dart';
@@ -150,7 +153,26 @@ class _PostItemState extends ConsumerState<PostItem>
     );
   }
 
+  Future<void> _copyPostText(BuildContext context) async {
+    final plain = PostPlainText.fromMessage(widget.post.message);
+    await Clipboard.setData(ClipboardData(text: plain));
+    if (!context.mounted) return;
+    S1SnackBar.show(context, message: '已复制');
+  }
+
   Widget _buildAuthorHeader(BuildContext context, String timeStr, int floor) {
+    final canCopy = widget.post.message.trim().isNotEmpty;
+    final menu = PostActionMenu(
+      onFilterByAuthor: widget.onFilterByAuthor,
+      onReply: widget.onReply,
+      onShare: widget.onShare,
+      onCopyText: canCopy ? () => _copyPostText(context) : null,
+      onEdit: widget.onEdit,
+      onRate: widget.onRate,
+      onAddToBlacklist: widget.onAddToBlacklist,
+      onReport: widget.onReport,
+    );
+
     final avatar = Semantics(
       button: true,
       label: '查看 ${widget.post.author} 的资料',
@@ -192,15 +214,7 @@ class _PostItemState extends ConsumerState<PostItem>
       runSpacing: 2,
       children: [
         _FloorBadge(floor: floor),
-        PostActionMenu(
-          onFilterByAuthor: widget.onFilterByAuthor,
-          onReply: widget.onReply,
-          onShare: widget.onShare,
-          onEdit: widget.onEdit,
-          onRate: widget.onRate,
-          onAddToBlacklist: widget.onAddToBlacklist,
-          onReport: widget.onReport,
-        ),
+        menu,
       ],
     );
 
@@ -225,15 +239,7 @@ class _PostItemState extends ConsumerState<PostItem>
             Expanded(child: authorDetails),
             _FloorBadge(floor: floor),
             const SizedBox(width: 2),
-            PostActionMenu(
-              onFilterByAuthor: widget.onFilterByAuthor,
-              onReply: widget.onReply,
-              onShare: widget.onShare,
-              onEdit: widget.onEdit,
-              onRate: widget.onRate,
-              onAddToBlacklist: widget.onAddToBlacklist,
-              onReport: widget.onReport,
-            ),
+            menu,
           ],
         );
       },

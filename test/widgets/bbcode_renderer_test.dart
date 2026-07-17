@@ -262,7 +262,7 @@ void main() {
       expect(find.byType(BbcodeRenderer), findsOneWidget);
     });
 
-    testWidgets('returns Column as root widget', (tester) async {
+    testWidgets('wraps top-level content in SelectionArea', (tester) async {
       await tester.pumpWidget(
         _wrapBbcode(
           BbcodeRenderer(
@@ -271,7 +271,25 @@ void main() {
           ),
         ),
       );
+      expect(find.byType(SelectionArea), findsOneWidget);
       expect(find.byType(Column), findsOneWidget);
+    });
+
+    testWidgets('nested quote renderer does not add another SelectionArea',
+        (tester) async {
+      await tester.pumpWidget(
+        _wrapBbcode(
+          BbcodeRenderer(
+            bbcode: 'before [quote]quoted[/quote] after',
+            imageIndexCounter: PostImageIndexCounter(),
+          ),
+        ),
+      );
+      // Outer BbcodeRenderer + QuoteBlock's nested BbcodeRenderer → only one
+      // SelectionArea at depth 0.
+      expect(find.byType(BbcodeRenderer), findsWidgets);
+      expect(find.byType(QuoteBlock), findsOneWidget);
+      expect(find.byType(SelectionArea), findsOneWidget);
     });
 
     testWidgets('shows expand chip when images exceed per-post limit',

@@ -481,7 +481,7 @@ POST 字段：
 | `tid` | ✅ | 主题 ID |
 | `message` | ✅ | **仅用户正文**（可含 `[img]url[/img]`），不含客户端拼的 `[quote]` |
 | `noticeauthor` | 引用时 | 来自官方 quote helper（服务端编码 ID，非用户名） |
-| `noticetrimstr` | 引用时 | helper 返回的引用片段（含 findpost / 常带 `[post]`） |
+| `noticetrimstr` | 引用时 | helper 返回的引用片段（含 findpost）；helper 常带 `[post]`，客户端提交前规范为 `[quote]` 以保留跳转链接 |
 | `noticeauthormsg` | 引用时 | 用户正文缩写，上限约 100 字 |
 
 成功：`Message.messageval` 含 `succeed`（如 `post_reply_succeed`）。
@@ -492,12 +492,12 @@ POST 字段：
 GET forum.php?mod=post&action=reply&inajax=yes&tid={tid}&repquote={pid}
 ```
 
-解析 hidden：`noticeauthor`、`noticetrimstr`。
+解析 hidden：`noticeauthor`、`noticetrimstr`。Helper 的 `noticetrimstr` 可能为 `[post][url=findpost…]…[/post]`；`sendReply` 经 `QuoteInfo.submitNoticeTrimStr` 改写为 `[quote]…[/quote]` 再提交，否则入库展示会变成无 findpost 的 font 头，引用块无跳转按钮。
 
 ### 引用块跳转契约
 
 跳转读 **viewthread 展示 HTML**：`QuoteBlock` 从引用段提取 `goto=findpost` 且含 `ptid=`（缺省用当前帖 `currentTid` + `pid`）。
-勿依赖「发帖时客户端嵌进 message 的 BBCode 文本」作为跳转来源。
+勿依赖「发帖时客户端嵌进 message 的 BBCode 文本」作为跳转来源；须保证 `noticetrimstr` 以 `[quote]` + findpost 入库。
 
 ### 插图
 
@@ -783,8 +783,10 @@ S1 实际配置：
 GET 本身会产生服务端签到写入。客户端仅在用户点击后调用，并显式附带
 formhash（HTTP 拦截器只对 POST/PUT 自动注入）。响应为 Discuz Ajax XML/CDATA，
 解析 `succeedhandle_*` / `errorhandle_*`；消息含「已签到」视为当日已签。
+成功或「已签到」时按 `uid + 本地日历日` 写入 SettingsStore，供资料页恢复「今日已签到」展示
+（无只读查询接口；缓存仅服务 UI）。
 
-代码：`ForumToolsService.dailySign` → 资料页 `DailySignCard`。自动签到后置。
+代码：`ForumToolsService.dailySign` → `dailyAttendanceProvider` → 资料页 `DailySignCard`。自动签到后置。
 
 ---
 

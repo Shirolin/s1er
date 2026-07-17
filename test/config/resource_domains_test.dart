@@ -2,6 +2,23 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:s1_app/config/resource_domains.dart';
 
 void main() {
+  group('ResourceDomains.isForumHost', () {
+    test('recognizes current and historical forum hosts', () {
+      expect(ResourceDomains.isForumHost('stage1st.com'), isTrue);
+      expect(ResourceDomains.isForumHost('WWW.Stage1st.COM'), isTrue);
+      expect(ResourceDomains.isForumHost('bbs.stage1st.com'), isTrue);
+      expect(ResourceDomains.isForumHost('bbs.saraba1st.com'), isTrue);
+      expect(ResourceDomains.isForumHost('www.saraba1st.com'), isTrue);
+      expect(ResourceDomains.isForumHost('saraba1st.com'), isTrue);
+    });
+
+    test('does not treat CDN or lookalike hosts as forum pages', () {
+      expect(ResourceDomains.isForumHost('img.stage1st.com'), isFalse);
+      expect(ResourceDomains.isForumHost('app.saraba1st.com'), isFalse);
+      expect(ResourceDomains.isForumHost('stage1st.com.evil.example'), isFalse);
+    });
+  });
+
   group('ResourceDomains.isAllowedProxyTarget', () {
     test('allows https auth image host', () {
       expect(

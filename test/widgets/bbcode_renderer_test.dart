@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:go_router/go_router.dart';
 import 'package:s1_app/providers/settings_provider.dart';
 import 'package:s1_app/theme/app_theme.dart';
 import 'package:s1_app/utils/bbcode_parser.dart';
@@ -346,6 +347,48 @@ void main() {
       final blueLink = linkColor();
       expect(blueLink, isNotNull);
       expect(blueLink, equals(bluePrimary));
+    });
+
+    testWidgets('opens forum links with the App router', (tester) async {
+      final router = GoRouter(
+        routes: [
+          GoRoute(
+            path: '/',
+            builder: (context, state) => Scaffold(
+              body: BbcodeRenderer(
+                bbcode:
+                    '[url=https://bbs.stage1st.com/2b/forum.php?mod=viewthread&tid=123&page=2]论坛链接[/url]',
+                imageIndexCounter: PostImageIndexCounter(),
+              ),
+            ),
+          ),
+          GoRoute(
+            path: '/thread/:tid',
+            builder: (context, state) => Scaffold(
+              body: Text('主题 ${state.pathParameters['tid']}'),
+            ),
+          ),
+        ],
+      );
+      addTearDown(router.dispose);
+
+      await tester.pumpWidget(
+        ProviderScope(
+          overrides: [
+            settingsProvider.overrideWith(() => SettingsNotifier()),
+          ],
+          child: MaterialApp.router(
+            theme: AppTheme.lightTheme('purple'),
+            routerConfig: router,
+          ),
+        ),
+      );
+
+      await tester.tapOnText(find.textRange.ofSubstring('论坛链接'));
+      await tester.pumpAndSettle();
+
+      expect(router.state.uri.toString(), '/thread/123?page=2');
+      expect(find.text('主题 123'), findsOneWidget);
     });
   });
 }

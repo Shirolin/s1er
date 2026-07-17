@@ -11,6 +11,14 @@ class QuoteInfo {
   /// 含 findpost 链接的引用 BBCode/HTML 片段。
   final String noticeTrimStr;
 
+  /// 提交用的引用片段：将 helper 常见的 `[post]…[/post]` 规范为 `[quote]…[/quote]`，
+  /// 以便 Discuz 入库后保留 findpost 链接（供 QuoteBlock 跳转）。
+  String get submitNoticeTrimStr {
+    return noticeTrimStr
+        .replaceAll(RegExp(r'\[post\]', caseSensitive: false), '[quote]')
+        .replaceAll(RegExp(r'\[/post\]', caseSensitive: false), '[/quote]');
+  }
+
   /// 从 quote helper XML/HTML 中解析。
   static QuoteInfo? tryParse(String raw) {
     if (raw.trim().isEmpty) return null;

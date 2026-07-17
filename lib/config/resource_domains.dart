@@ -50,6 +50,21 @@ class ResourceDomains {
   /// API 主域名（用于代理默认路由）
   static const String apiHost = 'stage1st.com';
 
+  /// 论坛站点域名（含历史域名），用于识别可由客户端原生处理的站内链接。
+  ///
+  /// 这与资源域名规则分开：图片/CDN 的加载、代理和 Cookie 策略不应决定
+  /// 一个链接是否属于论坛页面。
+  ///
+  /// 历史域名备忘：`*.saraba1st.com` 为更早主站；现已迁至 `*.stage1st.com`。
+  static const Set<String> forumHosts = {
+    apiHost,
+    'www.stage1st.com',
+    'bbs.stage1st.com',
+    'saraba1st.com',
+    'www.saraba1st.com',
+    'bbs.saraba1st.com',
+  };
+
   /// 认证 Cookie 前缀（用于过滤无关 Cookie）
   static const String cookiePrefix = 'B7Y9_2f85_';
 
@@ -84,6 +99,10 @@ class ResourceDomains {
     }
     return null;
   }
+
+  /// 是否为论坛当前或历史站点域名。
+  static bool isForumHost(String host) =>
+      forumHosts.contains(host.toLowerCase());
 
   /// 该 host 是否需要通过 Dio 加载（带 Cookie）
   static bool requiresAuth(String host) {

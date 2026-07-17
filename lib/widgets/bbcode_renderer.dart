@@ -1,6 +1,9 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_html/flutter_html.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
 import 'package:url_launcher/url_launcher.dart';
 import '../config/constants.dart';
 import '../models/emoticon_catalog.dart';
@@ -10,6 +13,7 @@ import '../utils/bbcode_cache.dart';
 import '../utils/bbcode_parser.dart';
 import '../utils/post_image_index_counter.dart';
 import '../utils/post_image_urls.dart';
+import '../utils/post_link_resolver.dart';
 import '../utils/quote_jump.dart';
 import 'emoticon_widget.dart';
 import 'force_show_images.dart';
@@ -325,8 +329,14 @@ class _MemoizedHtmlBlockState extends State<_MemoizedHtmlBlock> {
         'li': Style(margin: Margins.only(bottom: 8)),
       },
       onLinkTap: (url, _, __) {
-        if (url != null) {
-          launchUrl(Uri.parse(url), mode: LaunchMode.externalApplication);
+        if (url == null) return;
+        switch (PostLinkResolver.resolve(url)) {
+          case InternalPostLink(:final location):
+            context.push(location);
+          case ExternalPostLink(:final uri):
+            unawaited(launchUrl(uri, mode: LaunchMode.externalApplication));
+          case InvalidPostLink():
+            break;
         }
       },
       extensions: [

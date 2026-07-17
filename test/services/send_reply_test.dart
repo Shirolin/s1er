@@ -23,6 +23,38 @@ void main() {
     });
   });
 
+  group('QuoteInfo.submitNoticeTrimStr', () {
+    test('rewrites [post] wrapper to [quote], keeps findpost', () {
+      const info = QuoteInfo(
+        noticeAuthor: 'd755encoded',
+        noticeTrimStr:
+            '[post][url=forum.php?mod=redirect&goto=findpost&pid=1&ptid=2]a[/url][/post]',
+      );
+      expect(
+        info.submitNoticeTrimStr,
+        '[quote][url=forum.php?mod=redirect&goto=findpost&pid=1&ptid=2]a[/url][/quote]',
+      );
+      expect(info.submitNoticeTrimStr, isNot(contains('[post]')));
+      expect(info.submitNoticeTrimStr, contains('goto=findpost'));
+    });
+
+    test('leaves already-[quote] trim unchanged', () {
+      const trim =
+          '[quote][url=forum.php?mod=redirect&goto=findpost&pid=1&ptid=2]'
+          'bob[/url] body[/quote]';
+      const info = QuoteInfo(noticeAuthor: 'x', noticeTrimStr: trim);
+      expect(info.submitNoticeTrimStr, trim);
+    });
+
+    test('rewrites case-insensitively', () {
+      const info = QuoteInfo(
+        noticeAuthor: 'x',
+        noticeTrimStr: '[POST]inner[/POST]',
+      );
+      expect(info.submitNoticeTrimStr, '[quote]inner[/quote]');
+    });
+  });
+
   group('ApiService.parseSendReplyResponse', () {
     test('success with Variables pid/tid', () {
       final result = ApiService.parseSendReplyResponse({

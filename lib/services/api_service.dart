@@ -912,7 +912,7 @@ class ApiService {
     };
     if (quoteInfo != null) {
       data['noticeauthor'] = quoteInfo.noticeAuthor;
-      data['noticetrimstr'] = quoteInfo.noticeTrimStr;
+      data['noticetrimstr'] = quoteInfo.submitNoticeTrimStr;
       final abbr = (noticeAuthorMsg ?? message).trim();
       data['noticeauthormsg'] =
           abbr.length <= 100 ? abbr : '${abbr.substring(0, 100)}…';

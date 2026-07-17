@@ -11,13 +11,24 @@ abstract class S1MenuSpec {
   static const double maxWidth = 280;
   static const double underAnchorGap = 4;
 
+  /// 顶层菜单与窗口边缘的最小间距（[MenuAnchor.reservedPadding]）。
+  static const double screenEdgePadding = 24;
+
   /// [MenuAnchor] 在 LTR + [AlignmentDirectional.topEnd] 下默认向右展开；
-  /// 左移一整屏菜单宽度，使菜单右缘与 ⋮ 按钮右缘对齐。
+  /// 左移 [minWidth]，使菜单大致与 ⋮ 右缘对齐。实际更宽时由
+  /// [reservedPadding] 在贴边时把整块菜单收回安全区。
   static Offset underAnchorOffset(BuildContext context) {
     final textDirection = Directionality.of(context);
     final dx = textDirection == TextDirection.rtl ? minWidth : -minWidth;
     return Offset(dx, underAnchorGap);
   }
+
+  static EdgeInsets get reservedPadding => const EdgeInsets.fromLTRB(
+        screenEdgePadding,
+        8,
+        screenEdgePadding,
+        8,
+      );
 
   static MenuStyle anchoredMenuStyle(BuildContext context) {
     final base = MenuTheme.of(context).style ?? const MenuStyle();
@@ -117,7 +128,7 @@ class S1IconMenuAnchor extends StatelessWidget {
     return MenuAnchor(
       style: S1MenuSpec.anchoredMenuStyle(context),
       alignmentOffset: offset,
-      reservedPadding: const EdgeInsets.fromLTRB(8, 8, 16, 8),
+      reservedPadding: S1MenuSpec.reservedPadding,
       crossAxisUnconstrained: false,
       menuChildren: menuChildren,
       builder: (context, controller, child) {

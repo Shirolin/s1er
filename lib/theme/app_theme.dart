@@ -164,6 +164,8 @@ class AppTheme {
         centerTitle: true,
         elevation: 0,
         scrolledUnderElevation: 0,
+        // 避免末尾 ⋮ / 菜单锚点贴齐窗口右缘，连带弹出菜单贴边。
+        actionsPadding: EdgeInsetsDirectional.only(end: 8),
       ),
       cardTheme: CardThemeData(
         shape: S1Shape.cardShape,

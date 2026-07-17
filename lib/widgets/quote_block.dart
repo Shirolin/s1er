@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
-import 'package:go_router/go_router.dart';
 import '../models/thread_destination.dart';
 import '../theme/app_theme.dart';
+import '../utils/internal_navigation.dart';
 import '../utils/post_image_index_counter.dart';
 import '../utils/quote_jump.dart';
 import '../utils/thread_navigation.dart';
@@ -209,6 +209,6 @@ class QuoteBlock extends StatelessWidget {
     final destination = link.pid != null
         ? ThreadPost(link.tid, link.pid!)
         : ResumeThread(link.tid);
-    context.push(ThreadRouteCodec.encodePath(destination));
+    openInternalLocation(context, ThreadRouteCodec.encodePath(destination));
   }
 }

@@ -68,7 +68,9 @@ final _router = GoRouter(
       pageBuilder: (context, state) {
         final fid = state.pathParameters['fid']!;
         return NoTransitionPage<void>(
-          key: ValueKey('forum-$fid'),
+          // 使用 go_router 的 pageKey：同 path 改 query 时保持稳定（不 remount），
+          // push 多份同 fid/tid 时也唯一，避免 Navigator 重复 key 断言。
+          key: state.pageKey,
           child: ForumListScreen(
             fid: fid,
             selectedThreadId:
@@ -81,12 +83,11 @@ final _router = GoRouter(
     ),
     GoRoute(
       path: '/thread/:tid',
-      // Key only by tid so in-thread `?page=` replace syncs URL without remount.
       pageBuilder: (context, state) {
         final tid = state.pathParameters['tid']!;
         final intent = ThreadRouteCodec.intentFromUri(state.uri, tid: tid);
         return NoTransitionPage<void>(
-          key: ValueKey('thread-$tid'),
+          key: state.pageKey,
           child: ThreadOpenIntentScope(
             tid: tid,
             intent: intent,

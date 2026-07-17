@@ -48,8 +48,8 @@ class _ForumListScreenState extends ConsumerState<ForumListScreen> {
     ThreadDestination destination, {
     int? resumePageHint,
   }) {
-    // 同一 forum 页面使用稳定 Page key；用 go 更新查询参数，避免把两个
-    // `forum-$fid` Page 同时压入 Navigator 而触发重复 key 断言。
+    // 同一 forum 页面改查询参数时用 go，避免叠两层同 path（pageKey 虽唯一，
+    // 也不应把双栏状态拆成两条历史）。
     context.go(
       ThreadRouteCodec.encodeForumPath(
         widget.fid,

@@ -156,6 +156,7 @@ proxy_server.log
 # 临时脚本（非项目正式代码）
 scripts/fix-repos.js
 scripts/maven-proxy.js
+/distill_*.js
 
 # Hive 运行时数据
 *.hive

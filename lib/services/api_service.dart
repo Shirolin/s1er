@@ -1688,6 +1688,13 @@ class ApiService {
     return _parseThreadHtml(html, page: page);
   }
 
+  /// 测试用：解析空间回复列表 HTML。
+  static UserSpaceListResult parseSpaceReplyHtmlForTest(
+    String html, {
+    int page = 1,
+  }) =>
+      _parseReplyHtml(html, page: page);
+
   static UserSpaceListResult _parseThreadHtml(
     String html, {
     required int page,
@@ -1808,35 +1815,48 @@ class ApiService {
       for (var i = 1; i < blocks.length; i++) {
         final block = blocks[i];
 
-        final tidMatch = RegExp(
-          r'mod=viewthread&(?:amp;)?(?:p)?tid=(\d+)|goto=findpost&(?:amp;)?ptid=(\d+)&(?:amp;)?pid=&',
-        ).firstMatch(block);
-        if (tidMatch == null) continue;
-        final tid = tidMatch.group(1) ?? tidMatch.group(2) ?? '';
-
         final titleMatch = RegExp(
           r'<em[^>]*>(.*?)</em>',
           dotAll: true,
         ).firstMatch(block);
-        final subject =
+        var subject =
             titleMatch != null ? _stripHtml(titleMatch.group(1) ?? '') : '';
 
-        final replyRe = RegExp(
-          r'mod=redirect&(?:amp;)?goto=findpost&(?:amp;)?ptid=\d+&(?:amp;)?pid=(\d+)[^>]*>\s*(?:<div class="quote">)?<blockquote>(.*?)</blockquote>',
-          dotAll: true,
-        );
-        for (final rm in replyRe.allMatches(block)) {
+        // 优先从块内 findpost 链接取 tid（兼容 ptid&pid / pid&ptid；空 pid 为标题行）。
+        String? blockTid;
+        for (final m in _spaceFindPostAnchorRe.allMatches(block)) {
+          final href = _unescapeHtmlAmp(m.group(1) ?? '');
+          final parsed = _parseSpaceFindPostHref(href);
+          if (parsed == null) continue;
+          final (tid, pid) = parsed;
+          if (pid == null || pid.isEmpty) {
+            blockTid ??= tid;
+            if (subject.isEmpty) {
+              subject = _stripHtml(m.group(2) ?? '');
+            }
+            continue;
+          }
+          blockTid ??= tid;
           items.add(
             UserSpaceItem(
               tid: tid,
               subject: subject,
               dateline: 0,
-              replyExcerpt: _stripHtml(rm.group(2) ?? ''),
-              pid: rm.group(1),
+              replyExcerpt: _stripHtml(m.group(2) ?? ''),
+              pid: pid,
               isReply: true,
             ),
           );
         }
+
+        // 块内无 findpost 时再尝试 viewthread tid（兼容旧结构）。
+        if (blockTid == null) {
+          final tidMatch = RegExp(
+            r'mod=viewthread&(?:amp;)?(?:p)?tid=(\d+)',
+          ).firstMatch(block);
+          blockTid = tidMatch?.group(1);
+        }
+        if (blockTid == null) continue;
       }
     } else {
       // 桌面版模板
@@ -1848,20 +1868,20 @@ class ApiService {
         dotAll: true,
       );
 
-      final findpostRe = RegExp(
-        r'mod=redirect&(?:amp;)?goto=findpost&(?:amp;)?ptid=(\d+)&(?:amp;)?pid=(\d*)[&"][^>]*>(.*?)</a>',
-        dotAll: true,
-      );
-      for (final match in findpostRe.allMatches(html)) {
-        final tid = match.group(1) ?? '';
-        final pid = match.group(2) ?? '';
-        final text = _stripHtml(match.group(3) ?? '');
+      for (final match in _spaceFindPostAnchorRe.allMatches(html)) {
+        final href = _unescapeHtmlAmp(match.group(1) ?? '');
+        final parsed = _parseSpaceFindPostHref(href);
+        if (parsed == null) continue;
+        final (tid, pid) = parsed;
+        final text = _stripHtml(match.group(2) ?? '');
         if (tid.isEmpty) continue;
 
-        if (pid.isEmpty) {
+        if (pid == null || pid.isEmpty) {
           currentTid = tid;
           currentSubject = text;
-          final after = html.substring(match.end, match.end + 300);
+          final end =
+              match.end + 300 > html.length ? html.length : match.end + 300;
+          final after = html.substring(match.end, end);
           final fm = forumLinkRe.firstMatch(after);
           currentForum = fm != null ? _stripHtml(fm.group(1) ?? '') : null;
         } else {
@@ -1882,6 +1902,30 @@ class ApiService {
 
     final total = html.contains('class="nxt"') ? page + 1 : page;
     return UserSpaceListResult(items: items, totalPages: total);
+  }
+
+  /// 空间回复列表中的 findpost `<a href>`（pid/ptid 顺序不限；pid 可空=标题行）。
+  static final _spaceFindPostAnchorRe = RegExp(
+    r'<a\s+[^>]*href="([^"]*goto=findpost[^"]*)"[^>]*>(.*?)</a>',
+    caseSensitive: false,
+    dotAll: true,
+  );
+
+  static String _unescapeHtmlAmp(String s) =>
+      s.replaceAll('&amp;', '&').replaceAll('&amp;amp;', '&');
+
+  /// 解析空间 findpost href → `(tid, pid?)`；pid 空表示主题标题行。
+  static (String tid, String? pid)? _parseSpaceFindPostHref(String href) {
+    final m = RegExp(
+      r'goto=findpost&(?:amp;)?(?:ptid=(\d+)&(?:amp;)?pid=(\d*)|pid=(\d*)&(?:amp;)?ptid=(\d+))',
+      caseSensitive: false,
+    ).firstMatch(href);
+    if (m == null) return null;
+    final tid = m.group(1) ?? m.group(4) ?? '';
+    if (tid.isEmpty) return null;
+    final pidRaw = m.group(2) ?? m.group(3);
+    final pid = (pidRaw == null || pidRaw.isEmpty) ? null : pidRaw;
+    return (tid, pid);
   }
 
   static int _extractTotalPages(String html, int currentPage) {
@@ -1939,7 +1983,7 @@ class ApiService {
     );
     final url = uri.toString();
 
-    // 原生平台：只拿 302 header，不下 body
+    // 原生：followRedirects=false 读 Location；Web：浏览器可能自动跟随，需 realUri / HTML。
     final response = await _httpClient.get(
       url,
       options: Options(
@@ -1949,33 +1993,87 @@ class ApiService {
       ),
     );
 
-    // 优先从 Location header 解析
+    int? resolved;
+
     final location = response.headers.value('location');
     if (location != null) {
-      final redirected = Uri.parse(location);
-      final page = int.tryParse(redirected.queryParameters['page'] ?? '') ??
-          _pageFromPseudoStaticPath(redirected.path);
-      if (page != null && page >= 1) {
-        _pageCache[cacheKey] = page;
-        return page;
+      resolved = pageFromFindpostLocation(location, expectedTid: tid);
+    }
+
+    // 浏览器已跟随 302 时 Location 不可读，改用最终 URI（常含 page=）。
+    if (resolved == null) {
+      final real = response.realUri;
+      if (real.toString() != url &&
+          (real.path.contains('viewthread') ||
+              real.path.contains('thread-') ||
+              real.queryParameters.containsKey('page') ||
+              real.queryParameters.containsKey('tid'))) {
+        resolved = pageFromFindpostLocation(real.toString(), expectedTid: tid);
       }
     }
 
-    // Web 代理已跟随重定向，从响应 HTML 解析
-    final html = response.data as String? ?? '';
-    final pageMatch = RegExp(
-      r'<strong[^>]*>(\d+)</strong>|class="cur"[^>]*>(\d+)<',
-    ).firstMatch(html);
-    if (pageMatch != null) {
-      final p = pageMatch.group(1) ?? pageMatch.group(2) ?? '';
-      final page = int.tryParse(p);
-      if (page != null && page >= 1) {
-        _pageCache[cacheKey] = page;
-        return page;
-      }
+    // HTML：限定 div.pg 内的当前页，避免误匹配正文 <strong>。
+    if (resolved == null) {
+      final html = response.data as String? ?? '';
+      resolved = pageFromViewthreadHtml(html);
+    }
+
+    if (resolved != null) {
+      _pageCache[cacheKey] = resolved;
+      return resolved;
     }
 
     throw StateError('locatePostPage failed for tid=$tid pid=$pid');
+  }
+
+  /// 从 findpost 的 Location 解析页码。
+  ///
+  /// S1/Discuz 对首页楼层常返回 `page=0` 或省略 `page`；二者均视为第 1 页。
+  static int? pageFromFindpostLocation(
+    String location, {
+    String? expectedTid,
+  }) {
+    final redirected = Uri.parse(location);
+    final pageParam = redirected.queryParameters['page'];
+    final fromQuery = int.tryParse(pageParam ?? '');
+    final fromPath = _pageFromPseudoStaticPath(redirected.path);
+
+    int? page = fromQuery ?? fromPath;
+    if (page != null) {
+      // Discuz：首页重定向用 page=0（或负值异常），归一为 1。
+      if (page < 1) page = 1;
+      return page;
+    }
+
+    // 无 page 的同帖 viewthread / 伪静态链接触发：视为第 1 页。
+    if (expectedTid != null &&
+        expectedTid.isNotEmpty &&
+        _isViewthreadLocationForTid(redirected, expectedTid)) {
+      return 1;
+    }
+    return null;
+  }
+
+  /// 从已加载的 viewthread HTML 解析当前页（`div.pg > strong`）。
+  static int? pageFromViewthreadHtml(String html) {
+    if (html.isEmpty) return null;
+    final pgMatch = RegExp(
+      r'<div[^>]*class="[^"]*\bpg\b[^"]*"[^>]*>[\s\S]*?<strong[^>]*>\s*(\d+)\s*</strong>',
+      caseSensitive: false,
+    ).firstMatch(html);
+    if (pgMatch != null) {
+      final page = int.tryParse(pgMatch.group(1) ?? '');
+      if (page != null) return page < 1 ? 1 : page;
+    }
+    return null;
+  }
+
+  static bool _isViewthreadLocationForTid(Uri location, String tid) {
+    final qTid = location.queryParameters['tid'];
+    if (qTid == tid) return true;
+    final pathMatch =
+        RegExp('thread-$tid-(\\d+)-\\d+\\.html').firstMatch(location.path);
+    return pathMatch != null;
   }
 
   /// 解析 `thread-{tid}-{page}-1.html` 伪静态路径中的页码。

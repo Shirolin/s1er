@@ -179,8 +179,9 @@ class PostNotifier extends AsyncNotifier<PostListState> {
         openScrollTarget: ScrollToPid(pid),
         clearLocateError: true,
       );
-    } catch (e) {
+    } catch (e, st) {
       if (!ref.mounted) rethrow;
+      talker.handle(e, st, 'locatePid failed tid=$tid pid=$pid');
       final loaded = await _loadPage(1);
       return loaded.copyWith(
         openScrollTarget: const ScrollToPageTop(),

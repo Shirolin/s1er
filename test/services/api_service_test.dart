@@ -804,5 +804,138 @@ void main() {
         );
       });
     });
+
+    group('pageFromFindpostLocation', () {
+      test('maps Discuz page=0 redirect to page 1', () {
+        expect(
+          ApiService.pageFromFindpostLocation(
+            'forum.php?mod=viewthread&tid=2187698&page=0#pid52629852',
+            expectedTid: '2187698',
+          ),
+          1,
+        );
+      });
+
+      test('keeps explicit page >= 1', () {
+        expect(
+          ApiService.pageFromFindpostLocation(
+            'forum.php?mod=viewthread&tid=2274556&page=3261#pid60800000',
+            expectedTid: '2274556',
+          ),
+          3261,
+        );
+      });
+
+      test('omitted page on same-tid viewthread is page 1', () {
+        expect(
+          ApiService.pageFromFindpostLocation(
+            'forum.php?mod=viewthread&tid=100',
+            expectedTid: '100',
+          ),
+          1,
+        );
+      });
+
+      test('reads page from pseudo-static path', () {
+        expect(
+          ApiService.pageFromFindpostLocation(
+            'https://stage1st.com/2b/thread-100-3-1.html',
+            expectedTid: '100',
+          ),
+          3,
+        );
+      });
+
+      test('returns null for unrelated location', () {
+        expect(
+          ApiService.pageFromFindpostLocation(
+            'https://example.com/other',
+            expectedTid: '100',
+          ),
+          isNull,
+        );
+      });
+
+      test('mobile viewthread without page is page 1', () {
+        expect(
+          ApiService.pageFromFindpostLocation(
+            'forum.php?mod=viewthread&tid=2017380&mobile=2',
+            expectedTid: '2017380',
+          ),
+          1,
+        );
+      });
+    });
+
+    group('pageFromViewthreadHtml', () {
+      test('reads current page from div.pg strong', () {
+        const html = '''
+<div id="pgt" class="pgs mbm cl">
+<div class="pg"><strong>3</strong><a href="thread-1-4-1.html">4</a></div>
+</div>
+<p>正文里也有 <strong>登录</strong> 不应干扰</p>
+''';
+        expect(ApiService.pageFromViewthreadHtml(html), 3);
+      });
+
+      test('returns null when no pagination', () {
+        expect(
+          ApiService.pageFromViewthreadHtml('<div id="messagetext">err</div>'),
+          isNull,
+        );
+      });
+    });
+
+    group('parseSpaceReplyHtml', () {
+      test('parses desktop ptid-then-pid links', () {
+        const html = '''
+<table>
+<tr class="bw0_all"><td>
+<a href="forum.php?mod=redirect&amp;goto=findpost&amp;ptid=100&amp;pid=">标题A</a>
+<a href="forum-4-1-1.html" class="xg1">游戏</a>
+</td></tr>
+<tr><td colspan="5">
+<a href="forum.php?mod=redirect&amp;goto=findpost&amp;ptid=100&amp;pid=55">回复摘要一</a>
+</td></tr>
+</table>
+''';
+        final result = ApiService.parseSpaceReplyHtmlForTest(html);
+        expect(result.items, hasLength(1));
+        expect(result.items.first.tid, '100');
+        expect(result.items.first.pid, '55');
+        expect(result.items.first.subject, '标题A');
+        expect(result.items.first.replyExcerpt, '回复摘要一');
+      });
+
+      test('parses desktop pid-then-ptid links', () {
+        const html = '''
+<a href="forum.php?mod=redirect&amp;goto=findpost&amp;ptid=200&amp;pid=">标题B</a>
+<a href="forum.php?mod=redirect&amp;goto=findpost&amp;pid=99&amp;ptid=200">摘要B</a>
+''';
+        final result = ApiService.parseSpaceReplyHtmlForTest(html);
+        expect(result.items, hasLength(1));
+        expect(result.items.first.tid, '200');
+        expect(result.items.first.pid, '99');
+        expect(result.items.first.replyExcerpt, '摘要B');
+      });
+
+      test('parses mobile threadlist with findpost anchors', () {
+        const html = '''
+<div class="threadlist cl">
+<li class="list">
+<em>手机标题</em>
+<a href="forum.php?mod=redirect&amp;goto=findpost&amp;ptid=300&amp;pid=">手机标题</a>
+<a href="forum.php?mod=redirect&amp;goto=findpost&amp;pid=42&amp;ptid=300"><blockquote>手机回复</blockquote></a>
+</li>
+</div>
+''';
+        final result = ApiService.parseSpaceReplyHtmlForTest(html);
+        expect(result.items, hasLength(1));
+        expect(result.items.first.tid, '300');
+        expect(result.items.first.pid, '42');
+        expect(result.items.first.subject, '手机标题');
+        expect(result.items.first.replyExcerpt, '手机回复');
+      });
+    });
   });
 }

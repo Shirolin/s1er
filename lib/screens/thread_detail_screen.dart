@@ -672,7 +672,9 @@ class _ThreadDetailScreenState extends ConsumerState<ThreadDetailScreen> {
   }
 
   Future<void> _restoreInThreadJump() async {
-    final snap = ref.read(inThreadJumpStackProvider(widget.tid).notifier).pop();
+    if (_restoringJump) return;
+    final stack = ref.read(inThreadJumpStackProvider(widget.tid).notifier);
+    final snap = stack.top;
     if (snap == null) return;
     setState(() {
       _restoringJump = true;
@@ -681,11 +683,13 @@ class _ThreadDetailScreenState extends ConsumerState<ThreadDetailScreen> {
       _highlightPid = null;
     });
     try {
-      await ref.read(postProvider(widget.tid).notifier).restoreToFloor(
-            page: snap.page,
-            absoluteFloor: snap.absoluteFloor,
-          );
-      if (!mounted) return;
+      final ok =
+          await ref.read(postProvider(widget.tid).notifier).restoreToFloor(
+                page: snap.page,
+                absoluteFloor: snap.absoluteFloor,
+              );
+      if (!ok || !mounted) return;
+      stack.pop();
       final destination = ThreadPage(widget.tid, snap.page);
       if (widget.onDestinationChanged != null) {
         widget.onDestinationChanged!(destination);
@@ -762,25 +766,28 @@ class _ThreadDetailScreenState extends ConsumerState<ThreadDetailScreen> {
     final scaffold = Scaffold(
       appBar: AppBar(
         elevation: 0,
-        leading: IconButton(
-          tooltip: jumpStack.isNotEmpty
-              ? '返回上一位置'
-              : (widget.onClose != null ? '返回主题列表' : '返回'),
-          onPressed: () {
-            if (jumpStack.isNotEmpty) {
-              unawaited(_restoreInThreadJump());
-              return;
-            }
-            if (widget.onClose != null) {
-              widget.onClose!();
-              return;
-            }
-            if (context.canPop()) {
-              context.pop();
-            }
-          },
-          icon: const Icon(Icons.arrow_back),
-        ),
+        leading:
+            (jumpStack.isNotEmpty || widget.onClose != null || context.canPop())
+                ? IconButton(
+                    tooltip: jumpStack.isNotEmpty
+                        ? '返回上一位置'
+                        : (widget.onClose != null ? '返回主题列表' : '返回'),
+                    onPressed: () {
+                      if (jumpStack.isNotEmpty) {
+                        unawaited(_restoreInThreadJump());
+                        return;
+                      }
+                      if (widget.onClose != null) {
+                        widget.onClose!();
+                        return;
+                      }
+                      if (context.canPop()) {
+                        context.pop();
+                      }
+                    },
+                    icon: const Icon(Icons.arrow_back),
+                  )
+                : null,
         title: postsAsync.whenOrNull(
               data: (s) => s.threadSubject != null
                   ? S1ClickRegion(

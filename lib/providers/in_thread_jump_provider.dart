@@ -24,6 +24,9 @@ class InThreadJumpStack extends Notifier<List<InThreadJumpSnapshot>> {
     state = [...state, snapshot];
   }
 
+  /// 栈顶快照（不弹出）；空栈返回 `null`。
+  InThreadJumpSnapshot? get top => state.isEmpty ? null : state.last;
+
   InThreadJumpSnapshot? pop() {
     if (state.isEmpty) return null;
     final next = [...state];

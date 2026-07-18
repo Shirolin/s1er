@@ -481,6 +481,239 @@ void main() {
     expect(find.textContaining('MARK-FLOOR-1'), findsOneWidget);
     expect(container.read(inThreadJumpStackProvider('100')), isEmpty);
   });
+
+  testWidgets(
+      'same-thread back keeps stack and URL when restore page load fails',
+      (tester) async {
+    tester.view.physicalSize = const Size(800, 1200);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.resetPhysicalSize);
+
+    adapter.postsPerPage = 8;
+    adapter.totalReplies = 20;
+    adapter.locatePageForPid['pid-15'] = 2;
+
+    final (db, local) = await openTestLocalData();
+    addTearDown(db.close);
+    await local.ensureReadingHistoryLoaded();
+    await local.ensureBlacklistLoaded();
+    await local.ensurePollVotesLoaded();
+
+    final dio = Dio()..httpClientAdapter = adapter;
+    late ProviderContainer container;
+    container = ProviderContainer(
+      overrides: [
+        localDataProvider.overrideWithValue(local),
+        httpClientProvider.overrideWith(
+          (ref) => S1HttpClient.test(container, dio),
+        ),
+        settingsProvider.overrideWith(
+          () => SettingsNotifier(
+            initial: const AppSettings(
+              showImages: false,
+              recordReadingHistory: true,
+            ),
+          ),
+        ),
+        authStateProvider.overrideWith(_GuestAuthNotifier.new),
+        threadRateLogsProvider('100').overrideWith(
+          () => _TestThreadRateLogsNotifier('100'),
+        ),
+      ],
+    );
+    rootContainer = container;
+    container.read(readingHistoryProvider.notifier).refresh();
+
+    final router = GoRouter(
+      initialLocation: '/',
+      routes: [
+        GoRoute(
+          path: '/',
+          builder: (context, state) => const Scaffold(body: Text('home')),
+        ),
+        GoRoute(
+          path: '/thread/:tid',
+          pageBuilder: (context, state) {
+            final routeTid = state.pathParameters['tid']!;
+            final routeIntent =
+                ThreadRouteCodec.intentFromUri(state.uri, tid: routeTid);
+            return NoTransitionPage<void>(
+              key: state.pageKey,
+              child: ProviderScope(
+                overrides: [
+                  threadOpenIntentProvider(routeTid)
+                      .overrideWithValue(routeIntent),
+                ],
+                child: ThreadDetailScreen(tid: routeTid),
+              ),
+            );
+          },
+        ),
+      ],
+    );
+
+    await tester.pumpWidget(
+      UncontrolledProviderScope(
+        container: container,
+        child: MaterialApp.router(
+          theme: AppTheme.lightTheme('purple'),
+          routerConfig: router,
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    unawaited(router.push('/thread/100?page=1'));
+    await _pumpFrames(tester, 80);
+
+    final ctx = tester.element(find.byType(PaginationBar));
+    openInternalLocation(
+      ctx,
+      ThreadRouteCodec.encodePath(const ThreadPost('100', 'pid-15')),
+    );
+    await _pumpFrames(tester, 80);
+
+    expect(find.text('第 2 / 3 页'), findsOneWidget);
+    expect(container.read(inThreadJumpStackProvider('100')), isNotEmpty);
+
+    adapter.failPages.add(1);
+    await tester.tap(find.byTooltip('返回上一位置'));
+    await _pumpFrames(tester, 80);
+
+    expect(
+      container.read(inThreadJumpStackProvider('100')),
+      isNotEmpty,
+      reason: 'failed restore must keep jump stack entry',
+    );
+    expect(router.state.uri.queryParameters['pid'], 'pid-15');
+    expect(find.text('第 2 / 3 页'), findsOneWidget);
+    expect(find.textContaining('MARK-FLOOR-15'), findsOneWidget);
+
+    adapter.failPages.clear();
+    await tester.tap(find.byTooltip('返回上一位置'));
+    await _pumpFrames(tester, 80);
+
+    expect(router.state.uri.queryParameters['page'], '1');
+    expect(router.state.uri.queryParameters.containsKey('pid'), isFalse);
+    expect(find.text('第 1 / 3 页'), findsOneWidget);
+    expect(find.textContaining('MARK-FLOOR-1'), findsOneWidget);
+    expect(container.read(inThreadJumpStackProvider('100')), isEmpty);
+  });
+
+  testWidgets('in-thread restore reentrancy pops only once while busy',
+      (tester) async {
+    tester.view.physicalSize = const Size(800, 1200);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.resetPhysicalSize);
+
+    adapter.postsPerPage = 8;
+    adapter.totalReplies = 20;
+    adapter.locatePageForPid['pid-15'] = 2;
+
+    final (db, local) = await openTestLocalData();
+    addTearDown(db.close);
+    await local.ensureReadingHistoryLoaded();
+    await local.ensureBlacklistLoaded();
+    await local.ensurePollVotesLoaded();
+
+    final dio = Dio()..httpClientAdapter = adapter;
+    late ProviderContainer container;
+    container = ProviderContainer(
+      overrides: [
+        localDataProvider.overrideWithValue(local),
+        httpClientProvider.overrideWith(
+          (ref) => S1HttpClient.test(container, dio),
+        ),
+        settingsProvider.overrideWith(
+          () => SettingsNotifier(
+            initial: const AppSettings(
+              showImages: false,
+              recordReadingHistory: true,
+            ),
+          ),
+        ),
+        authStateProvider.overrideWith(_GuestAuthNotifier.new),
+        threadRateLogsProvider('100').overrideWith(
+          () => _TestThreadRateLogsNotifier('100'),
+        ),
+      ],
+    );
+    rootContainer = container;
+    container.read(readingHistoryProvider.notifier).refresh();
+
+    final router = GoRouter(
+      initialLocation: '/',
+      routes: [
+        GoRoute(
+          path: '/',
+          builder: (context, state) => const Scaffold(body: Text('home')),
+        ),
+        GoRoute(
+          path: '/thread/:tid',
+          pageBuilder: (context, state) {
+            final routeTid = state.pathParameters['tid']!;
+            final routeIntent =
+                ThreadRouteCodec.intentFromUri(state.uri, tid: routeTid);
+            return NoTransitionPage<void>(
+              key: state.pageKey,
+              child: ProviderScope(
+                overrides: [
+                  threadOpenIntentProvider(routeTid)
+                      .overrideWithValue(routeIntent),
+                ],
+                child: ThreadDetailScreen(tid: routeTid),
+              ),
+            );
+          },
+        ),
+      ],
+    );
+
+    await tester.pumpWidget(
+      UncontrolledProviderScope(
+        container: container,
+        child: MaterialApp.router(
+          theme: AppTheme.lightTheme('purple'),
+          routerConfig: router,
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    unawaited(router.push('/thread/100?page=1'));
+    await _pumpFrames(tester, 80);
+
+    final ctx = tester.element(find.byType(PaginationBar));
+    openInternalLocation(
+      ctx,
+      ThreadRouteCodec.encodePath(const ThreadPost('100', 'pid-15')),
+    );
+    await _pumpFrames(tester, 80);
+
+    // Extra snapshot so a double-pop would empty the stack.
+    container.read(inThreadJumpStackProvider('100').notifier).push(
+          const InThreadJumpSnapshot(page: 1, absoluteFloor: 1),
+        );
+    expect(container.read(inThreadJumpStackProvider('100')), hasLength(2));
+
+    adapter.delayPages.add(1);
+    adapter.delayGate = Completer<void>();
+
+    await tester.tap(find.byTooltip('返回上一位置'));
+    await tester.pump();
+    await tester.tap(find.byTooltip('返回上一位置'));
+    await tester.pump();
+
+    adapter.delayGate!.complete();
+    await _pumpFrames(tester, 80);
+
+    expect(
+      container.read(inThreadJumpStackProvider('100')),
+      hasLength(1),
+      reason: 'reentrant restore must not pop a second snapshot',
+    );
+    expect(find.text('第 1 / 3 页'), findsOneWidget);
+  });
 }
 
 class _GuestAuthNotifier extends AuthNotifier {
@@ -499,6 +732,9 @@ class _ViewthreadAdapter implements HttpClientAdapter {
   int totalReplies = 8;
   final requestedPages = <int>[];
   final locatePageForPid = <String, int>{};
+  final failPages = <int>{};
+  final delayPages = <int>{};
+  Completer<void>? delayGate;
 
   @override
   void close({bool force = false}) {}
@@ -529,6 +765,17 @@ class _ViewthreadAdapter implements HttpClientAdapter {
     if (uri.query.contains('module=viewthread')) {
       final page = int.tryParse(uri.queryParameters['page'] ?? '1') ?? 1;
       requestedPages.add(page);
+      if (failPages.contains(page)) {
+        throw DioException(
+          requestOptions: options,
+          type: DioExceptionType.badResponse,
+          response: Response(requestOptions: options, statusCode: 500),
+          message: 'simulated page $page failure',
+        );
+      }
+      if (delayPages.contains(page) && delayGate != null) {
+        await delayGate!.future;
+      }
       final posts = <Map<String, dynamic>>[];
       for (var i = 0; i < postsPerPage; i++) {
         final absoluteFloor = (page - 1) * postsPerPage + i + 1;

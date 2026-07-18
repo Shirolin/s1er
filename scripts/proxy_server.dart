@@ -290,6 +290,8 @@ bool _applyCors(HttpRequest req, HttpResponse res) {
       'Content-Type, Content-Length, Cookie, X-Requested-With, $proxyAuthHeader',
     );
     res.headers.set('Access-Control-Allow-Credentials', 'true');
+    // findpost 302：浏览器默认不向 JS 暴露 Location，Dio 读不到会落到脆弱 HTML 回退。
+    res.headers.set('Access-Control-Expose-Headers', 'Location, location');
     return true;
   }
   if (origin == null) {

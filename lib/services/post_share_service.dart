@@ -1,12 +1,12 @@
 // ignore_for_file: unawaited_futures
 
 import 'dart:async';
+import 'dart:typed_data';
 import 'dart:ui' as ui;
 
 import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart';
 import 'package:flutter/rendering.dart';
-import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:gal/gal.dart';
 import 'package:path/path.dart' as p;
@@ -21,6 +21,7 @@ import '../utils/bbcode_parser.dart';
 import '../utils/share_native_image_encoder.dart';
 import '../utils/share_rgba_flatten.dart';
 import '../theme/app_theme.dart';
+import '../theme/s1_haptics.dart';
 import '../widgets/share_card.dart';
 import '../widgets/s1_click_region.dart';
 import '../widgets/web_image_stub.dart'
@@ -104,7 +105,7 @@ class _SharePreviewSheetState extends ConsumerState<_SharePreviewSheet> {
 
   Future<void> _captureAndShare() async {
     if (_state != _FooterState.idle) return;
-    HapticFeedback.mediumImpact();
+    S1Haptics.medium();
     setState(() => _state = _FooterState.capturing);
 
     final bytes = await _captureBytes();
@@ -133,7 +134,7 @@ class _SharePreviewSheetState extends ConsumerState<_SharePreviewSheet> {
 
   Future<void> _captureAndSave() async {
     if (_state != _FooterState.idle) return;
-    HapticFeedback.mediumImpact();
+    S1Haptics.medium();
     setState(() => _state = _FooterState.capturing);
 
     final bytes = await _captureBytes();

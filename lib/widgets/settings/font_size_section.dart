@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../providers/settings_provider.dart';
 import '../../theme/app_theme.dart';
+import '../../theme/s1_haptics.dart';
 import 'settings_section_header.dart';
 
 class FontSizeSection extends ConsumerWidget {
@@ -41,7 +42,10 @@ class FontSizeSection extends ConsumerWidget {
                     )
                     .toList(),
                 selected: {fontSize},
-                onSelectionChanged: (v) => notifier.setFontSize(v.first),
+                onSelectionChanged: (v) {
+                  S1Haptics.selection();
+                  notifier.setFontSize(v.first);
+                },
                 showSelectedIcon: false,
               ),
             ),

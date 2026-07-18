@@ -6,6 +6,7 @@ import '../providers/auth_provider.dart';
 import '../providers/thread_rate_logs_provider.dart';
 import '../providers/user_profile_provider.dart';
 import '../theme/app_theme.dart';
+import '../theme/s1_haptics.dart';
 import '../utils/compact_label.dart';
 import '../utils/format_utils.dart';
 import '../utils/post_image_index_counter.dart';
@@ -158,6 +159,7 @@ class _PostItemState extends ConsumerState<PostItem>
     final plain = PostPlainText.fromMessage(widget.post.message);
     await Clipboard.setData(ClipboardData(text: plain));
     if (!context.mounted) return;
+    S1Haptics.light();
     S1SnackBar.show(context, message: '已复制');
   }
 

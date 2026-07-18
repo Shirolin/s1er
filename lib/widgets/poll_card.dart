@@ -6,6 +6,7 @@ import '../providers/auth_provider.dart';
 import '../providers/poll_vote_provider.dart';
 import '../providers/post_provider.dart';
 import '../theme/app_theme.dart';
+import '../theme/s1_haptics.dart';
 import '../utils/format_utils.dart';
 import '../utils/poll_bar_color.dart';
 import '../utils/s1_snack_bar.dart';
@@ -70,6 +71,7 @@ class _PollCardState extends ConsumerState<PollCard> {
       return;
     }
 
+    S1Haptics.medium();
     setState(() => _submitting = true);
     try {
       final error = await ref
@@ -78,7 +80,7 @@ class _PollCardState extends ConsumerState<PollCard> {
       if (!mounted) return;
 
       if (error != null) {
-        S1SnackBar.show(context, message: error);
+        S1SnackBar.error(context, message: error);
         return;
       }
 
@@ -94,7 +96,7 @@ class _PollCardState extends ConsumerState<PollCard> {
       await ref.read(postProvider(widget.tid).notifier).refresh();
     } catch (e) {
       if (!mounted) return;
-      S1SnackBar.show(context, message: '投票失败: $e');
+      S1SnackBar.error(context, message: '投票失败: $e');
     } finally {
       if (mounted) setState(() => _submitting = false);
     }

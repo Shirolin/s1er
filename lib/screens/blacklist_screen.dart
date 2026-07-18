@@ -5,6 +5,7 @@ import '../models/blacklist_record.dart';
 import '../providers/blacklist_provider.dart';
 import '../providers/server_blacklist_import_provider.dart';
 import '../theme/app_theme.dart';
+import '../theme/s1_haptics.dart';
 import '../utils/s1_snack_bar.dart';
 import '../widgets/s1_confirm_dialog.dart';
 import '../widgets/s1_desktop_scaffold.dart';
@@ -31,19 +32,28 @@ class BlacklistScreen extends ConsumerWidget {
               tooltip: '从网页导入',
               onPressed: importState.isLoading
                   ? null
-                  : () => _importFromWeb(context, ref),
+                  : () {
+                      S1Haptics.medium();
+                      _importFromWeb(context, ref);
+                    },
               icon: const Icon(Icons.cloud_download_outlined),
             ),
             if (entries.isNotEmpty)
               IconButton(
                 tooltip: '清空',
                 icon: const Icon(Icons.delete_sweep_outlined),
-                onPressed: () => _confirmClearAll(context, ref),
+                onPressed: () {
+                  S1Haptics.medium();
+                  _confirmClearAll(context, ref);
+                },
               ),
           ],
         ),
         floatingActionButton: FloatingActionButton.extended(
-          onPressed: () => _showEditor(context, ref),
+          onPressed: () {
+            S1Haptics.selection();
+            _showEditor(context, ref);
+          },
           icon: const Icon(Icons.person_add_disabled_outlined),
           label: const Text('添加'),
         ),
@@ -73,7 +83,7 @@ class BlacklistScreen extends ConsumerWidget {
     } catch (error) {
       if (!context.mounted) return;
       final message = error.toString().replaceFirst('Exception: ', '');
-      S1SnackBar.show(context, message: message);
+      S1SnackBar.error(context, message: message);
       return;
     }
     if (!context.mounted) return;
@@ -88,6 +98,7 @@ class BlacklistScreen extends ConsumerWidget {
       confirmLabel: '导入',
     );
     if (!confirmed || !context.mounted) return;
+    S1Haptics.medium();
     try {
       final result = await notifier.apply(preview);
       if (!context.mounted) return;
@@ -97,7 +108,7 @@ class BlacklistScreen extends ConsumerWidget {
       );
     } catch (error) {
       if (!context.mounted) return;
-      S1SnackBar.show(
+      S1SnackBar.error(
         context,
         message: '导入失败：${error.toString().replaceFirst('Exception: ', '')}',
       );
@@ -255,12 +266,18 @@ class _BlacklistTile extends StatelessWidget {
                 ),
                 IconButton(
                   tooltip: '编辑',
-                  onPressed: onEdit,
+                  onPressed: () {
+                    S1Haptics.selection();
+                    onEdit();
+                  },
                   icon: const Icon(Icons.edit_outlined),
                 ),
                 IconButton(
                   tooltip: '移除',
-                  onPressed: onDelete,
+                  onPressed: () {
+                    S1Haptics.medium();
+                    onDelete();
+                  },
                   icon: Icon(Icons.delete_outline, color: scheme.error),
                 ),
               ],
@@ -354,6 +371,7 @@ class _BlacklistEditorDialogState extends State<_BlacklistEditorDialog> {
       setState(() => _uidError = '请输入用户 UID');
       return;
     }
+    S1Haptics.medium();
     Navigator.of(context).pop(
       _BlacklistDraft(
         uid: uid,
@@ -412,6 +430,7 @@ class _BlacklistEditorDialogState extends State<_BlacklistEditorDialog> {
                   label: const Text('主题列表'),
                   selected: _scopes.contains(BlacklistRecord.scopeThread),
                   onSelected: (selected) {
+                    S1Haptics.selection();
                     setState(() {
                       if (selected) {
                         _scopes.add(BlacklistRecord.scopeThread);
@@ -425,6 +444,7 @@ class _BlacklistEditorDialogState extends State<_BlacklistEditorDialog> {
                   label: const Text('帖内楼层'),
                   selected: _scopes.contains(BlacklistRecord.scopePost),
                   onSelected: (selected) {
+                    S1Haptics.selection();
                     setState(() {
                       if (selected) {
                         _scopes.add(BlacklistRecord.scopePost);
@@ -438,6 +458,7 @@ class _BlacklistEditorDialogState extends State<_BlacklistEditorDialog> {
                   label: const Text('私信'),
                   selected: _scopes.contains(BlacklistRecord.scopePm),
                   onSelected: (selected) {
+                    S1Haptics.selection();
                     setState(() {
                       if (selected) {
                         _scopes.add(BlacklistRecord.scopePm);

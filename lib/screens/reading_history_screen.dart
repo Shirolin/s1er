@@ -5,6 +5,7 @@ import '../models/reading_record.dart';
 import '../providers/forum_name_provider.dart';
 import '../providers/reading_history_provider.dart';
 import '../theme/app_theme.dart';
+import '../theme/s1_haptics.dart';
 import '../utils/format_utils.dart';
 import '../utils/thread_navigation.dart';
 import '../widgets/s1_confirm_dialog.dart';
@@ -134,7 +135,10 @@ class _HistoryTile extends ConsumerWidget {
         color: S1Surface.card(scheme),
         shape: S1Shape.cardShape,
         child: InkWell(
-          onTap: () => _open(context),
+          onTap: () {
+            S1Haptics.selection();
+            _open(context);
+          },
           borderRadius: S1Shape.medium,
           child: Padding(
             padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),

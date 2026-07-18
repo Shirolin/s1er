@@ -1,8 +1,8 @@
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
 
 import '../models/emoticon_catalog.dart';
 import '../theme/app_theme.dart';
+import '../theme/s1_haptics.dart';
 import 'emoticon_widget.dart';
 
 /// 回复页表情面板：键盘高度的 input accessory（与底部操作栏一体），
@@ -49,7 +49,7 @@ class _ComposeEmoticonPanelState extends State<ComposeEmoticonPanel>
   }
 
   void _pick(String entity) {
-    HapticFeedback.selectionClick();
+    S1Haptics.selection();
     widget.onSelect(entity);
   }
 

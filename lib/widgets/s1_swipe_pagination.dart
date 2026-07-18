@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+import '../theme/s1_haptics.dart';
 import '../utils/scroll_motion.dart';
 import 's1_fab_layout.dart';
 
@@ -173,6 +174,7 @@ class S1SwipePaginationState extends State<S1SwipePagination> {
       _isPaging = true;
       _pendingPage = page;
     });
+    S1Haptics.selection();
 
     try {
       await widget.onPageChanged(page);

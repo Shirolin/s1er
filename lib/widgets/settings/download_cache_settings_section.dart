@@ -9,6 +9,7 @@ import '../../models/image_load_policy.dart';
 import '../../providers/image_cache_provider.dart';
 import '../../providers/settings_provider.dart';
 import '../../theme/app_theme.dart';
+import '../../theme/s1_haptics.dart';
 import '../../utils/s1_snack_bar.dart';
 import '../s1_confirm_dialog.dart';
 import 'settings_section_header.dart';
@@ -148,6 +149,7 @@ class _DownloadCacheSettingsSectionState
                     selected: {settings.imageCacheLimitMb},
                     showSelectedIcon: false,
                     onSelectionChanged: (selection) {
+                      S1Haptics.selection();
                       notifier.setImageCacheLimitMb(selection.first);
                     },
                   ),
@@ -166,7 +168,10 @@ class _DownloadCacheSettingsSectionState
                 ),
               ),
               value: settings.showImages,
-              onChanged: notifier.setShowImages,
+              onChanged: (value) {
+                S1Haptics.selection();
+                notifier.setShowImages(value);
+              },
               contentPadding: const EdgeInsets.symmetric(horizontal: 8),
               shape: const RoundedRectangleBorder(
                 borderRadius: S1Shape.small,
@@ -209,6 +214,7 @@ class _DownloadCacheSettingsSectionState
                         selected: {settings.imageLoadPolicy},
                         showSelectedIcon: false,
                         onSelectionChanged: (selection) {
+                          S1Haptics.selection();
                           notifier.setImageLoadPolicy(selection.first);
                         },
                       ),
@@ -250,6 +256,7 @@ class _DownloadCacheSettingsSectionState
                     selected: {settings.avatarLoadPolicy},
                     showSelectedIcon: false,
                     onSelectionChanged: (selection) {
+                      S1Haptics.selection();
                       notifier.setAvatarLoadPolicy(selection.first);
                     },
                   ),
@@ -284,6 +291,7 @@ class _DownloadCacheSettingsSectionState
                     // 避免默认勾号挤压两位数标签并触发换行。
                     showSelectedIcon: false,
                     onSelectionChanged: (selection) {
+                      S1Haptics.selection();
                       notifier.setMaxImagesPerPost(selection.first);
                     },
                   ),

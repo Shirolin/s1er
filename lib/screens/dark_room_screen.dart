@@ -6,6 +6,7 @@ import '../config/api_config.dart';
 import '../models/dark_room_entry.dart';
 import '../models/user.dart';
 import '../providers/dark_room_provider.dart';
+import '../theme/s1_haptics.dart';
 import '../widgets/app_bar_more_menu.dart';
 import '../widgets/s1_error_view.dart';
 import '../widgets/web_avatar.dart';
@@ -40,7 +41,9 @@ class DarkRoomScreen extends ConsumerWidget {
           ),
           error: (error, stack) => S1ErrorView(
             error: error,
-            onRetry: () => ref.read(darkRoomProvider.notifier).refresh(),
+            onRetry: () => S1Haptics.wrapRefresh(
+              () => ref.read(darkRoomProvider.notifier).refresh(),
+            ),
             onLogin: () => context.push('/login'),
           ),
           data: (state) {
@@ -48,7 +51,9 @@ class DarkRoomScreen extends ConsumerWidget {
               return const _EmptyDarkRoom();
             }
             return RefreshIndicator(
-              onRefresh: () => ref.read(darkRoomProvider.notifier).refresh(),
+              onRefresh: () => S1Haptics.wrapRefresh(
+                () => ref.read(darkRoomProvider.notifier).refresh(),
+              ),
               child: ListView.builder(
                 padding: const EdgeInsets.fromLTRB(12, 8, 12, 24),
                 itemCount: state.items.length + (state.hasMore ? 1 : 0),

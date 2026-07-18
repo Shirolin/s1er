@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../providers/settings_provider.dart';
 import '../../theme/app_theme.dart';
+import '../../theme/s1_haptics.dart';
 import '../../utils/compact_label.dart';
 import 'settings_section_header.dart';
 import 'theme_color_picker.dart';
@@ -92,7 +93,10 @@ class ThemeModeSelector extends StatelessWidget {
       child: SegmentedButton<String>(
         segments: segments,
         selected: {themeMode},
-        onSelectionChanged: (v) => onChanged(v.first),
+        onSelectionChanged: (v) {
+          S1Haptics.selection();
+          onChanged(v.first);
+        },
         showSelectedIcon: false,
         style: S1SegmentedButtonStyle.forScheme(scheme).merge(
           ButtonStyle(

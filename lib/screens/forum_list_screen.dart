@@ -23,6 +23,7 @@ import '../utils/forum_list_layout.dart';
 import '../models/thread_open_intent.dart';
 import '../models/thread_destination.dart';
 import '../utils/thread_navigation.dart';
+import '../theme/s1_haptics.dart';
 import '../widgets/thread_open_intent_scope.dart';
 
 class ForumListScreen extends ConsumerStatefulWidget {
@@ -155,9 +156,11 @@ class _ForumListScreenState extends ConsumerState<ForumListScreen> {
                       ),
                       error: (e, st) => S1ErrorView(
                         error: e,
-                        onRetry: () => ref
-                            .read(threadListProvider(widget.fid).notifier)
-                            .refresh(),
+                        onRetry: () => S1Haptics.wrapRefresh(
+                          () => ref
+                              .read(threadListProvider(widget.fid).notifier)
+                              .refresh(),
+                        ),
                         onLogin: () => context.push('/login'),
                       ),
                       data: (state) => _ForumThreadList(
@@ -188,9 +191,11 @@ class _ForumListScreenState extends ConsumerState<ForumListScreen> {
                         ),
                         error: (e, st) => S1ErrorView(
                           error: e,
-                          onRetry: () => ref
-                              .read(threadListProvider(widget.fid).notifier)
-                              .refresh(),
+                          onRetry: () => S1Haptics.wrapRefresh(
+                            () => ref
+                                .read(threadListProvider(widget.fid).notifier)
+                                .refresh(),
+                          ),
                           onLogin: () => context.push('/login'),
                         ),
                         data: (state) => _ForumThreadList(
@@ -304,8 +309,9 @@ class _ForumThreadList extends ConsumerWidget {
               pageBuilder: (context, scrollController) => Scrollbar(
                 controller: scrollController,
                 child: RefreshIndicator(
-                  onRefresh: () =>
-                      ref.read(threadListProvider(fid).notifier).refresh(),
+                  onRefresh: () => S1Haptics.wrapRefresh(
+                    () => ref.read(threadListProvider(fid).notifier).refresh(),
+                  ),
                   child: state.threads.isEmpty
                       ? ListView(
                           controller: scrollController,

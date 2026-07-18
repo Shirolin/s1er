@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 
 import '../models/attendance_result.dart';
 import '../theme/app_theme.dart';
+import '../theme/s1_haptics.dart';
 
 /// 每日签到卡片：纯展示，由调用方传入状态与回调。
 class DailySignCard extends StatelessWidget {
@@ -68,7 +69,12 @@ class DailySignCard extends StatelessWidget {
               Icon(Icons.done, color: scheme.primary)
             else
               FilledButton(
-                onPressed: isSubmitting ? null : onSign,
+                onPressed: isSubmitting
+                    ? null
+                    : () {
+                        S1Haptics.medium();
+                        onSign();
+                      },
                 child: isSubmitting
                     ? SizedBox(
                         width: 18,

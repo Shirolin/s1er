@@ -5,6 +5,7 @@ import '../config/constants.dart';
 import '../models/thread.dart';
 import '../providers/reading_history_provider.dart';
 import '../theme/app_theme.dart';
+import '../theme/s1_haptics.dart';
 import '../models/thread_destination.dart';
 import '../utils/compact_label.dart';
 import '../utils/format_utils.dart';
@@ -39,6 +40,7 @@ class ThreadCard extends ConsumerWidget {
 
   /// 点击：按阅读记录解析目标页（续读 / 已读落末页 / 有新回复落新页）。
   void _handleTap(BuildContext context, WidgetRef ref) {
+    S1Haptics.selection();
     if (onOpenThread != null) {
       final record = ref.read(readingRecordProvider(thread.tid));
       final targetPage = record?.resolveOpenPage(thread.replies);

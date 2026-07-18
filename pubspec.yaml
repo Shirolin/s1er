@@ -1,0 +1,75 @@
+name: s1er
+description: Third-party Stage1st forum client (S1er)
+publish_to: 'none'
+homepage: https://shirolin.github.io/s1er/
+repository: https://github.com/Shirolin/s1er
+issue_tracker: https://github.com/Shirolin/s1er/issues
+version: 0.1.0+1
+
+environment:
+  sdk: '>=3.4.0 <4.0.0'
+
+dependencies:
+  flutter:
+    sdk: flutter
+  flutter_riverpod: 3.2.1
+  dio: ^5.4.0
+  dio_cookie_manager: ^3.1.1
+  cookie_jar: ^4.0.8
+  path_provider: ^2.1.2
+  webview_flutter: ^4.7.0
+  go_router: ^17.0.0
+  html: ^0.15.4
+  url_launcher: ^6.2.5
+  flutter_html: ^3.0.0
+  package_info_plus: ^10.2.0
+  talker_flutter: ^5.1.17
+  talker_dio_logger: ^5.1.17
+  gal: ^2.3.0
+  flutter_secure_storage: ^10.3.1
+  cryptography: ^2.9.0
+  drift: ^2.34.1
+  drift_flutter: ^0.3.1
+  path: ^1.9.1
+  flutter_cache_manager: ^3.4.1
+  cached_network_image: ^3.4.1
+  connectivity_plus: ^6.1.4
+  archive: ^4.0.9
+  image: ^4.2.0
+  share_plus: ^13.2.0
+  file_selector: ^1.1.0
+  sentry_flutter: ^9.0.0
+  ironpress: ^0.2.0
+  device_info_plus: ^13.2.0
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+  flutter_lints: ^6.0.0
+  build_runner: ^2.4.8
+  drift_dev: ^2.34.0
+  http: ^1.6.0
+  flutter_launcher_icons: ^0.14.3
+
+flutter_launcher_icons:
+  android: true
+  ios: true
+  image_path: assets/branding/s1er_logo_black.png
+  adaptive_icon_background: '#000000'
+  adaptive_icon_foreground: assets/branding/s1er_logo_transparent.png
+  remove_alpha_ios: true
+  min_sdk_android: 21
+
+flutter:
+  uses-material-design: true
+  assets:
+    - assets/branding/github_mark.png
+    - assets/branding/s1er_mark.png
+    - assets/branding/s1er_logo_black.png
+    - assets/branding/s1er_logo_white.png
+    - assets/emoticons/
+    - assets/emoticons/face2017/
+    - assets/emoticons/carton2017/
+    - assets/emoticons/animal2017/
+    - assets/emoticons/device2017/
+    - assets/emoticons/goose2017/
+    - assets/emoticons/bundam2017/

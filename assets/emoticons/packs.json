@@ -1,0 +1,40 @@
+{
+  "packs": [
+    {
+      "title": "麻将脸",
+      "dir": "face2017",
+      "prefix": "f",
+      "count": 275
+    },
+    {
+      "title": "动漫",
+      "dir": "carton2017",
+      "prefix": "c",
+      "count": 430
+    },
+    {
+      "title": "动物",
+      "dir": "animal2017",
+      "prefix": "a",
+      "count": 30
+    },
+    {
+      "title": "硬件",
+      "dir": "device2017",
+      "prefix": "d",
+      "count": 44
+    },
+    {
+      "title": "鹅",
+      "dir": "goose2017",
+      "prefix": "g",
+      "count": 74
+    },
+    {
+      "title": "高达",
+      "dir": "bundam2017",
+      "prefix": "b",
+      "count": 37
+    }
+  ]
+}

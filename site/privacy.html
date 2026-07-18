@@ -1,0 +1,228 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>隐私政策 — S1er</title>
+    <meta name="description" content="S1er 隐私政策：说明本应用如何收集、使用和保护用户信息。" />
+    <meta name="theme-color" content="#08090d" />
+    <meta name="color-scheme" content="dark" />
+    <link rel="icon" href="assets/branding/s1er_mark.png" type="image/png" />
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Noto+Sans+SC:wght@400;500;600;700&display=swap"
+      rel="stylesheet"
+    />
+    <link rel="stylesheet" href="css/styles.css" />
+  </head>
+  <body class="privacy-page">
+    <a class="skip-link" href="#main">跳到主要内容</a>
+    <div class="bg-mesh" aria-hidden="true">
+      <div class="bg-mesh__blob bg-mesh__blob--a"></div>
+      <div class="bg-mesh__blob bg-mesh__blob--b"></div>
+      <div class="bg-mesh__grid"></div>
+      <div class="bg-mesh__noise"></div>
+    </div>
+
+    <header class="site-nav is-scrolled" data-nav>
+      <div class="site-nav__inner">
+        <a class="site-nav__brand" href="index.html">
+          <img src="assets/branding/s1er_mark.png" width="32" height="32" alt="" />
+          <span>S1er</span>
+        </a>
+        <div class="site-nav__actions">
+          <a
+            class="btn btn--ghost btn--sm site-nav__gh"
+            href="https://github.com/Shirolin/s1er"
+            rel="noopener noreferrer"
+            >GitHub</a
+          >
+          <a class="btn btn--primary btn--sm" href="index.html">首页</a>
+        </div>
+      </div>
+    </header>
+
+    <main class="privacy-main" id="main">
+      <a class="back-home" href="index.html">← 返回首页</a>
+      <h1>隐私政策</h1>
+      <p class="updated">最后更新：2026-07-18</p>
+
+      <p>
+        S1er（以下简称「本应用」）是第三方开发的 Stage1st（S1）论坛非官方客户端。本隐私政策说明本应用如何收集、使用和保护用户信息。
+      </p>
+
+      <h2>1. 信息收集与使用</h2>
+
+      <h3>1.1 不收集的信息</h3>
+      <ul>
+        <li>
+          <strong>密码</strong>：登录时密码仅在用户设备与 Stage1st
+          服务器之间直接传输，本应用不会记录或存储明文密码。
+        </li>
+        <li>
+          <strong>个人身份信息</strong>：本应用不会收集姓名、电子邮件、手机号码等个人身份信息。
+        </li>
+        <li>
+          <strong>设备指纹 / 唯一标识符</strong>：本应用不会收集广告标识符、硬件序列号等唯一设备标识符，也不会向开发者服务器上报设备指纹。
+        </li>
+        <li><strong>位置信息</strong>：本应用不会访问或收集用户位置信息。</li>
+        <li>
+          <strong>使用数据</strong>：本应用不会向开发者服务器上报使用统计或分析数据。
+        </li>
+      </ul>
+      <p>
+        可选的发帖「小尾巴」可在本地读取粗略设备型号（如机型名），并在用户开启相关设置时写入发往 Stage1st 的帖子正文；该信息发给论坛服务器，而非开发者。可在设置中关闭。
+      </p>
+
+      <h3>1.2 本地存储的信息</h3>
+      <p>以下信息仅存储在用户设备本地，不会上传至开发者或第三方服务器：</p>
+      <table>
+        <thead>
+          <tr>
+            <th>数据类型</th>
+            <th>存储方式</th>
+            <th>用途</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td>登录 Cookie</td>
+            <td>AES-256-GCM 加密文件</td>
+            <td>维持 Stage1st 会话状态</td>
+          </tr>
+          <tr>
+            <td>阅读历史与进度</td>
+            <td>Drift（本地 SQLite）</td>
+            <td>记录已读帖子和阅读位置</td>
+          </tr>
+          <tr>
+            <td>回复草稿</td>
+            <td>Drift（本地 SQLite）</td>
+            <td>保存未发送的回复内容</td>
+          </tr>
+          <tr>
+            <td>投票记录</td>
+            <td>Drift（本地 SQLite）</td>
+            <td>标记已参与的投票</td>
+          </tr>
+          <tr>
+            <td>黑名单</td>
+            <td>Drift（本地 SQLite）</td>
+            <td>屏蔽指定用户的内容</td>
+          </tr>
+          <tr>
+            <td>应用设置</td>
+            <td>Drift（本地 SQLite）</td>
+            <td>主题色、字号等偏好设置</td>
+          </tr>
+          <tr>
+            <td>图片缓存</td>
+            <td>本地磁盘缓存</td>
+            <td>加快图片加载速度</td>
+          </tr>
+        </tbody>
+      </table>
+
+      <h3>1.3 网络请求</h3>
+      <p>本应用发起的网络请求仅限于：</p>
+      <ul>
+        <li>
+          <strong>Stage1st 论坛 API</strong>（<code>stage1st.com</code>）：获取论坛数据、发帖、登录等核心功能
+        </li>
+        <li>
+          <strong>Stage1st 头像 CDN</strong>（<code>avatar.stage1st.com</code>）：加载用户头像
+        </li>
+        <li>
+          <strong>外链图床</strong>（<code>p.sda1.dev</code>）：上传帖子插图（用户主动操作时）
+        </li>
+        <li>
+          <strong>Sentry</strong>（可选）：仅在用户通过
+          <code>--dart-define</code> 注入 DSN 时启用，用于崩溃报告
+        </li>
+      </ul>
+
+      <h2>2. 第三方服务</h2>
+      <h3>2.1 Sentry（可选）</h3>
+      <p>
+        本应用集成了 Sentry 用于崩溃监控。<strong>默认不启用</strong>，仅当用户编译时通过
+        <code>--dart-define=SENTRY_DSN=...</code> 显式注入 DSN 后，Sentry
+        才会初始化。启用后，Sentry 可能收集以下信息：
+      </p>
+      <ul>
+        <li>崩溃栈追踪（代码位置）</li>
+        <li>设备操作系统版本与型号</li>
+        <li>应用版本号</li>
+      </ul>
+      <p>
+        Sentry 的数据处理受
+        <a href="https://sentry.io/privacy/" rel="noopener noreferrer">Sentry 隐私政策</a>
+        约束。
+      </p>
+
+      <h2>3. 数据共享与披露</h2>
+      <p>本应用<strong>不会</strong>：</p>
+      <ul>
+        <li>向第三方出售用户数据</li>
+        <li>向第三方分享用户个人信息</li>
+        <li>将本地存储的数据上传至开发者服务器</li>
+      </ul>
+
+      <h2>4. 数据导出与删除</h2>
+      <p>用户可以通过以下方式管理自己的数据：</p>
+      <ul>
+        <li>
+          <strong>备份导出</strong>：在应用设置中使用「数据备份」功能导出阅读历史、设置等为 ZIP
+          文件
+        </li>
+        <li><strong>清除数据</strong>：卸载应用将删除所有本地存储的数据</li>
+        <li><strong>Cookie 清除</strong>：在应用中退出登录将清除已存储的登录 Cookie</li>
+      </ul>
+
+      <h2>5. 儿童隐私</h2>
+      <p>
+        本应用面向 Stage1st 论坛用户，不面向 13
+        岁以下儿童。本应用不会故意收集儿童的个人信息。
+      </p>
+
+      <h2>6. 变更</h2>
+      <p>
+        本隐私政策可能不时更新。变更后的版本将通过应用更新或 GitHub 仓库公告通知用户。
+      </p>
+
+      <h2>7. 联系方式</h2>
+      <p>如有关于本隐私政策的疑问，请通过以下方式联系：</p>
+      <ul>
+        <li>
+          GitHub Issues：
+          <a href="https://github.com/Shirolin/s1er/issues" rel="noopener noreferrer"
+            >https://github.com/Shirolin/s1er/issues</a
+          >
+        </li>
+      </ul>
+    </main>
+
+    <footer class="site-footer">
+      <div class="site-footer__inner">
+        <div class="site-footer__brand">
+          <img src="assets/branding/s1er_mark.png" width="24" height="24" alt="" />
+          <div>
+            <strong>S1er</strong>
+            <p>GPL-3.0-or-later · 与 Stage1st 官方无关</p>
+          </div>
+        </div>
+        <ul class="site-footer__links">
+          <li><a href="index.html">首页</a></li>
+          <li>
+            <a href="https://github.com/Shirolin/s1er" rel="noopener noreferrer">仓库</a>
+          </li>
+          <li>
+            <a href="https://github.com/Shirolin/s1er/issues" rel="noopener noreferrer">Issues</a>
+          </li>
+        </ul>
+      </div>
+    </footer>
+
+    <script src="js/main.js" defer></script>
+  </body>
+</html>

@@ -1,0 +1,15 @@
+include: package:flutter_lints/flutter.yaml
+
+analyzer:
+  exclude:
+    - 'scripts/**'
+
+linter:
+  rules:
+    - require_trailing_commas
+    - prefer_const_constructors
+    - prefer_const_declarations
+    - unawaited_futures
+    - use_super_parameters
+    - sort_constructors_first
+    - avoid_print

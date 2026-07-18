@@ -1,0 +1,14 @@
+{
+  "latest": "0.1.0",
+  "minSupported": "0.1.0",
+  "notes": "Beta",
+  "publishedAt": "2026-07-17",
+  "channels": {
+    "github": "https://github.com/Shirolin/s1er/releases/latest",
+    "androidApk": null,
+    "windows": null,
+    "linux": null,
+    "macos": null,
+    "play": null
+  }
+}

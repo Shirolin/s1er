@@ -1,0 +1,274 @@
+import 'dart:async';
+
+import 'package:flutter/foundation.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+
+import '../config/env_config.dart';
+import '../models/app_exceptions.dart';
+import '../models/app_update_manifest.dart';
+import '../services/settings_store.dart';
+import '../services/talker.dart';
+import '../services/update_check_service.dart';
+import '../utils/semver.dart';
+import '../utils/update_prompt_store.dart';
+import 'settings_provider.dart';
+import 'talker_provider.dart';
+
+enum UpdateAvailability { force, optional, upToDate }
+
+/// 一次检查的评估结果（含是否应弹出 Dialog）。
+class UpdateEvaluation {
+  const UpdateEvaluation({
+    required this.availability,
+    required this.localVersion,
+    required this.manifest,
+    required this.downloadUrl,
+    required this.shouldShowDialog,
+    this.userMessage,
+  });
+
+  final UpdateAvailability availability;
+  final String localVersion;
+  final AppUpdateManifest manifest;
+  final String downloadUrl;
+
+  /// 是否应展示升级 Dialog（启动自动 / 手动均适用）。
+  final bool shouldShowDialog;
+
+  /// 手动检查时无 Dialog 时的 SnackBar 文案；启动静默时可为 null。
+  final String? userMessage;
+
+  bool get isUpdate =>
+      availability == UpdateAvailability.force ||
+      availability == UpdateAvailability.optional;
+}
+
+/// 纯函数：比较本地版本与清单，结合忽略 / 冷却决定是否弹窗。
+UpdateEvaluation evaluateUpdate({
+  required String localVersion,
+  required AppUpdateManifest manifest,
+  required String downloadUrl,
+  String? ignoredVersion,
+  int? lastPromptMs,
+  required DateTime now,
+  required bool manual,
+  Duration cooldown = UpdatePromptStore.cooldown,
+}) {
+  final local = localVersion.trim();
+
+  if (Semver.isLessThan(local, manifest.minSupported)) {
+    return UpdateEvaluation(
+      availability: UpdateAvailability.force,
+      localVersion: local,
+      manifest: manifest,
+      downloadUrl: downloadUrl,
+      shouldShowDialog: true,
+    );
+  }
+
+  if (!Semver.isLessThan(local, manifest.latest)) {
+    return UpdateEvaluation(
+      availability: UpdateAvailability.upToDate,
+      localVersion: local,
+      manifest: manifest,
+      downloadUrl: downloadUrl,
+      shouldShowDialog: false,
+      userMessage: manual ? '已是最新版本' : null,
+    );
+  }
+
+  // optional
+  final ignored = ignoredVersion?.trim();
+  if (ignored != null &&
+      ignored.isNotEmpty &&
+      Semver.compare(ignored, manifest.latest) == 0) {
+    return UpdateEvaluation(
+      availability: UpdateAvailability.optional,
+      localVersion: local,
+      manifest: manifest,
+      downloadUrl: downloadUrl,
+      shouldShowDialog: false,
+      userMessage: manual ? '已忽略此版本的更新提示' : null,
+    );
+  }
+
+  if (!manual && lastPromptMs != null) {
+    final elapsed = now.millisecondsSinceEpoch - lastPromptMs;
+    if (elapsed >= 0 && elapsed < cooldown.inMilliseconds) {
+      return UpdateEvaluation(
+        availability: UpdateAvailability.optional,
+        localVersion: local,
+        manifest: manifest,
+        downloadUrl: downloadUrl,
+        shouldShowDialog: false,
+      );
+    }
+  }
+
+  return UpdateEvaluation(
+    availability: UpdateAvailability.optional,
+    localVersion: local,
+    manifest: manifest,
+    downloadUrl: downloadUrl,
+    shouldShowDialog: true,
+  );
+}
+
+class UpdateCheckState {
+  const UpdateCheckState({
+    this.isChecking = false,
+    this.pendingPrompt,
+    this.autoCheckStarted = false,
+  });
+
+  final bool isChecking;
+
+  /// 待展示的升级 Dialog（由 [UpdatePromptHost] 消费后 clear）。
+  final UpdateEvaluation? pendingPrompt;
+
+  /// 本 session 是否已触发过冷启动检查。
+  final bool autoCheckStarted;
+
+  UpdateCheckState copyWith({
+    bool? isChecking,
+    UpdateEvaluation? pendingPrompt,
+    bool clearPendingPrompt = false,
+    bool? autoCheckStarted,
+  }) {
+    return UpdateCheckState(
+      isChecking: isChecking ?? this.isChecking,
+      pendingPrompt:
+          clearPendingPrompt ? null : (pendingPrompt ?? this.pendingPrompt),
+      autoCheckStarted: autoCheckStarted ?? this.autoCheckStarted,
+    );
+  }
+}
+
+final updateCheckServiceProvider = Provider<UpdateCheckService>((ref) {
+  return UpdateCheckService();
+});
+
+class UpdateCheckNotifier extends Notifier<UpdateCheckState> {
+  @override
+  UpdateCheckState build() => const UpdateCheckState();
+
+  SettingsStore? _tryStore() {
+    try {
+      return ref.read(settingsStoreProvider);
+    } on Object {
+      return null;
+    }
+  }
+
+  UpdateCheckService get _service => ref.read(updateCheckServiceProvider);
+
+  /// 冷启动：延迟后检查一次；失败静默。
+  Future<void> runStartupCheck({
+    Duration delay = UpdatePromptStore.startupDelay,
+    DateTime Function()? clock,
+  }) async {
+    if (state.autoCheckStarted) return;
+    state = state.copyWith(autoCheckStarted: true);
+
+    if (delay > Duration.zero) {
+      await Future<void>.delayed(delay);
+    }
+    if (!ref.mounted) return;
+
+    try {
+      final evaluation = await _evaluate(manual: false, clock: clock);
+      if (!ref.mounted) return;
+      if (evaluation.shouldShowDialog) {
+        state = state.copyWith(pendingPrompt: evaluation);
+      }
+    } on UpdateCheckException catch (e) {
+      // 启动静默失败（常见：私有仓库 raw 清单 404）；不按崩溃级别打 exception。
+      talker.warning('Startup update check skipped: ${e.message}');
+    } on Object catch (e, st) {
+      talker.handle(e, st, 'Startup update check failed');
+    }
+  }
+
+  /// 手动检查：忽略冷却；返回评估结果供 UI 弹 Dialog / SnackBar。
+  /// 不写入 [UpdateCheckState.pendingPrompt]（避免与启动 Host 竞态双弹）。
+  Future<UpdateEvaluation> checkManual({DateTime Function()? clock}) async {
+    if (state.isChecking) {
+      throw const UpdateCheckException('正在检查更新…');
+    }
+    state = state.copyWith(isChecking: true);
+    try {
+      final evaluation = await _evaluate(manual: true, clock: clock);
+      if (!ref.mounted) return evaluation;
+      state = state.copyWith(isChecking: false);
+      return evaluation;
+    } catch (e) {
+      if (ref.mounted) {
+        state = state.copyWith(isChecking: false);
+      }
+      rethrow;
+    }
+  }
+
+  Future<UpdateEvaluation> _evaluate({
+    required bool manual,
+    DateTime Function()? clock,
+  }) async {
+    final now = clock?.call() ?? DateTime.now();
+    final info = await ref.read(packageInfoProvider.future);
+    if (!ref.mounted) {
+      throw const UpdateCheckException('检查已取消');
+    }
+    final manifest = await _service.fetchManifest();
+    if (!ref.mounted) {
+      throw const UpdateCheckException('检查已取消');
+    }
+    final store = _tryStore();
+    final downloadUrl = UpdateCheckService.resolveDownloadUrl(
+      manifest,
+      distribution: EnvConfig.distribution,
+      isWeb: kIsWeb,
+      platform: defaultTargetPlatform,
+    );
+    return evaluateUpdate(
+      localVersion: info.version,
+      manifest: manifest,
+      downloadUrl: downloadUrl,
+      ignoredVersion: UpdatePromptStore.ignoredVersion(store),
+      lastPromptMs: UpdatePromptStore.lastPromptMs(store),
+      now: now,
+      manual: manual,
+    );
+  }
+
+  void clearPendingPrompt() {
+    state = state.copyWith(clearPendingPrompt: true);
+  }
+
+  /// Dialog 已展示或关闭（含稍后）：写入冷却时间戳。
+  void markPromptInteracted({DateTime Function()? clock}) {
+    final now = clock?.call() ?? DateTime.now();
+    UpdatePromptStore.setLastPromptMs(
+      _tryStore(),
+      now.millisecondsSinceEpoch,
+    );
+  }
+
+  void ignoreVersion(String version) {
+    UpdatePromptStore.setIgnoredVersion(_tryStore(), version);
+    markPromptInteracted();
+    clearPendingPrompt();
+  }
+}
+
+final updateCheckProvider =
+    NotifierProvider<UpdateCheckNotifier, UpdateCheckState>(
+  UpdateCheckNotifier.new,
+);
+
+/// 在应用根 [ref.watch]，冷启动延迟触发升级检查。
+final updateCheckCoordinatorProvider = Provider<void>((ref) {
+  scheduleMicrotask(() {
+    if (!ref.mounted) return;
+    unawaited(ref.read(updateCheckProvider.notifier).runStartupCheck());
+  });
+});

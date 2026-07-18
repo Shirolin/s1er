@@ -1,0 +1,17 @@
+{
+  "Variables": {
+    "page": "1",
+    "perpage": "20",
+    "count": "1",
+    "list": [
+      {
+        "id": "301",
+        "author": "提醒用户",
+        "authorid": "300001",
+        "dateline": "1700000120",
+        "new": "1",
+        "note": "<a href=\"home.php?mod=space&amp;uid=300001\">提醒用户</a> 回复了您的帖子 <a href=\"forum.php?mod=redirect&amp;goto=findpost&amp;ptid=400001&amp;pid=500001\">示例主题</a>"
+      }
+    ]
+  }
+}

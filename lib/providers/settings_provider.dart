@@ -8,6 +8,7 @@ import '../services/app_local_data.dart';
 import '../services/s1_image_cache.dart';
 import '../services/settings_store.dart';
 import '../theme/app_theme.dart';
+import '../theme/s1_haptics.dart';
 
 class AppSettings {
   const AppSettings({
@@ -19,6 +20,7 @@ class AppSettings {
     this.maxImagesPerPost = S1Constants.defaultMaxImagesPerPost,
     this.imageCacheLimitMb = S1Constants.defaultImageCacheLimitMb,
     this.recordReadingHistory = true,
+    this.hapticsEnabled = true,
     this.fontSize = S1Typography.defaultBodySize,
     this.collapsedForums = const {},
     this.shareImageFormat = ShareImageFormat.webp,
@@ -36,6 +38,7 @@ class AppSettings {
   final int maxImagesPerPost;
   final int imageCacheLimitMb;
   final bool recordReadingHistory;
+  final bool hapticsEnabled;
   final int fontSize;
   final Set<String> collapsedForums;
   final ShareImageFormat shareImageFormat;
@@ -55,6 +58,7 @@ class AppSettings {
     int? maxImagesPerPost,
     int? imageCacheLimitMb,
     bool? recordReadingHistory,
+    bool? hapticsEnabled,
     int? fontSize,
     Set<String>? collapsedForums,
     ShareImageFormat? shareImageFormat,
@@ -72,6 +76,7 @@ class AppSettings {
       maxImagesPerPost: maxImagesPerPost ?? this.maxImagesPerPost,
       imageCacheLimitMb: imageCacheLimitMb ?? this.imageCacheLimitMb,
       recordReadingHistory: recordReadingHistory ?? this.recordReadingHistory,
+      hapticsEnabled: hapticsEnabled ?? this.hapticsEnabled,
       fontSize: fontSize ?? this.fontSize,
       collapsedForums: collapsedForums ?? this.collapsedForums,
       shareImageFormat: shareImageFormat ?? this.shareImageFormat,
@@ -94,6 +99,7 @@ class AppSettings {
         other.maxImagesPerPost == maxImagesPerPost &&
         other.imageCacheLimitMb == imageCacheLimitMb &&
         other.recordReadingHistory == recordReadingHistory &&
+        other.hapticsEnabled == hapticsEnabled &&
         other.fontSize == fontSize &&
         _setEquals(other.collapsedForums, collapsedForums) &&
         other.shareImageFormat == shareImageFormat &&
@@ -116,6 +122,7 @@ class AppSettings {
         maxImagesPerPost,
         imageCacheLimitMb,
         recordReadingHistory,
+        hapticsEnabled,
         fontSize,
         Object.hashAllUnordered(collapsedForums),
         shareImageFormat,
@@ -144,15 +151,21 @@ class SettingsNotifier extends Notifier<AppSettings> {
   AppSettings build() {
     if (initial != null) {
       _applyImageCacheLimit(initial!.imageCacheLimitMb);
+      _syncHaptics(initial!.hapticsEnabled);
       return initial!;
     }
     final settings = _loadSettings();
     _applyImageCacheLimit(settings.imageCacheLimitMb);
+    _syncHaptics(settings.hapticsEnabled);
     return settings;
   }
 
   void _applyImageCacheLimit(int limitMb) {
     S1ImageCache.setMaxCacheBytes(limitMb * 1024 * 1024);
+  }
+
+  void _syncHaptics(bool value) {
+    S1Haptics.enabled = value;
   }
 
   SettingsStore? get _effectiveStore {
@@ -168,6 +181,7 @@ class SettingsNotifier extends Notifier<AppSettings> {
 
   void _commit(AppSettings next) {
     if (next == state) return;
+    _syncHaptics(next.hapticsEnabled);
     state = next;
   }
 
@@ -215,6 +229,11 @@ class SettingsNotifier extends Notifier<AppSettings> {
           S1Constants.defaultImageCacheLimitMb,
       recordReadingHistory: settingsStore.get<bool>(
             'recordReadingHistory',
+            defaultValue: true,
+          ) ??
+          true,
+      hapticsEnabled: settingsStore.get<bool>(
+            'hapticsEnabled',
             defaultValue: true,
           ) ??
           true,
@@ -294,6 +313,11 @@ class SettingsNotifier extends Notifier<AppSettings> {
     _persist('recordReadingHistory', value);
   }
 
+  void setHapticsEnabled(bool value) {
+    _commit(state.copyWith(hapticsEnabled: value));
+    _persist('hapticsEnabled', value);
+  }
+
   void setFontSize(int value) {
     _commit(state.copyWith(fontSize: value));
     _persist('fontSize', value);
@@ -347,6 +371,7 @@ class SettingsNotifier extends Notifier<AppSettings> {
       maxImagesPerPost: defaults.maxImagesPerPost,
       imageCacheLimitMb: defaults.imageCacheLimitMb,
       recordReadingHistory: defaults.recordReadingHistory,
+      hapticsEnabled: defaults.hapticsEnabled,
       fontSize: defaults.fontSize,
       shareImageFormat: defaults.shareImageFormat,
       sharePixelRatio: defaults.sharePixelRatio,
@@ -361,6 +386,7 @@ class SettingsNotifier extends Notifier<AppSettings> {
     _persist('imageCacheLimitMb', defaults.imageCacheLimitMb);
     _applyImageCacheLimit(defaults.imageCacheLimitMb);
     _persist('recordReadingHistory', defaults.recordReadingHistory);
+    _persist('hapticsEnabled', defaults.hapticsEnabled);
     _persist('fontSize', defaults.fontSize);
     _persist('shareImageFormat', defaults.shareImageFormat.storageKey);
     _persist('sharePixelRatio', defaults.sharePixelRatio);

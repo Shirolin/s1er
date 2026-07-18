@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../../theme/app_theme.dart';
+import '../../theme/s1_haptics.dart';
 
 const _colorLabels = {
   'blue': '冷蓝',
@@ -48,7 +49,12 @@ class ThemeColorPicker extends StatelessWidget {
           child: Tooltip(
             message: _colorLabels[key] ?? key,
             child: InkWell(
-              onTap: onChanged != null ? () => onChanged!(key) : null,
+              onTap: onChanged != null
+                  ? () {
+                      S1Haptics.selection();
+                      onChanged!(key);
+                    }
+                  : null,
               borderRadius: S1Shape.full,
               child: Padding(
                 padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 6),

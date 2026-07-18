@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:url_launcher/url_launcher.dart';
 
+import '../theme/s1_haptics.dart';
 import '../utils/s1_snack_bar.dart';
 import 's1_menu.dart';
 
@@ -43,12 +44,18 @@ class AppBarMoreMenu extends StatelessWidget {
       menuChildren: [
         if (onRefresh != null)
           s1MenuItem(
-            onPressed: onRefresh,
+            onPressed: () {
+              S1Haptics.light();
+              onRefresh!();
+            },
             icon: Icons.refresh,
             label: '刷新',
           ),
         s1MenuItem(
-          onPressed: () => _openBrowser(context),
+          onPressed: () {
+            S1Haptics.selection();
+            _openBrowser(context);
+          },
           icon: Icons.open_in_browser,
           label: '通过浏览器打开',
         ),

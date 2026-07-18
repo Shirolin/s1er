@@ -5,6 +5,7 @@ import '../../config/constants.dart';
 import '../../providers/device_model_label_provider.dart';
 import '../../providers/settings_provider.dart';
 import '../../theme/app_theme.dart';
+import '../../theme/s1_haptics.dart';
 import '../../utils/post_signature.dart';
 import 'settings_section_header.dart';
 
@@ -74,7 +75,10 @@ class _PostSignatureSettingsSectionState
                   ),
                 ),
                 value: settings.postSignatureEnabled,
-                onChanged: notifier.setPostSignatureEnabled,
+                onChanged: (value) {
+                  S1Haptics.selection();
+                  notifier.setPostSignatureEnabled(value);
+                },
                 contentPadding: const EdgeInsets.symmetric(horizontal: 8),
                 shape: const RoundedRectangleBorder(
                   borderRadius: S1Shape.small,
@@ -94,7 +98,10 @@ class _PostSignatureSettingsSectionState
                 ),
                 value: settings.postSignatureShowDevice,
                 onChanged: settings.postSignatureEnabled
-                    ? notifier.setPostSignatureShowDevice
+                    ? (value) {
+                        S1Haptics.selection();
+                        notifier.setPostSignatureShowDevice(value);
+                      }
                     : null,
                 contentPadding: const EdgeInsets.symmetric(horizontal: 8),
                 shape: const RoundedRectangleBorder(

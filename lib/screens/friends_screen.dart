@@ -6,6 +6,7 @@ import '../config/api_config.dart';
 import '../models/friend_summary.dart';
 import '../providers/auth_provider.dart';
 import '../providers/friend_list_provider.dart';
+import '../theme/s1_haptics.dart';
 import '../widgets/app_bar_more_menu.dart';
 import '../widgets/s1_error_view.dart';
 import '../widgets/web_avatar.dart';
@@ -44,7 +45,9 @@ class FriendsScreen extends ConsumerWidget {
           ),
           error: (error, stack) => S1ErrorView(
             error: error,
-            onRetry: () => ref.read(friendListProvider.notifier).refresh(),
+            onRetry: () => S1Haptics.wrapRefresh(
+              () => ref.read(friendListProvider.notifier).refresh(),
+            ),
             onLogin: () => context.push('/login'),
           ),
           data: (result) {
@@ -52,7 +55,9 @@ class FriendsScreen extends ConsumerWidget {
               return const _EmptyFriends();
             }
             return RefreshIndicator(
-              onRefresh: () => ref.read(friendListProvider.notifier).refresh(),
+              onRefresh: () => S1Haptics.wrapRefresh(
+                () => ref.read(friendListProvider.notifier).refresh(),
+              ),
               child: ListView.separated(
                 padding: const EdgeInsets.symmetric(vertical: 8),
                 itemCount: result.items.length,
@@ -131,6 +136,7 @@ class _FriendTile extends StatelessWidget {
         style: textTheme.bodySmall?.copyWith(color: scheme.onSurfaceVariant),
       ),
       onTap: () {
+        S1Haptics.selection();
         final name = Uri.encodeComponent(friend.username);
         context.push('/user-space/${friend.uid}?username=$name');
       },

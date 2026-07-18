@@ -151,6 +151,7 @@ class S1BackupSettingsMapper {
     'maxImagesPerPost': 'max_images_per_post',
     'imageCacheLimitMb': 'image_cache_limit_mb',
     'recordReadingHistory': 'record_reading_history',
+    'hapticsEnabled': 'haptics_enabled',
     'fontSize': 'font_size',
     'collapsedForums': 'collapsed_forums',
     'shareImageFormat': 'share_image_format',

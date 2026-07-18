@@ -11,6 +11,7 @@ import '../providers/settings_provider.dart';
 import '../models/forum_category.dart';
 import '../models/notice_item.dart';
 import '../theme/app_theme.dart';
+import '../theme/s1_haptics.dart';
 import '../widgets/app_bar_more_menu.dart';
 import '../widgets/s1_error_view.dart';
 import '../widgets/s1_content_width.dart';
@@ -172,6 +173,7 @@ class _HomeScreenBodyState extends ConsumerState<_HomeScreenBody> {
           : NavigationBar(
               selectedIndex: selectedTab,
               onDestinationSelected: (index) {
+                S1Haptics.selection();
                 if (selectedTab == 2 && index != 2) {
                   ref.read(messagesSegmentProvider.notifier).select(0);
                 }
@@ -234,12 +236,15 @@ class _ForumTab extends ConsumerWidget {
       ),
       error: (e, st) => S1ErrorView(
         error: e,
-        onRetry: () => ref.read(forumListProvider.notifier).refresh(),
+        onRetry: () => S1Haptics.wrapRefresh(
+          () => ref.read(forumListProvider.notifier).refresh(),
+        ),
         onLogin: () => context.push('/login'),
       ),
       data: (categories) {
-        Future<void> refresh() =>
-            ref.read(forumListProvider.notifier).refresh();
+        Future<void> refresh() => S1Haptics.wrapRefresh(
+              () => ref.read(forumListProvider.notifier).refresh(),
+            );
 
         if (categories.isEmpty) {
           final scheme = Theme.of(context).colorScheme;

@@ -8,6 +8,7 @@ import '../models/private_message_item.dart';
 import '../providers/pm_conversation_provider.dart';
 import '../providers/settings_provider.dart';
 import '../theme/app_theme.dart';
+import '../theme/s1_haptics.dart';
 import '../utils/window_size.dart';
 import '../widgets/app_bar_more_menu.dart';
 import '../widgets/pagination_bar.dart';
@@ -329,7 +330,9 @@ class _PmConversationScreenState extends ConsumerState<PmConversationScreen> {
           ),
           error: (error, stack) => S1ErrorView(
             error: error,
-            onRetry: () => ref.read(provider.notifier).refresh(),
+            onRetry: () => S1Haptics.wrapRefresh(
+              () => ref.read(provider.notifier).refresh(),
+            ),
             onLogin: () => context.push('/login'),
           ),
           data: (state) {
@@ -359,8 +362,9 @@ class _PmConversationScreenState extends ConsumerState<PmConversationScreen> {
                               : double.infinity,
                         ),
                         child: RefreshIndicator(
-                          onRefresh: () =>
-                              ref.read(provider.notifier).refresh(),
+                          onRefresh: () => S1Haptics.wrapRefresh(
+                            () => ref.read(provider.notifier).refresh(),
+                          ),
                           child: state.items.isEmpty
                               ? ListView(
                                   controller: scrollController,

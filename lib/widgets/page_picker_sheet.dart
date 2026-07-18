@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../theme/app_theme.dart';
+import '../theme/s1_haptics.dart';
 import '../utils/window_size.dart';
 import 's1_adaptive_sheet.dart';
 
@@ -357,7 +358,12 @@ class _PageEntryTile extends StatelessWidget {
               color: scheme.onSurfaceVariant.withValues(alpha: S1Alpha.strong),
               size: 18,
             ),
-      onTap: isCurrent ? null : () => onSelected(page),
+      onTap: isCurrent
+          ? null
+          : () {
+              S1Haptics.selection();
+              onSelected(page);
+            },
     );
   }
 }

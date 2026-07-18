@@ -1,8 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/rendering.dart';
-import 'package:flutter/services.dart';
 
 import '../theme/app_theme.dart';
+import '../theme/s1_haptics.dart';
 
 /// 可滚动区域的偏移与视口尺寸，供「返回顶部 / 下一楼」等 FAB 判定使用。
 class S1ScrollMetrics {
@@ -304,7 +304,7 @@ class _NavActionButtonState extends State<_NavActionButton> {
   bool _longPressActivated = false;
 
   void _onTap() {
-    HapticFeedback.selectionClick();
+    S1Haptics.selection();
     if (_longPressActivated) {
       setState(() => _longPressActivated = false);
     }
@@ -312,7 +312,7 @@ class _NavActionButtonState extends State<_NavActionButton> {
   }
 
   void _onLongPress() {
-    HapticFeedback.mediumImpact();
+    S1Haptics.medium();
     if (widget.longPressIcon != null) {
       setState(() => _longPressActivated = true);
     }

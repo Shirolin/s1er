@@ -44,8 +44,8 @@ int resolveThreadInitialPage({
   }
 
   if (record != null) {
-    final live = intent?.liveTotalPages ?? record.totalPages;
-    final target = record.resolveOpenPage(live);
+    final liveReplies = intent?.liveTotalReplies ?? record.totalReplies;
+    final target = record.resolveOpenPage(liveReplies);
     if (target > 1) {
       return target;
     }
@@ -54,19 +54,24 @@ int resolveThreadInitialPage({
   return 1;
 }
 
-/// resume 打开落点：B3 新页 → 页顶；否则 → 滚到 [ReadingRecord.lastReadFloor]。
+/// resume 打开落点：B3 新回复首楼所在页 → 页顶；否则 → 滚到 [ReadingRecord.lastReadFloor]。
 OpenScrollTarget resolveResumeScrollTarget({
   required ReadingRecord? record,
   required int loadedPage,
-  required int totalPages,
+  required int liveTotalReplies,
+  int? perPage,
 }) {
   if (record == null) {
     return const ScrollToPageTop();
   }
 
-  final live = totalPages;
-  if (record.isFinished && record.hasNewPages(live)) {
-    final b3Page = (record.totalPages + 1).clamp(1, live);
+  final ppp =
+      (perPage != null && perPage > 0) ? perPage : record.effectivePerPage;
+  final livePages = calcThreadTotalPages(liveTotalReplies, perPage: ppp);
+
+  if (record.isFinished && record.hasNewReplies(liveTotalReplies)) {
+    final b3Page =
+        pageForFloor(record.totalPosts + 1, perPage: ppp).clamp(1, livePages);
     if (loadedPage == b3Page) {
       return const ScrollToPageTop();
     }
@@ -163,19 +168,19 @@ abstract final class ThreadRouteCodec {
 
   static ThreadOpenIntent toIntent(
     ThreadDestination destination, {
-    int? liveTotalPages,
+    int? liveTotalReplies,
     int? resumePageHint,
   }) {
     switch (destination) {
       case ResumeThread():
         return ThreadOpenIntent.resume(
           page: resumePageHint,
-          liveTotalPages: liveTotalPages,
+          liveTotalReplies: liveTotalReplies,
         );
       case ThreadPage(:final page):
-        return ThreadOpenIntent.page(page, liveTotalPages: liveTotalPages);
+        return ThreadOpenIntent.page(page, liveTotalReplies: liveTotalReplies);
       case ThreadPost(:final pid):
-        return ThreadOpenIntent.post(pid, liveTotalPages: liveTotalPages);
+        return ThreadOpenIntent.post(pid, liveTotalReplies: liveTotalReplies);
     }
   }
 
@@ -209,10 +214,10 @@ abstract final class ThreadRouteCodec {
 String buildThreadDetailPath(
   String tid, {
   ReadingRecord? record,
-  int? liveTotalPages,
+  int? liveTotalReplies,
 }) {
-  final pages = liveTotalPages ?? record?.totalPages;
+  final replies = liveTotalReplies ?? record?.totalReplies;
   final targetPage =
-      record != null && pages != null ? record.resolveOpenPage(pages) : 1;
+      record != null && replies != null ? record.resolveOpenPage(replies) : 1;
   return ThreadRouteCodec.encodeResumeWithPageHint(tid, targetPage);
 }

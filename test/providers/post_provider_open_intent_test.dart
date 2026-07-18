@@ -146,7 +146,7 @@ void main() {
               lastReadPage: 3,
               lastReadFloor: 85,
               totalPages: 8,
-              totalReplies: 0,
+              totalReplies: 319,
               perPage: 40,
               lastReadAt: 1,
               firstReadAt: 1,
@@ -306,6 +306,115 @@ void main() {
       );
     });
   });
+
+  group('PostNotifier.restoreToFloor', () {
+    late _ThreadDetailAdapter adapter;
+    late ProviderContainer container;
+
+    ProviderContainer buildContainer({
+      // ignore: strict_raw_type
+      List extraOverrides = const [],
+    }) {
+      final dio = Dio()..httpClientAdapter = adapter;
+      late ProviderContainer c;
+      c = ProviderContainer(
+        overrides: [
+          httpClientProvider.overrideWith(
+            (ref) => S1HttpClient.test(c, dio),
+          ),
+          readingRecordProvider('100').overrideWithValue(null),
+          ...extraOverrides,
+        ],
+      );
+      return c;
+    }
+
+    setUp(() {
+      adapter = _ThreadDetailAdapter();
+    });
+
+    tearDown(() {
+      container.dispose();
+    });
+
+    test('same-page restore returns true and sets ScrollToFloor', () async {
+      container = buildContainer(
+        extraOverrides: [
+          threadOpenIntentProvider('100').overrideWithValue(
+            const ThreadOpenIntent.page(2),
+          ),
+        ],
+      );
+      final sub = container.listen(postProvider('100'), (_, __) {});
+      addTearDown(sub.close);
+
+      await container.read(postProvider('100').future);
+      final ok =
+          await container.read(postProvider('100').notifier).restoreToFloor(
+                page: 2,
+                absoluteFloor: 45,
+              );
+
+      expect(ok, isTrue);
+      final state = container.read(postProvider('100')).asData!.value;
+      expect(state.currentPage, 2);
+      expect(state.openScrollTarget, isA<ScrollToFloor>());
+      expect((state.openScrollTarget! as ScrollToFloor).absoluteFloor, 45);
+      expect(adapter.requestedPages, [2]);
+    });
+
+    test('cross-page restore success returns true', () async {
+      container = buildContainer(
+        extraOverrides: [
+          threadOpenIntentProvider('100').overrideWithValue(
+            const ThreadOpenIntent.page(2),
+          ),
+        ],
+      );
+      final sub = container.listen(postProvider('100'), (_, __) {});
+      addTearDown(sub.close);
+
+      await container.read(postProvider('100').future);
+      final ok =
+          await container.read(postProvider('100').notifier).restoreToFloor(
+                page: 1,
+                absoluteFloor: 3,
+              );
+
+      expect(ok, isTrue);
+      final state = container.read(postProvider('100')).asData!.value;
+      expect(state.currentPage, 1);
+      expect(state.openScrollTarget, isA<ScrollToFloor>());
+      expect(adapter.requestedPages, [2, 1]);
+    });
+
+    test('cross-page restore failure returns false and keeps previous page',
+        () async {
+      container = buildContainer(
+        extraOverrides: [
+          threadOpenIntentProvider('100').overrideWithValue(
+            const ThreadOpenIntent.page(2),
+          ),
+        ],
+      );
+      final sub = container.listen(postProvider('100'), (_, __) {});
+      addTearDown(sub.close);
+
+      await container.read(postProvider('100').future);
+      adapter.failPages.add(1);
+
+      final ok =
+          await container.read(postProvider('100').notifier).restoreToFloor(
+                page: 1,
+                absoluteFloor: 3,
+              );
+
+      expect(ok, isFalse);
+      final state = container.read(postProvider('100')).asData!.value;
+      expect(state.currentPage, 2);
+      expect(container.read(postProvider('100')).hasError, isFalse);
+    });
+  });
 }
 
 class _ThreadDetailAdapter implements HttpClientAdapter {
@@ -313,6 +422,7 @@ class _ThreadDetailAdapter implements HttpClientAdapter {
   final locateRequests = <String>[];
   final locatePageForPid = <String, int>{};
   final rateLogRequests = <Uri>[];
+  final failPages = <int>{};
   Map<String, int>? commentCount;
   String rateLogHtml = '<html></html>';
   bool omitPidFromPostlist = false;
@@ -349,6 +459,14 @@ class _ThreadDetailAdapter implements HttpClientAdapter {
     if (uri.query.contains('module=viewthread')) {
       final page = int.tryParse(uri.queryParameters['page'] ?? '1') ?? 1;
       requestedPages.add(page);
+      if (failPages.contains(page)) {
+        throw DioException(
+          requestOptions: options,
+          type: DioExceptionType.badResponse,
+          response: Response(requestOptions: options, statusCode: 500),
+          message: 'simulated page $page failure',
+        );
+      }
       final pid = omitPidFromPostlist ? '1' : (_lastLocatedPid ?? '1');
       final variables = <String, dynamic>{
         'ppp': '40',

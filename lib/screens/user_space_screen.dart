@@ -322,7 +322,7 @@ class _ThreadCard extends ConsumerWidget {
             buildThreadDetailPath(
               item.tid,
               record: record,
-              liveTotalPages: calcThreadTotalPages(item.replies),
+              liveTotalReplies: item.replies,
             ),
           );
         },

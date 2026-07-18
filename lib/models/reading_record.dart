@@ -1,6 +1,15 @@
+import '../config/constants.dart';
+
+/// 绝对楼层 → 1-based 页码。
+int pageForFloor(int absoluteFloor, {required int perPage}) {
+  if (absoluteFloor <= 0 || perPage <= 0) return 1;
+  return ((absoluteFloor - 1) ~/ perPage) + 1;
+}
+
 /// 阅读记录 / 阅读进度模型（纯 Dart，不依赖 Flutter）。
 ///
 /// 存储于本地 Drift 表 `reading_histories`，内存镜像为 [toJson] 的 Map。
+/// 进度 / 已读 / 开页一律以 [lastReadFloor] 为准；[lastReadPage] 仅作存储冗余。
 class ReadingRecord {
   ReadingRecord({
     required this.tid,
@@ -39,10 +48,10 @@ class ReadingRecord {
   final String author;
   final String fid;
 
-  /// 最后阅读页码（1-based）
+  /// 最后阅读页码（1-based）；存储冗余，不参与进度/已读/开页判定。
   final int lastReadPage;
 
-  /// 最后阅读的绝对楼层（1-based，跨页累计）；resume 时用于楼级落点。
+  /// 最后阅读的绝对楼层（1-based，跨页累计）；进度与 resume 落点的权威字段。
   final int lastReadFloor;
 
   /// 帖子总页数（缓存）
@@ -63,48 +72,56 @@ class ReadingRecord {
   /// 进入详情页次数（翻页不计）
   final int readCount;
 
-  /// 阅读进度 0.0 ~ 1.0（页级，见计划 C2）。
+  /// 缓存总楼数（主楼 + 回复）。
+  int get totalPosts => totalReplies + 1;
+
+  int get effectivePerPage =>
+      perPage > 0 ? perPage : S1Constants.postsPerPageFallback;
+
+  /// 阅读进度 0.0 ~ 1.0（楼级）。
   double get progress =>
-      totalPages > 0 ? (lastReadPage / totalPages).clamp(0.0, 1.0) : 0.0;
+      totalPosts > 0 ? (lastReadFloor / totalPosts).clamp(0.0, 1.0) : 0.0;
 
-  /// 是否读完（页级判定，`totalPages` 已 clamp(1,…)）。
+  /// 是否读完（楼级：已读到缓存总楼）。
   ///
-  /// 说明：数据流只知「已加载到第几页」，故按页级判定。0 回复帖
-  /// (`totalReplies == 0`) 亦满足 `totalPages == 1 && lastReadPage == 1 ⇒ 已读`。
-  /// 仅反映**上次写入时**的缓存；列表卡片请用 [isFinishedAt] 对照实时页数。
-  bool get isFinished => lastReadPage >= totalPages;
+  /// 0 回复帖：`totalPosts == 1 && lastReadFloor >= 1 ⇒ 已读`。
+  /// 仅反映**上次写入时**的缓存；列表卡片请用 [isFinishedAt] 对照实时回复数。
+  bool get isFinished => lastReadFloor >= totalPosts;
 
-  /// 相对实时总页数，是否已读完（用于列表/API 页数更新后的展示）。
-  bool isFinishedAt(int liveTotalPages) =>
-      liveTotalPages > 0 && lastReadPage >= liveTotalPages;
+  /// 相对实时回复数，是否已读完（用于列表/API 更新后的展示）。
+  bool isFinishedAt(int liveTotalReplies) {
+    final livePosts = liveTotalReplies + 1;
+    return livePosts > 0 && lastReadFloor >= livePosts;
+  }
 
-  /// 缓存总页数是否落后于实时值（有新回复撑大页数）。
-  bool hasNewPages(int liveTotalPages) => liveTotalPages > totalPages;
+  /// 缓存回复数是否落后于实时值（有新回复）。
+  bool hasNewReplies(int liveTotalReplies) => liveTotalReplies > totalReplies;
 
-  /// 相对实时总页数的进度（列表卡片进度条用）。
-  double progressAt(int liveTotalPages) => liveTotalPages > 0
-      ? (lastReadPage / liveTotalPages).clamp(0.0, 1.0)
-      : 0.0;
+  /// 相对实时回复数的进度（列表卡片进度条用）。
+  double progressAt(int liveTotalReplies) {
+    final livePosts = liveTotalReplies + 1;
+    return livePosts > 0 ? (lastReadFloor / livePosts).clamp(0.0, 1.0) : 0.0;
+  }
 
-  /// 打开详情时应落地的页码（1-based）。
+  /// 打开详情时应落地的页码（1-based），由楼层推算。
   ///
-  /// [liveTotalPages] 须来自列表 `thread.replies` 或详情 API 的实时计算值。
-  int resolveOpenPage(int liveTotalPages) {
-    final pages = liveTotalPages.clamp(1, 9999);
+  /// [liveTotalReplies] 须来自列表 `thread.replies` 或详情 API。
+  int resolveOpenPage(int liveTotalReplies, {int? perPage}) {
+    final ppp = (perPage != null && perPage > 0) ? perPage : effectivePerPage;
+    final livePosts = liveTotalReplies + 1;
+    final livePages =
+        livePosts > 0 ? (livePosts / ppp).ceil().clamp(1, 9999) : 1;
 
-    if (!isFinished && lastReadPage > 1) {
-      return lastReadPage.clamp(1, pages);
+    if (!isFinished) {
+      return pageForFloor(lastReadFloor, perPage: ppp).clamp(1, livePages);
     }
 
-    if (isFinished && hasNewPages(pages)) {
-      return (totalPages + 1).clamp(1, pages);
+    if (hasNewReplies(liveTotalReplies)) {
+      // 首个未读楼 = 缓存 totalPosts + 1
+      return pageForFloor(totalPosts + 1, perPage: ppp).clamp(1, livePages);
     }
 
-    if (isFinished) {
-      return pages;
-    }
-
-    return 1;
+    return livePages;
   }
 
   Map<String, dynamic> toJson() => {

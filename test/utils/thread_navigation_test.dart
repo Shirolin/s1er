@@ -9,6 +9,7 @@ ReadingRecord _record({
   int lastReadPage = 1,
   int totalPages = 1,
   int lastReadFloor = 1,
+  int totalReplies = 0,
   int perPage = 40,
 }) {
   return ReadingRecord(
@@ -19,7 +20,7 @@ ReadingRecord _record({
     lastReadPage: lastReadPage,
     lastReadFloor: lastReadFloor,
     totalPages: totalPages,
-    totalReplies: 0,
+    totalReplies: totalReplies,
     perPage: perPage,
     lastReadAt: 1,
     firstReadAt: 1,
@@ -130,17 +131,27 @@ void main() {
       expect(
         resolveThreadInitialPage(
           intent: const ThreadOpenIntent.page(5),
-          record: _record(lastReadPage: 3, totalPages: 8),
+          record: _record(
+            lastReadPage: 3,
+            lastReadFloor: 85,
+            totalPages: 8,
+            totalReplies: 319,
+          ),
         ),
         5,
       );
     });
 
-    test('B1 resume unfinished thread at lastReadPage', () {
+    test('B1 resume unfinished thread at lastReadFloor page', () {
       expect(
         resolveThreadInitialPage(
           intent: null,
-          record: _record(lastReadPage: 3, totalPages: 8),
+          record: _record(
+            lastReadPage: 3,
+            lastReadFloor: 85,
+            totalPages: 8,
+            totalReplies: 319,
+          ),
         ),
         3,
       );
@@ -149,18 +160,29 @@ void main() {
     test('B2 finished thread opens last page when live matches', () {
       expect(
         resolveThreadInitialPage(
-          intent: const ThreadOpenIntent.resume(liveTotalPages: 5),
-          record: _record(lastReadPage: 5, totalPages: 5),
+          intent: const ThreadOpenIntent.resume(liveTotalReplies: 199),
+          record: _record(
+            lastReadPage: 5,
+            lastReadFloor: 200,
+            totalPages: 5,
+            totalReplies: 199,
+          ),
         ),
         5,
       );
     });
 
-    test('B3 finished thread with new pages opens first new page', () {
+    test('B3 finished thread with new replies opens first unread floor page',
+        () {
       expect(
         resolveThreadInitialPage(
-          intent: const ThreadOpenIntent.resume(liveTotalPages: 7),
-          record: _record(lastReadPage: 5, totalPages: 5),
+          intent: const ThreadOpenIntent.resume(liveTotalReplies: 279),
+          record: _record(
+            lastReadPage: 5,
+            lastReadFloor: 200,
+            totalPages: 5,
+            totalReplies: 199,
+          ),
         ),
         6,
       );
@@ -177,7 +199,12 @@ void main() {
       expect(
         resolveThreadInitialPage(
           intent: const ThreadOpenIntent.page(1),
-          record: _record(lastReadPage: 4, totalPages: 8),
+          record: _record(
+            lastReadPage: 4,
+            lastReadFloor: 140,
+            totalPages: 8,
+            totalReplies: 319,
+          ),
         ),
         1,
       );
@@ -223,19 +250,29 @@ void main() {
 
     test('resume with floor → ScrollToFloor', () {
       final target = resolveResumeScrollTarget(
-        record: _record(lastReadPage: 2, totalPages: 5, lastReadFloor: 45),
+        record: _record(
+          lastReadPage: 2,
+          totalPages: 5,
+          lastReadFloor: 45,
+          totalReplies: 199,
+        ),
         loadedPage: 2,
-        totalPages: 5,
+        liveTotalReplies: 199,
       );
       expect(target, isA<ScrollToFloor>());
       expect((target as ScrollToFloor).absoluteFloor, 45);
     });
 
-    test('B3 new page → ScrollToPageTop', () {
+    test('B3 new replies → ScrollToPageTop on first unread page', () {
       final target = resolveResumeScrollTarget(
-        record: _record(lastReadPage: 5, totalPages: 5, lastReadFloor: 200),
+        record: _record(
+          lastReadPage: 5,
+          totalPages: 5,
+          lastReadFloor: 200,
+          totalReplies: 199,
+        ),
         loadedPage: 6,
-        totalPages: 7,
+        liveTotalReplies: 279,
       );
       expect(target, isA<ScrollToPageTop>());
     });
@@ -245,7 +282,7 @@ void main() {
         resolveResumeScrollTarget(
           record: null,
           loadedPage: 1,
-          totalPages: 1,
+          liveTotalReplies: 0,
         ),
         isA<ScrollToPageTop>(),
       );
@@ -257,8 +294,13 @@ void main() {
       expect(
         buildThreadDetailPath(
           '100',
-          record: _record(lastReadPage: 3, totalPages: 8),
-          liveTotalPages: 8,
+          record: _record(
+            lastReadPage: 3,
+            lastReadFloor: 85,
+            totalPages: 8,
+            totalReplies: 319,
+          ),
+          liveTotalReplies: 319,
         ),
         '/thread/100?page=3&resume=1',
       );

@@ -141,11 +141,14 @@ class PostNotifier extends AsyncNotifier<PostListState> {
     var page = resolveThreadInitialPage(intent: intent, record: record);
     var loaded = await _loadPage(page);
 
-    // B3：在首屏暴露前用 API 总页数再校正
+    // B3：在首屏暴露前用 API 回复数再校正（首个未读楼所在页）
     if (record != null &&
         record.isFinished &&
-        record.hasNewPages(loaded.totalPages)) {
-      final targetPage = (record.totalPages + 1).clamp(1, loaded.totalPages);
+        record.hasNewReplies(loaded.totalReplies)) {
+      final targetPage = record.resolveOpenPage(
+        loaded.totalReplies,
+        perPage: loaded.perPage,
+      );
       if (loaded.currentPage < targetPage) {
         loaded = await _loadPage(targetPage);
         return loaded.copyWith(openScrollTarget: const ScrollToPageTop());
@@ -155,7 +158,8 @@ class PostNotifier extends AsyncNotifier<PostListState> {
     final scrollTarget = resolveResumeScrollTarget(
       record: record,
       loadedPage: loaded.currentPage,
-      totalPages: loaded.totalPages,
+      liveTotalReplies: loaded.totalReplies,
+      perPage: loaded.perPage,
     );
     return loaded.copyWith(openScrollTarget: scrollTarget);
   }
@@ -253,7 +257,9 @@ class PostNotifier extends AsyncNotifier<PostListState> {
   }
 
   /// 引用跳转返回：恢复到指定页并滚到绝对楼层（同页不重载）。
-  Future<void> restoreToFloor({
+  ///
+  /// 成功返回 `true`；跨页加载失败并回滚后返回 `false`（此时 `hasError` 已清除）。
+  Future<bool> restoreToFloor({
     required int page,
     required int absoluteFloor,
   }) async {
@@ -265,7 +271,7 @@ class PostNotifier extends AsyncNotifier<PostListState> {
           clearLocateError: true,
         ),
       );
-      return;
+      return true;
     }
     state = await AsyncValue.guard(() async {
       final loaded = await _loadPage(page);
@@ -274,9 +280,13 @@ class PostNotifier extends AsyncNotifier<PostListState> {
         clearLocateError: true,
       );
     });
-    if (state.hasError && previous != null) {
-      state = AsyncValue.data(previous);
+    if (state.hasError) {
+      if (previous != null) {
+        state = AsyncValue.data(previous);
+      }
+      return false;
     }
+    return true;
   }
 
   Future<void> goToPage(int page) async {

@@ -19,23 +19,23 @@ class ThreadOpenIntent {
     required this.mode,
     this.page,
     this.pid,
-    this.liveTotalPages,
+    this.liveTotalReplies,
   });
 
   /// 裸 `/thread/{tid}` 或带 `resume=1` 的续读。
   const ThreadOpenIntent.resume({
     this.page,
-    this.liveTotalPages,
+    this.liveTotalReplies,
   })  : mode = ThreadOpenMode.resume,
         pid = null;
 
   /// 强制 `?page=`（含 page=1）。
-  const ThreadOpenIntent.page(this.page, {this.liveTotalPages})
+  const ThreadOpenIntent.page(this.page, {this.liveTotalReplies})
       : mode = ThreadOpenMode.page,
         pid = null;
 
   /// `?pid=` 定位。
-  const ThreadOpenIntent.post(this.pid, {this.liveTotalPages})
+  const ThreadOpenIntent.post(this.pid, {this.liveTotalReplies})
       : mode = ThreadOpenMode.post,
         page = null;
 
@@ -47,6 +47,6 @@ class ThreadOpenIntent {
   /// 目标楼层 pid。
   final String? pid;
 
-  /// 入口已知的实时总页数（如列表 `thread.replies` 推算），用于续读 B3 判定。
-  final int? liveTotalPages;
+  /// 入口已知的实时回复数（如列表 `thread.replies`），用于续读 B3 判定。
+  final int? liveTotalReplies;
 }

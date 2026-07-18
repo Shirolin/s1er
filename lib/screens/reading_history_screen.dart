@@ -98,7 +98,7 @@ class _HistoryTile extends ConsumerWidget {
       buildThreadDetailPath(
         record.tid,
         record: record,
-        liveTotalPages: record.totalPages,
+        liveTotalReplies: record.totalReplies,
       ),
     );
   }
@@ -185,7 +185,7 @@ class _HistoryTile extends ConsumerWidget {
                     Text(
                       isFinished
                           ? '已读'
-                          : 'P${record.lastReadPage}/${record.totalPages}',
+                          : '#${record.lastReadFloor}/${record.totalPosts}',
                       style: textTheme.labelSmall?.copyWith(
                         color: accent,
                         fontWeight: FontWeight.w500,

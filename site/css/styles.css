@@ -393,23 +393,6 @@ a:hover {
   object-position: left top;
 }
 
-/* Cover DEBUG ribbon (top-right) */
-.debug-mask::after {
-  content: "";
-  position: absolute;
-  top: 0;
-  right: 0;
-  width: 5.5rem;
-  height: 5.5rem;
-  background: linear-gradient(225deg, #0d0f16 42%, transparent 42%);
-  pointer-events: none;
-  z-index: 2;
-}
-
-.device-window .debug-mask::after {
-  background: linear-gradient(225deg, #0d0f16 38%, transparent 38%);
-}
-
 @keyframes float-y {
   0%,
   100% {
@@ -621,12 +604,6 @@ a:hover {
   object-position: center top;
 }
 
-.device-phone .debug-mask::after {
-  width: 4.25rem;
-  height: 4.25rem;
-  background: linear-gradient(225deg, #0c0e14 40%, transparent 40%);
-}
-
 /* Platforms */
 
 .platforms {
@@ -662,10 +639,6 @@ a:hover {
   aspect-ratio: 16 / 10;
   object-fit: cover;
   object-position: left top;
-}
-
-.platform-shot.debug-mask::after {
-  background: linear-gradient(225deg, #0a0c14 40%, transparent 40%);
 }
 
 /* Trust */

@@ -6,7 +6,7 @@ const _colorLabels = {
   'blue': '蓝色',
   'purple': '紫色',
   'sage': '绿色',
-  'indigo': '黛色',
+  'indigo': '靛蓝',
   'orange': '橙色',
 };
 
@@ -14,7 +14,7 @@ const _shortLabels = {
   'blue': '蓝',
   'purple': '紫',
   'sage': '绿',
-  'indigo': '黛',
+  'indigo': '靛',
   'orange': '橙',
 };
 

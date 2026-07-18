@@ -80,7 +80,7 @@ class _DownloadCacheSettingsSectionState
               return '当前约占用 ${formatImageCacheSize(bytes)}，上限 ${formatImageCacheSize(S1Constants.maxImageCacheBytes)}';
             },
             loading: () => '正在统计缓存占用…',
-            error: (_, __) => '清除已下载的图片，释放本地空间',
+            error: (_, __) => '统计失败，请重试',
           );
 
     return Card(
@@ -90,7 +90,7 @@ class _DownloadCacheSettingsSectionState
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            const SettingsSectionHeader(title: '下载与缓存'),
+            const SettingsSectionHeader(title: '图片与缓存'),
             const SizedBox(height: 8),
             ListTile(
               leading: Icon(
@@ -128,6 +128,13 @@ class _DownloadCacheSettingsSectionState
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Text('缓存上限', style: textTheme.titleSmall),
+                  const SizedBox(height: 4),
+                  Text(
+                    kIsWeb ? '仅 Native：限制应用内图片内存缓存大小' : '限制应用内图片内存缓存大小',
+                    style: textTheme.bodySmall?.copyWith(
+                      color: scheme.onSurfaceVariant,
+                    ),
+                  ),
                   const SizedBox(height: 12),
                   SegmentedButton<int>(
                     segments: S1Constants.imageCacheLimitOptionsMb
@@ -178,7 +185,7 @@ class _DownloadCacheSettingsSectionState
                       Text('正文图片加载', style: textTheme.titleSmall),
                       const SizedBox(height: 4),
                       Text(
-                        '全屏查看不受此限制',
+                        '全屏查看不受此限制；「手动」时点击加载单图',
                         style: textTheme.bodySmall?.copyWith(
                           color: scheme.onSurfaceVariant,
                         ),
@@ -217,6 +224,13 @@ class _DownloadCacheSettingsSectionState
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Text('头像加载', style: textTheme.titleSmall),
+                  const SizedBox(height: 4),
+                  Text(
+                    '「手动」时点击加载单图',
+                    style: textTheme.bodySmall?.copyWith(
+                      color: scheme.onSurfaceVariant,
+                    ),
+                  ),
                   const SizedBox(height: 12),
                   SegmentedButton<ImageLoadPolicy>(
                     segments: const [

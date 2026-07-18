@@ -143,8 +143,8 @@ class _DataManagementSectionState extends ConsumerState<DataManagementSection> {
 
   Future<void> _resetAppearanceSettings() async {
     await _confirmAction(
-      title: '重置显示与主题设置',
-      content: '将恢复主题、字号、图片与缓存相关设置的默认值。',
+      title: '重置外观与功能偏好',
+      content: '将恢复主题、字号、图片、缓存、阅读记录与分享设置的默认值。',
       confirmLabel: '重置',
       onConfirm: () => _runTask(
         current: _resettingSettings,
@@ -162,7 +162,7 @@ class _DataManagementSectionState extends ConsumerState<DataManagementSection> {
 
     await _confirmAction(
       title: '退出登录',
-      content: '将清除当前会话并切换到未登录状态。',
+      content: '将清除当前会话 Cookie 并切换到未登录状态，本地阅读历史与主题设置保留。',
       confirmLabel: '退出登录',
       isDestructive: true,
       onConfirm: () => _runTask(
@@ -266,7 +266,7 @@ class _DataManagementSectionState extends ConsumerState<DataManagementSection> {
               ),
               title: const Text('导入备份'),
               subtitle: Text(
-                '从 .s1backup.zip / .zip 恢复；同键以备份为准覆盖',
+                '从 .s1backup.zip / .zip 恢复；覆盖本地同名记录与设置',
                 style: Theme.of(context).textTheme.bodySmall?.copyWith(
                       color: scheme.onSurfaceVariant,
                     ),
@@ -284,9 +284,9 @@ class _DataManagementSectionState extends ConsumerState<DataManagementSection> {
                 Icons.restart_alt_outlined,
                 color: scheme.onSurfaceVariant,
               ),
-              title: const Text('重置显示与主题设置'),
+              title: const Text('重置外观与功能偏好'),
               subtitle: Text(
-                '恢复主题、字号、图片与缓存相关设置的默认值',
+                '恢复主题、字号、图片、缓存、阅读记录与分享设置的默认值',
                 style: Theme.of(context).textTheme.bodySmall?.copyWith(
                       color: scheme.onSurfaceVariant,
                     ),
@@ -305,7 +305,7 @@ class _DataManagementSectionState extends ConsumerState<DataManagementSection> {
               ListTile(
                 leading: Icon(Icons.logout, color: scheme.error),
                 title: Text(
-                  '退出登录并清除会话',
+                  '退出登录',
                   style: Theme.of(context).textTheme.bodyMedium?.copyWith(
                         color: scheme.error,
                       ),

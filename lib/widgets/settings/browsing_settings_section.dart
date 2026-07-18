@@ -30,7 +30,7 @@ class BrowsingSettingsSection extends ConsumerWidget {
                   Icon(Icons.history_outlined, color: scheme.onSurfaceVariant),
               title: const Text('记录阅读历史'),
               subtitle: Text(
-                '关闭后不再写入新的阅读进度与阅读历史',
+                '关闭后不再写入新的阅读进度与阅读历史。已有记录不会自动删除。',
                 style: Theme.of(context).textTheme.bodySmall?.copyWith(
                       color: scheme.onSurfaceVariant,
                     ),

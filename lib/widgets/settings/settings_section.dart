@@ -9,7 +9,7 @@ import 'font_size_section.dart';
 import 'share_settings_section.dart';
 import 'theme_settings_section.dart';
 
-/// 设置页内容：主题、文字、下载与缓存、浏览、黑名单、数据管理与关于。
+/// 设置页内容：主题、文字、图片与缓存、浏览、黑名单、数据管理与关于。
 class SettingsSection extends StatelessWidget {
   const SettingsSection({super.key});
 

@@ -29,7 +29,7 @@ class BlacklistSettingsSection extends StatelessWidget {
               ),
               title: const Text('本地黑名单'),
               subtitle: Text(
-                '本地屏蔽主题、楼层与私信；可手动导入网页黑名单，不反向写入论坛',
+                '本地屏蔽主题、楼层与私信；可手动导入网页黑名单，不写入论坛',
                 style: textTheme.bodySmall?.copyWith(
                   color: scheme.onSurfaceVariant,
                 ),

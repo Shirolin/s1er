@@ -35,7 +35,7 @@ class ShareSettingsSection extends ConsumerWidget {
                     Text('图片格式', style: textTheme.titleSmall),
                     const SizedBox(height: 4),
                     Text(
-                      'WebP 默认体积小；JPEG 兼容性好（mozjpeg）；PNG 无损（Native oxipng）',
+                      'WebP 默认体积小；JPEG 兼容性好；PNG 无损。',
                       style: textTheme.bodySmall?.copyWith(
                         color: scheme.onSurfaceVariant,
                       ),

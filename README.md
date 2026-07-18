@@ -122,7 +122,7 @@ flutter run -d chrome --dart-define=PROXY_AUTH_TOKEN=replace_with_a_random_value
 ```
 
 > [!WARNING]
-> 该代理仅用于本地开发：Cookie 保存在进程内存中，进程结束后即丢失。不要将它暴露到公网，也不要把真实账号、密码、Cookie 或 token 提交到仓库。
+> 该代理仅用于本地开发：Cookie 保存在进程内存中，进程结束后即丢失。不要将它暴露到公网，也不要把真实账号、密码、Cookie 或 token 提交到仓库。共享机器或非常驻开发环境建议设置 `PROXY_AUTH_TOKEN`；`/img-proxy` 仅转发论坛图域与 `p.sda1.dev`。
 
 ## 配置
 

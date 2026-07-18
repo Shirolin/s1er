@@ -29,6 +29,10 @@ flutter build apk --release --dart-define=SENTRY_DSN=https://abc123def456@sentry
 
 添加 `--dart-define=SENTRY_DSN=...` 到构建命令即可。
 
+### 脚本构建（`scripts/build.ps1` / `start_dev.ps1`）
+
+须通过环境变量 **显式** 设置 `S1_SENTRY_DSN`；未设置时脚本**不会**注入 DSN（默认关闭）。不要把 DSN 写进仓库。
+
 ## 3. 验证是否生效
 
 1. 在 Sentry Flutter 初始化完成后，Sentry 会自动捕获未处理的 Flutter 错误和 Dart 异常

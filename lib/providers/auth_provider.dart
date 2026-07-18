@@ -3,6 +3,7 @@ import 'dart:async';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../models/user.dart';
 import '../services/auth_service.dart';
+import '../services/formhash_service.dart';
 import '../services/http_client.dart';
 import 'forum_list_provider.dart';
 import 'settings_provider.dart';
@@ -107,6 +108,7 @@ class AuthNotifier extends Notifier<AuthState> {
   Future<void> logout() async {
     await ref.read(localDataProvider).flushPendingWrites();
     await _authService.logout();
+    ref.read(formhashProvider.notifier).clear();
     state = AuthState();
     ref.invalidate(forumListProvider);
   }

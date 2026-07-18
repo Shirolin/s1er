@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:url_launcher/url_launcher.dart';
 
 import '../providers/update_check_provider.dart';
+import '../utils/post_link_resolver.dart';
 import '../utils/s1_snack_bar.dart';
 
 typedef ExternalUrlLauncher = Future<bool> Function(
@@ -55,7 +56,7 @@ Future<void> showAppUpdateDialog(
             onPressed: () async {
               Navigator.of(ctx).pop();
               final uri = Uri.tryParse(evaluation.downloadUrl);
-              if (uri == null) {
+              if (uri == null || !PostLinkResolver.isAllowedExternalUri(uri)) {
                 if (context.mounted) {
                   S1SnackBar.show(context, message: '无法打开链接');
                 }

@@ -85,12 +85,27 @@ void main() {
       );
     });
 
-    test('allows external https image host', () {
+    test('allows explicit external image host p.sda1.dev', () {
       expect(
         ResourceDomains.isAllowedImgProxyTarget(
           Uri.parse('https://p.sda1.dev/3/test.png'),
         ),
         isTrue,
+      );
+    });
+
+    test('rejects unknown https hosts', () {
+      expect(
+        ResourceDomains.isAllowedImgProxyTarget(
+          Uri.parse('https://evil.example/x.png'),
+        ),
+        isFalse,
+      );
+      expect(
+        ResourceDomains.isAllowedImgProxyTarget(
+          Uri.parse('https://stage1st.com/2b/api'),
+        ),
+        isFalse,
       );
     });
 
@@ -103,10 +118,16 @@ void main() {
       );
     });
 
-    test('rejects localhost', () {
+    test('rejects localhost and IPv6-like hosts', () {
       expect(
         ResourceDomains.isAllowedImgProxyTarget(
           Uri.parse('https://localhost/test.png'),
+        ),
+        isFalse,
+      );
+      expect(
+        ResourceDomains.isAllowedImgProxyTarget(
+          Uri.parse('https://[::1]/secret'),
         ),
         isFalse,
       );

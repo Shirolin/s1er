@@ -76,15 +76,7 @@ Future<void> _handleRequest(HttpRequest req) async {
     return;
   }
 
-  if (!_verifyAuthToken(req)) {
-    _applyCors(req, res);
-    res.statusCode = 403;
-    res.write('Invalid proxy token');
-    await res.close();
-    return;
-  }
-
-  // 注销：清除代理端会话
+  // 清除代理端会话：localhost 绑定下始终放行（登出不依赖 PROXY_AUTH_TOKEN）。
   if (req.method == 'POST' && req.uri.path == '/proxy/session/clear') {
     _cookieJar.clear();
     _imgProxy404Cache.clear();
@@ -96,6 +88,14 @@ Future<void> _handleRequest(HttpRequest req) async {
     res.statusCode = 204;
     await res.close();
     print('Session cleared');
+    return;
+  }
+
+  if (!_verifyAuthToken(req)) {
+    _applyCors(req, res);
+    res.statusCode = 403;
+    res.write('Invalid proxy token');
+    await res.close();
     return;
   }
 
@@ -156,6 +156,8 @@ Future<void> _handleRequest(HttpRequest req) async {
     )
     ..findProxy = _findProxy;
   final upReq = await client.openUrl(req.method, target);
+  // 禁止自动跟随重定向，避免绕过 allowlist；findpost 等依赖显式 Location。
+  upReq.followRedirects = false;
 
   if (isImgProxy) {
     upReq.headers.set('Host', target.host);

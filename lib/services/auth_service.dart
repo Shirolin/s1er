@@ -71,15 +71,17 @@ class AuthService {
   }
 
   Future<void> logout() async {
-    if (kIsWeb && EnvConfig.proxyAuthToken.isNotEmpty) {
+    if (kIsWeb) {
       try {
         const proxyUrl =
             'http://localhost:${EnvConfig.proxyPort}/proxy/session/clear';
+        final headers = <String, dynamic>{};
+        if (EnvConfig.proxyAuthToken.isNotEmpty) {
+          headers[proxyAuthHeader] = EnvConfig.proxyAuthToken;
+        }
         await _httpClient.post(
           proxyUrl,
-          options: Options(
-            headers: {proxyAuthHeader: EnvConfig.proxyAuthToken},
-          ),
+          options: Options(headers: headers),
         );
       } catch (e, st) {
         talker.handle(e, st, 'Clear proxy session failed');

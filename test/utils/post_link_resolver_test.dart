@@ -155,6 +155,27 @@ void main() {
       );
       expect(typo, isA<ExternalPostLink>());
     });
+
+    test('rejects dangerous schemes for external launch', () {
+      for (final url in [
+        'javascript:alert(1)',
+        'intent://evil#Intent;scheme=https;end',
+        'file:///etc/passwd',
+        'data:text/html,hi',
+      ]) {
+        expect(
+          PostLinkResolver.resolve(url),
+          isA<InvalidPostLink>(),
+          reason: url,
+        );
+      }
+    });
+
+    test('allows mailto as external link', () {
+      final result = PostLinkResolver.resolve('mailto:user@example.com');
+      expect(result, isA<ExternalPostLink>());
+      expect((result as ExternalPostLink).uri.scheme, 'mailto');
+    });
   });
 }
 

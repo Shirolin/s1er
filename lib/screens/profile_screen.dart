@@ -6,6 +6,7 @@ import 'package:url_launcher/url_launcher.dart';
 import '../config/api_config.dart';
 import '../theme/app_theme.dart';
 import '../utils/format_utils.dart';
+import '../utils/post_link_resolver.dart';
 import '../providers/auth_provider.dart';
 import '../providers/daily_attendance_provider.dart';
 import '../providers/favorite_membership_provider.dart';
@@ -134,7 +135,13 @@ class _ProfileBodyState extends ConsumerState<ProfileBody> {
   }
 
   Future<void> _openExternalUrl(String url) async {
-    final uri = Uri.parse(url);
+    final uri = Uri.tryParse(url.trim());
+    if (uri == null || !PostLinkResolver.isAllowedExternalUri(uri)) {
+      if (mounted) {
+        S1SnackBar.show(context, message: '无法打开链接');
+      }
+      return;
+    }
     try {
       final didLaunch = await (widget.externalUrlLauncher?.call(uri) ??
           launchUrl(uri, mode: LaunchMode.externalApplication));

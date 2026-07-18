@@ -45,9 +45,18 @@ abstract final class PostLinkResolver {
   /// 脏 tid 里嵌的页码，如 `874342-fpage-3-page-2.html`。
   static final _embeddedPage = RegExp(r'-page-(\d+)', caseSensitive: false);
 
+  /// 允许交给系统打开的外链 scheme（正文 / 用户可控 URL）。
+  static const Set<String> allowedExternalSchemes = {
+    'http',
+    'https',
+    'mailto',
+  };
+
   static PostLinkResolution resolve(String rawUrl) {
     final uri = _resolveUri(rawUrl);
     if (uri == null) return const InvalidPostLink();
+
+    if (!_isAllowedScheme(uri)) return const InvalidPostLink();
 
     if (!ResourceDomains.isForumHost(uri.host)) {
       return ExternalPostLink(uri);
@@ -57,6 +66,15 @@ abstract final class PostLinkResolver {
     return location == null
         ? ExternalPostLink(uri)
         : InternalPostLink(location);
+  }
+
+  /// 是否为可安全交给系统处理的 URI scheme。
+  static bool isAllowedExternalUri(Uri uri) => _isAllowedScheme(uri);
+
+  static bool _isAllowedScheme(Uri uri) {
+    final scheme = uri.scheme.toLowerCase();
+    if (scheme.isEmpty) return false;
+    return allowedExternalSchemes.contains(scheme);
   }
 
   static Uri? _resolveUri(String rawUrl) {

@@ -25,6 +25,7 @@
 | 分享卡导出编码 | ironpress（方案 C：mozjpeg / oxipng / libwebp；默认 WebP，可选 JPEG/PNG）；Web 走 canvas / Skia PNG | ^0.2.0 |
 | 测试夹具位图 | image | ^4.2.0 |
 | 网络状态 | connectivity_plus | ^6.1.4 |
+| 设备机型标签 | device_info_plus（小尾巴细机型；失败回退平台名） | ^13.2.0 |
 | 备份（L1 ZIP） | archive / file_selector / share_plus | ^4.0.9 / ^1.1.0 / ^13.2.0 |
 | 回复插图 | file_selector + p.sda1.dev 外链图床 | 已有 file_selector；不做 Discuz attach |
 | 麻将脸表情 | `assets/emoticons/{*2017}/` 原 png/gif 入库打包 | 对齐 S1-Next；不转 WebP；脚本仅生成/更新 |
@@ -57,7 +58,7 @@
   - `SegmentedButton` 仅用于 2–5 个彼此相关、需要并列比较的选项，并保持至少 48dp 触控目标
   - **选中勾与前置 icon 二选一**：要么 `showSelectedIcon: false`（仅靠容器色表达选中态），要么保留勾且每段 `ButtonSegment` 必须提供语义 `icon`（选中时勾替换该 icon，避免文案左右跳动）。禁止「有勾、无前置 icon」
   - 紧凑屏上的五段短标签应设 `showSelectedIcon: false`，以容器色表达选中态；文案仍放不下时响应式改用下拉选择，禁止压缩字号或触控区域
-- **层级**：`Card` / `AppBar` 必须显式 `elevation: 0`（含继承主题处也应写明）；浮层 Menu/PopupMenu 可按 M3 使用低 elevation
+- **层级**：M3 以色调高度（tonal）为主、阴影为辅。静止表面（`Card` / `AppBar` / Nav / SearchBar）必须显式 `elevation: 0`，靠 `S1Surface` 色阶分层；浮层（Menu / Dialog / Sheet / FAB）按 M3 使用低 elevation 或框架默认阴影
 - **透明度**：一律用 `S1Alpha.*` token，禁止内联 `withValues(alpha: 0.x)`
 - **排版常量**：`S1Typography.defaultBodySize` 为字号设置标准档，HTML 渲染通过 `S1Typography.bodySize(textTheme)` 桥接
 - **Modal sheet 关闭**：标准高度抽屉 / `showS1AdaptiveSheet` **不放**顶栏关闭按钮；靠 drag handle（紧凑屏已由 API 提供）、点 scrim、系统返回 / Escape。禁止内容区再画一套自定义 drag handle。例外：`AlertDialog` 的取消/关闭 **actions**；全屏 modal 的顶栏关闭；内容错误/空态且无其它主操作时的内容区 CTA（如「关闭」）
@@ -132,7 +133,7 @@ lib/
 - 使用 `print()` 进行调试输出（lint 规则 `avoid_print` 已启用）
 - 硬编码颜色值 `Color(0xFF...)` 或 `fontSize`（必须从 `colorScheme` / `textTheme` 获取）
 - 使用 M2 废弃组件（`RaisedButton`、`BottomNavigationBar`、`ToggleButtons`、手写 `Badge`）
-- `Card` / `AppBar` 使用非零 `elevation`（M3 层级靠 Surface Tint，不靠阴影）
+- 静止表面 `Card` / `AppBar` 使用非零 `elevation`（项目约定：列表卡与顶栏用色阶分层，不用投影；浮层阴影见「M3 允许模式」）
 
 ---
 
@@ -226,7 +227,8 @@ flutter run -d chrome --dart-define=TALKER_LOG_LEVEL=all --dart-define=TALKER_MA
 |:---|:---|:---|
 | `themeSeeds` 中 `Color(0xFF...)` | `lib/theme/app_theme.dart` | 仅作 `ColorScheme.fromSeed` 输入；色板预览（`theme_color_picker`）可直接渲染种子色 |
 | `Colors.transparent` | SegmentedButton 未选中段、bbcode `.hide-content`、poll 未选中底 | 表示「无底色」，不是语义色替代 |
-| Menu/PopupMenu `elevation: 3` | `lib/theme/app_theme.dart` | M3 浮层菜单规范；与 Card/AppBar 零阴影规则无关 |
+| Menu/PopupMenu `elevation: 3` | `lib/theme/app_theme.dart` | M3 浮层菜单规范；静止表面仍为 elevation 0 |
+| FAB 框架默认 elevation | `lib/theme/app_theme.dart` | 只覆写 Reply 色（`tertiaryContainer`）；不强制 elevation 0 |
 | 装饰性 `BoxShadow` | `theme_color_picker.dart` 选中色块高亮 | 非 Card/AppBar elevation；阴影色用 `S1Alpha.cardOverlay` |
 | API 投票色（对比度校验后） | `lib/utils/poll_bar_color.dart` | 优先 API `#RRGGBB`；对 `surfaceContainerHighest` 不足 3:1 时回退 `scheme.primary` |
 | 交互/只读 `Chip` | 分类标签、分页、`ActionChip` | M3 合法；纯计数/状态角标用 `Badge` |
@@ -251,7 +253,8 @@ flutter run -d chrome --dart-define=TALKER_LOG_LEVEL=all --dart-define=TALKER_MA
   Web 端 API 请求由 `S1HttpClient` 在 `kIsWeb` 时重写到代理端口，**代理必须先启动**，否则论坛数据加载失败。
 - **登录门控**：论坛浏览相关 Tab 需登录；未登录显示登录引导。Web 端登录走 API 表单；游客 API 仍可用于服务层/代理验证。完整登录管线已验证：无效凭据返回 `mobile:login_invalid`。
 - **网络**：`stage1st.com` 在本环境可直连（游客 API 可读取版块数据）。
-- **⚠️ 测试账号是用户多年的真实账号，务必谨慎**：`S1_TEST_USERNAME` / `S1_TEST_PASSWORD` 对应的是用户长期使用的真实 S1 账号。**严禁频繁登录、暴力重试或高频请求**，否则可能触发风控导致账号被封，造成用户重大损失。原则：
+- **⚠️ 登录与写操作务必克制**：若本地配置了 `S1_TEST_USERNAME` / `S1_TEST_PASSWORD` 等凭据（切勿写入仓库），**严禁频繁登录、暴力重试或高频请求**，否则可能触发论坛风控。原则：
   - 优先用**游客 API**（`module=forumindex` / `forumdisplay` / `viewthread` 无需登录即可读取）做验证，尽量不登录。
   - 确需登录时，一次成功即可；`scripts/proxy_server.dart` 会在内存中保存已登录的 S1 Cookie 并自动附加到后续所有上游请求，因此**登录一次后无需重复登录**，浏览器端刷新页面即可通过 `checkSession()` 复用会话。
   - 切勿写循环/压测脚本调用登录接口；`S1HttpClient` 自带每秒 2 请求限速，不要绕过。
+  - 凭据只放本机环境变量或私密 CI secrets，永不提交。

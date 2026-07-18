@@ -1,0 +1,282 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>S1er — Stage1st 第三方客户端</title>
+    <meta
+      name="description"
+      content="S1er 是使用 Flutter 构建的非官方 Stage1st（S1）论坛客户端，支持 Web、Android、iOS 与桌面平台。"
+    />
+    <meta name="theme-color" content="#07090f" />
+    <link rel="icon" href="assets/branding/s1er_mark.png" type="image/png" />
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Noto+Sans+SC:wght@400;500;600;700&family=Sora:wght@500;600;700&display=swap"
+      rel="stylesheet"
+    />
+    <link rel="stylesheet" href="css/styles.css" />
+    <meta property="og:title" content="S1er — Stage1st 第三方客户端" />
+    <meta
+      property="og:description"
+      content="Material Design 3 · 多平台 · 开源。浏览、发帖、麻将脸与本地阅读体验。"
+    />
+    <meta property="og:image" content="assets/branding/s1er_logo_transparent.png" />
+    <meta property="og:type" content="website" />
+  </head>
+  <body>
+    <a class="skip-link" href="#main">跳到主要内容</a>
+
+    <header class="site-nav">
+      <div class="site-nav__inner">
+        <a class="site-nav__brand" href="#top">
+          <img src="assets/branding/s1er_mark.png" width="28" height="28" alt="" />
+          S1er
+        </a>
+        <ul class="site-nav__links">
+          <li><a href="#features">功能</a></li>
+          <li><a href="#platforms">平台</a></li>
+          <li><a href="#download">下载</a></li>
+        </ul>
+        <a
+          class="site-nav__github"
+          href="https://github.com/Shirolin/s1er"
+          rel="noopener noreferrer"
+          >GitHub</a
+        >
+      </div>
+    </header>
+
+    <main id="main">
+      <section class="hero" id="top" aria-label="S1er 介绍">
+        <div class="hero__glow" aria-hidden="true"></div>
+        <div class="hero__inner">
+          <div class="hero__copy">
+            <img
+              class="hero__logo reveal-hero"
+              src="assets/branding/s1er_logo_transparent.png"
+              width="180"
+              height="180"
+              alt="S1er"
+            />
+            <p class="hero__eyebrow reveal-hero">非官方 Stage1st 客户端</p>
+            <h1 class="reveal-hero">把 S1 装进口袋与桌面</h1>
+            <p class="hero__lead reveal-hero">
+              基于 Flutter 的第三方论坛客户端：版块浏览、主题阅读、发帖互动与麻将脸，同一套体验覆盖多端。
+            </p>
+            <div class="hero__actions reveal-hero">
+              <a
+                class="btn btn--primary"
+                href="https://github.com/Shirolin/s1er/releases/latest"
+                rel="noopener noreferrer"
+                >获取发布包</a
+              >
+              <a
+                class="btn btn--ghost"
+                href="https://github.com/Shirolin/s1er"
+                rel="noopener noreferrer"
+                >查看源码</a
+              >
+            </div>
+            <p class="hero__meta reveal-hero">当前 Beta · v0.1.0 · GPL-3.0-or-later</p>
+          </div>
+
+          <div class="hero__visual reveal-hero">
+            <figure class="device-window">
+              <div class="device-window__chrome" aria-hidden="true">
+                <span class="device-window__dot"></span>
+                <span class="device-window__dot"></span>
+                <span class="device-window__dot"></span>
+                <span class="device-window__title">S1er</span>
+              </div>
+              <div class="device-window__viewport debug-mask">
+                <img
+                  src="assets/screenshots/hero-pc-thread.png"
+                  width="1280"
+                  height="800"
+                  alt="S1er 桌面端：左侧主题列表与右侧帖子详情分栏阅读"
+                  loading="eager"
+                  decoding="async"
+                />
+              </div>
+            </figure>
+          </div>
+        </div>
+      </section>
+
+      <section class="section section--surface" id="features">
+        <div class="section__inner">
+          <p class="section__eyebrow reveal">功能</p>
+          <h2 class="reveal">为长时间读帖而做</h2>
+          <p class="section__lead reveal">
+            对接 Discuz! Mobile API，Material Design 3 界面，把论坛常用路径收进一套客户端。
+          </p>
+
+          <article class="feature reveal">
+            <div class="feature__copy">
+              <h3>浏览与阅读</h3>
+              <p>
+                版块、主题列表、分页与楼层定位；常用 BBCode、引用、代码与帖内图片，深色模式下也能长时间刷帖。
+              </p>
+            </div>
+            <div class="feature__media">
+              <figure class="device-phone">
+                <span class="device-phone__notch" aria-hidden="true"></span>
+                <div class="device-phone__viewport debug-mask">
+                  <img
+                    src="assets/screenshots/mobile-thread-list.png"
+                    width="540"
+                    height="1170"
+                    alt="手机端主题列表：分类筛选与置顶主题"
+                    loading="lazy"
+                    decoding="async"
+                  />
+                </div>
+              </figure>
+            </div>
+          </article>
+
+          <article class="feature feature--flip reveal">
+            <div class="feature__copy">
+              <h3>发帖与麻将脸</h3>
+              <p>
+                回复、引用、发新主题与编辑；内置 S1 麻将脸表情面板，插图经外链图床上传，流程贴合社区习惯。
+              </p>
+            </div>
+            <div class="feature__media">
+              <figure class="device-phone">
+                <span class="device-phone__notch" aria-hidden="true"></span>
+                <div class="device-phone__viewport debug-mask">
+                  <img
+                    src="assets/screenshots/mobile-compose.png"
+                    width="540"
+                    height="1170"
+                    alt="发新主题界面与麻将脸表情面板"
+                    loading="lazy"
+                    decoding="async"
+                  />
+                </div>
+              </figure>
+            </div>
+          </article>
+
+          <article class="feature reveal">
+            <div class="feature__copy">
+              <h3>主题与本地体验</h3>
+              <p>
+                亮暗色与多套种子色、字号调节；阅读历史、回复草稿、本地黑名单与 L1 备份，数据留在你的设备上。
+              </p>
+            </div>
+            <div class="feature__media">
+              <figure class="device-phone">
+                <span class="device-phone__notch" aria-hidden="true"></span>
+                <div class="device-phone__viewport debug-mask">
+                  <img
+                    src="assets/screenshots/mobile-settings.png"
+                    width="540"
+                    height="1170"
+                    alt="设置页：主题外观、配色与文字大小"
+                    loading="lazy"
+                    decoding="async"
+                  />
+                </div>
+              </figure>
+            </div>
+          </article>
+        </div>
+      </section>
+
+      <section class="section section--deep" id="platforms">
+        <div class="section__inner">
+          <p class="section__eyebrow reveal">平台</p>
+          <h2 class="reveal">一套代码，多端可用</h2>
+          <p class="section__lead reveal">
+            Flutter 目标覆盖 Web、Android、iOS、Windows、macOS 与 Linux。发布包以 GitHub Releases
+            为准；当前为 Beta，关键路径以 Web 与 Android 验收为主。
+          </p>
+          <ul class="platforms reveal">
+            <li>Web</li>
+            <li>Android</li>
+            <li>iOS</li>
+            <li>Windows</li>
+            <li>macOS</li>
+            <li>Linux</li>
+          </ul>
+          <figure class="platform-shot debug-mask reveal">
+            <img
+              src="assets/screenshots/pc-forum-list.png"
+              width="1280"
+              height="800"
+              alt="桌面端版块列表：侧栏导航与分区卡片"
+              loading="lazy"
+              decoding="async"
+            />
+          </figure>
+        </div>
+      </section>
+
+      <section class="section section--elevated" id="trust">
+        <div class="section__inner">
+          <p class="section__eyebrow reveal">说明</p>
+          <h2 class="reveal">独立第三方，非官方产品</h2>
+          <div class="trust reveal">
+            <p>
+              本项目与 Stage1st 官方无隶属、授权或背书关系。使用时须遵守 Stage1st
+              的服务条款与社区规则；论坛接口或权限变化可能影响部分功能。
+            </p>
+            <p>
+              Cookie 在本地加密存储；密码不落盘。详见
+              <a href="privacy.html">隐私政策</a>。
+            </p>
+          </div>
+        </div>
+      </section>
+
+      <section class="section section--surface cta-band" id="download">
+        <div class="section__inner">
+          <h2 class="reveal">开始使用 S1er</h2>
+          <p class="reveal">从 GitHub Releases 获取最新构建，或克隆仓库自行编译。</p>
+          <div class="cta-band__actions reveal">
+            <a
+              class="btn btn--ink"
+              href="https://github.com/Shirolin/s1er/releases/latest"
+              rel="noopener noreferrer"
+              >打开 Releases</a
+            >
+            <a
+              class="btn btn--outline"
+              href="https://github.com/Shirolin/s1er"
+              rel="noopener noreferrer"
+              >GitHub 仓库</a
+            >
+          </div>
+        </div>
+      </section>
+    </main>
+
+    <footer class="site-footer">
+      <div class="site-footer__inner">
+        <p>© S1er · GPL-3.0-or-later · 与 Stage1st 官方无关</p>
+        <ul class="site-footer__links">
+          <li>
+            <a href="https://github.com/Shirolin/s1er" rel="noopener noreferrer">仓库</a>
+          </li>
+          <li>
+            <a href="https://github.com/Shirolin/s1er/issues" rel="noopener noreferrer"
+              >Issues</a
+            >
+          </li>
+          <li><a href="privacy.html">隐私政策</a></li>
+          <li>
+            <a href="https://github.com/Shirolin/s1er/blob/main/LICENSE" rel="noopener noreferrer"
+              >许可证</a
+            >
+          </li>
+        </ul>
+      </div>
+    </footer>
+
+    <script src="js/main.js" defer></script>
+  </body>
+</html>

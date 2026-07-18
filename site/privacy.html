@@ -5,31 +5,41 @@
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <title>隐私政策 — S1er</title>
     <meta name="description" content="S1er 隐私政策：说明本应用如何收集、使用和保护用户信息。" />
-    <meta name="theme-color" content="#07090f" />
+    <meta name="theme-color" content="#08090d" />
+    <meta name="color-scheme" content="dark" />
     <link rel="icon" href="assets/branding/s1er_mark.png" type="image/png" />
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link
-      href="https://fonts.googleapis.com/css2?family=Noto+Sans+SC:wght@400;500;600;700&family=Sora:wght@500;600;700&display=swap"
+      href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Noto+Sans+SC:wght@400;500;600;700&display=swap"
       rel="stylesheet"
     />
     <link rel="stylesheet" href="css/styles.css" />
   </head>
   <body class="privacy-page">
     <a class="skip-link" href="#main">跳到主要内容</a>
+    <div class="bg-mesh" aria-hidden="true">
+      <div class="bg-mesh__blob bg-mesh__blob--a"></div>
+      <div class="bg-mesh__blob bg-mesh__blob--b"></div>
+      <div class="bg-mesh__grid"></div>
+      <div class="bg-mesh__noise"></div>
+    </div>
 
-    <header class="site-nav">
+    <header class="site-nav is-scrolled" data-nav>
       <div class="site-nav__inner">
         <a class="site-nav__brand" href="index.html">
-          <img src="assets/branding/s1er_mark.png" width="28" height="28" alt="" />
-          S1er
+          <img src="assets/branding/s1er_mark.png" width="32" height="32" alt="" />
+          <span>S1er</span>
         </a>
-        <a
-          class="site-nav__github"
-          href="https://github.com/Shirolin/s1er"
-          rel="noopener noreferrer"
-          >GitHub</a
-        >
+        <div class="site-nav__actions">
+          <a
+            class="btn btn--ghost btn--sm site-nav__gh"
+            href="https://github.com/Shirolin/s1er"
+            rel="noopener noreferrer"
+            >GitHub</a
+          >
+          <a class="btn btn--primary btn--sm" href="index.html">首页</a>
+        </div>
       </div>
     </header>
 
@@ -191,14 +201,25 @@
 
     <footer class="site-footer">
       <div class="site-footer__inner">
-        <p>© S1er · GPL-3.0-or-later · 与 Stage1st 官方无关</p>
+        <div class="site-footer__brand">
+          <img src="assets/branding/s1er_mark.png" width="24" height="24" alt="" />
+          <div>
+            <strong>S1er</strong>
+            <p>GPL-3.0-or-later · 与 Stage1st 官方无关</p>
+          </div>
+        </div>
         <ul class="site-footer__links">
           <li><a href="index.html">首页</a></li>
           <li>
             <a href="https://github.com/Shirolin/s1er" rel="noopener noreferrer">仓库</a>
           </li>
+          <li>
+            <a href="https://github.com/Shirolin/s1er/issues" rel="noopener noreferrer">Issues</a>
+          </li>
         </ul>
       </div>
     </footer>
+
+    <script src="js/main.js" defer></script>
   </body>
 </html>

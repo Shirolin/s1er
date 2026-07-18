@@ -6,14 +6,15 @@
     <title>S1er — Stage1st 第三方客户端</title>
     <meta
       name="description"
-      content="S1er 是使用 Flutter 构建的非官方 Stage1st（S1）论坛客户端，支持 Web、Android、iOS 与桌面平台。"
+      content="S1er 是使用 Flutter 构建的非官方 Stage1st（S1）论坛客户端，支持 Web、Android、iOS 与桌面平台。Material Design 3、麻将脸、本地阅读体验。"
     />
-    <meta name="theme-color" content="#07090f" />
+    <meta name="theme-color" content="#08090d" />
+    <meta name="color-scheme" content="dark" />
     <link rel="icon" href="assets/branding/s1er_mark.png" type="image/png" />
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link
-      href="https://fonts.googleapis.com/css2?family=Noto+Sans+SC:wght@400;500;600;700&family=Sora:wght@500;600;700&display=swap"
+      href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Noto+Sans+SC:wght@400;500;600;700&display=swap"
       rel="stylesheet"
     />
     <link rel="stylesheet" href="css/styles.css" />
@@ -24,229 +25,541 @@
     />
     <meta property="og:image" content="assets/branding/s1er_logo_transparent.png" />
     <meta property="og:type" content="website" />
+    <meta name="twitter:card" content="summary_large_image" />
   </head>
   <body>
     <a class="skip-link" href="#main">跳到主要内容</a>
+    <div class="bg-mesh" aria-hidden="true">
+      <div class="bg-mesh__blob bg-mesh__blob--a"></div>
+      <div class="bg-mesh__blob bg-mesh__blob--b"></div>
+      <div class="bg-mesh__blob bg-mesh__blob--c"></div>
+      <div class="bg-mesh__grid"></div>
+      <div class="bg-mesh__noise"></div>
+    </div>
 
-    <header class="site-nav">
+    <header class="site-nav" data-nav>
       <div class="site-nav__inner">
         <a class="site-nav__brand" href="#top">
-          <img src="assets/branding/s1er_mark.png" width="28" height="28" alt="" />
-          S1er
+          <img src="assets/branding/s1er_mark.png" width="32" height="32" alt="" />
+          <span>S1er</span>
         </a>
-        <ul class="site-nav__links">
-          <li><a href="#features">功能</a></li>
-          <li><a href="#platforms">平台</a></li>
-          <li><a href="#download">下载</a></li>
-        </ul>
-        <a
-          class="site-nav__github"
-          href="https://github.com/Shirolin/s1er"
-          rel="noopener noreferrer"
-          >GitHub</a
-        >
+
+        <nav class="site-nav__menu" data-nav-menu aria-label="主导航">
+          <a href="#features">功能</a>
+          <a href="#showcase">界面</a>
+          <a href="#platforms">平台</a>
+          <a href="#download">下载</a>
+          <a href="privacy.html">隐私</a>
+        </nav>
+
+        <div class="site-nav__actions">
+          <a
+            class="btn btn--ghost btn--sm site-nav__gh"
+            href="https://github.com/Shirolin/s1er"
+            rel="noopener noreferrer"
+          >
+            <svg class="icon" viewBox="0 0 24 24" aria-hidden="true">
+              <path
+                fill="currentColor"
+                d="M12 2C6.477 2 2 6.477 2 12c0 4.42 2.865 8.166 6.839 9.489.5.092.682-.217.682-.482 0-.237-.008-.866-.013-1.7-2.782.603-3.369-1.342-3.369-1.342-.454-1.155-1.11-1.463-1.11-1.463-.908-.62.069-.608.069-.608 1.003.07 1.531 1.03 1.531 1.03.892 1.529 2.341 1.087 2.91.832.092-.647.35-1.088.636-1.338-2.22-.253-4.555-1.11-4.555-4.943 0-1.091.39-1.984 1.029-2.683-.103-.253-.446-1.27.098-2.647 0 0 .84-.269 2.75 1.025A9.578 9.578 0 0 1 12 6.836c.85.004 1.705.114 2.504.336 1.909-1.294 2.747-1.025 2.747-1.025.546 1.377.203 2.394.1 2.647.64.699 1.028 1.592 1.028 2.683 0 3.842-2.339 4.687-4.566 4.935.359.309.678.919.678 1.852 0 1.336-.012 2.415-.012 2.743 0 .267.18.578.688.48C19.138 20.161 22 16.416 22 12c0-5.523-4.477-10-10-10z"
+              />
+            </svg>
+            GitHub
+          </a>
+          <a
+            class="btn btn--primary btn--sm"
+            href="https://github.com/Shirolin/s1er/releases/latest"
+            rel="noopener noreferrer"
+            >下载</a
+          >
+          <button
+            class="nav-toggle"
+            type="button"
+            data-nav-toggle
+            aria-expanded="false"
+            aria-controls="mobile-menu"
+            aria-label="打开菜单"
+          >
+            <span></span><span></span><span></span>
+          </button>
+        </div>
+      </div>
+
+      <div class="mobile-menu" id="mobile-menu" data-mobile-menu hidden>
+        <a href="#features">功能</a>
+        <a href="#showcase">界面</a>
+        <a href="#platforms">平台</a>
+        <a href="#download">下载</a>
+        <a href="privacy.html">隐私</a>
+        <a href="https://github.com/Shirolin/s1er" rel="noopener noreferrer">GitHub 仓库</a>
       </div>
     </header>
 
     <main id="main">
+      <!-- Hero -->
       <section class="hero" id="top" aria-label="S1er 介绍">
-        <div class="hero__glow" aria-hidden="true"></div>
         <div class="hero__inner">
           <div class="hero__copy">
-            <img
-              class="hero__logo reveal-hero"
-              src="assets/branding/s1er_logo_transparent.png"
-              width="180"
-              height="180"
-              alt="S1er"
-            />
-            <p class="hero__eyebrow reveal-hero">非官方 Stage1st 客户端</p>
-            <h1 class="reveal-hero">把 S1 装进口袋与桌面</h1>
+            <div class="hero__badges reveal-hero">
+              <span class="pill pill--cyan">非官方客户端</span>
+              <span class="pill">Flutter · Material 3</span>
+              <span class="pill" data-version-pill>Beta · v0.1.0</span>
+            </div>
+
+            <h1 class="reveal-hero">
+              把 <span class="text-gradient">S1</span>
+              <br class="hero__br" />
+              装进口袋与桌面
+            </h1>
+
             <p class="hero__lead reveal-hero">
-              基于 Flutter 的第三方论坛客户端：版块浏览、主题阅读、发帖互动与麻将脸，同一套体验覆盖多端。
+              基于 Flutter 的 Stage1st 第三方论坛客户端：版块浏览、主题阅读、发帖互动与麻将脸，同一套体验覆盖 Web 与原生多端。
             </p>
+
             <div class="hero__actions reveal-hero">
               <a
-                class="btn btn--primary"
+                class="btn btn--primary btn--lg"
                 href="https://github.com/Shirolin/s1er/releases/latest"
                 rel="noopener noreferrer"
-                >获取发布包</a
               >
+                <svg class="icon" viewBox="0 0 24 24" aria-hidden="true">
+                  <path
+                    fill="currentColor"
+                    d="M12 3a1 1 0 0 1 1 1v9.586l2.293-2.293a1 1 0 1 1 1.414 1.414l-4 4a1 1 0 0 1-1.414 0l-4-4a1 1 0 1 1 1.414-1.414L11 13.586V4a1 1 0 0 1 1-1zm-7 14a1 1 0 0 1 1 1v1h12v-1a1 1 0 1 1 2 0v2a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1v-2a1 1 0 0 1 1-1z"
+                  />
+                </svg>
+                获取发布包
+              </a>
               <a
-                class="btn btn--ghost"
+                class="btn btn--ghost btn--lg"
                 href="https://github.com/Shirolin/s1er"
                 rel="noopener noreferrer"
-                >查看源码</a
               >
+                查看源码
+              </a>
             </div>
-            <p class="hero__meta reveal-hero">当前 Beta · v0.1.0 · GPL-3.0-or-later</p>
+
+            <ul class="hero__meta reveal-hero">
+              <li>
+                <span class="hero__meta-dot" aria-hidden="true"></span>
+                开源 GPL-3.0-or-later
+              </li>
+              <li>
+                <span class="hero__meta-dot" aria-hidden="true"></span>
+                Cookie 本地加密
+              </li>
+              <li>
+                <span class="hero__meta-dot" aria-hidden="true"></span>
+                与官方无关
+              </li>
+            </ul>
           </div>
 
-          <div class="hero__visual reveal-hero">
-            <figure class="device-window">
-              <div class="device-window__chrome" aria-hidden="true">
-                <span class="device-window__dot"></span>
-                <span class="device-window__dot"></span>
-                <span class="device-window__dot"></span>
-                <span class="device-window__title">S1er</span>
-              </div>
-              <div class="device-window__viewport">
-                <img
-                  src="assets/screenshots/hero-pc-thread.png"
-                  width="1280"
-                  height="800"
-                  alt="S1er 桌面端：左侧主题列表与右侧帖子详情分栏阅读"
-                  loading="eager"
-                  decoding="async"
-                />
-              </div>
-            </figure>
-          </div>
-        </div>
-      </section>
+          <div class="hero__visual reveal-hero" aria-hidden="false">
+            <div class="hero-stage">
+              <div class="hero-stage__glow" aria-hidden="true"></div>
 
-      <section class="section section--surface" id="features">
-        <div class="section__inner">
-          <p class="section__eyebrow reveal">功能</p>
-          <h2 class="reveal">为长时间读帖而做</h2>
-          <p class="section__lead reveal">
-            对接 Discuz! Mobile API，Material Design 3 界面，把论坛常用路径收进一套客户端。
-          </p>
+              <figure class="device-window hero-stage__window">
+                <div class="device-window__chrome">
+                  <span class="device-window__dot"></span>
+                  <span class="device-window__dot"></span>
+                  <span class="device-window__dot"></span>
+                  <span class="device-window__title">S1er · 桌面端</span>
+                </div>
+                <div class="device-window__viewport">
+                  <img
+                    src="assets/screenshots/hero-pc-thread.png"
+                    width="1280"
+                    height="800"
+                    alt="S1er 桌面端：左侧主题列表与右侧帖子详情分栏阅读"
+                    loading="eager"
+                    decoding="async"
+                  />
+                </div>
+              </figure>
 
-          <article class="feature reveal">
-            <div class="feature__copy">
-              <h3>浏览与阅读</h3>
-              <p>
-                版块、主题列表、分页与楼层定位；常用 BBCode、引用、代码与帖内图片，深色模式下也能长时间刷帖。
-              </p>
-            </div>
-            <div class="feature__media">
-              <figure class="device-phone">
+              <figure class="device-phone hero-stage__phone hero-stage__phone--front">
+                <div class="device-phone__notch" aria-hidden="true"></div>
                 <div class="device-phone__viewport">
                   <img
                     src="assets/screenshots/mobile-thread-list.png"
                     width="540"
                     height="1170"
-                    alt="手机端主题列表：分类筛选与置顶主题"
-                    loading="lazy"
+                    alt="手机端主题列表"
+                    loading="eager"
                     decoding="async"
                   />
                 </div>
               </figure>
-            </div>
-          </article>
 
-          <article class="feature feature--flip reveal">
-            <div class="feature__copy">
-              <h3>发帖与麻将脸</h3>
-              <p>
-                回复、引用、发新主题与编辑；内置 S1 麻将脸表情面板，插图经外链图床上传，流程贴合社区习惯。
-              </p>
-            </div>
-            <div class="feature__media">
-              <figure class="device-phone">
+              <figure class="device-phone hero-stage__phone hero-stage__phone--back">
+                <div class="device-phone__notch" aria-hidden="true"></div>
                 <div class="device-phone__viewport">
                   <img
                     src="assets/screenshots/mobile-compose.png"
                     width="540"
                     height="1170"
-                    alt="发新主题界面与麻将脸表情面板"
+                    alt="发新主题与麻将脸面板"
                     loading="lazy"
                     decoding="async"
                   />
                 </div>
               </figure>
             </div>
-          </article>
-
-          <article class="feature reveal">
-            <div class="feature__copy">
-              <h3>主题与本地体验</h3>
-              <p>
-                亮暗色与多套种子色、字号调节；阅读历史、回复草稿、本地黑名单与 L1 备份，数据留在你的设备上。
-              </p>
-            </div>
-            <div class="feature__media">
-              <figure class="device-phone">
-                <div class="device-phone__viewport">
-                  <img
-                    src="assets/screenshots/mobile-settings.png"
-                    width="540"
-                    height="1170"
-                    alt="设置页：主题外观、配色与文字大小"
-                    loading="lazy"
-                    decoding="async"
-                  />
-                </div>
-              </figure>
-            </div>
-          </article>
-        </div>
-      </section>
-
-      <section class="section section--deep" id="platforms">
-        <div class="section__inner">
-          <p class="section__eyebrow reveal">平台</p>
-          <h2 class="reveal">一套代码，多端可用</h2>
-          <p class="section__lead reveal">
-            Flutter 目标覆盖 Web、Android、iOS、Windows、macOS 与 Linux。发布包以 GitHub Releases
-            为准；当前为 Beta，关键路径以 Web 与 Android 验收为主。
-          </p>
-          <ul class="platforms reveal">
-            <li>Web</li>
-            <li>Android</li>
-            <li>iOS</li>
-            <li>Windows</li>
-            <li>macOS</li>
-            <li>Linux</li>
-          </ul>
-          <figure class="platform-shot reveal">
-            <img
-              src="assets/screenshots/pc-forum-list.png"
-              width="1280"
-              height="800"
-              alt="桌面端版块列表：侧栏导航与分区卡片"
-              loading="lazy"
-              decoding="async"
-            />
-          </figure>
-        </div>
-      </section>
-
-      <section class="section section--elevated" id="trust">
-        <div class="section__inner">
-          <p class="section__eyebrow reveal">说明</p>
-          <h2 class="reveal">独立第三方，非官方产品</h2>
-          <div class="trust reveal">
-            <p>
-              本项目与 Stage1st 官方无隶属、授权或背书关系。使用时须遵守 Stage1st
-              的服务条款与社区规则；论坛接口或权限变化可能影响部分功能。
-            </p>
-            <p>
-              Cookie 在本地加密存储；密码不落盘。详见
-              <a href="privacy.html">隐私政策</a>。
-            </p>
           </div>
         </div>
       </section>
 
-      <section class="section section--surface cta-band" id="download">
+      <!-- Highlights strip -->
+      <section class="strip" aria-label="产品亮点">
+        <div class="strip__inner reveal">
+          <div class="strip__item">
+            <strong>6</strong>
+            <span>目标平台</span>
+          </div>
+          <div class="strip__divider" aria-hidden="true"></div>
+          <div class="strip__item">
+            <strong>M3</strong>
+            <span>Material You</span>
+          </div>
+          <div class="strip__divider" aria-hidden="true"></div>
+          <div class="strip__item">
+            <strong>本地</strong>
+            <span>历史 · 草稿 · 备份</span>
+          </div>
+          <div class="strip__divider" aria-hidden="true"></div>
+          <div class="strip__item">
+            <strong>麻将脸</strong>
+            <span>原版表情入库</span>
+          </div>
+        </div>
+      </section>
+
+      <!-- Features -->
+      <section class="section" id="features">
         <div class="section__inner">
-          <h2 class="reveal">开始使用 S1er</h2>
-          <p class="reveal">从 GitHub Releases 获取最新构建，或克隆仓库自行编译。</p>
-          <div class="cta-band__actions reveal">
-            <a
-              class="btn btn--ink"
-              href="https://github.com/Shirolin/s1er/releases/latest"
-              rel="noopener noreferrer"
-              >打开 Releases</a
-            >
-            <a
-              class="btn btn--outline"
-              href="https://github.com/Shirolin/s1er"
-              rel="noopener noreferrer"
-              >GitHub 仓库</a
-            >
+          <header class="section__header reveal">
+            <p class="section__eyebrow">功能</p>
+            <h2>为长时间读帖而做</h2>
+            <p class="section__lead">
+              对接 Discuz! Mobile API，Material Design 3 界面，把论坛常用路径收进一套客户端。
+            </p>
+          </header>
+
+          <div class="bento">
+            <article class="bento__card bento__card--wide reveal">
+              <div class="bento__icon bento__icon--cyan" aria-hidden="true">
+                <svg viewBox="0 0 24 24"><path fill="currentColor" d="M4 5a2 2 0 0 1 2-2h12a2 2 0 0 1 2 2v3H4V5zm0 5h16v9a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2v-9zm4 3v2h8v-2H8z"/></svg>
+              </div>
+              <h3>浏览与阅读</h3>
+              <p>
+                版块、主题列表、分页与楼层定位；常用 BBCode、引用、代码与帖内图片，深色模式下也能长时间刷帖。
+              </p>
+              <ul class="bento__tags">
+                <li>分页跳转</li>
+                <li>楼层定位</li>
+                <li>BBCode</li>
+                <li>图片查看</li>
+              </ul>
+            </article>
+
+            <article class="bento__card reveal">
+              <div class="bento__icon bento__icon--violet" aria-hidden="true">
+                <svg viewBox="0 0 24 24"><path fill="currentColor" d="M4 4h16a1 1 0 0 1 1 1v11a1 1 0 0 1-1 1h-5.586l-2.707 2.707A1 1 0 0 1 10 19v-2H4a1 1 0 0 1-1-1V5a1 1 0 0 1 1-1zm2 4v2h8V8H6zm0 4v2h5v-2H6z"/></svg>
+              </div>
+              <h3>发帖与互动</h3>
+              <p>回复、引用、新主题与编辑；投票、评分与举报，流程贴合社区习惯。</p>
+            </article>
+
+            <article class="bento__card reveal">
+              <div class="bento__icon bento__icon--amber" aria-hidden="true">
+                <svg viewBox="0 0 24 24"><path fill="currentColor" d="M12 2a5 5 0 0 1 5 5c0 1.5-.66 2.84-1.7 3.76L17 15H7l1.7-4.24A4.99 4.99 0 0 1 7 7a5 5 0 0 1 5-5zm-3 15h6v1a3 3 0 0 1-6 0v-1z"/></svg>
+              </div>
+              <h3>麻将脸表情</h3>
+              <p>对齐 S1-Next，原版 png/gif 入库打包；面板 local-first，缺失再走 CDN。</p>
+            </article>
+
+            <article class="bento__card reveal">
+              <div class="bento__icon bento__icon--mint" aria-hidden="true">
+                <svg viewBox="0 0 24 24"><path fill="currentColor" d="M12 3c-4.97 0-9 3.58-9 8 0 2.3 1.1 4.37 2.85 5.82L5 21l3.4-1.36c1.1.36 2.32.56 3.6.56 4.97 0 9-3.58 9-8s-4.03-8-9-8zm-1 5h2v6h-2V8zm0 7h2v2h-2v-2z"/></svg>
+              </div>
+              <h3>消息与关系</h3>
+              <p>私信、系统提醒、好友列表、收藏与每日签到，常用互动不跳出客户端。</p>
+            </article>
+
+            <article class="bento__card bento__card--accent reveal">
+              <div class="bento__icon bento__icon--cyan" aria-hidden="true">
+                <svg viewBox="0 0 24 24"><path fill="currentColor" d="M12 2a7 7 0 0 1 7 7c0 2.38-1.19 4.47-3 5.74V17a1 1 0 0 1-1 1h-6a1 1 0 0 1-1-1v-2.26C6.19 13.47 5 11.38 5 9a7 7 0 0 1 7-7zm-2 18h4v1a1 1 0 0 1-1 1h-2a1 1 0 0 1-1-1v-1z"/></svg>
+              </div>
+              <h3>主题与本地体验</h3>
+              <p>
+                亮暗色与多套种子色、字号调节；阅读历史、回复草稿、本地黑名单与 L1 备份，数据留在你的设备上。
+              </p>
+              <ul class="bento__tags">
+                <li>种子色</li>
+                <li>阅读历史</li>
+                <li>L1 备份</li>
+                <li>黑名单</li>
+              </ul>
+            </article>
+          </div>
+        </div>
+      </section>
+
+      <!-- Showcase -->
+      <section class="section section--flush" id="showcase">
+        <div class="section__inner">
+          <header class="section__header reveal">
+            <p class="section__eyebrow">界面</p>
+            <h2>深色优先，桌面与手机同构</h2>
+            <p class="section__lead">
+              桌面端分栏读帖，手机端沉浸刷楼；同一套 Material 3 色阶与组件语言。
+            </p>
+          </header>
+
+          <div class="showcase reveal">
+            <div class="showcase__tabs" role="tablist" aria-label="界面预览">
+              <button class="showcase__tab is-active" type="button" role="tab" aria-selected="true" data-showcase="desktop">
+                桌面读帖
+              </button>
+              <button class="showcase__tab" type="button" role="tab" aria-selected="false" data-showcase="forums">
+                版块列表
+              </button>
+              <button class="showcase__tab" type="button" role="tab" aria-selected="false" data-showcase="mobile">
+                手机浏览
+              </button>
+              <button class="showcase__tab" type="button" role="tab" aria-selected="false" data-showcase="compose">
+                发帖表情
+              </button>
+              <button class="showcase__tab" type="button" role="tab" aria-selected="false" data-showcase="settings">
+                主题设置
+              </button>
+            </div>
+
+            <div class="showcase__stage">
+              <figure class="showcase__panel is-active" data-panel="desktop">
+                <div class="device-window">
+                  <div class="device-window__chrome">
+                    <span class="device-window__dot"></span>
+                    <span class="device-window__dot"></span>
+                    <span class="device-window__dot"></span>
+                    <span class="device-window__title">主题列表 · 帖子详情</span>
+                  </div>
+                  <div class="device-window__viewport">
+                    <img
+                      src="assets/screenshots/hero-pc-thread.png"
+                      width="1280"
+                      height="800"
+                      alt="桌面端分栏：主题列表与帖子详情"
+                      loading="lazy"
+                      decoding="async"
+                    />
+                  </div>
+                </div>
+              </figure>
+
+              <figure class="showcase__panel" data-panel="forums" hidden>
+                <div class="device-window">
+                  <div class="device-window__chrome">
+                    <span class="device-window__dot"></span>
+                    <span class="device-window__dot"></span>
+                    <span class="device-window__dot"></span>
+                    <span class="device-window__title">版块列表</span>
+                  </div>
+                  <div class="device-window__viewport">
+                    <img
+                      src="assets/screenshots/pc-forum-list.png"
+                      width="1280"
+                      height="800"
+                      alt="桌面端版块列表与分区卡片"
+                      loading="lazy"
+                      decoding="async"
+                    />
+                  </div>
+                </div>
+              </figure>
+
+              <figure class="showcase__panel showcase__panel--phones" data-panel="mobile" hidden>
+                <div class="phone-row">
+                  <div class="device-phone">
+                    <div class="device-phone__notch" aria-hidden="true"></div>
+                    <div class="device-phone__viewport">
+                      <img
+                        src="assets/screenshots/mobile-forum-list.png"
+                        width="540"
+                        height="1170"
+                        alt="手机端版块列表"
+                        loading="lazy"
+                        decoding="async"
+                      />
+                    </div>
+                  </div>
+                  <div class="device-phone">
+                    <div class="device-phone__notch" aria-hidden="true"></div>
+                    <div class="device-phone__viewport">
+                      <img
+                        src="assets/screenshots/mobile-thread-list.png"
+                        width="540"
+                        height="1170"
+                        alt="手机端主题列表"
+                        loading="lazy"
+                        decoding="async"
+                      />
+                    </div>
+                  </div>
+                </div>
+              </figure>
+
+              <figure class="showcase__panel showcase__panel--phones" data-panel="compose" hidden>
+                <div class="phone-row">
+                  <div class="device-phone">
+                    <div class="device-phone__notch" aria-hidden="true"></div>
+                    <div class="device-phone__viewport">
+                      <img
+                        src="assets/screenshots/mobile-compose.png"
+                        width="540"
+                        height="1170"
+                        alt="发新主题与麻将脸表情面板"
+                        loading="lazy"
+                        decoding="async"
+                      />
+                    </div>
+                  </div>
+                </div>
+              </figure>
+
+              <figure class="showcase__panel showcase__panel--phones" data-panel="settings" hidden>
+                <div class="phone-row">
+                  <div class="device-phone">
+                    <div class="device-phone__notch" aria-hidden="true"></div>
+                    <div class="device-phone__viewport">
+                      <img
+                        src="assets/screenshots/mobile-settings.png"
+                        width="540"
+                        height="1170"
+                        alt="设置页：主题外观、配色与文字大小"
+                        loading="lazy"
+                        decoding="async"
+                      />
+                    </div>
+                  </div>
+                </div>
+              </figure>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- Platforms -->
+      <section class="section" id="platforms">
+        <div class="section__inner">
+          <header class="section__header reveal">
+            <p class="section__eyebrow">平台</p>
+            <h2>一套代码，多端可用</h2>
+            <p class="section__lead">
+              Flutter 覆盖 Web、Android、iOS、Windows、macOS 与 Linux。发布包以 GitHub Releases 为准；当前 Beta，关键路径以 Web 与 Android 验收为主。
+            </p>
+          </header>
+
+          <ul class="platforms reveal">
+            <li class="platform-card">
+              <span class="platform-card__icon" aria-hidden="true">
+                <svg viewBox="0 0 24 24"><path fill="currentColor" d="M12 2a10 10 0 1 0 0 20 10 10 0 0 0 0-20zm7.93 9h-3.09a15.6 15.6 0 0 0-1.2-5.02A8.03 8.03 0 0 1 19.93 11zM12 4c.9 0 2.2 1.9 2.82 5H9.18C9.8 5.9 11.1 4 12 4zM8.36 5.98A15.6 15.6 0 0 0 7.16 11H4.07a8.03 8.03 0 0 1 4.29-5.02zM4.07 13h3.09c.2 1.8.64 3.5 1.2 5.02A8.03 8.03 0 0 1 4.07 13zM12 20c-.9 0-2.2-1.9-2.82-5h5.64C14.2 18.1 12.9 20 12 20zm3.64-1.98c.56-1.52 1-3.22 1.2-5.02h3.09a8.03 8.03 0 0 1-4.29 5.02zM9.18 13h5.64c-.18 1.72-.6 3.3-1.1 4.5-.32.76-.68 1.3-1.12 1.6-.2.14-.4.2-.6.2s-.4-.06-.6-.2c-.44-.3-.8-.84-1.12-1.6-.5-1.2-.92-2.78-1.1-4.5z"/></svg>
+              </span>
+              <span class="platform-card__name">Web</span>
+              <span class="platform-card__hint">优先验收</span>
+            </li>
+            <li class="platform-card">
+              <span class="platform-card__icon" aria-hidden="true">
+                <svg viewBox="0 0 24 24"><path fill="currentColor" d="M17.6 9.48 19.44 6.3a.65.65 0 0 0-1.12-.66l-1.9 3.28A11.3 11.3 0 0 0 12 8.1c-1.6 0-3.1.3-4.42.82L5.68 5.64a.65.65 0 1 0-1.12.66L6.4 9.48C3.74 11.2 2 14.1 2 17.4h20c0-3.3-1.74-6.2-4.4-7.92zM7.2 15.2a1.1 1.1 0 1 1 0-2.2 1.1 1.1 0 0 1 0 2.2zm9.6 0a1.1 1.1 0 1 1 0-2.2 1.1 1.1 0 0 1 0 2.2z"/></svg>
+              </span>
+              <span class="platform-card__name">Android</span>
+              <span class="platform-card__hint">优先验收</span>
+            </li>
+            <li class="platform-card">
+              <span class="platform-card__icon" aria-hidden="true">
+                <svg viewBox="0 0 24 24"><path fill="currentColor" d="M16.7 12.7c0-2.2 1.8-3.3 1.9-3.4-1-1.5-2.6-1.7-3.2-1.7-1.3-.1-2.6.8-3.3.8s-1.7-.8-2.9-.7c-1.5 0-2.9.9-3.6 2.2-1.6 2.7-.4 6.7 1.1 8.9.7 1.1 1.6 2.3 2.8 2.2 1.1 0 1.5-.7 2.9-.7s1.7.7 2.9.7 1.9-1.1 2.7-2.2c.9-1.2 1.2-2.4 1.2-2.5-.1 0-2.4-.9-2.4-3.6zm-2.2-6.4c.6-.8 1.1-1.9.9-3-.9 0-2 .6-2.6 1.4-.6.7-1.1 1.8-.9 2.9 1 .1 2-.5 2.6-1.3z"/></svg>
+              </span>
+              <span class="platform-card__name">iOS</span>
+              <span class="platform-card__hint">工程已就绪</span>
+            </li>
+            <li class="platform-card">
+              <span class="platform-card__icon" aria-hidden="true">
+                <svg viewBox="0 0 24 24"><path fill="currentColor" d="M3 5.5A1.5 1.5 0 0 1 4.5 4h15A1.5 1.5 0 0 1 21 5.5v10a1.5 1.5 0 0 1-1.5 1.5H13v1.5h3a.75.75 0 0 1 0 1.5H8a.75.75 0 0 1 0-1.5h3V17H4.5A1.5 1.5 0 0 1 3 15.5v-10zM4.5 5.5v9h15v-9h-15z"/></svg>
+              </span>
+              <span class="platform-card__name">Windows</span>
+              <span class="platform-card__hint">桌面端</span>
+            </li>
+            <li class="platform-card">
+              <span class="platform-card__icon" aria-hidden="true">
+                <svg viewBox="0 0 24 24"><path fill="currentColor" d="M4 17.5V16h16v1.5a1.5 1.5 0 0 1-1.5 1.5h-13A1.5 1.5 0 0 1 4 17.5zM5 6.5A1.5 1.5 0 0 1 6.5 5h11A1.5 1.5 0 0 1 19 6.5V15H5V6.5zm2 .5v7h10V7H7z"/></svg>
+              </span>
+              <span class="platform-card__name">macOS</span>
+              <span class="platform-card__hint">桌面端</span>
+            </li>
+            <li class="platform-card">
+              <span class="platform-card__icon" aria-hidden="true">
+                <svg viewBox="0 0 24 24"><path fill="currentColor" d="M12.5 2.1c-.3-.1-.7-.1-1 0-1.4.4-2.5 2.3-2.9 4.6-.2 1.1-.1 2.2.1 3.1-.7.3-1.3.8-1.7 1.5-.5.9-.6 2-.3 3 .4 1.3 1.3 2.4 2.5 3l.2 2.1c.1.7.7 1.2 1.4 1.2h2.4c.7 0 1.3-.5 1.4-1.2l.2-2.1c1.2-.6 2.1-1.7 2.5-3 .3-1 .2-2.1-.3-3-.4-.7-1-1.2-1.7-1.5.2-.9.3-2 .1-3.1-.4-2.3-1.5-4.2-2.9-4.6zm-1.1 1.6c.1 0 .2 0 .3 0 .7.2 1.5 1.5 1.8 3.3.1.8.1 1.6 0 2.3h-4c-.1-.7-.1-1.5 0-2.3.3-1.8 1.1-3.1 1.8-3.3.1 0 .1 0 .1 0z"/></svg>
+              </span>
+              <span class="platform-card__name">Linux</span>
+              <span class="platform-card__hint">桌面端</span>
+            </li>
+          </ul>
+        </div>
+      </section>
+
+      <!-- Trust -->
+      <section class="section" id="trust">
+        <div class="section__inner">
+          <div class="trust reveal">
+            <div class="trust__badge" aria-hidden="true">
+              <svg viewBox="0 0 24 24"><path fill="currentColor" d="M12 2 4 5v6c0 5.55 3.84 10.74 8 12 4.16-1.26 8-6.45 8-12V5l-8-3zm-1 14-4-4 1.41-1.41L11 13.17l5.59-5.59L18 9l-7 7z"/></svg>
+            </div>
+            <div class="trust__body">
+              <h2>独立第三方，非官方产品</h2>
+              <p>
+                本项目与 Stage1st 官方无隶属、授权或背书关系。使用时须遵守 Stage1st 的服务条款与社区规则；论坛接口或权限变化可能影响部分功能。
+              </p>
+              <p>
+                Cookie 在本地加密存储；密码不落盘。详见
+                <a href="privacy.html">隐私政策</a>。
+              </p>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- CTA -->
+      <section class="section" id="download">
+        <div class="section__inner">
+          <div class="cta reveal">
+            <div class="cta__glow" aria-hidden="true"></div>
+            <img
+              class="cta__logo"
+              src="assets/branding/s1er_logo_transparent.png"
+              width="96"
+              height="96"
+              alt=""
+            />
+            <h2>开始使用 S1er</h2>
+            <p>
+              从 GitHub Releases 获取最新构建，或克隆仓库自行编译。
+              <span class="cta__version" data-version-text>当前 v0.1.0 · Beta</span>
+            </p>
+            <div class="cta__actions">
+              <a
+                class="btn btn--primary btn--lg"
+                href="https://github.com/Shirolin/s1er/releases/latest"
+                rel="noopener noreferrer"
+                >打开 Releases</a
+              >
+              <a
+                class="btn btn--ghost btn--lg"
+                href="https://github.com/Shirolin/s1er"
+                rel="noopener noreferrer"
+                >GitHub 仓库</a
+              >
+            </div>
           </div>
         </div>
       </section>
@@ -254,15 +567,22 @@
 
     <footer class="site-footer">
       <div class="site-footer__inner">
-        <p>© S1er · GPL-3.0-or-later · 与 Stage1st 官方无关</p>
+        <div class="site-footer__brand">
+          <img src="assets/branding/s1er_mark.png" width="24" height="24" alt="" />
+          <div>
+            <strong>S1er</strong>
+            <p>GPL-3.0-or-later · 与 Stage1st 官方无关</p>
+          </div>
+        </div>
         <ul class="site-footer__links">
           <li>
             <a href="https://github.com/Shirolin/s1er" rel="noopener noreferrer">仓库</a>
           </li>
           <li>
-            <a href="https://github.com/Shirolin/s1er/issues" rel="noopener noreferrer"
-              >Issues</a
-            >
+            <a href="https://github.com/Shirolin/s1er/issues" rel="noopener noreferrer">Issues</a>
+          </li>
+          <li>
+            <a href="https://github.com/Shirolin/s1er/releases" rel="noopener noreferrer">Releases</a>
           </li>
           <li><a href="privacy.html">隐私政策</a></li>
           <li>

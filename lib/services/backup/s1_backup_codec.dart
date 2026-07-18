@@ -46,6 +46,18 @@ class S1BackupCodec {
   static const _utf8 = Utf8Encoder();
   static const _utf8Decoder = Utf8Decoder();
 
+  /// Compressed ZIP size cap (import).
+  static const int maxCompressedBytes = 16 * 1024 * 1024;
+
+  /// Total uncompressed payload cap across all entries.
+  static const int maxUncompressedBytes = 32 * 1024 * 1024;
+
+  /// Max archive entries (manifest + L1 JSON files).
+  static const int maxEntryCount = 32;
+
+  /// Max single uncompressed file size.
+  static const int maxSingleFileBytes = 8 * 1024 * 1024;
+
   static Uint8List encode(S1BackupPayload payload) {
     final archive = Archive();
     void addJson(String name, Object value) {
@@ -75,12 +87,20 @@ class S1BackupCodec {
   }
 
   static S1BackupPayload decode(Uint8List bytes) {
+    if (bytes.length > maxCompressedBytes) {
+      throw S1BackupException(
+        '备份文件过大（超过 ${maxCompressedBytes ~/ (1024 * 1024)} MB）',
+      );
+    }
+
     Archive archive;
     try {
       archive = ZipDecoder().decodeBytes(bytes);
     } catch (e) {
       throw S1BackupException('无法解析备份 ZIP: $e');
     }
+
+    _assertArchiveLimits(archive);
 
     Map<String, dynamic>? readJsonObject(String name) {
       final file = archive.findFile(name);
@@ -137,6 +157,27 @@ class S1BackupCodec {
       blacklist: readJsonArray('blacklist.json'),
       pollVotes: readJsonArray('poll_votes.json'),
     );
+  }
+
+  static void _assertArchiveLimits(Archive archive) {
+    if (archive.length > maxEntryCount) {
+      throw S1BackupException('备份包含过多文件（超过 $maxEntryCount 个）');
+    }
+    var total = 0;
+    for (final file in archive) {
+      final size = file.size;
+      if (size > maxSingleFileBytes) {
+        throw S1BackupException(
+          '备份内文件过大（超过 ${maxSingleFileBytes ~/ (1024 * 1024)} MB）',
+        );
+      }
+      total += size;
+      if (total > maxUncompressedBytes) {
+        throw S1BackupException(
+          '备份解压后过大（超过 ${maxUncompressedBytes ~/ (1024 * 1024)} MB）',
+        );
+      }
+    }
   }
 }
 

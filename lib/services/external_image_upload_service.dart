@@ -108,7 +108,7 @@ class ExternalImageUploadService {
       if (imageUrl == null || imageUrl.isEmpty) {
         throw const ExternalImageUploadException('图床未返回图片地址');
       }
-      return imageUrl;
+      return _validatedImageUrl(imageUrl);
     } on ExternalImageUploadException {
       rethrow;
     } on DioException catch (e, st) {
@@ -152,6 +152,25 @@ class ExternalImageUploadService {
       return 'image/jpeg';
     }
     return 'application/octet-stream';
+  }
+
+  /// 仅接受本图床 https URL，防止异常响应用任意地址写入 `[img]`。
+  @visibleForTesting
+  static String validatedImageUrl(String imageUrl) =>
+      _validatedImageUrl(imageUrl);
+
+  static String _validatedImageUrl(String imageUrl) {
+    final uri = Uri.tryParse(imageUrl.trim());
+    if (uri == null ||
+        uri.scheme.toLowerCase() != 'https' ||
+        uri.userInfo.isNotEmpty ||
+        uri.host.toLowerCase() != ResourceDomains.externalImageHost) {
+      throw const ExternalImageUploadException('图床返回了非法图片地址');
+    }
+    if (uri.hasPort && uri.port != 443) {
+      throw const ExternalImageUploadException('图床返回了非法图片地址');
+    }
+    return uri.toString();
   }
 }
 

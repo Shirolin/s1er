@@ -70,7 +70,18 @@ class UpdateCheckService {
     return code == 404 || code == 401 || code == 403;
   }
 
+  /// 允许的升级下载 / 商店主机（https only）。
+  static const Set<String> allowedDownloadHosts = {
+    'github.com',
+    'www.github.com',
+    'raw.githubusercontent.com',
+    'objects.githubusercontent.com',
+    'play.google.com',
+  };
+
   /// 按分发渠道与平台解析下载 / 商店 URL。
+  ///
+  /// 仅返回通过主机白名单的 https URL；无一可用时返回空字符串。
   static String resolveDownloadUrl(
     AppUpdateManifest manifest, {
     String distribution = EnvConfig.distribution,
@@ -79,10 +90,12 @@ class UpdateCheckService {
   }) {
     final dist = distribution.trim().toLowerCase();
     if (dist == 'play') {
-      final play = manifest.channels.play;
-      if (play != null && play.isNotEmpty) return play;
+      final play = _sanitizeDownloadUrl(manifest.channels.play);
+      if (play != null) return play;
     }
-    if (isWeb) return manifest.channels.github;
+    if (isWeb) {
+      return _sanitizeDownloadUrl(manifest.channels.github) ?? '';
+    }
 
     final target = platform ?? defaultTargetPlatform;
     final platformUrl = switch (target) {
@@ -92,8 +105,26 @@ class UpdateCheckService {
       TargetPlatform.macOS => manifest.channels.macos,
       _ => null,
     };
-    if (platformUrl != null && platformUrl.isNotEmpty) return platformUrl;
-    return manifest.channels.github;
+    final sanitizedPlatform = _sanitizeDownloadUrl(platformUrl);
+    if (sanitizedPlatform != null) return sanitizedPlatform;
+    return _sanitizeDownloadUrl(manifest.channels.github) ?? '';
+  }
+
+  @visibleForTesting
+  static bool isAllowedDownloadUrl(String url) =>
+      _sanitizeDownloadUrl(url) != null;
+
+  static String? _sanitizeDownloadUrl(String? url) {
+    if (url == null) return null;
+    final trimmed = url.trim();
+    if (trimmed.isEmpty) return null;
+    final uri = Uri.tryParse(trimmed);
+    if (uri == null || uri.scheme.toLowerCase() != 'https') return null;
+    if (uri.userInfo.isNotEmpty) return null;
+    final host = uri.host.toLowerCase();
+    if (!allowedDownloadHosts.contains(host)) return null;
+    if (uri.hasPort && uri.port != 443) return null;
+    return trimmed;
   }
 
   static String _messageForDio(DioException e) {

@@ -84,5 +84,22 @@ void main() {
       expect(parsed, contains('data-code="c:002"'));
       expect(parsed, contains('data-code="a:003"'));
     });
+
+    test('escapes url/img attribute breakout and rejects unsafe colors', () {
+      final brokenUrl = BbcodeParser.parse(
+        '[url=https://a.com" data-x="1]t[/url]',
+      );
+      expect(brokenUrl, contains('href="https://a.com&quot; data-x=&quot;1"'));
+      expect(brokenUrl, isNot(contains('data-x="1"')));
+
+      final badColor = BbcodeParser.parse(
+        '[color=red;background-image:url(https://t.example/p)]hi[/color]',
+      );
+      expect(badColor, isNot(contains('background-image')));
+      expect(badColor, contains('hi'));
+
+      final okColor = BbcodeParser.parse('[color=#ff0000]red[/color]');
+      expect(okColor, contains('color:#ff0000'));
+    });
   });
 }

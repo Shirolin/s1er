@@ -66,6 +66,35 @@ void main() {
       );
     });
 
+    test('rejects oversized compressed zip', () {
+      final huge = Uint8List(S1BackupCodec.maxCompressedBytes + 1);
+      expect(
+        () => S1BackupCodec.decode(huge),
+        throwsA(
+          isA<S1BackupException>().having(
+            (e) => e.message,
+            'message',
+            contains('过大'),
+          ),
+        ),
+      );
+    });
+
+    test('settings mapper excludes draft keys from export whitelist', () {
+      final backup = S1BackupSettingsMapper.toBackup({
+        'themeMode': 'dark',
+        'compose_message_drafts': {'x': 1},
+        'pm_message_drafts': {'y': 2},
+        'new_thread_drafts': {'z': 3},
+        'edit_post_drafts': {'w': 4},
+      });
+      expect(backup['theme_mode'], 'dark');
+      expect(backup.containsKey('compose_message_drafts'), isFalse);
+      expect(backup.containsKey('pm_message_drafts'), isFalse);
+      expect(backup.containsKey('new_thread_drafts'), isFalse);
+      expect(backup.containsKey('edit_post_drafts'), isFalse);
+    });
+
     test('settings mapper round-trips snake_case', () {
       final backup = S1BackupSettingsMapper.toBackup({
         'themeMode': 'dark',

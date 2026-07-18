@@ -2,6 +2,7 @@ import 'package:html/dom.dart';
 import 'package:html/parser.dart' show parseFragment;
 import '../config/constants.dart';
 import '../models/emoticon_catalog.dart';
+import 'author_color_adapter.dart';
 import 'post_image_index_counter.dart';
 import 'post_image_urls.dart';
 
@@ -80,26 +81,38 @@ class BbcodeParser {
 
     output = output.replaceAllMapped(
       RegExp(r'\[url=(.*?)\](.*?)\[/url\]', dotAll: true),
-      (m) => '<a href="${m.group(1)}">${m.group(2)}</a>',
+      (m) => '<a href="${_escapeAttr(m.group(1)!)}">${m.group(2)}</a>',
     );
     output = output.replaceAllMapped(
       RegExp(r'\[url\](.*?)\[/url\]', dotAll: true),
-      (m) => '<a href="${m.group(1)}">${m.group(1)}</a>',
+      (m) {
+        final href = _escapeAttr(m.group(1)!);
+        return '<a href="$href">${m.group(1)}</a>';
+      },
     );
 
     output = output.replaceAllMapped(
       RegExp(r'\[img\](.*?)\[/img\]', dotAll: true),
-      (m) => '<img src="${m.group(1)}" />',
+      (m) => '<img src="${_escapeAttr(m.group(1)!)}" />',
     );
 
     output = output.replaceAllMapped(
       RegExp(r'\[color=(.*?)\](.*?)\[/color\]', dotAll: true),
-      (m) => '<span style="color:${m.group(1)}">${m.group(2)}</span>',
+      (m) {
+        final color = m.group(1)!.trim();
+        final body = m.group(2)!;
+        if (AuthorColorAdapter.parseCssColor(color) == null) return body;
+        return '<span style="color:${_escapeAttr(color)}">$body</span>';
+      },
     );
     output = output.replaceAllMapped(
       RegExp(r'\[backcolor=(.*?)\](.*?)\[/backcolor\]', dotAll: true),
-      (m) =>
-          '<span style="background-color:${m.group(1)}">${m.group(2)}</span>',
+      (m) {
+        final color = m.group(1)!.trim();
+        final body = m.group(2)!;
+        if (AuthorColorAdapter.parseCssColor(color) == null) return body;
+        return '<span style="background-color:${_escapeAttr(color)}">$body</span>';
+      },
     );
     output = output.replaceAllMapped(
         RegExp(r'\[size=(\d+)\](.*?)\[/size\]', dotAll: true), (m) {
@@ -261,5 +274,15 @@ class BbcodeParser {
 
   static String stripTags(String html) {
     return html.replaceAll(RegExp(r'<[^>]*>'), '');
+  }
+
+  /// HTML 属性值转义，防止 BBCode 参数打断属性引号。
+  static String _escapeAttr(String value) {
+    return value
+        .replaceAll('&', '&amp;')
+        .replaceAll('"', '&quot;')
+        .replaceAll("'", '&#39;')
+        .replaceAll('<', '&lt;')
+        .replaceAll('>', '&gt;');
   }
 }

@@ -2,14 +2,14 @@
 # Interactive menu for build options
 
 # Auto-detect Java/keytool path
-# ── Sentry DSN ────────────────────────────────────────────
+# ── Sentry DSN（须显式设置 S1_SENTRY_DSN，默认不启用）────────
 $script:SentryDsn = $env:S1_SENTRY_DSN
-if (-not $script:SentryDsn) {
-    $script:SentryDsn = "https://7ea0cea034d3c0a13de3bbbf862e8ae7@o4511738264944640.ingest.us.sentry.io/4511738316128256"
-}
 function Build-WithDsn {
     param([string[]]$Args)
-    $allArgs = $Args + "--dart-define=SENTRY_DSN=$script:SentryDsn"
+    $allArgs = $Args
+    if ($script:SentryDsn) {
+        $allArgs = $Args + "--dart-define=SENTRY_DSN=$script:SentryDsn"
+    }
     flutter $allArgs
 }
 

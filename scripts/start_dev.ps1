@@ -2,7 +2,7 @@
 # 交互式菜单，支持 Web / Android / 无代理等模式
 #
 # 可选环境变量：
-#   S1_SENTRY_DSN   - 设置 Sentry DSN（默认已内置）
+#   S1_SENTRY_DSN   - 设置 Sentry DSN（须显式设置；未设置则不启用）
 #
 # 所有 flutter run 的输出同时写入 logs/ 目录的日志文件，
 # 避免闪退后 Clear-Host 擦除或终端关闭后丢失错误信息。
@@ -26,15 +26,14 @@ function Write-Message {
     Write-Host "[$now] $Message" -ForegroundColor $Color
 }
 
-# ── Sentry DSN ────────────────────────────────────────────
+# ── Sentry DSN（仅当 S1_SENTRY_DSN 非空时注入）──────────────
 $script:SentryDsn = $env:S1_SENTRY_DSN
-if (-not $script:SentryDsn) {
-    $script:SentryDsn = 'https://7ea0cea034d3c0a13de3bbbf862e8ae7@o4511738264944640.ingest.us.sentry.io/4511738316128256'
-}
 function Start-Flutter {
     param([string[]]$FlutterArgs)
-    $dartDefine = '--dart-define=SENTRY_DSN=' + $script:SentryDsn
-    $allArgs = @($FlutterArgs) + @($dartDefine)
+    $allArgs = @($FlutterArgs)
+    if ($script:SentryDsn) {
+        $allArgs += @('--dart-define=SENTRY_DSN=' + $script:SentryDsn)
+    }
     & flutter @allArgs
 }
 
@@ -222,10 +221,12 @@ do {
             } else {
                 $script:SentryDsn = $env:S1_SENTRY_DSN
                 if (-not $script:SentryDsn) {
-                    $script:SentryDsn = 'https://7ea0cea034d3c0a13de3bbbf862e8ae7@o4511738264944640.ingest.us.sentry.io/4511738316128256'
+                    Write-Host ''
+                    Write-Host 'S1_SENTRY_DSN is not set; cannot enable Sentry' -ForegroundColor Red
+                } else {
+                    Write-Host ''
+                    Write-Host 'Sentry ENABLED for next launch' -ForegroundColor Green
                 }
-                Write-Host ''
-                Write-Host 'Sentry ENABLED for next launch' -ForegroundColor Green
             }
             Write-Host ''
             Write-Host 'Press any key to return to menu...' -ForegroundColor Gray

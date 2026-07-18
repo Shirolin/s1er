@@ -68,6 +68,31 @@ void main() {
       );
     });
 
+    test('rejects non-p.sda1.dev response urls', () async {
+      final dio = Dio()
+        ..httpClientAdapter = _UploadAdapter(
+          responseBody: jsonEncode({
+            'code': 'success',
+            'data': {'url': 'https://evil.example/x.jpg'},
+          }),
+        );
+      final service = ExternalImageUploadService(dio: dio);
+
+      expect(
+        () => service.upload(
+          bytes: Uint8List.fromList([1]),
+          filename: 'a.png',
+        ),
+        throwsA(
+          isA<ExternalImageUploadException>().having(
+            (e) => e.message,
+            'message',
+            contains('非法'),
+          ),
+        ),
+      );
+    });
+
     test('rejects files larger than maxBytes', () async {
       final service = ExternalImageUploadService(dio: Dio());
       final huge = Uint8List(ExternalImageUploadService.maxBytes + 1);

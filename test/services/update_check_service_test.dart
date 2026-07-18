@@ -71,7 +71,8 @@ void main() {
         'channels': {
           'github': 'https://github.com/example/releases/latest',
           'play': 'https://play.google.com/store/apps/details?id=x',
-          'androidApk': 'https://example.com/app.apk',
+          'androidApk':
+              'https://github.com/example/releases/download/v1/app.apk',
         },
       });
       expect(
@@ -90,7 +91,8 @@ void main() {
         'latest': '1.0.0',
         'channels': {
           'github': 'https://github.com/example/releases/latest',
-          'androidApk': 'https://example.com/app.apk',
+          'androidApk':
+              'https://github.com/example/releases/download/v1/app.apk',
         },
       });
       expect(
@@ -109,7 +111,7 @@ void main() {
         'latest': '1.0.0',
         'channels': {
           'github': 'https://github.com/example/releases/latest',
-          'windows': 'https://example.com/app.zip',
+          'windows': 'https://github.com/example/releases/download/v1/app.zip',
         },
       });
       expect(
@@ -119,7 +121,7 @@ void main() {
           isWeb: false,
           platform: TargetPlatform.windows,
         ),
-        'https://example.com/app.zip',
+        'https://github.com/example/releases/download/v1/app.zip',
       );
       expect(
         UpdateCheckService.resolveDownloadUrl(
@@ -129,6 +131,31 @@ void main() {
           platform: TargetPlatform.linux,
         ),
         'https://github.com/example/releases/latest',
+      );
+    });
+
+    test('resolveDownloadUrl rejects non-allowlisted hosts', () {
+      final m = AppUpdateManifest.fromJson({
+        'latest': '1.0.0',
+        'channels': {
+          'github': 'https://evil.example/releases/latest',
+          'androidApk': 'https://evil.example/app.apk',
+        },
+      });
+      expect(
+        UpdateCheckService.resolveDownloadUrl(
+          m,
+          distribution: 'github',
+          isWeb: false,
+          platform: TargetPlatform.android,
+        ),
+        '',
+      );
+      expect(
+        UpdateCheckService.isAllowedDownloadUrl(
+          'javascript:alert(1)',
+        ),
+        isFalse,
       );
     });
   });

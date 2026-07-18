@@ -5,6 +5,7 @@ import '../models/rate_form.dart';
 import '../providers/rate_action_provider.dart';
 import '../providers/thread_rate_logs_provider.dart';
 import '../theme/app_theme.dart';
+import '../theme/s1_haptics.dart';
 import '../utils/s1_snack_bar.dart';
 
 /// 打开评分弹窗：预取表单 → 填写 → 提交 → 刷新评分历史。
@@ -76,6 +77,7 @@ class _RateDialogState extends ConsumerState<_RateDialog> {
       return;
     }
 
+    S1Haptics.medium();
     setState(() => _submitting = true);
     try {
       final error = await ref
@@ -89,7 +91,7 @@ class _RateDialogState extends ConsumerState<_RateDialog> {
       if (!mounted) return;
 
       if (error != null) {
-        S1SnackBar.show(context, message: error);
+        S1SnackBar.error(context, message: error);
         return;
       }
 
@@ -102,7 +104,7 @@ class _RateDialogState extends ConsumerState<_RateDialog> {
       S1SnackBar.show(context, message: '评分成功');
     } catch (e) {
       if (!mounted) return;
-      S1SnackBar.show(context, message: '评分失败: $e');
+      S1SnackBar.error(context, message: '评分失败: $e');
     } finally {
       if (mounted) setState(() => _submitting = false);
     }

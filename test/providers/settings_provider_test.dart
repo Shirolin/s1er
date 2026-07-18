@@ -6,6 +6,7 @@ import 'package:s1er/models/share_image_format.dart';
 import 'package:s1er/providers/settings_provider.dart';
 import 'package:s1er/services/settings_store.dart';
 import 'package:s1er/theme/app_theme.dart';
+import 'package:s1er/theme/s1_haptics.dart';
 import '../helpers/test_local_data.dart';
 
 void main() {
@@ -75,6 +76,28 @@ void main() {
     expect(container.read(settingsProvider).recordReadingHistory, isFalse);
     await Future<void>.delayed(const Duration(milliseconds: 50));
     expect(store.get<bool>('recordReadingHistory'), isFalse);
+  });
+
+  test('setHapticsEnabled persists and syncs S1Haptics.enabled', () async {
+    S1Haptics.enabled = true;
+    final container = ProviderContainer(
+      overrides: [
+        settingsProvider.overrideWith(
+          () => SettingsNotifier(store: store, initial: const AppSettings()),
+        ),
+      ],
+    );
+    addTearDown(container.dispose);
+
+    container.read(settingsProvider.notifier).setHapticsEnabled(false);
+
+    expect(container.read(settingsProvider).hapticsEnabled, isFalse);
+    expect(S1Haptics.enabled, isFalse);
+    await Future<void>.delayed(const Duration(milliseconds: 50));
+    expect(store.get<bool>('hapticsEnabled'), isFalse);
+
+    container.read(settingsProvider.notifier).setHapticsEnabled(true);
+    expect(S1Haptics.enabled, isTrue);
   });
 
   test('legacy custom theme colors are normalized to the default preset', () {

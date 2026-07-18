@@ -4,6 +4,7 @@ import 'package:go_router/go_router.dart';
 import '../config/login_security_questions.dart';
 import '../providers/auth_provider.dart';
 import '../theme/app_theme.dart';
+import '../theme/s1_haptics.dart';
 
 class LoginScreen extends ConsumerStatefulWidget {
   const LoginScreen({super.key});
@@ -36,6 +37,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
   }
 
   Future<void> _handleLogin() async {
+    S1Haptics.medium();
     final username = _usernameController.text.trim();
     final password = _passwordController.text;
     final answer = _answerController.text.trim();
@@ -44,6 +46,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
       setState(() {
         _errorMessage = '用户名和密码不能为空';
       });
+      S1Haptics.heavy();
       return;
     }
 
@@ -51,6 +54,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
       setState(() {
         _errorMessage = '请填写安全提问的答案';
       });
+      S1Haptics.heavy();
       return;
     }
 
@@ -71,6 +75,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
     if (error == null) {
       context.go('/');
     } else {
+      S1Haptics.heavy();
       setState(() {
         _isLoading = false;
         _errorMessage = error;

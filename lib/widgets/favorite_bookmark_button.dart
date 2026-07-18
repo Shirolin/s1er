@@ -6,6 +6,7 @@ import 'package:go_router/go_router.dart';
 import '../models/favorite_item.dart';
 import '../providers/auth_provider.dart';
 import '../providers/favorite_membership_provider.dart';
+import '../theme/s1_haptics.dart';
 import '../utils/s1_snack_bar.dart';
 import 'favorite_confirm_dialog.dart';
 
@@ -49,6 +50,7 @@ class _FavoriteBookmarkButtonState
       if (!confirmed || !mounted) return;
     }
 
+    S1Haptics.medium();
     setState(() => _busy = true);
 
     final notifier = ref.read(favoriteMembershipProvider.notifier);
@@ -60,7 +62,7 @@ class _FavoriteBookmarkButtonState
     setState(() => _busy = false);
 
     if (error != null) {
-      S1SnackBar.show(context, message: error);
+      S1SnackBar.error(context, message: error);
     }
   }
 

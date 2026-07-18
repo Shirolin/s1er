@@ -124,6 +124,16 @@ void main() {
       expect(app['postSignatureShowDevice'], isFalse);
       expect(app['postSignatureCustom'], '摸鱼');
     });
+
+    test('haptics_enabled maps to camelCase', () {
+      final backup = S1BackupSettingsMapper.toBackup({
+        'hapticsEnabled': false,
+      });
+      expect(backup['haptics_enabled'], isFalse);
+
+      final app = S1BackupSettingsMapper.toApp(backup);
+      expect(app['hapticsEnabled'], isFalse);
+    });
   });
 
   group('S1BackupService L1 round-trip', () {

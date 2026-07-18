@@ -16,6 +16,7 @@ import '../providers/auth_provider.dart';
 import '../providers/compose_provider.dart';
 import '../providers/settings_provider.dart';
 import '../theme/app_theme.dart';
+import '../theme/s1_haptics.dart';
 import '../utils/compact_label.dart';
 import '../utils/compose_draft_store.dart';
 import '../utils/compose_img_tags.dart';
@@ -779,6 +780,7 @@ class _ComposeScreenState extends ConsumerState<ComposeScreen> {
         confirmLabel: '发布',
       );
       if (!mounted || !confirmed) return;
+      S1Haptics.medium();
       setState(() => _isSubmitting = true);
       try {
         final result =
@@ -794,7 +796,7 @@ class _ComposeScreenState extends ConsumerState<ComposeScreen> {
           setState(() => _allowPop = true);
           context.pop(result);
         } else {
-          S1SnackBar.show(
+          S1SnackBar.error(
             context,
             message: result.error ?? '发帖失败',
             bottomClearance: 72,
@@ -802,7 +804,7 @@ class _ComposeScreenState extends ConsumerState<ComposeScreen> {
         }
       } catch (e) {
         if (mounted) {
-          S1SnackBar.show(context, message: '$e', bottomClearance: 72);
+          S1SnackBar.error(context, message: '$e', bottomClearance: 72);
         }
       } finally {
         if (mounted) setState(() => _isSubmitting = false);
@@ -837,6 +839,7 @@ class _ComposeScreenState extends ConsumerState<ComposeScreen> {
         confirmLabel: '确认编辑',
       );
       if (!mounted || !confirmed) return;
+      S1Haptics.medium();
       setState(() => _isSubmitting = true);
       try {
         final result = await ref.read(composeControllerProvider).submitEditPost(
@@ -857,20 +860,20 @@ class _ComposeScreenState extends ConsumerState<ComposeScreen> {
           context.pop(result);
         } else if (result.isConflict) {
           setState(() => _editConflict = true);
-          S1SnackBar.show(
+          S1SnackBar.error(
             context,
             message: result.message ?? '服务器内容已变化，请重新载入',
             bottomClearance: 72,
           );
         } else if (result.isUncertain) {
           setState(() => _editUncertain = true);
-          S1SnackBar.show(
+          S1SnackBar.error(
             context,
             message: result.message ?? '编辑状态不确定，请先核对服务器内容',
             bottomClearance: 72,
           );
         } else {
-          S1SnackBar.show(
+          S1SnackBar.error(
             context,
             message: result.message ?? '编辑失败',
             bottomClearance: 72,
@@ -879,7 +882,7 @@ class _ComposeScreenState extends ConsumerState<ComposeScreen> {
       } catch (e) {
         if (mounted) {
           setState(() => _editUncertain = true);
-          S1SnackBar.show(context, message: '$e', bottomClearance: 72);
+          S1SnackBar.error(context, message: '$e', bottomClearance: 72);
         }
       } finally {
         if (mounted) setState(() => _isSubmitting = false);
@@ -902,6 +905,7 @@ class _ComposeScreenState extends ConsumerState<ComposeScreen> {
       return;
     }
 
+    S1Haptics.medium();
     setState(() => _isSubmitting = true);
 
     try {
@@ -922,7 +926,7 @@ class _ComposeScreenState extends ConsumerState<ComposeScreen> {
           setState(() => _allowPop = true);
           context.pop(result);
         } else {
-          S1SnackBar.show(
+          S1SnackBar.error(
             context,
             message: result.error ?? '回复失败',
             bottomClearance: 72,
@@ -931,7 +935,7 @@ class _ComposeScreenState extends ConsumerState<ComposeScreen> {
       }
     } catch (e) {
       if (mounted) {
-        S1SnackBar.show(context, message: '$e', bottomClearance: 72);
+        S1SnackBar.error(context, message: '$e', bottomClearance: 72);
       }
     } finally {
       if (mounted) setState(() => _isSubmitting = false);

@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import '../models/private_message_item.dart';
 import '../theme/app_theme.dart';
+import '../theme/s1_haptics.dart';
 import '../utils/format_utils.dart';
 import 'web_avatar.dart';
 
@@ -27,7 +28,7 @@ class PmListTile extends StatelessWidget {
       color: S1Surface.card(scheme),
       shape: S1Shape.cardShape,
       child: ListTile(
-        onTap: onTap,
+        onTap: S1Haptics.wrapTap(onTap),
         shape: S1Shape.cardShape,
         leading: WebAvatar(
           url: item.avatarUrl,

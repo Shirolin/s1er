@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../theme/app_theme.dart';
+import '../theme/s1_haptics.dart';
 import '../utils/compact_label.dart';
 import 'page_picker_sheet.dart';
 
@@ -38,6 +39,7 @@ class _PaginationBarState extends State<PaginationBar> {
     if (_isLoading || page == widget.currentPage) return;
     if (page < 1 || page > widget.totalPages) return;
 
+    S1Haptics.selection();
     setState(() => _isLoading = true);
     try {
       await widget.onPageChanged(page);
@@ -47,6 +49,7 @@ class _PaginationBarState extends State<PaginationBar> {
   }
 
   void _showPagePicker() {
+    S1Haptics.selection();
     showPagePickerSheet(
       context: context,
       currentPage: widget.currentPage,

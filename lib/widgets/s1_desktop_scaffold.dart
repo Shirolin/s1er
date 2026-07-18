@@ -3,6 +3,7 @@ import 'package:flutter/services.dart';
 import 'package:go_router/go_router.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../providers/auth_provider.dart';
+import '../theme/s1_haptics.dart';
 import '../utils/window_size.dart';
 
 /// Wraps a page with a persistent [NavigationRail] on medium+ screens.
@@ -41,6 +42,7 @@ class S1DesktopScaffold extends ConsumerWidget {
     );
 
     void selectDestination(int index) {
+      S1Haptics.selection();
       final tab = isLoggedIn
           ? const ['forum', 'search', 'messages', 'profile'][index]
           : const ['forum', 'profile'][index];

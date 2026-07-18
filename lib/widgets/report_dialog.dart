@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../models/report_form.dart';
 import '../providers/report_action_provider.dart';
+import '../theme/s1_haptics.dart';
 import '../utils/s1_snack_bar.dart';
 
 Future<void> showReportDialog(
@@ -66,6 +67,7 @@ class _ReportDialogState extends ConsumerState<_ReportDialog> {
     if (_options == null || _options!.hasError || _submitting) return;
     if (!(_formKey.currentState?.validate() ?? false)) return;
 
+    S1Haptics.medium();
     setState(() => _submitting = true);
     final error =
         await ref.read(reportActionControllerProvider(widget.target)).submit(
@@ -76,7 +78,7 @@ class _ReportDialogState extends ConsumerState<_ReportDialog> {
     if (!mounted) return;
     setState(() => _submitting = false);
     if (error != null) {
-      S1SnackBar.show(context, message: error);
+      S1SnackBar.error(context, message: error);
       return;
     }
     Navigator.of(context).pop();

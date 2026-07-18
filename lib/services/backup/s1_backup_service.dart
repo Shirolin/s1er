@@ -63,6 +63,7 @@ class S1BackupService {
     appSettings.putIfAbsent('maxImagesPerPost', () => 10);
     appSettings.putIfAbsent('imageCacheLimitMb', () => 256);
     appSettings.putIfAbsent('recordReadingHistory', () => true);
+    appSettings.putIfAbsent('hapticsEnabled', () => true);
     appSettings.putIfAbsent('fontSize', () => 14);
     appSettings.putIfAbsent('collapsedForums', () => <String>[]);
     appSettings.putIfAbsent('shareImageFormat', () => 'webp');

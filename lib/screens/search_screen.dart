@@ -8,6 +8,7 @@ import '../models/user.dart';
 import '../providers/search_provider.dart';
 import '../providers/user_profile_provider.dart';
 import '../theme/app_theme.dart';
+import '../theme/s1_haptics.dart';
 import '../utils/thread_navigation.dart';
 import '../widgets/s1_error_view.dart';
 import '../widgets/pagination_bar.dart';
@@ -344,9 +345,12 @@ class _ForumHitTile extends StatelessWidget {
       shape: S1Shape.cardShape,
       clipBehavior: Clip.antiAlias,
       child: InkWell(
-        onTap: () => context.push(
-          ThreadRouteCodec.encodePath(ResumeThread(hit.tid)),
-        ),
+        onTap: () {
+          S1Haptics.selection();
+          context.push(
+            ThreadRouteCodec.encodePath(ResumeThread(hit.tid)),
+          );
+        },
         child: Padding(
           padding: const EdgeInsets.all(16),
           child: Column(
@@ -446,6 +450,7 @@ class _UserHitTile extends ConsumerWidget {
         ),
         trailing: const Icon(Icons.chevron_right),
         onTap: () {
+          S1Haptics.selection();
           showUserProfileSheet(
             context,
             future: ref.read(userProfileProvider(hit.uid).future),

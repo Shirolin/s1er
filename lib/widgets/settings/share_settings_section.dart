@@ -4,6 +4,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../models/share_image_format.dart';
 import '../../models/share_pixel_ratio.dart';
 import '../../providers/settings_provider.dart';
+import '../../theme/s1_haptics.dart';
 import 'settings_section_header.dart';
 
 class ShareSettingsSection extends ConsumerWidget {
@@ -59,6 +60,7 @@ class ShareSettingsSection extends ConsumerWidget {
                       selected: {settings.shareImageFormat},
                       showSelectedIcon: false,
                       onSelectionChanged: (selection) {
+                        S1Haptics.selection();
                         notifier.setShareImageFormat(selection.first);
                       },
                     ),
@@ -98,6 +100,7 @@ class ShareSettingsSection extends ConsumerWidget {
                       selected: {settings.sharePixelRatio},
                       showSelectedIcon: false,
                       onSelectionChanged: (selection) {
+                        S1Haptics.selection();
                         notifier.setSharePixelRatio(selection.first);
                       },
                     ),

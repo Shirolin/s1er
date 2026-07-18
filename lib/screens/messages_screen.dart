@@ -7,6 +7,7 @@ import '../providers/messages_segment_provider.dart';
 import '../providers/notice_list_provider.dart';
 import '../providers/pm_list_provider.dart';
 import '../theme/app_theme.dart';
+import '../theme/s1_haptics.dart';
 import '../utils/thread_navigation.dart';
 import '../widgets/notice_list_tile.dart';
 import '../widgets/pagination_bar.dart';
@@ -48,6 +49,7 @@ class _MessagesScreenState extends ConsumerState<MessagesScreen> {
             ],
             selected: {_segment},
             onSelectionChanged: (value) {
+              S1Haptics.selection();
               final next = value.first;
               setState(() => _segment = next);
               ref.read(messagesSegmentProvider.notifier).select(next);
@@ -79,11 +81,15 @@ class _PmListBody extends ConsumerWidget {
       ),
       error: (e, st) => S1ErrorView(
         error: e,
-        onRetry: () => ref.read(pmListProvider.notifier).refresh(),
+        onRetry: () => S1Haptics.wrapRefresh(
+          () => ref.read(pmListProvider.notifier).refresh(),
+        ),
         onLogin: () => context.push('/login'),
       ),
       data: (state) => RefreshIndicator(
-        onRefresh: () => ref.read(pmListProvider.notifier).refresh(),
+        onRefresh: () => S1Haptics.wrapRefresh(
+          () => ref.read(pmListProvider.notifier).refresh(),
+        ),
         child: state.items.isEmpty
             ? ListView(
                 children: const [
@@ -133,7 +139,9 @@ class _NoticeListBody extends ConsumerWidget {
       ),
       error: (e, st) => S1ErrorView(
         error: e,
-        onRetry: () => ref.read(noticeListProvider.notifier).refresh(),
+        onRetry: () => S1Haptics.wrapRefresh(
+          () => ref.read(noticeListProvider.notifier).refresh(),
+        ),
         onLogin: () => context.push('/login'),
       ),
       data: (state) => Column(
@@ -154,6 +162,7 @@ class _NoticeListBody extends ConsumerWidget {
               selected: {state.feed},
               showSelectedIcon: false,
               onSelectionChanged: (value) {
+                S1Haptics.selection();
                 final feed = value.first;
                 ref.read(noticeFeedSelectionProvider.notifier).select(feed);
                 ref.read(noticeListProvider.notifier).selectFeed(feed);
@@ -171,8 +180,9 @@ class _NoticeListBody extends ConsumerWidget {
               onPageChanged: (page) =>
                   ref.read(noticeListProvider.notifier).goToPage(page),
               pageBuilder: (context, scrollController) => RefreshIndicator(
-                onRefresh: () =>
-                    ref.read(noticeListProvider.notifier).refresh(),
+                onRefresh: () => S1Haptics.wrapRefresh(
+                  () => ref.read(noticeListProvider.notifier).refresh(),
+                ),
                 child: state.items.isEmpty
                     ? ListView(
                         controller: scrollController,

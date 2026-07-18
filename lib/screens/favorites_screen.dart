@@ -11,6 +11,7 @@ import '../widgets/favorite_confirm_dialog.dart';
 import '../utils/format_utils.dart';
 import '../utils/s1_snack_bar.dart';
 import '../utils/thread_navigation.dart';
+import '../theme/s1_haptics.dart';
 import '../widgets/app_bar_more_menu.dart';
 import '../widgets/pagination_bar.dart';
 import '../widgets/s1_error_view.dart';
@@ -155,8 +156,9 @@ class _FavoriteListBody extends ConsumerWidget {
       ),
       error: (e, st) => S1ErrorView(
         error: e,
-        onRetry: () =>
-            ref.read(favoriteListProvider(segment).notifier).refresh(),
+        onRetry: () => S1Haptics.wrapRefresh(
+          () => ref.read(favoriteListProvider(segment).notifier).refresh(),
+        ),
         onLogin: () => context.push('/login'),
       ),
       data: (state) => Column(
@@ -170,14 +172,14 @@ class _FavoriteListBody extends ConsumerWidget {
                   .read(favoriteListProvider(segment).notifier)
                   .goToPage(page),
               pageBuilder: (context, scrollController) => RefreshIndicator(
-                onRefresh: () async {
+                onRefresh: () => S1Haptics.wrapRefresh(() async {
                   await ref
                       .read(favoriteListProvider(segment).notifier)
                       .refresh();
                   await ref
                       .read(favoriteMembershipProvider.notifier)
                       .ensureSynced();
-                },
+                }),
                 child: state.items.isEmpty
                     ? ListView(
                         controller: scrollController,

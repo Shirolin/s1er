@@ -41,8 +41,7 @@ class _PostSignatureSettingsSectionState
     final scheme = Theme.of(context).colorScheme;
     final textTheme = Theme.of(context).textTheme;
     final deviceAsync = ref.watch(deviceModelLabelProvider);
-    final deviceLabel =
-        deviceAsync.asData?.value ?? deviceModelLabelFallback();
+    final deviceLabel = deviceAsync.asData?.value ?? deviceModelLabelFallback();
 
     final display = PostSignature.buildDisplay(
       enabled: settings.postSignatureEnabled,

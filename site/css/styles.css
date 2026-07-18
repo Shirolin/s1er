@@ -382,15 +382,14 @@ a:hover {
 .device-window__viewport {
   position: relative;
   overflow: hidden;
-  aspect-ratio: 16 / 10;
   background: #0d0f16;
+  line-height: 0;
 }
 
 .device-window__viewport img {
   width: 100%;
-  height: 100%;
-  object-fit: cover;
-  object-position: left top;
+  height: auto;
+  display: block;
 }
 
 @keyframes float-y {
@@ -578,30 +577,17 @@ a:hover {
   position: relative;
 }
 
-.device-phone__notch {
-  position: absolute;
-  top: 0.55rem;
-  left: 50%;
-  transform: translateX(-50%);
-  width: 28%;
-  height: 0.7rem;
-  background: #0c0e14;
-  border-radius: 999px;
-  z-index: 3;
-}
-
 .device-phone__viewport {
   position: relative;
   overflow: hidden;
-  aspect-ratio: 9 / 19.5;
   background: #0c0e14;
+  line-height: 0;
 }
 
 .device-phone__viewport img {
   width: 100%;
-  height: 100%;
-  object-fit: cover;
-  object-position: center top;
+  height: auto;
+  display: block;
 }
 
 /* Platforms */
@@ -632,13 +618,13 @@ a:hover {
   border: 1px solid var(--border-dark);
   position: relative;
   max-width: 48rem;
+  line-height: 0;
 }
 
 .platform-shot img {
   width: 100%;
-  aspect-ratio: 16 / 10;
-  object-fit: cover;
-  object-position: left top;
+  height: auto;
+  display: block;
 }
 
 /* Trust */

@@ -254,7 +254,10 @@ class S1ScrollNavGroup extends StatelessWidget {
     return Material(
       color: scheme.surfaceContainerHigh,
       elevation: 0,
-      shape: const RoundedRectangleBorder(borderRadius: S1Shape.large),
+      shape: const RoundedRectangleBorder(
+        borderRadius: S1Shape.large,
+        side: BorderSide.none,
+      ),
       clipBehavior: Clip.antiAlias,
       child: SizedBox(
         width: S1FabLayout.navGroupWidth,

@@ -113,12 +113,15 @@ class ThreadCard extends ConsumerWidget {
       child: Card(
         margin: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
         elevation: 0,
+        shadowColor: Colors.transparent,
+        surfaceTintColor: Colors.transparent,
         color: selected
             ? scheme.secondaryContainer
             : isSticky
                 ? scheme.primaryContainer
-                : scheme.surfaceContainerLow,
+                : S1Surface.card(scheme),
         shape: S1Shape.cardShape,
+        clipBehavior: Clip.antiAlias,
         child: InkWell(
           onTap: () => _handleTap(context, ref),
           borderRadius: S1Shape.medium,

@@ -56,7 +56,7 @@ class S1BackupService {
       if (value != null) appSettings[key] = value;
     }
     appSettings.putIfAbsent('themeMode', () => 'system');
-    appSettings.putIfAbsent('themeColor', () => 'purple');
+    appSettings.putIfAbsent('themeColor', () => 'sand');
     appSettings.putIfAbsent('showImages', () => true);
     appSettings.putIfAbsent('imageLoadPolicy', () => 'always');
     appSettings.putIfAbsent('avatarLoadPolicy', () => 'always');

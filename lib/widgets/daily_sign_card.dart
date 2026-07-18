@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../models/attendance_result.dart';
+import '../theme/app_theme.dart';
 
 /// 每日签到卡片：纯展示，由调用方传入状态与回调。
 class DailySignCard extends StatelessWidget {
@@ -25,7 +26,11 @@ class DailySignCard extends StatelessWidget {
 
     return Card(
       elevation: 0,
-      color: scheme.surfaceContainerHigh,
+      shadowColor: Colors.transparent,
+      surfaceTintColor: Colors.transparent,
+      color: S1Surface.card(scheme),
+      shape: S1Shape.cardShape,
+      clipBehavior: Clip.antiAlias,
       child: Padding(
         padding: const EdgeInsets.fromLTRB(16, 14, 12, 14),
         child: Row(

@@ -3,19 +3,19 @@ import 'package:flutter/material.dart';
 import '../../theme/app_theme.dart';
 
 const _colorLabels = {
-  'blue': '蓝色',
+  'blue': '冷蓝',
+  'sand': '暖沙',
   'purple': '紫色',
   'sage': '绿色',
-  'indigo': '靛蓝',
-  'orange': '橙色',
+  'rose': '玫红',
 };
 
 const _shortLabels = {
   'blue': '蓝',
+  'sand': '沙',
   'purple': '紫',
   'sage': '绿',
-  'indigo': '靛',
-  'orange': '橙',
+  'rose': '玫',
 };
 
 class ThemeColorPicker extends StatelessWidget {

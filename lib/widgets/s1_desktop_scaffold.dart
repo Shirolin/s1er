@@ -141,11 +141,6 @@ class S1DesktopScaffold extends ConsumerWidget {
                       ),
                     ],
             ),
-            VerticalDivider(
-              width: 1,
-              thickness: 1,
-              color: scheme.outlineVariant,
-            ),
             Expanded(child: child),
           ],
         ),

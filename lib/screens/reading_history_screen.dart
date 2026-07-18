@@ -51,7 +51,7 @@ class ReadingHistoryScreen extends ConsumerWidget {
     final confirmed = await showS1ConfirmDialog(
       context,
       title: '清空阅读历史',
-      content: '将删除全部阅读记录，此操作不可恢复。',
+      content: '将删除当前账号的全部阅读记录，此操作不可恢复。',
       confirmLabel: '清空',
       destructive: true,
     );
@@ -131,7 +131,7 @@ class _HistoryTile extends ConsumerWidget {
       child: Card(
         margin: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
         elevation: 0,
-        color: scheme.surfaceContainerLow,
+        color: S1Surface.card(scheme),
         shape: S1Shape.cardShape,
         child: InkWell(
           onTap: () => _open(context),

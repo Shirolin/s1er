@@ -132,7 +132,7 @@ class _PmComposer extends StatelessWidget {
                   child: Card(
                     key: const ValueKey('pm_desktop_composer'),
                     elevation: 0,
-                    color: scheme.surfaceContainerLow,
+                    color: S1Surface.card(scheme),
                     margin: const EdgeInsets.fromLTRB(24, 8, 24, 16),
                     shape: const RoundedRectangleBorder(
                       borderRadius: S1Shape.large,

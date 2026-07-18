@@ -537,7 +537,7 @@ class _ComposeScreenState extends ConsumerState<ComposeScreen> {
       _quotePrefetching = false;
       _quoteInfo = info;
       if (info == null) {
-        _quotePrefetchError = '无法加载官方引用信息，仍可纯文本回复';
+        _quotePrefetchError = '引文加载失败，仍可直接输入回复';
       }
     });
   }
@@ -632,7 +632,7 @@ class _ComposeScreenState extends ConsumerState<ComposeScreen> {
                             currentTid: tid,
                           ),
                         BbcodeRenderer(
-                          bbcode: message.isEmpty ? '（无正文）' : message,
+                          bbcode: message.isEmpty ? '（无内容）' : message,
                           imageIndexCounter: imageIndexCounter,
                         ),
                       ],
@@ -783,7 +783,7 @@ class _ComposeScreenState extends ConsumerState<ComposeScreen> {
       final confirmed = await showS1ConfirmDialog(
         context,
         title: '确认发布主题？',
-        content: '版块：${widget.fid}\n标题：$subject\n发布后将对其他用户可见。',
+        content: '版块 ID：${widget.fid}\n标题：$subject\n发布后将对其他用户可见。',
         confirmLabel: '发布',
       );
       if (!mounted || !confirmed) return;
@@ -1011,7 +1011,7 @@ class _ComposeScreenState extends ConsumerState<ComposeScreen> {
       title: _isNewThread ? '放弃新主题？' : (_isEditing ? '放弃编辑？' : '放弃回复？'),
       content: _isNewThread
           ? '放弃后将清除本地新主题草稿。'
-          : (_isEditing ? '编辑草稿会保留，下次可继续恢复。' : '放弃本回复草稿。'),
+          : (_isEditing ? '编辑草稿将被保留，下次可继续恢复。' : '本回复草稿将被放弃。'),
       confirmLabel: '放弃',
       destructive: true,
     );
@@ -1042,7 +1042,7 @@ class _ComposeScreenState extends ConsumerState<ComposeScreen> {
 
     if (!_isNewThread && !_hasValidTid) {
       return Scaffold(
-        backgroundColor: scheme.surface,
+        backgroundColor: S1Surface.page(scheme),
         appBar: AppBar(
           elevation: 0,
           title: Text('无法回复', style: textTheme.titleLarge),
@@ -1051,7 +1051,7 @@ class _ComposeScreenState extends ConsumerState<ComposeScreen> {
           child: Padding(
             padding: const EdgeInsets.all(24),
             child: Text(
-              '当前仅支持回复已有主题，请从主题页进入。',
+              '暂不支持从此处回复，请先进入主题页。',
               style: textTheme.bodyLarge?.copyWith(
                 color: scheme.onSurfaceVariant,
               ),
@@ -1066,7 +1066,7 @@ class _ComposeScreenState extends ConsumerState<ComposeScreen> {
       canPop: _allowPop || !_isDirty,
       onPopInvokedWithResult: _handlePop,
       child: Scaffold(
-        backgroundColor: scheme.surface,
+        backgroundColor: S1Surface.page(scheme),
         appBar: AppBar(
           elevation: 0,
           title: Text(_title, style: textTheme.titleLarge),
@@ -1133,8 +1133,8 @@ class _ComposeScreenState extends ConsumerState<ComposeScreen> {
                 controller: _messageController,
                 focusNode: _messageFocusNode,
                 hintText: _isNewThread
-                    ? '输入主题正文…'
-                    : (_isEditing ? '输入编辑后的正文…' : '输入回复内容…'),
+                    ? '输入主题内容…'
+                    : (_isEditing ? '输入编辑后的内容…' : '输入回复内容…'),
                 onTap: () {
                   if (_showEmoticonPanel) {
                     setState(() => _showEmoticonPanel = false);

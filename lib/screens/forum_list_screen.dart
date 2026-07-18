@@ -211,11 +211,7 @@ class _ForumListScreenState extends ConsumerState<ForumListScreen> {
                     ),
                   ),
                 if (isSplit) ...[
-                  VerticalDivider(
-                    width: 1,
-                    thickness: 1,
-                    color: Theme.of(context).colorScheme.outlineVariant,
-                  ),
+                  const SizedBox(width: 8),
                   Expanded(
                     child: ThreadOpenIntentScope(
                       tid: widget.selectedThreadId!,
@@ -381,6 +377,8 @@ class _ThreadTypeFilterBar extends StatelessWidget {
             child: FilterChip(
               label: const Text('全部'),
               selected: selectedTypeId == null,
+              showCheckmark: true,
+              side: BorderSide.none,
               onSelected: enabled ? (_) => onSelected(null) : null,
             ),
           ),
@@ -390,6 +388,8 @@ class _ThreadTypeFilterBar extends StatelessWidget {
               child: FilterChip(
                 label: Text(entry.value),
                 selected: selectedTypeId == entry.key,
+                showCheckmark: true,
+                side: BorderSide.none,
                 onSelected: enabled ? (_) => onSelected(entry.key) : null,
               ),
             ),

@@ -114,7 +114,7 @@ class _PollCardState extends ConsumerState<PollCard> {
     return Card(
       margin: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
       elevation: 0,
-      color: scheme.surfaceContainerLow,
+      color: S1Surface.card(scheme),
       shape: S1Shape.cardShape,
       child: Padding(
         padding: const EdgeInsets.fromLTRB(12, 12, 12, 16),

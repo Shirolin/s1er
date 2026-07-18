@@ -11,21 +11,49 @@ abstract class S1Shape {
   /// 全圆角（胶囊 / pill），用于标签、徽标等 M3 "full" 形状。
   static const full = BorderRadius.all(Radius.circular(999));
 
-  static const cardShape = RoundedRectangleBorder(borderRadius: medium);
+  /// 卡片 / Chip：无描边（M3 靠色阶分层，不用 outline）。
+  static const cardShape = RoundedRectangleBorder(
+    borderRadius: medium,
+    side: BorderSide.none,
+  );
   static const dialogShape = RoundedRectangleBorder(borderRadius: extraLarge);
   static const bottomSheetShape = RoundedRectangleBorder(
     borderRadius: BorderRadius.vertical(top: Radius.circular(28)),
   );
-  static const chipShape = RoundedRectangleBorder(borderRadius: small);
+  static const chipShape = RoundedRectangleBorder(
+    borderRadius: small,
+    side: BorderSide.none,
+  );
   static const menuShape = RoundedRectangleBorder(borderRadius: small);
   static const inputShape =
       OutlineInputBorder(borderRadius: BorderRadius.all(Radius.circular(12)));
 }
 
+/// M3 表面色阶（对齐官方 Reply + 暖沙种子 `#825500`）。
+///
+/// 浅色（与 Reply `Color.kt` / 列表卡用法一致的可映射关系）：
+/// 1. **画布** [page] = [ColorScheme.surfaceContainerHighest]（`#EDE0D4`）
+/// 2. **内容浮层** [card] = [ColorScheme.surfaceContainerLow]（`#FFF1E5` 奶油沙；
+///    Reply 未选中列表卡用 `surfaceVariant`≈此档，避免 `surface` 过白）
+/// 3. **强调** = `primaryContainer`（选中）/ `secondaryContainer`（打开）等
+///
+/// FAB 用 `tertiaryContainer`（Reply 薄荷绿）。导航铬件与画布同色。
+abstract class S1Surface {
+  static Color page(ColorScheme scheme) => scheme.brightness == Brightness.light
+      ? scheme.surfaceContainerHighest
+      : scheme.surfaceContainerLowest;
+
+  static Color card(ColorScheme scheme) => scheme.brightness == Brightness.light
+      ? scheme.surfaceContainerLow
+      : scheme.surfaceContainerHigh;
+
+  /// NavigationRail / NavigationBar / PaginationBar — 与画布齐平。
+  static Color chrome(ColorScheme scheme) => page(scheme);
+}
+
 /// M3 底部固定栏（NavigationBar / PaginationBar）共用表面样式。
 ///
-/// 与内容区的分隔靠 [ColorScheme.surface] vs [ColorScheme.surfaceContainer]
-/// 的色阶差实现，不使用 outline 描边（与 M3 NavigationBar 一致）。
+/// 与画布同色、无 outline（对齐官方 Navigation 与内容区的色阶关系）。
 abstract class S1BottomBarStyle {
   static const double minTouchTarget = 48;
   static const double barVerticalPadding = 4;
@@ -34,7 +62,7 @@ abstract class S1BottomBarStyle {
   static const double paginationBarHeight =
       minTouchTarget + barVerticalPadding * 2;
 
-  static Color background(ColorScheme scheme) => scheme.surfaceContainer;
+  static Color background(ColorScheme scheme) => S1Surface.chrome(scheme);
 
   static BoxDecoration decoration(ColorScheme scheme) => BoxDecoration(
         color: background(scheme),
@@ -126,18 +154,30 @@ abstract class S1Alpha {
 }
 
 class AppTheme {
-  static const defaultThemeColorKey = 'purple';
+  static const defaultThemeColorKey = 'sand';
 
+  /// 预设种子色；经 [ColorScheme.fromSeed] 展开（非手写完整 ColorScheme）。
+  ///
+  /// - [blue] / [sand]：对齐 Material 文档 Reply 示意（左冷蓝观感 / 右官方默认）
+  /// - [purple]：M3 baseline
+  /// - 其余：产品自选补充色相
+  ///
+  /// 历史 key：`indigo` → `rose`，`orange` → `sand`。
   static const Map<String, Color> themeSeeds = {
-    'blue': Color(0xFF1A73E8),
+    // 文档左图「动态主题」冷蓝观感的静态近似（动态取色本身无固定种子）。
+    'blue': Color(0xFF00639B),
+    // Reply 官方默认 Primary / Theme Builder 种子（文档右图暖沙）。
+    'sand': Color(0xFF825500),
     'purple': Color(0xFF6750A4),
-    'sage': Color(0xFF386B52),
-    'indigo': Color(0xFF435993),
-    'orange': Color(0xFFF57C00),
+    'sage': Color(0xFF4A6741),
+    'rose': Color(0xFF8C4A60),
   };
 
-  static String normalizeThemeColorKey(String? key) =>
-      themeSeeds.containsKey(key) ? key! : defaultThemeColorKey;
+  static String normalizeThemeColorKey(String? key) {
+    if (key == 'indigo') return 'rose';
+    if (key == 'orange') return 'sand';
+    return themeSeeds.containsKey(key) ? key! : defaultThemeColorKey;
+  }
 
   static ThemeData lightTheme(String themeColorKey) {
     final seedColor = themeSeeds[normalizeThemeColorKey(themeColorKey)]!;
@@ -160,23 +200,43 @@ class AppTheme {
     return ThemeData(
       useMaterial3: true,
       colorScheme: colorScheme,
-      appBarTheme: const AppBarTheme(
+      scaffoldBackgroundColor: S1Surface.page(colorScheme),
+      appBarTheme: AppBarTheme(
         centerTitle: true,
         elevation: 0,
         scrolledUnderElevation: 0,
+        backgroundColor: S1Surface.page(colorScheme),
         // 避免末尾 ⋮ / 菜单锚点贴齐窗口右缘，连带弹出菜单贴边。
-        actionsPadding: EdgeInsetsDirectional.only(end: 8),
+        actionsPadding: const EdgeInsetsDirectional.only(end: 8),
       ),
       cardTheme: CardThemeData(
         shape: S1Shape.cardShape,
         elevation: 0,
-        color: colorScheme.surfaceContainerLow,
+        shadowColor: Colors.transparent,
+        surfaceTintColor: Colors.transparent,
+        color: S1Surface.card(colorScheme),
+        clipBehavior: Clip.antiAlias,
         margin: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
       ),
       dialogTheme: const DialogThemeData(shape: S1Shape.dialogShape),
       bottomSheetTheme:
           const BottomSheetThemeData(shape: S1Shape.bottomSheetShape),
-      chipTheme: const ChipThemeData(shape: S1Shape.chipShape),
+      // 未选中 Chip 用色阶填充，不用描边（对齐 M3 tonal，非 Outlined）。
+      chipTheme: ChipThemeData(
+        shape: S1Shape.chipShape,
+        side: BorderSide.none,
+        backgroundColor: colorScheme.surfaceContainerHigh,
+        selectedColor: colorScheme.secondaryContainer,
+        disabledColor: colorScheme.surfaceContainerHigh,
+        checkmarkColor: colorScheme.onSecondaryContainer,
+        labelStyle: textTheme.labelLarge?.copyWith(
+          color: colorScheme.onSurfaceVariant,
+        ),
+        secondaryLabelStyle: textTheme.labelLarge?.copyWith(
+          color: colorScheme.onSecondaryContainer,
+        ),
+        padding: const EdgeInsets.symmetric(horizontal: 8),
+      ),
       dividerTheme: DividerThemeData(
         color: colorScheme.outlineVariant,
       ),
@@ -244,7 +304,7 @@ class AppTheme {
         labelType: NavigationRailLabelType.all,
       ),
       drawerTheme: DrawerThemeData(
-        backgroundColor: colorScheme.surface,
+        backgroundColor: S1Surface.page(colorScheme),
         elevation: 0,
         shape: const RoundedRectangleBorder(
           borderRadius: BorderRadius.horizontal(right: Radius.circular(16)),
@@ -260,8 +320,9 @@ class AppTheme {
         style: S1SegmentedButtonStyle.forScheme(colorScheme),
       ),
       floatingActionButtonTheme: FloatingActionButtonThemeData(
-        backgroundColor: colorScheme.primaryContainer,
-        foregroundColor: colorScheme.onPrimaryContainer,
+        // Reply：compose FAB = tertiaryContainer（暖沙下为薄荷绿）。
+        backgroundColor: colorScheme.tertiaryContainer,
+        foregroundColor: colorScheme.onTertiaryContainer,
         elevation: 0,
         highlightElevation: 0,
       ),
@@ -315,9 +376,8 @@ class AppTheme {
       searchBarTheme: SearchBarThemeData(
         elevation: const WidgetStatePropertyAll(0),
         shadowColor: const WidgetStatePropertyAll(Colors.transparent),
-        backgroundColor: WidgetStatePropertyAll(
-          colorScheme.surfaceContainerHigh,
-        ),
+        // 与内容卡同档，在 tint 页面底上形成同一「浮层」。
+        backgroundColor: WidgetStatePropertyAll(S1Surface.card(colorScheme)),
       ),
     );
   }

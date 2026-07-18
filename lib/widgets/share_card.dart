@@ -71,7 +71,7 @@ class ShareCard extends StatelessWidget {
                 width: cardWidth,
                 child: Card(
                   elevation: 0,
-                  color: scheme.surfaceContainerLow,
+                  color: S1Surface.card(scheme),
                   shape: const RoundedRectangleBorder(
                     borderRadius: S1Shape.medium,
                   ),

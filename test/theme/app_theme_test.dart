@@ -53,17 +53,78 @@ void main() {
     test('themeSeeds contains all expected keys', () {
       expect(
         AppTheme.themeSeeds.keys,
-        containsAll(['blue', 'purple', 'sage', 'indigo', 'orange']),
+        containsAll(['blue', 'sand', 'purple', 'sage', 'rose']),
+      );
+      expect(AppTheme.themeSeeds['blue'], const Color(0xFF00639B));
+      expect(AppTheme.themeSeeds['sand'], const Color(0xFF825500));
+    });
+
+    test('surface hierarchy matches Reply canvas / content / chrome', () {
+      final light = AppTheme.lightTheme('sand');
+      final lightScheme = light.colorScheme;
+      // 画布更深；内容奶油沙色；铬件与画布齐平。
+      expect(
+        light.scaffoldBackgroundColor,
+        lightScheme.surfaceContainerHighest,
+      );
+      expect(light.cardTheme.color, lightScheme.surfaceContainerLow);
+      expect(
+        light.appBarTheme.backgroundColor,
+        lightScheme.surfaceContainerHighest,
+      );
+      expect(
+        light.searchBarTheme.backgroundColor?.resolve(const {}),
+        lightScheme.surfaceContainerLow,
+      );
+      expect(
+        S1BottomBarStyle.background(lightScheme),
+        lightScheme.surfaceContainerHighest,
+      );
+      expect(
+        light.navigationRailTheme.backgroundColor,
+        lightScheme.surfaceContainerHighest,
+      );
+      expect(
+        light.floatingActionButtonTheme.backgroundColor,
+        lightScheme.tertiaryContainer,
+      );
+
+      final dark = AppTheme.darkTheme('sand');
+      final darkScheme = dark.colorScheme;
+      expect(dark.scaffoldBackgroundColor, darkScheme.surfaceContainerLowest);
+      expect(dark.cardTheme.color, darkScheme.surfaceContainerHigh);
+      expect(
+        S1BottomBarStyle.background(darkScheme),
+        darkScheme.surfaceContainerLowest,
+      );
+    });
+
+    test('cards and chips are borderless tonal surfaces', () {
+      final theme = AppTheme.lightTheme('sand');
+      final cardShape = theme.cardTheme.shape;
+      expect(cardShape, isA<RoundedRectangleBorder>());
+      expect(
+        (cardShape! as RoundedRectangleBorder).side,
+        BorderSide.none,
+      );
+      expect(theme.cardTheme.surfaceTintColor, Colors.transparent);
+      expect(theme.chipTheme.side, BorderSide.none);
+      expect(
+        (theme.chipTheme.shape! as RoundedRectangleBorder).side,
+        BorderSide.none,
       );
     });
 
     test('custom and unknown theme colors fall back to the default preset', () {
-      expect(AppTheme.normalizeThemeColorKey('#2B2930'), 'purple');
-      expect(AppTheme.normalizeThemeColorKey('unknown'), 'purple');
+      expect(AppTheme.normalizeThemeColorKey('#2B2930'), 'sand');
+      expect(AppTheme.normalizeThemeColorKey('unknown'), 'sand');
       expect(AppTheme.normalizeThemeColorKey('sage'), 'sage');
+      expect(AppTheme.normalizeThemeColorKey('indigo'), 'rose');
+      expect(AppTheme.normalizeThemeColorKey('orange'), 'sand');
+      expect(AppTheme.normalizeThemeColorKey('sand'), 'sand');
       expect(
         AppTheme.lightTheme('#2B2930').colorScheme,
-        AppTheme.lightTheme('purple').colorScheme,
+        AppTheme.lightTheme('sand').colorScheme,
       );
     });
 

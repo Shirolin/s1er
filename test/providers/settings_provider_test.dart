@@ -47,7 +47,7 @@ void main() {
     final state = container.read(settingsProvider);
 
     expect(state.themeMode, 'system');
-    expect(state.themeColor, 'purple');
+    expect(state.themeColor, 'sand');
     expect(state.showImages, isTrue);
     expect(state.imageLoadPolicy, ImageLoadPolicy.always);
     expect(state.avatarLoadPolicy, ImageLoadPolicy.always);
@@ -86,11 +86,11 @@ void main() {
     );
     addTearDown(container.dispose);
 
-    expect(container.read(settingsProvider).themeColor, 'purple');
-    expect(store.get<String>('themeColor'), 'purple');
+    expect(container.read(settingsProvider).themeColor, 'sand');
+    expect(store.get<String>('themeColor'), 'sand');
 
     container.read(settingsProvider.notifier).setThemeColor('#141218');
-    expect(container.read(settingsProvider).themeColor, 'purple');
+    expect(container.read(settingsProvider).themeColor, 'sand');
   });
 
   test('setImageLoadPolicy persists to settings store', () async {

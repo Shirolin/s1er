@@ -388,12 +388,14 @@ class _ForumCategoryTile extends ConsumerWidget {
 
     return Card(
       elevation: 0,
+      shadowColor: Colors.transparent,
+      surfaceTintColor: Colors.transparent,
       margin: margin,
       clipBehavior: Clip.antiAlias,
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          // 分类头部
+          // 分类头部：与卡身同色（不涂 page tint，避免「挖洞」）；层级靠字色/图标。
           InkWell(
             onTap: hasSubs
                 ? () => ref
@@ -406,11 +408,9 @@ class _ForumCategoryTile extends ConsumerWidget {
               label: category.name,
               child: ConstrainedBox(
                 constraints: const BoxConstraints(minHeight: 48),
-                child: Container(
-                  width: double.infinity,
+                child: Padding(
                   padding:
                       const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-                  color: scheme.surfaceContainer,
                   child: Row(
                     children: [
                       Icon(
@@ -456,7 +456,7 @@ class _ForumCategoryTile extends ConsumerWidget {
               ),
             ),
           ),
-          // 子版块列表
+          // 子版块列表（无描边分隔；层级靠间距）
           AnimatedSize(
             duration: const Duration(milliseconds: 200),
             curve: Curves.easeInOut,

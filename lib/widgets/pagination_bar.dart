@@ -266,6 +266,7 @@ class _PaginationIconButton extends StatelessWidget {
       icon: Icon(icon),
       style: IconButton.styleFrom(
         iconSize: 24,
+        side: BorderSide.none,
         minimumSize: const Size(
           S1BottomBarStyle.minTouchTarget,
           S1BottomBarStyle.minTouchTarget,

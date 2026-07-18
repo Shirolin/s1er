@@ -800,7 +800,7 @@ class _ThreadDetailScreenState extends ConsumerState<ThreadDetailScreen> {
                     )
                   : null,
             ) ??
-            const Text('帖子召唤中…'),
+            const Text('加载中…'),
         actions: [
           FavoriteBookmarkButton(
             type: FavoriteType.thread,
@@ -1016,7 +1016,7 @@ class _BlockedPostPlaceholder extends StatelessWidget {
     return Card(
       margin: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
       elevation: 0,
-      color: scheme.surfaceContainerLow,
+      color: S1Surface.card(scheme),
       shape: S1Shape.cardShape,
       child: InkWell(
         onTap: onExpand,

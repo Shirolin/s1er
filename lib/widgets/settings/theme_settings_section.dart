@@ -14,10 +14,13 @@ class ThemeSettingsSection extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final settings = ref.watch(settingsProvider);
     final notifier = ref.read(settingsProvider.notifier);
-    final scheme = Theme.of(context).colorScheme;
 
     return Card(
       elevation: 0,
+      shadowColor: Colors.transparent,
+      surfaceTintColor: Colors.transparent,
+      shape: S1Shape.cardShape,
+      clipBehavior: Clip.antiAlias,
       child: Padding(
         padding: const EdgeInsets.all(20),
         child: Column(
@@ -31,9 +34,7 @@ class ThemeSettingsSection extends ConsumerWidget {
               themeMode: settings.themeMode,
               onChanged: notifier.setThemeMode,
             ),
-            const SizedBox(height: 20),
-            Divider(height: 1, color: scheme.outlineVariant),
-            const SizedBox(height: 20),
+            const SizedBox(height: 24),
             const SettingsSubsectionLabel(label: '主题配色'),
             const SizedBox(height: 16),
             ThemeColorPicker(

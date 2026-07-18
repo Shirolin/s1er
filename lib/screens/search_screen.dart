@@ -102,7 +102,7 @@ class _SearchScreenState extends ConsumerState<SearchScreen> {
                 ),
               IconButton(
                 tooltip: state.isCoolingDown
-                    ? '搜索冷却中'
+                    ? '搜索间隔中'
                     : hasQuery
                         ? '搜索'
                         : '请输入搜索关键词',
@@ -126,7 +126,7 @@ class _SearchScreenState extends ConsumerState<SearchScreen> {
           Padding(
             padding: const EdgeInsets.fromLTRB(16, 0, 16, 8),
             child: Text(
-              '搜索冷却中，${state.cooldownRemainingSeconds} 秒后可再次提交',
+              '搜索间隔中，${state.cooldownRemainingSeconds} 秒后可再搜索',
               style: textTheme.bodySmall?.copyWith(
                 color: scheme.onSurfaceVariant,
               ),
@@ -313,7 +313,7 @@ class _EmptyResult extends StatelessWidget {
       child: Padding(
         padding: const EdgeInsets.all(32),
         child: Text(
-          '未找到 “$query” 相关结果',
+          '未找到「$query」相关结果',
           textAlign: TextAlign.center,
           style: textTheme.bodyLarge?.copyWith(
             color: scheme.onSurfaceVariant,
@@ -340,7 +340,7 @@ class _ForumHitTile extends StatelessWidget {
     return Card(
       margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
       elevation: 0,
-      color: scheme.surfaceContainerLow,
+      color: S1Surface.card(scheme),
       shape: S1Shape.cardShape,
       clipBehavior: Clip.antiAlias,
       child: InkWell(
@@ -427,7 +427,7 @@ class _UserHitTile extends ConsumerWidget {
     return Card(
       margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
       elevation: 0,
-      color: scheme.surfaceContainerLow,
+      color: S1Surface.card(scheme),
       shape: S1Shape.cardShape,
       clipBehavior: Clip.antiAlias,
       child: ListTile(

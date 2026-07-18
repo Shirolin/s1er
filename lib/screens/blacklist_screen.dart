@@ -22,7 +22,7 @@ class BlacklistScreen extends ConsumerWidget {
     return S1DesktopScaffold(
       highlightedTab: 3,
       child: Scaffold(
-        backgroundColor: scheme.surface,
+        backgroundColor: S1Surface.page(scheme),
         appBar: AppBar(
           elevation: 0,
           title: Text('本地黑名单', style: textTheme.titleLarge),
@@ -78,7 +78,7 @@ class BlacklistScreen extends ConsumerWidget {
     }
     if (!context.mounted) return;
     if (!preview.hasChanges) {
-      S1SnackBar.show(context, message: '网页黑名单没有需要导入的变化');
+      S1SnackBar.show(context, message: '网页黑名单无新增或更新内容');
       return;
     }
     final confirmed = await showS1ConfirmDialog(
@@ -229,7 +229,7 @@ class _BlacklistTile extends StatelessWidget {
     return Card(
       elevation: 0,
       margin: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-      color: scheme.surfaceContainerLow,
+      color: S1Surface.card(scheme),
       shape: S1Shape.cardShape,
       child: Padding(
         padding: const EdgeInsets.fromLTRB(12, 12, 4, 12),

@@ -127,7 +127,7 @@ class _PostItemState extends ConsumerState<PostItem>
       elevation: 0,
       color: widget.isHighlighted
           ? scheme.primaryContainer.withValues(alpha: S1Alpha.half)
-          : scheme.surfaceContainerLow,
+          : S1Surface.card(scheme),
       shape: S1Shape.cardShape,
       child: Padding(
         padding: const EdgeInsets.all(12),

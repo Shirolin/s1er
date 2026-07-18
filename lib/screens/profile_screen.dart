@@ -242,7 +242,11 @@ class _HeaderCard extends StatelessWidget {
 
     return Card(
       elevation: 0,
-      color: colorScheme.surfaceContainerHigh,
+      shadowColor: Colors.transparent,
+      surfaceTintColor: Colors.transparent,
+      color: S1Surface.card(colorScheme),
+      shape: S1Shape.cardShape,
+      clipBehavior: Clip.antiAlias,
       child: Padding(
         padding: const EdgeInsets.symmetric(vertical: 24, horizontal: 16),
         child: Column(
@@ -313,6 +317,10 @@ class _StatsCard extends StatelessWidget {
   Widget build(BuildContext context) {
     return Card(
       elevation: 0,
+      shadowColor: Colors.transparent,
+      surfaceTintColor: Colors.transparent,
+      shape: S1Shape.cardShape,
+      clipBehavior: Clip.antiAlias,
       child: Padding(
         padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 8),
         child: IntrinsicHeight(
@@ -321,7 +329,6 @@ class _StatsCard extends StatelessWidget {
               Expanded(
                 child: _StatItem(label: '积分', value: user.credits),
               ),
-              _VerticalDivider(),
               Expanded(
                 child: _StatItem(
                   label: '帖子',
@@ -331,7 +338,6 @@ class _StatsCard extends StatelessWidget {
                   ),
                 ),
               ),
-              _VerticalDivider(),
               Expanded(
                 child: _StatItem(
                   label: '主题',
@@ -341,7 +347,6 @@ class _StatsCard extends StatelessWidget {
                   ),
                 ),
               ),
-              _VerticalDivider(),
               Expanded(
                 child: _StatItem(
                   label: '好友',
@@ -368,6 +373,10 @@ class _S1StatsCard extends StatelessWidget {
 
     return Card(
       elevation: 0,
+      shadowColor: Colors.transparent,
+      surfaceTintColor: Colors.transparent,
+      shape: S1Shape.cardShape,
+      clipBehavior: Clip.antiAlias,
       child: Padding(
         padding: const EdgeInsets.symmetric(vertical: 20, horizontal: 16),
         child: Row(
@@ -393,7 +402,6 @@ class _S1StatsCard extends StatelessWidget {
                 ],
               ),
             ),
-            Container(width: 1, height: 40, color: colorScheme.outlineVariant),
             Expanded(
               child: Column(
                 children: [
@@ -418,17 +426,6 @@ class _S1StatsCard extends StatelessWidget {
           ],
         ),
       ),
-    );
-  }
-}
-
-class _VerticalDivider extends StatelessWidget {
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      width: 1,
-      height: 28,
-      color: Theme.of(context).colorScheme.outlineVariant,
     );
   }
 }
@@ -489,48 +486,53 @@ class _StatItem extends StatelessWidget {
   }
 }
 
+/// 资料页列表行间细分割线（MD3 允许；低对比 outlineVariant）。
+class _ProfileListDivider extends StatelessWidget {
+  const _ProfileListDivider();
+
+  @override
+  Widget build(BuildContext context) {
+    final scheme = Theme.of(context).colorScheme;
+    return Padding(
+      padding: const EdgeInsets.symmetric(
+        horizontal: _ProfileListMetrics.hPadding,
+      ),
+      child: Divider(
+        height: 1,
+        thickness: 1,
+        color: scheme.outlineVariant.withValues(alpha: S1Alpha.half),
+      ),
+    );
+  }
+}
+
 class _InfoCard extends StatelessWidget {
   const _InfoCard({required this.user});
   final User user;
 
   @override
   Widget build(BuildContext context) {
-    final scheme = Theme.of(context).colorScheme;
+    final tiles = <Widget>[
+      _InfoTile(label: 'UID', value: user.uid),
+      if (user.regdate.isNotEmpty)
+        _InfoTile(label: '注册时间', value: user.regdate),
+      _InfoTile(label: '关注', value: '${user.following}'),
+      _InfoTile(label: '粉丝', value: '${user.follower}'),
+      _InfoTile(label: '在线时长', value: '${user.oltime} 小时'),
+    ];
+
     return Card(
       elevation: 0,
+      shadowColor: Colors.transparent,
+      surfaceTintColor: Colors.transparent,
+      shape: S1Shape.cardShape,
+      clipBehavior: Clip.antiAlias,
       child: Column(
         children: [
-          _InfoTile(label: 'UID', value: user.uid),
-          if (user.regdate.isNotEmpty) ...[
-            Divider(
-              height: 1,
-              indent: 16,
-              endIndent: 16,
-              color: scheme.outlineVariant,
-            ),
-            _InfoTile(label: '注册时间', value: user.regdate),
+          for (var i = 0; i < tiles.length; i++) ...[
+            if (i > 0) const _ProfileListDivider(),
+            tiles[i],
           ],
-          Divider(
-            height: 1,
-            indent: 16,
-            endIndent: 16,
-            color: scheme.outlineVariant,
-          ),
-          _InfoTile(label: '关注', value: '${user.following}'),
-          Divider(
-            height: 1,
-            indent: 16,
-            endIndent: 16,
-            color: scheme.outlineVariant,
-          ),
-          _InfoTile(label: '粉丝', value: '${user.follower}'),
-          Divider(
-            height: 1,
-            indent: 16,
-            endIndent: 16,
-            color: scheme.outlineVariant,
-          ),
-          _InfoTile(label: '在线时长', value: '${user.oltime} 小时'),
         ],
       ),
     );
@@ -588,6 +590,9 @@ class _FavoritesEntryCard extends ConsumerWidget {
 
     return Card(
       elevation: 0,
+      shadowColor: Colors.transparent,
+      surfaceTintColor: Colors.transparent,
+      shape: S1Shape.cardShape,
       clipBehavior: Clip.antiAlias,
       child: _ProfileTwoLineRow(
         icon: Icons.bookmarks_outlined,
@@ -620,6 +625,9 @@ class _ForumToolsCard extends StatelessWidget {
   Widget build(BuildContext context) {
     return Card(
       elevation: 0,
+      shadowColor: Colors.transparent,
+      surfaceTintColor: Colors.transparent,
+      shape: S1Shape.cardShape,
       clipBehavior: Clip.antiAlias,
       child: _ProfileTwoLineRow(
         icon: Icons.gavel_outlined,
@@ -643,6 +651,9 @@ class _SystemGroupCard extends ConsumerWidget {
 
     return Card(
       elevation: 0,
+      shadowColor: Colors.transparent,
+      surfaceTintColor: Colors.transparent,
+      shape: S1Shape.cardShape,
       clipBehavior: Clip.antiAlias,
       child: Column(
         mainAxisSize: MainAxisSize.min,
@@ -667,15 +678,7 @@ class _SystemGroupCard extends ConsumerWidget {
             ),
             onTap: () => context.push('/reading-history'),
           ),
-          Padding(
-            padding: const EdgeInsets.symmetric(
-              horizontal: _ProfileListMetrics.hPadding,
-            ),
-            child: Divider(
-              height: 1,
-              color: colorScheme.outlineVariant.withValues(alpha: S1Alpha.half),
-            ),
-          ),
+          const _ProfileListDivider(),
           _ProfileTwoLineRow(
             icon: Icons.settings_outlined,
             title: '设置',
@@ -702,16 +705,6 @@ class _ProjectSupportCard extends StatelessWidget {
     final colorScheme = Theme.of(context).colorScheme;
     final textTheme = Theme.of(context).textTheme;
 
-    Widget divider() => Padding(
-          padding: const EdgeInsets.symmetric(
-            horizontal: _ProfileListMetrics.hPadding,
-          ),
-          child: Divider(
-            height: 1,
-            color: colorScheme.outlineVariant.withValues(alpha: S1Alpha.half),
-          ),
-        );
-
     Widget externalIcon() => Icon(
           Icons.open_in_new,
           size: _ProfileListMetrics.iconSize,
@@ -720,6 +713,9 @@ class _ProjectSupportCard extends StatelessWidget {
 
     return Card(
       elevation: 0,
+      shadowColor: Colors.transparent,
+      surfaceTintColor: Colors.transparent,
+      shape: S1Shape.cardShape,
       clipBehavior: Clip.antiAlias,
       child: Column(
         mainAxisSize: MainAxisSize.min,
@@ -748,7 +744,7 @@ class _ProjectSupportCard extends StatelessWidget {
             trailing: externalIcon(),
             onTap: () => onOpenUrl(_afdianUrl),
           ),
-          divider(),
+          const _ProfileListDivider(),
           _ProfileTwoLineRow(
             icon: Icons.local_cafe_outlined,
             title: 'Ko-fi',
@@ -756,7 +752,7 @@ class _ProjectSupportCard extends StatelessWidget {
             trailing: externalIcon(),
             onTap: () => onOpenUrl(_koFiUrl),
           ),
-          divider(),
+          const _ProfileListDivider(),
           _ProfileTwoLineRow(
             leading: Image.asset(
               'assets/branding/github_mark.png',
@@ -768,7 +764,7 @@ class _ProjectSupportCard extends StatelessWidget {
               excludeFromSemantics: true,
             ),
             title: 'GitHub',
-            subtitle: '查看项目源代码（即将开源）',
+            subtitle: '查看项目源代码',
             trailing: externalIcon(),
             onTap: () => onOpenUrl(_githubUrl),
           ),

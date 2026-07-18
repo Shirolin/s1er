@@ -35,7 +35,7 @@ class NoticeListTile extends StatelessWidget {
     return Card(
       margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
       elevation: 0,
-      color: scheme.surfaceContainerLow,
+      color: S1Surface.card(scheme),
       shape: S1Shape.cardShape,
       child: ListTile(
         onTap: item.canNavigate ? onTap : null,

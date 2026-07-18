@@ -323,9 +323,10 @@ class _SharePreviewSheetState extends ConsumerState<_SharePreviewSheet> {
     final width = image.width;
     final height = image.height;
     final scheme = Theme.of(context).colorScheme;
-    final bgR = (scheme.surfaceContainerLow.r * 255).round();
-    final bgG = (scheme.surfaceContainerLow.g * 255).round();
-    final bgB = (scheme.surfaceContainerLow.b * 255).round();
+    final card = S1Surface.card(scheme);
+    final bgR = (card.r * 255).round();
+    final bgG = (card.g * 255).round();
+    final bgB = (card.b * 255).round();
 
     final byteData = await image.toByteData(format: ui.ImageByteFormat.rawRgba);
     final raw = byteData!;
@@ -420,7 +421,7 @@ class _SharePreviewSheetState extends ConsumerState<_SharePreviewSheet> {
       key: ValueKey(_state),
       padding: const EdgeInsets.fromLTRB(16, 12, 16, 16),
       decoration: BoxDecoration(
-        color: scheme.surfaceContainerLow,
+        color: S1Surface.card(scheme),
         border: Border(
           top: BorderSide(
             color: scheme.outlineVariant.withValues(alpha: S1Alpha.subtle),

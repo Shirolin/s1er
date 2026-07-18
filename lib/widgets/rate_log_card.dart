@@ -73,7 +73,7 @@ class _RateLogCardState extends ConsumerState<RateLogCard> {
     return Card(
       margin: const EdgeInsets.only(top: 8),
       elevation: 0,
-      color: scheme.surfaceContainerLow,
+      color: S1Surface.card(scheme),
       shape: S1Shape.cardShape,
       child: InkWell(
         borderRadius: S1Shape.medium,

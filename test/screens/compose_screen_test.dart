@@ -9,6 +9,7 @@ import 'package:s1er/models/reply_submit_result.dart';
 import 'package:s1er/models/new_thread_form_info.dart';
 import 'package:s1er/providers/auth_provider.dart';
 import 'package:s1er/providers/compose_provider.dart';
+import 'package:s1er/providers/forum_name_provider.dart';
 import 'package:s1er/providers/settings_provider.dart';
 import 'package:s1er/screens/compose_screen.dart';
 import 'package:s1er/services/app_database.dart';
@@ -97,7 +98,10 @@ void main() {
       (tester) async {
     await tester.pumpWidget(
       ProviderScope(
-        overrides: buildOverrides(auth: _LoggedInAuthNotifier.new),
+        overrides: [
+          ...buildOverrides(auth: _LoggedInAuthNotifier.new),
+          forumNameProvider('4').overrideWith((ref) => '游戏论坛'),
+        ],
         child: MaterialApp(
           theme: AppTheme.lightTheme('purple'),
           home: const ComposeScreen(fid: '4', newThread: true),
@@ -107,9 +111,10 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(find.text('发新主题'), findsOneWidget);
+    expect(find.text('游戏论坛'), findsOneWidget);
     expect(find.text('主题标题'), findsOneWidget);
     expect(find.text('主题分类'), findsOneWidget);
-    expect(find.byType(DropdownButtonFormField<String>), findsOneWidget);
+    expect(find.byType(DropdownMenu<String>), findsOneWidget);
     expect(find.text('发送'), findsOneWidget);
   });
 

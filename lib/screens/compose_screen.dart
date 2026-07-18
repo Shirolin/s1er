@@ -14,7 +14,9 @@ import '../models/private_message_item.dart';
 import '../models/user.dart';
 import '../providers/auth_provider.dart';
 import '../providers/compose_provider.dart';
+import '../providers/forum_name_provider.dart';
 import '../providers/settings_provider.dart';
+import '../providers/thread_list_provider.dart';
 import '../theme/app_theme.dart';
 import '../utils/compact_label.dart';
 import '../utils/compose_draft_store.dart';
@@ -1031,6 +1033,11 @@ class _ComposeScreenState extends ConsumerState<ComposeScreen> {
     final subject = _isEditing ? null : _subjectLabel;
     final keyboardInset = MediaQuery.viewInsetsOf(context).bottom;
     final showPanel = _showEmoticonPanel && keyboardInset <= 0;
+    final fid = widget.fid;
+    final forumName = fid == null || fid.isEmpty
+        ? null
+        : (ref.watch(forumNameProvider(fid)) ??
+            ref.watch(threadListProvider(fid)).asData?.value.forumName);
 
     if (!_isNewThread && !_hasValidTid) {
       return Scaffold(
@@ -1162,7 +1169,21 @@ class _ComposeScreenState extends ConsumerState<ComposeScreen> {
         backgroundColor: S1Surface.page(scheme),
         appBar: AppBar(
           elevation: 0,
-          title: Text(_title, style: textTheme.titleLarge),
+          title: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Text(_title, style: textTheme.titleLarge),
+              if (forumName != null && forumName.isNotEmpty)
+                Text(
+                  forumName,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: textTheme.labelMedium?.copyWith(
+                    color: scheme.onSurfaceVariant,
+                  ),
+                ),
+            ],
+          ),
         ),
         // 宽屏：写作区用 standard 限宽（840/1040）+ 一体 Card，避免「中间一条手机栏」。
         body: S1ContentWidth(
@@ -1413,13 +1434,8 @@ class _ComposePreviewSheet extends StatelessWidget {
 }
 
 /// 发帖元信息（标题 / 分类 / 权限）共用：filled 色阶，无硬描边。
-InputDecoration _composeMetaDecoration(
-  BuildContext context, {
-  required String labelText,
-}) {
-  final scheme = Theme.of(context).colorScheme;
-  return InputDecoration(
-    labelText: labelText,
+InputDecorationTheme _composeMetaInputTheme(ColorScheme scheme) {
+  return InputDecorationTheme(
     filled: true,
     fillColor: scheme.surfaceContainerHigh,
     border: const OutlineInputBorder(
@@ -1436,6 +1452,98 @@ InputDecoration _composeMetaDecoration(
     ),
     contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
   );
+}
+
+InputDecoration _composeMetaDecoration(
+  BuildContext context, {
+  required String labelText,
+}) {
+  final scheme = Theme.of(context).colorScheme;
+  final theme = _composeMetaInputTheme(scheme);
+  return InputDecoration(
+    labelText: labelText,
+    filled: theme.filled,
+    fillColor: theme.fillColor,
+    border: theme.border,
+    enabledBorder: theme.enabledBorder,
+    focusedBorder: theme.focusedBorder,
+    contentPadding: theme.contentPadding,
+  );
+}
+
+/// M3 [DropdownMenu]：浮层菜单（圆角 + 低 elevation），替代割裂的 [DropdownButtonFormField]。
+class _ComposeDropdownMenu extends StatelessWidget {
+  const _ComposeDropdownMenu({
+    required this.label,
+    required this.entries,
+    required this.selected,
+    required this.onSelected,
+  });
+
+  final String label;
+  final List<({String value, String label})> entries;
+  final String? selected;
+  final ValueChanged<String?> onSelected;
+
+  static const _noneValue = '';
+
+  @override
+  Widget build(BuildContext context) {
+    final scheme = Theme.of(context).colorScheme;
+    String effective;
+    if (selected != null && entries.any((e) => e.value == selected)) {
+      effective = selected!;
+    } else if (entries.any((e) => e.value == _noneValue)) {
+      effective = _noneValue;
+    } else if (entries.isNotEmpty) {
+      effective = entries.first.value;
+    } else {
+      effective = _noneValue;
+    }
+
+    return DropdownMenu<String>(
+      key: ValueKey('$label-$effective'),
+      initialSelection: effective,
+      label: Text(label),
+      expandedInsets: EdgeInsets.zero,
+      inputDecorationTheme: _composeMetaInputTheme(scheme),
+      menuStyle: MenuStyle(
+        backgroundColor: WidgetStatePropertyAll(scheme.surfaceContainer),
+        elevation: const WidgetStatePropertyAll(3),
+        shadowColor: WidgetStatePropertyAll(scheme.shadow),
+        surfaceTintColor: const WidgetStatePropertyAll(Colors.transparent),
+        shape: const WidgetStatePropertyAll(
+          RoundedRectangleBorder(borderRadius: S1Shape.small),
+        ),
+        maximumSize: const WidgetStatePropertyAll(Size(double.infinity, 320)),
+        padding: const WidgetStatePropertyAll(
+          EdgeInsets.symmetric(vertical: 8),
+        ),
+      ),
+      dropdownMenuEntries: [
+        for (final entry in entries)
+          DropdownMenuEntry<String>(
+            value: entry.value,
+            label: entry.label,
+            style: ButtonStyle(
+              textStyle: WidgetStatePropertyAll(
+                Theme.of(context).textTheme.bodyLarge,
+              ),
+              maximumSize: const WidgetStatePropertyAll(
+                Size(double.infinity, double.infinity),
+              ),
+            ),
+          ),
+      ],
+      onSelected: (value) {
+        if (value == null || value == _noneValue) {
+          onSelected(null);
+        } else {
+          onSelected(value);
+        }
+      },
+    );
+  }
 }
 
 /// 正文 filled 输入：空态用 Highest 凹槽；有内容 / 聚焦时降到 Low，区分「内容态」。
@@ -1488,23 +1596,16 @@ class _NewThreadHeader extends StatelessWidget {
               ),
               if (types.isNotEmpty) ...[
                 const SizedBox(height: 12),
-                DropdownButtonFormField<String>(
-                  initialValue: selectedTypeId,
-                  decoration:
-                      _composeMetaDecoration(context, labelText: '主题分类'),
-                  items: [
+                _ComposeDropdownMenu(
+                  label: '主题分类',
+                  selected: selectedTypeId,
+                  onSelected: onTypeChanged,
+                  entries: [
                     if (!(form?.typeRequired ?? false))
-                      const DropdownMenuItem<String>(
-                        value: null,
-                        child: Text('不分类'),
-                      ),
+                      (value: '', label: '不分类'),
                     for (final entry in types.entries)
-                      DropdownMenuItem<String>(
-                        value: entry.key,
-                        child: Text(entry.value),
-                      ),
+                      (value: entry.key, label: entry.value),
                   ],
-                  onChanged: onTypeChanged,
                 ),
               ],
             ],
@@ -1575,42 +1676,34 @@ class _EditPostHeader extends StatelessWidget {
                 ),
               if (form.threadTypes.isNotEmpty) ...[
                 if (form.isFirst) const SizedBox(height: 12),
-                DropdownButtonFormField<String>(
-                  initialValue: form.threadTypes.containsKey(selectedTypeId)
+                _ComposeDropdownMenu(
+                  label: '主题分类',
+                  selected: form.threadTypes.containsKey(selectedTypeId)
                       ? selectedTypeId
                       : null,
-                  decoration:
-                      _composeMetaDecoration(context, labelText: '主题分类'),
-                  items: [
-                    const DropdownMenuItem<String>(
-                      value: null,
-                      child: Text('不分类'),
-                    ),
+                  onSelected: onTypeChanged,
+                  entries: [
+                    (value: '', label: '不分类'),
                     for (final entry in form.threadTypes.entries)
-                      DropdownMenuItem<String>(
-                        value: entry.key,
-                        child: Text(entry.value),
-                      ),
+                      (value: entry.key, label: entry.value),
                   ],
-                  onChanged: onTypeChanged,
                 ),
               ],
               if (form.readPermissions.isNotEmpty) ...[
                 const SizedBox(height: 12),
-                DropdownButtonFormField<String>(
-                  initialValue: form.readPermissions.contains(selectedReadPerm)
+                _ComposeDropdownMenu(
+                  label: '阅读权限',
+                  selected: form.readPermissions.contains(selectedReadPerm)
                       ? selectedReadPerm
                       : null,
-                  decoration:
-                      _composeMetaDecoration(context, labelText: '阅读权限'),
-                  items: [
+                  onSelected: onReadPermChanged,
+                  entries: [
                     for (final permission in form.readPermissions)
-                      DropdownMenuItem<String>(
+                      (
                         value: permission,
-                        child: Text(permission == '0' ? '不限' : permission),
+                        label: permission == '0' ? '不限' : permission,
                       ),
                   ],
-                  onChanged: onReadPermChanged,
                 ),
               ],
             ],

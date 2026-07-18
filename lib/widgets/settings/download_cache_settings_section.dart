@@ -130,7 +130,7 @@ class _DownloadCacheSettingsSectionState
                   Text('缓存上限', style: textTheme.titleSmall),
                   const SizedBox(height: 4),
                   Text(
-                    kIsWeb ? '仅 Native：限制应用内图片内存缓存大小' : '限制应用内图片内存缓存大小',
+                    kIsWeb ? '仅移动端/桌面端：限制应用内图片内存缓存大小' : '限制应用内图片内存缓存大小',
                     style: textTheme.bodySmall?.copyWith(
                       color: scheme.onSurfaceVariant,
                     ),

@@ -21,10 +21,19 @@ void main() {
       expect(theme.navigationBarTheme.elevation, 0);
     });
 
-    test('FAB uses zero elevation', () {
+    test('FAB keeps M3 default elevation (not forced to 0)', () {
       final theme = AppTheme.lightTheme('purple');
-      expect(theme.floatingActionButtonTheme.elevation, 0);
-      expect(theme.floatingActionButtonTheme.highlightElevation, 0);
+      // Not overridden — FloatingActionButton falls back to M3 defaults (~6).
+      expect(theme.floatingActionButtonTheme.elevation, isNull);
+      expect(theme.floatingActionButtonTheme.highlightElevation, isNull);
+    });
+
+    test('S1Shape matches Flutter M3 radius scale', () {
+      expect(S1Shape.extraSmall, const BorderRadius.all(Radius.circular(4)));
+      expect(S1Shape.small, const BorderRadius.all(Radius.circular(8)));
+      expect(S1Shape.medium, const BorderRadius.all(Radius.circular(12)));
+      expect(S1Shape.large, const BorderRadius.all(Radius.circular(16)));
+      expect(S1Shape.extraLarge, const BorderRadius.all(Radius.circular(28)));
     });
 
     test('segmentedButtonTheme is configured', () {
@@ -88,6 +97,19 @@ void main() {
         light.floatingActionButtonTheme.backgroundColor,
         lightScheme.tertiaryContainer,
       );
+      // 卡内嵌套：浅色 High/Highest，深于 Low 帖卡。
+      expect(
+        S1Surface.nestedPanel(lightScheme),
+        lightScheme.surfaceContainerHigh,
+      );
+      expect(
+        S1Surface.nestedPanelItem(lightScheme),
+        lightScheme.surfaceContainerHighest,
+      );
+      expect(
+        S1Surface.nestedPanel(lightScheme),
+        isNot(S1Surface.card(lightScheme)),
+      );
 
       final dark = AppTheme.darkTheme('sand');
       final darkScheme = dark.colorScheme;
@@ -96,6 +118,19 @@ void main() {
       expect(
         S1BottomBarStyle.background(darkScheme),
         darkScheme.surfaceContainerLowest,
+      );
+      // 深色嵌套：Low 面板亮于 High 帖卡；条目 Highest 再沉一档。
+      expect(
+        S1Surface.nestedPanel(darkScheme),
+        darkScheme.surfaceContainerLow,
+      );
+      expect(
+        S1Surface.nestedPanelItem(darkScheme),
+        darkScheme.surfaceContainerHighest,
+      );
+      expect(
+        S1Surface.nestedPanel(darkScheme),
+        isNot(S1Surface.card(darkScheme)),
       );
     });
 

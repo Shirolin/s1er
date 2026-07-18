@@ -37,6 +37,7 @@ dependencies:
   file_selector: ^1.1.0
   sentry_flutter: ^9.0.0
   ironpress: ^0.2.0
+  device_info_plus: ^13.2.0
 dev_dependencies:
   flutter_test:
     sdk: flutter

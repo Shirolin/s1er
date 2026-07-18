@@ -9,9 +9,13 @@ import '../models/new_thread_form_info.dart';
 import '../models/new_thread_submit_result.dart';
 import '../models/edit_post_form_info.dart';
 import '../models/edit_post_submit_result.dart';
+import '../services/device_model_label.dart';
 import '../services/external_image_upload_service.dart';
+import '../utils/post_signature.dart';
 import '../utils/quote_builder.dart';
 import 'api_service_provider.dart';
+import 'device_model_label_provider.dart';
+import 'settings_provider.dart';
 
 /// 回复编排：预取官方引用字段 + 提交 `module=sendreply`。
 class ComposeController {
@@ -30,22 +34,25 @@ class ComposeController {
   ///
   /// 有 [quotedPost] 时，用网页同款完整 `[quote][url=findpost]…` 作为
   /// `noticetrimstr`（保留官方 `noticeauthor`），替代 helper 缩略 `[post]`。
+  ///
+  /// 提交前按设置追加小尾巴；[noticeAuthorMsg] 仍用原始用户正文。
   Future<ReplySubmitResult> submitReply({
     required String tid,
     required String fid,
     required String message,
     QuoteInfo? quoteInfo,
     Post? quotedPost,
-  }) {
+  }) async {
     final effectiveQuote = quoteInfoForSubmit(
       quoteInfo: quoteInfo,
       quotedPost: quotedPost,
       tid: tid,
     );
+    final signed = await _messageWithSignature(message);
     return _ref.read(apiServiceProvider).sendReply(
           tid: tid,
           fid: fid,
-          message: message,
+          message: signed,
           quoteInfo: effectiveQuote,
           noticeAuthorMsg: message,
         );
@@ -77,11 +84,12 @@ class ComposeController {
     required String subject,
     required String message,
     String? typeId,
-  }) {
+  }) async {
+    final signed = await _messageWithSignature(message);
     return _ref.read(apiServiceProvider).submitNewThread(
           fid: fid,
           subject: subject,
-          message: message,
+          message: signed,
           typeId: typeId,
         );
   }
@@ -132,6 +140,39 @@ class ComposeController {
           bytes: Uint8List.fromList(bytes),
           filename: filename,
         );
+  }
+
+  /// 按当前设置追加小尾巴（预览与发帖/回复提交共用）。
+  Future<String> applySignature(String message) =>
+      _messageWithSignature(message);
+
+  Future<String> _messageWithSignature(String message) async {
+    final settings = _ref.read(settingsProvider);
+    if (!settings.postSignatureEnabled) {
+      return PostSignature.appendIfEnabled(
+        message,
+        enabled: false,
+        showDevice: false,
+        custom: '',
+      );
+    }
+
+    String? deviceLabel;
+    if (settings.postSignatureShowDevice) {
+      try {
+        deviceLabel = await _ref.read(deviceModelLabelProvider.future);
+      } catch (_) {
+        deviceLabel = DeviceModelLabel.coarseFallback();
+      }
+    }
+
+    return PostSignature.appendIfEnabled(
+      message,
+      enabled: true,
+      showDevice: settings.postSignatureShowDevice,
+      custom: settings.postSignatureCustom,
+      deviceLabel: deviceLabel,
+    );
   }
 }
 

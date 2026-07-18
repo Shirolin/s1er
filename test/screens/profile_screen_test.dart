@@ -182,7 +182,7 @@ void main() {
       expect(find.text('爱发电'), findsOneWidget);
       expect(find.text('Ko-fi'), findsOneWidget);
       expect(find.text('GitHub'), findsOneWidget);
-      expect(find.text('查看项目源代码（即将开源）'), findsOneWidget);
+      expect(find.text('查看项目源代码'), findsOneWidget);
       expect(find.byKey(const Key('github-mark')), findsOneWidget);
 
       await tester.tap(find.text('爱发电'));

@@ -215,4 +215,28 @@ void main() {
     await Future<void>.delayed(const Duration(milliseconds: 50));
     expect(store.get<Object>('sharePixelRatio'), 2.0);
   });
+
+  test('setPostSignatureCustom persists to settings store', () async {
+    final container = ProviderContainer(
+      overrides: [
+        settingsProvider.overrideWith(
+          () => SettingsNotifier(store: store, initial: const AppSettings()),
+        ),
+      ],
+    );
+    addTearDown(container.dispose);
+
+    container.read(settingsProvider.notifier).setPostSignatureCustom('摸鱼');
+    container.read(settingsProvider.notifier).setPostSignatureEnabled(false);
+    container.read(settingsProvider.notifier).setPostSignatureShowDevice(false);
+
+    final state = container.read(settingsProvider);
+    expect(state.postSignatureCustom, '摸鱼');
+    expect(state.postSignatureEnabled, isFalse);
+    expect(state.postSignatureShowDevice, isFalse);
+    await Future<void>.delayed(const Duration(milliseconds: 50));
+    expect(store.get<String>('postSignatureCustom'), '摸鱼');
+    expect(store.get<bool>('postSignatureEnabled'), isFalse);
+    expect(store.get<bool>('postSignatureShowDevice'), isFalse);
+  });
 }

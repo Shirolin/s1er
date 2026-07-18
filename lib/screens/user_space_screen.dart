@@ -16,6 +16,7 @@ import '../widgets/app_bar_more_menu.dart';
 import '../widgets/pagination_bar.dart';
 import '../widgets/s1_error_view.dart';
 import '../widgets/s1_swipe_pagination.dart';
+import '../widgets/s1_content_width.dart';
 import '../widgets/s1_desktop_scaffold.dart';
 
 class UserSpaceScreen extends ConsumerStatefulWidget {
@@ -134,45 +135,47 @@ class _UserSpaceScreenState extends ConsumerState<UserSpaceScreen>
             ],
           ),
         ),
-        body: async.when(
-          loading: () => const Column(
-            children: [
-              LinearProgressIndicator(),
-              Expanded(child: SizedBox()),
-            ],
-          ),
-          error: (e, st) => S1ErrorView(
-            error: e,
-            onRetry: () =>
-                ref.read(userSpaceProvider(_params).notifier).refresh(),
-            onLogin: () => context.push('/login'),
-          ),
-          data: (state) => TabBarView(
-            controller: _tabController,
-            physics: const NeverScrollableScrollPhysics(),
-            children: [
-              if (_visitedTabs.contains(0))
-                _ThreadList(
-                  items: state.threads,
-                  currentPage: state.threadPage,
-                  totalPages: state.threadTotalPages,
-                  uid: widget.uid,
-                  isSelf: widget.isSelf,
-                )
-              else
-                const SizedBox.shrink(),
-              if (_visitedTabs.contains(1))
-                _ReplyList(
-                  items: state.replies,
-                  currentPage: state.replyPage,
-                  totalPages: state.replyTotalPages,
-                  uid: widget.uid,
-                  isSelf: widget.isSelf,
-                  repliesLoaded: state.repliesLoaded,
-                )
-              else
-                const SizedBox.shrink(),
-            ],
+        body: S1ContentWidth(
+          child: async.when(
+            loading: () => const Column(
+              children: [
+                LinearProgressIndicator(),
+                Expanded(child: SizedBox()),
+              ],
+            ),
+            error: (e, st) => S1ErrorView(
+              error: e,
+              onRetry: () =>
+                  ref.read(userSpaceProvider(_params).notifier).refresh(),
+              onLogin: () => context.push('/login'),
+            ),
+            data: (state) => TabBarView(
+              controller: _tabController,
+              physics: const NeverScrollableScrollPhysics(),
+              children: [
+                if (_visitedTabs.contains(0))
+                  _ThreadList(
+                    items: state.threads,
+                    currentPage: state.threadPage,
+                    totalPages: state.threadTotalPages,
+                    uid: widget.uid,
+                    isSelf: widget.isSelf,
+                  )
+                else
+                  const SizedBox.shrink(),
+                if (_visitedTabs.contains(1))
+                  _ReplyList(
+                    items: state.replies,
+                    currentPage: state.replyPage,
+                    totalPages: state.replyTotalPages,
+                    uid: widget.uid,
+                    isSelf: widget.isSelf,
+                    repliesLoaded: state.repliesLoaded,
+                  )
+                else
+                  const SizedBox.shrink(),
+              ],
+            ),
           ),
         ),
       ),
@@ -313,7 +316,7 @@ class _ThreadCard extends ConsumerWidget {
     return Card(
       margin: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
       elevation: 0,
-      color: scheme.surfaceContainerLow,
+      color: S1Surface.card(scheme),
       shape: S1Shape.cardShape,
       child: InkWell(
         onTap: () {
@@ -405,7 +408,7 @@ class _ReplyCard extends StatelessWidget {
     return Card(
       margin: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
       elevation: 0,
-      color: scheme.surfaceContainerLow,
+      color: S1Surface.card(scheme),
       shape: S1Shape.cardShape,
       child: InkWell(
         onTap: () {

@@ -130,14 +130,14 @@ void main() {
     await tester.tap(find.byTooltip('搜索'));
     await tester.pump();
 
-    expect(find.text('搜索冷却中，30 秒后可再次提交'), findsOneWidget);
-    expect(find.byTooltip('搜索冷却中'), findsOneWidget);
+    expect(find.text('搜索间隔中，30 秒后可再搜索'), findsOneWidget);
+    expect(find.byTooltip('搜索间隔中'), findsOneWidget);
 
     await tester.pump(const Duration(seconds: 1));
-    expect(find.text('搜索冷却中，29 秒后可再次提交'), findsOneWidget);
+    expect(find.text('搜索间隔中，29 秒后可再搜索'), findsOneWidget);
 
     await tester.pump(const Duration(seconds: 29));
-    expect(find.textContaining('搜索冷却中'), findsNothing);
+    expect(find.textContaining('搜索间隔中'), findsNothing);
     expect(find.byTooltip('搜索'), findsOneWidget);
   });
 }

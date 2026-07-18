@@ -35,8 +35,10 @@ abstract class S1Shape {
 /// 1. **画布** [page] = [ColorScheme.surfaceContainerHighest]（`#EDE0D4`）
 /// 2. **内容浮层** [card] = [ColorScheme.surfaceContainerLow]（`#FFF1E5` 奶油沙；
 ///    Reply 未选中列表卡用 `surfaceVariant`≈此档，避免 `surface` 过白）
-/// 3. **强调** = `primaryContainer`（选中）/ `secondaryContainer`（打开）等
+/// 3. **卡内嵌套** [nestedPanel] / [nestedPanelItem] = High / Highest（评分区等）
+/// 4. **强调** = `primaryContainer`（选中）/ `secondaryContainer`（打开）等
 ///
+/// 深色：page=Lowest，card=High，nestedPanel=Low，nestedPanelItem=Highest。
 /// FAB 用 `tertiaryContainer`（Reply 薄荷绿）。导航铬件与画布同色。
 abstract class S1Surface {
   static Color page(ColorScheme scheme) => scheme.brightness == Brightness.light
@@ -46,6 +48,18 @@ abstract class S1Surface {
   static Color card(ColorScheme scheme) => scheme.brightness == Brightness.light
       ? scheme.surfaceContainerLow
       : scheme.surfaceContainerHigh;
+
+  /// 贴在 [card] 内的嵌套面板（评分区等）：浅色更深、深色更浅，与帖卡拉开对比。
+  static Color nestedPanel(ColorScheme scheme) =>
+      scheme.brightness == Brightness.light
+          ? scheme.surfaceContainerHigh
+          : scheme.surfaceContainerLow;
+
+  /// 嵌套面板内的条目条：再偏一档，避免与面板糊成一片。
+  static Color nestedPanelItem(ColorScheme scheme) =>
+      scheme.brightness == Brightness.light
+          ? scheme.surfaceContainerHighest
+          : scheme.surfaceContainerHighest;
 
   /// NavigationRail / NavigationBar / PaginationBar — 与画布齐平。
   static Color chrome(ColorScheme scheme) => page(scheme);
@@ -321,10 +335,9 @@ class AppTheme {
       ),
       floatingActionButtonTheme: FloatingActionButtonThemeData(
         // Reply：compose FAB = tertiaryContainer（暖沙下为薄荷绿）。
+        // elevation 不覆写，沿用 Flutter M3 浮层默认阴影。
         backgroundColor: colorScheme.tertiaryContainer,
         foregroundColor: colorScheme.onTertiaryContainer,
-        elevation: 0,
-        highlightElevation: 0,
       ),
       filledButtonTheme: FilledButtonThemeData(
         style: FilledButton.styleFrom(elevation: 0),

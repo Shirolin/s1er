@@ -878,6 +878,18 @@ void main() {
         expect(ApiService.pageFromViewthreadHtml(html), 3);
       });
 
+      test('single-page viewthread without div.pg is page 1', () {
+        const html = '''
+<body class="pg_viewthread">
+<div id="pgt" class="pgs mbm cl"><div class="pgt"></div></div>
+<div id="postlist" class="pl bm">
+<div id="post_69927417"></div>
+</div>
+</body>
+''';
+        expect(ApiService.pageFromViewthreadHtml(html), 1);
+      });
+
       test('returns null when no pagination', () {
         expect(
           ApiService.pageFromViewthreadHtml('<div id="messagetext">err</div>'),

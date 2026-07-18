@@ -221,11 +221,33 @@ Future<void> _handleRequest(HttpRequest req) async {
     print('  404 cached: ${req.uri.queryParameters['url']}');
   }
 
+  // findpost：浏览器跨域 + followRedirects=false 时 301 常变成 opaque，JS 读不到 Location。
+  // 代理直接解析页码并以 200 + X-S1-Locate-Page 返回，避免 Web 定位失败。
+  final isFindpost = target.queryParameters['goto'] == 'findpost';
+  final upstreamLocation = upRes.headers.value(HttpHeaders.locationHeader);
+  if (isFindpost &&
+      upRes.statusCode >= 300 &&
+      upRes.statusCode < 400 &&
+      upstreamLocation != null) {
+    final page = _locatePageFromRedirect(
+      upstreamLocation,
+      expectedTid: target.queryParameters['ptid'],
+    );
+    res.statusCode = 200;
+    _applyCors(req, res);
+    _forwardCookies(res, upRes.headers['set-cookie']);
+    res.headers.set('content-type', 'application/json; charset=utf-8');
+    res.headers.set('X-S1-Locate-Page', '$page');
+    res.write('{"page":$page}');
+    await res.close();
+    return;
+  }
+
   res.statusCode = upRes.statusCode;
   _applyCors(req, res);
   _forwardCookies(res, upRes.headers['set-cookie']);
   final redirectLocation = rewriteProxyLocation(
-    upRes.headers.value(HttpHeaders.locationHeader),
+    upstreamLocation,
     target,
   );
   if (redirectLocation != null) {
@@ -234,6 +256,32 @@ Future<void> _handleRequest(HttpRequest req) async {
 
   res.add(bytes);
   await res.close();
+}
+
+/// Discuz findpost Location → 页码（page=0 / 缺省 → 1）。
+int _locatePageFromRedirect(String location, {String? expectedTid}) {
+  final redirected = upstreamRequestResolve(location);
+  final fromQuery = int.tryParse(redirected.queryParameters['page'] ?? '');
+  if (fromQuery != null) return fromQuery < 1 ? 1 : fromQuery;
+  final pathMatch =
+      RegExp(r'thread-\d+-(\d+)-\d+\.html').firstMatch(redirected.path);
+  if (pathMatch != null) {
+    final p = int.tryParse(pathMatch.group(1) ?? '') ?? 1;
+    return p < 1 ? 1 : p;
+  }
+  final tid = expectedTid;
+  if (tid != null &&
+      tid.isNotEmpty &&
+      (redirected.queryParameters['tid'] == tid ||
+          redirected.path.contains('thread-$tid-'))) {
+    return 1;
+  }
+  return 1;
+}
+
+Uri upstreamRequestResolve(String location) {
+  // Location 常为相对路径 forum.php?...
+  return Uri.parse('https://stage1st.com/2b/').resolve(location.trim());
 }
 
 String _findProxy(Uri uri) {
@@ -290,8 +338,11 @@ bool _applyCors(HttpRequest req, HttpResponse res) {
       'Content-Type, Content-Length, Cookie, X-Requested-With, $proxyAuthHeader',
     );
     res.headers.set('Access-Control-Allow-Credentials', 'true');
-    // findpost 302：浏览器默认不向 JS 暴露 Location，Dio 读不到会落到脆弱 HTML 回退。
-    res.headers.set('Access-Control-Expose-Headers', 'Location, location');
+    // Location：原生可读；X-S1-Locate-Page：findpost 由代理改写为 200 时携带页码。
+    res.headers.set(
+      'Access-Control-Expose-Headers',
+      'Location, location, X-S1-Locate-Page, x-s1-locate-page',
+    );
     return true;
   }
   if (origin == null) {

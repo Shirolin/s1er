@@ -171,7 +171,8 @@ void _checkMissingExplicitElevation(
         severity: AuditSeverity.p1,
         file: path,
         line: i + 1,
-        message: 'Card/AppBar should explicitly set elevation: 0',
+        message:
+            'Resting Card/AppBar should explicitly set elevation: 0 (tonal surfaces)',
         snippet: line.trim(),
       ),
     );
@@ -235,7 +236,8 @@ List<AuditFinding> _auditLibFile(String path) {
             severity: AuditSeverity.p0,
             file: path,
             line: elevLine,
-            message: 'Card/AppBar elevation must be 0 for M3',
+            message:
+                'Resting Card/AppBar elevation must be 0 (project tonal policy)',
             snippet: lines[elevLine - 1].trim(),
           ),
         );

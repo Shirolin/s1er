@@ -108,6 +108,22 @@ void main() {
       expect(app.containsKey('simulateDynamic'), isFalse);
       expect(app.containsKey('unknown_field'), isFalse);
     });
+
+    test('post signature settings map to snake_case', () {
+      final backup = S1BackupSettingsMapper.toBackup({
+        'postSignatureEnabled': false,
+        'postSignatureShowDevice': false,
+        'postSignatureCustom': '摸鱼',
+      });
+      expect(backup['post_signature_enabled'], isFalse);
+      expect(backup['post_signature_show_device'], isFalse);
+      expect(backup['post_signature_custom'], '摸鱼');
+
+      final app = S1BackupSettingsMapper.toApp(backup);
+      expect(app['postSignatureEnabled'], isFalse);
+      expect(app['postSignatureShowDevice'], isFalse);
+      expect(app['postSignatureCustom'], '摸鱼');
+    });
   });
 
   group('S1BackupService L1 round-trip', () {

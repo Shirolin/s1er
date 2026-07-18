@@ -100,11 +100,23 @@ Future<T?> showS1AdaptiveSheet<T>({
 
   return showDialog<T>(
     context: context,
-    builder: (dialogContext) => Dialog(
-      child: ConstrainedBox(
-        constraints: BoxConstraints(maxWidth: desktopMaxWidth),
-        child: builder(dialogContext),
-      ),
-    ),
+    builder: (dialogContext) {
+      final scheme = Theme.of(dialogContext).colorScheme;
+      return Dialog(
+        // 与读帖画布同档，便于内容区用 card 浮层（非同色 card-in-card）。
+        backgroundColor: scheme.surfaceContainerHighest,
+        elevation: 0,
+        // 显式圆角 + 裁剪，避免子级全幅 Material 把 Dialog 画成直角。
+        shape: Theme.of(dialogContext).dialogTheme.shape ??
+            const RoundedRectangleBorder(
+              borderRadius: BorderRadius.all(Radius.circular(28)),
+            ),
+        clipBehavior: Clip.antiAlias,
+        child: ConstrainedBox(
+          constraints: BoxConstraints(maxWidth: desktopMaxWidth),
+          child: builder(dialogContext),
+        ),
+      );
+    },
   );
 }

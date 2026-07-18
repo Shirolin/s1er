@@ -1,5 +1,10 @@
 class S1Constants {
   static const String appName = 'S1er';
+
+  /// 客户端下载页占位（小尾巴 `[url]`；上架后可按渠道替换）。
+  static const String downloadUrl =
+      'https://github.com/Shirolin/s1er/releases/latest';
+
   static const String mobileUserAgent =
       'Mozilla/5.0 (iPhone; CPU iPhone OS 17_0 like Mac OS X) '
       'AppleWebKit/605.1.15 (KHTML, like Gecko) '

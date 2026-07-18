@@ -51,7 +51,7 @@ class S1ErrorView extends StatelessWidget {
             ),
             const SizedBox(height: 8),
             Text(
-              isLogin ? '当前 S1 需要登录后查看论坛内容' : _message,
+              isLogin ? '当前 Stage1st 需要登录后查看论坛内容' : _message,
               textAlign: TextAlign.center,
               style: textTheme.bodyMedium?.copyWith(
                 color: scheme.onSurfaceVariant,

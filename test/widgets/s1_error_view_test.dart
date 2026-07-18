@@ -41,7 +41,7 @@ void main() {
 
       expect(find.byIcon(Icons.lock_outline), findsOneWidget);
       expect(find.text('请先登录'), findsOneWidget);
-      expect(find.text('当前 S1 需要登录后查看论坛内容'), findsOneWidget);
+      expect(find.text('当前 Stage1st 需要登录后查看论坛内容'), findsOneWidget);
       expect(find.text('去登录'), findsOneWidget);
 
       await tester.tap(find.text('去登录'));

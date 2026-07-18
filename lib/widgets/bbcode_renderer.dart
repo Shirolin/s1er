@@ -64,6 +64,7 @@ class BbcodeRenderer extends ConsumerWidget {
     this.currentTid,
     this.imagesExpanded = false,
     this.onExpandImages,
+    this.selectable = true,
   });
 
   final String bbcode;
@@ -72,6 +73,10 @@ class BbcodeRenderer extends ConsumerWidget {
   final String? currentTid;
   final bool imagesExpanded;
   final VoidCallback? onExpandImages;
+
+  /// 顶层是否包 [SelectionArea]。Dialog / 路由切换首帧易触发
+  /// `!debugNeedsLayout`（Flutter #125065），预览等浮层应关。
+  final bool selectable;
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -148,7 +153,7 @@ class BbcodeRenderer extends ConsumerWidget {
       children: widgets,
     );
     // 仅顶层包 SelectionArea，避免引用区内嵌再包一层切断选区。
-    if (quoteDepth > 0) return column;
+    if (quoteDepth > 0 || !selectable) return column;
     return SelectionArea(child: column);
   }
 

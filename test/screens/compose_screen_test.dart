@@ -13,9 +13,11 @@ import 'package:s1er/providers/settings_provider.dart';
 import 'package:s1er/screens/compose_screen.dart';
 import 'package:s1er/services/app_database.dart';
 import 'package:s1er/services/app_local_data.dart';
+import 'package:s1er/providers/device_model_label_provider.dart';
 import 'package:s1er/theme/app_theme.dart';
 import 'package:s1er/utils/compose_draft_store.dart';
 import 'package:s1er/utils/compose_message_draft.dart';
+import 'package:s1er/utils/window_size.dart';
 import 'package:s1er/widgets/quote_block.dart';
 
 import '../helpers/test_local_data.dart';
@@ -44,6 +46,7 @@ void main() {
       composeControllerProvider.overrideWith(
         compose ?? (ref) => _StubComposeController(ref),
       ),
+      deviceModelLabelProvider.overrideWith((ref) async => 'TestDevice'),
     ];
   }
 
@@ -170,6 +173,7 @@ void main() {
             fid: '4',
             draftId: draftId,
             reppost: '42',
+            subject: '示例主题标题',
           ),
         ),
       ),
@@ -182,8 +186,49 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(find.text('预览'), findsWidgets);
+    // 编辑页主题条 + 预览卡上方上下文，各一条。
+    expect(find.text('主题 · 示例主题标题'), findsNWidgets(2));
+    expect(find.text('tester'), findsWidgets);
+    expect(find.text('即将回复'), findsOneWidget);
+    // 回复预览不再叠「回复」角标（与副文案重复）。
+    expect(find.text('回复'), findsNothing);
+    expect(find.text('关闭'), findsNothing); // 默认测试视口为紧凑屏
     expect(find.byType(QuoteBlock), findsAtLeastNWidgets(1));
     expect(find.text('我的回复正文'), findsWidgets);
+  });
+
+  testWidgets('ComposeScreen preview appends post signature', (tester) async {
+    await tester.pumpWidget(
+      ProviderScope(
+        overrides: [
+          ...buildOverrides(auth: _LoggedInAuthNotifier.new),
+          settingsProvider.overrideWith(
+            () => SettingsNotifier(
+              initial: const AppSettings(
+                postSignatureEnabled: true,
+                postSignatureShowDevice: true,
+                postSignatureCustom: '摸鱼',
+              ),
+            ),
+          ),
+        ],
+        child: MaterialApp(
+          theme: AppTheme.lightTheme('purple'),
+          home: const ComposeScreen(tid: '100', fid: '4'),
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    await tester.enterText(find.byType(TextField), '预览正文');
+    await tester.pump();
+    await tester.tap(find.byTooltip('预览'));
+    await tester.pumpAndSettle();
+
+    expect(find.text('预览正文'), findsWidgets);
+    expect(find.textContaining('摸鱼'), findsWidgets);
+    expect(find.textContaining('S1er 客户端'), findsWidgets);
+    expect(find.textContaining('TestDevice'), findsWidgets);
   });
 
   testWidgets('ComposeScreen places send and image in bottom bar',
@@ -394,7 +439,33 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(find.text('无法回复'), findsOneWidget);
-    expect(find.textContaining('仅支持回复已有主题'), findsOneWidget);
+    expect(find.textContaining('暂不支持从此处回复'), findsOneWidget);
+  });
+
+  testWidgets('ComposeScreen constrains form width on wide screens',
+      (tester) async {
+    tester.view.physicalSize = const Size(1200, 800);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
+
+    await tester.pumpWidget(
+      ProviderScope(
+        overrides: buildOverrides(auth: _LoggedInAuthNotifier.new),
+        child: MaterialApp(
+          theme: AppTheme.lightTheme('purple'),
+          home: const ComposeScreen(tid: '100', fid: '4'),
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    expect(find.byKey(const ValueKey('compose_desktop_card')), findsOneWidget);
+    // standard 限宽 1040，Card 左右各 24 padding。
+    expect(
+      tester.getSize(find.byType(TextField).first).width,
+      S1Breakpoints.contentWidthLarge - 48,
+    );
   });
 }
 

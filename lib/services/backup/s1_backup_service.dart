@@ -67,6 +67,9 @@ class S1BackupService {
     appSettings.putIfAbsent('collapsedForums', () => <String>[]);
     appSettings.putIfAbsent('shareImageFormat', () => 'webp');
     appSettings.putIfAbsent('sharePixelRatio', () => 1.5);
+    appSettings.putIfAbsent('postSignatureEnabled', () => true);
+    appSettings.putIfAbsent('postSignatureShowDevice', () => true);
+    appSettings.putIfAbsent('postSignatureCustom', () => '');
 
     final settingsJson = S1BackupSettingsMapper.toBackup(appSettings);
 

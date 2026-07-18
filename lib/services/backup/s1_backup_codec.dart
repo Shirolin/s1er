@@ -155,6 +155,9 @@ class S1BackupSettingsMapper {
     'collapsedForums': 'collapsed_forums',
     'shareImageFormat': 'share_image_format',
     'sharePixelRatio': 'share_pixel_ratio',
+    'postSignatureEnabled': 'post_signature_enabled',
+    'postSignatureShowDevice': 'post_signature_show_device',
+    'postSignatureCustom': 'post_signature_custom',
   };
 
   static Map<String, dynamic> toBackup(Map<String, Object?> appSettings) {

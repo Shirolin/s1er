@@ -23,6 +23,9 @@ class AppSettings {
     this.collapsedForums = const {},
     this.shareImageFormat = ShareImageFormat.webp,
     this.sharePixelRatio = SharePixelRatio.defaultValue,
+    this.postSignatureEnabled = true,
+    this.postSignatureShowDevice = true,
+    this.postSignatureCustom = '',
   });
 
   final String themeMode;
@@ -37,6 +40,9 @@ class AppSettings {
   final Set<String> collapsedForums;
   final ShareImageFormat shareImageFormat;
   final double sharePixelRatio;
+  final bool postSignatureEnabled;
+  final bool postSignatureShowDevice;
+  final String postSignatureCustom;
 
   double get textScaleFactor => fontSize / S1Typography.defaultBodySize;
 
@@ -53,6 +59,9 @@ class AppSettings {
     Set<String>? collapsedForums,
     ShareImageFormat? shareImageFormat,
     double? sharePixelRatio,
+    bool? postSignatureEnabled,
+    bool? postSignatureShowDevice,
+    String? postSignatureCustom,
   }) {
     return AppSettings(
       themeMode: themeMode ?? this.themeMode,
@@ -67,6 +76,10 @@ class AppSettings {
       collapsedForums: collapsedForums ?? this.collapsedForums,
       shareImageFormat: shareImageFormat ?? this.shareImageFormat,
       sharePixelRatio: sharePixelRatio ?? this.sharePixelRatio,
+      postSignatureEnabled: postSignatureEnabled ?? this.postSignatureEnabled,
+      postSignatureShowDevice:
+          postSignatureShowDevice ?? this.postSignatureShowDevice,
+      postSignatureCustom: postSignatureCustom ?? this.postSignatureCustom,
     );
   }
 
@@ -84,7 +97,10 @@ class AppSettings {
         other.fontSize == fontSize &&
         _setEquals(other.collapsedForums, collapsedForums) &&
         other.shareImageFormat == shareImageFormat &&
-        other.sharePixelRatio == sharePixelRatio;
+        other.sharePixelRatio == sharePixelRatio &&
+        other.postSignatureEnabled == postSignatureEnabled &&
+        other.postSignatureShowDevice == postSignatureShowDevice &&
+        other.postSignatureCustom == postSignatureCustom;
   }
 
   static bool _setEquals(Set<String> a, Set<String> b) =>
@@ -104,6 +120,9 @@ class AppSettings {
         Object.hashAllUnordered(collapsedForums),
         shareImageFormat,
         sharePixelRatio,
+        postSignatureEnabled,
+        postSignatureShowDevice,
+        postSignatureCustom,
       );
 }
 
@@ -214,6 +233,21 @@ class SettingsNotifier extends Notifier<AppSettings> {
         (settingsStore.get<List<dynamic>>('collapsedForums'))?.cast<String>() ??
             [],
       ),
+      postSignatureEnabled: settingsStore.get<bool>(
+            'postSignatureEnabled',
+            defaultValue: true,
+          ) ??
+          true,
+      postSignatureShowDevice: settingsStore.get<bool>(
+            'postSignatureShowDevice',
+            defaultValue: true,
+          ) ??
+          true,
+      postSignatureCustom: settingsStore.get<String>(
+            'postSignatureCustom',
+            defaultValue: '',
+          ) ??
+          '',
     );
   }
 
@@ -274,6 +308,21 @@ class SettingsNotifier extends Notifier<AppSettings> {
     final snapped = SharePixelRatio.normalize(value);
     _commit(state.copyWith(sharePixelRatio: snapped));
     _persist('sharePixelRatio', snapped);
+  }
+
+  void setPostSignatureEnabled(bool value) {
+    _commit(state.copyWith(postSignatureEnabled: value));
+    _persist('postSignatureEnabled', value);
+  }
+
+  void setPostSignatureShowDevice(bool value) {
+    _commit(state.copyWith(postSignatureShowDevice: value));
+    _persist('postSignatureShowDevice', value);
+  }
+
+  void setPostSignatureCustom(String value) {
+    _commit(state.copyWith(postSignatureCustom: value));
+    _persist('postSignatureCustom', value);
   }
 
   void toggleForumCollapse(String fid) {

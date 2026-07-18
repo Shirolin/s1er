@@ -1,5 +1,6 @@
 import 'dart:convert';
 import 'package:dio/dio.dart';
+import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:html/parser.dart' show parse;
 import '../config/api_config.dart';
 import '../models/thread.dart';
@@ -1983,11 +1984,12 @@ class ApiService {
     );
     final url = uri.toString();
 
-    // 原生：followRedirects=false 读 Location；Web：浏览器可能自动跟随，需 realUri / HTML。
+    // Web：浏览器对跨域 301 + followRedirects=false 常得到 opaque 空响应；
+    // 开发代理会把 findpost 改成 200 + X-S1-Locate-Page。仍设 followRedirects=true 作兜底。
     final response = await _httpClient.get(
       url,
       options: Options(
-        followRedirects: false,
+        followRedirects: kIsWeb,
         validateStatus: (s) => s != null && s < 500,
         responseType: ResponseType.plain,
       ),
@@ -1995,8 +1997,17 @@ class ApiService {
 
     int? resolved;
 
+    // 代理改写的页码头（Web 首选）。
+    final headerPage = response.headers.value('x-s1-locate-page');
+    if (headerPage != null) {
+      final page = int.tryParse(headerPage);
+      if (page != null && page >= 1) {
+        resolved = page;
+      }
+    }
+
     final location = response.headers.value('location');
-    if (location != null) {
+    if (resolved == null && location != null) {
       resolved = pageFromFindpostLocation(location, expectedTid: tid);
     }
 
@@ -2012,7 +2023,7 @@ class ApiService {
       }
     }
 
-    // HTML：限定 div.pg 内的当前页，避免误匹配正文 <strong>。
+    // HTML：div.pg；单页帖无分页控件时视为第 1 页。
     if (resolved == null) {
       final html = response.data as String? ?? '';
       resolved = pageFromViewthreadHtml(html);
@@ -2055,6 +2066,8 @@ class ApiService {
   }
 
   /// 从已加载的 viewthread HTML 解析当前页（`div.pg > strong`）。
+  ///
+  /// 单页帖常只有空的 `div.pgt`、没有 `div.pg`，此时若能确认是读帖页则返回 1。
   static int? pageFromViewthreadHtml(String html) {
     if (html.isEmpty) return null;
     final pgMatch = RegExp(
@@ -2065,6 +2078,10 @@ class ApiService {
       final page = int.tryParse(pgMatch.group(1) ?? '');
       if (page != null) return page < 1 ? 1 : page;
     }
+    final looksLikeViewthread = html.contains('id="postlist"') ||
+        html.contains('pg_viewthread') ||
+        html.contains('id="post_');
+    if (looksLikeViewthread) return 1;
     return null;
   }
 

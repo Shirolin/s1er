@@ -10,10 +10,13 @@ import '../models/quote_info.dart';
 import '../models/new_thread_form_info.dart';
 import '../models/edit_post_form_info.dart';
 import '../models/edit_post_submit_result.dart';
+import '../models/private_message_item.dart';
+import '../models/user.dart';
 import '../providers/auth_provider.dart';
 import '../providers/compose_provider.dart';
 import '../providers/settings_provider.dart';
 import '../theme/app_theme.dart';
+import '../utils/compact_label.dart';
 import '../utils/compose_draft_store.dart';
 import '../utils/compose_img_tags.dart';
 import '../utils/compose_message_draft.dart';
@@ -22,11 +25,14 @@ import '../utils/edit_post_draft.dart';
 import '../utils/post_image_index_counter.dart';
 import '../utils/quote_builder.dart';
 import '../utils/s1_snack_bar.dart';
+import '../utils/window_size.dart';
 import '../widgets/bbcode_renderer.dart';
 import '../widgets/compose_emoticon_panel.dart';
 import '../widgets/quote_block.dart';
 import '../widgets/s1_confirm_dialog.dart';
 import '../widgets/s1_adaptive_sheet.dart';
+import '../widgets/s1_content_width.dart';
+import '../widgets/web_avatar.dart';
 
 const _recentEmoticonsKey = 'compose_recent_emoticons';
 
@@ -600,50 +606,36 @@ class _ComposeScreenState extends ConsumerState<ComposeScreen> {
     }
     final quoteInfo = _quoting ? _quoteInfo : null;
     final tid = widget.tid;
+    final previewBbcode = _isEditing
+        ? message
+        : await ref.read(composeControllerProvider).applySignature(message);
+    if (!mounted) return;
+
+    final previewSubject = _isNewThread
+        ? _subjectController.text.trim()
+        : (_subjectLabel?.trim() ?? '');
+    final auth = ref.read(authStateProvider);
+    final authorName = auth.user?.username ?? auth.username ?? '我';
+    final authorAvatar = User.resolveAvatarUrl(
+          auth.user?.avatar,
+          size: 'middle',
+        ) ??
+        PrivateMessageItem.avatarUrlForUid(auth.user?.uid ?? '');
 
     await showS1AdaptiveSheet<void>(
       context: context,
       isScrollControlled: true,
-      desktopMaxWidth: 840,
-      builder: (ctx) {
-        final textTheme = Theme.of(ctx).textTheme;
-        final height = MediaQuery.sizeOf(ctx).height * 0.65;
-        final imageIndexCounter = PostImageIndexCounter();
-        return SafeArea(
-          child: SizedBox(
-            height: height,
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.stretch,
-              children: [
-                Padding(
-                  padding: const EdgeInsets.fromLTRB(16, 4, 16, 8),
-                  child: Text('预览', style: textTheme.titleMedium),
-                ),
-                Expanded(
-                  child: SingleChildScrollView(
-                    padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.stretch,
-                      children: [
-                        if (quoteInfo != null)
-                          QuoteBlock(
-                            content: quoteInfo.noticeTrimStr,
-                            imageIndexCounter: imageIndexCounter,
-                            currentTid: tid,
-                          ),
-                        BbcodeRenderer(
-                          bbcode: message.isEmpty ? '（无内容）' : message,
-                          imageIndexCounter: imageIndexCounter,
-                        ),
-                      ],
-                    ),
-                  ),
-                ),
-              ],
-            ),
-          ),
-        );
-      },
+      desktopMaxWidth: S1Breakpoints.contentWidthReading,
+      builder: (ctx) => _ComposePreviewSheet(
+        subject: previewSubject.isEmpty ? null : previewSubject,
+        isNewThread: _isNewThread,
+        isEditing: _isEditing,
+        quoteInfo: quoteInfo,
+        previewBbcode: previewBbcode,
+        tid: tid,
+        authorName: authorName,
+        authorAvatar: authorAvatar,
+      ),
     );
   }
 
@@ -1047,20 +1039,121 @@ class _ComposeScreenState extends ConsumerState<ComposeScreen> {
           elevation: 0,
           title: Text('无法回复', style: textTheme.titleLarge),
         ),
-        body: Center(
-          child: Padding(
-            padding: const EdgeInsets.all(24),
-            child: Text(
-              '暂不支持从此处回复，请先进入主题页。',
-              style: textTheme.bodyLarge?.copyWith(
-                color: scheme.onSurfaceVariant,
+        body: S1ContentWidth(
+          mode: S1ContentWidthMode.form,
+          child: Center(
+            child: Padding(
+              padding: const EdgeInsets.all(24),
+              child: Text(
+                '暂不支持从此处回复，请先进入主题页。',
+                style: textTheme.bodyLarge?.copyWith(
+                  color: scheme.onSurfaceVariant,
+                ),
+                textAlign: TextAlign.center,
               ),
-              textAlign: TextAlign.center,
             ),
           ),
         ),
       );
     }
+
+    final formColumn = Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        if (_isNewThread)
+          _NewThreadHeader(
+            form: _newThreadForm,
+            controller: _subjectController,
+            selectedTypeId: _selectedTypeId,
+            onTypeChanged: (value) {
+              setState(() {
+                _selectedTypeId = value;
+                _persistNewThreadDraft();
+              });
+            },
+          ),
+        if (_isEditing)
+          _EditPostHeader(
+            form: _editForm,
+            controller: _subjectController,
+            selectedTypeId: _selectedTypeId,
+            selectedReadPerm: _selectedReadPerm,
+            onTypeChanged: (value) {
+              setState(() {
+                _selectedTypeId = value;
+                _persistEditDraft();
+              });
+            },
+            onReadPermChanged: (value) {
+              setState(() {
+                _selectedReadPerm = value;
+                _persistEditDraft();
+              });
+            },
+          ),
+        if (_isEditing && (_editUncertain || _editConflict))
+          _EditPostStatus(
+            message:
+                _editUncertain ? '编辑结果不确定，请先核对服务器内容。' : '服务器内容已变化，请重新载入后再编辑。',
+            actionLabel: '核对服务器',
+            onPressed: _recheckEditState,
+          ),
+        if (_includeQuote && !_isNewThread)
+          _ComposeQuoteBanner(
+            post: _draft?.post,
+            displayFloor: _draft?.displayFloor ?? 0,
+            onRemove: _removeQuote,
+            loading: _quotePrefetching,
+            error: _quotePrefetchError,
+          ),
+        if (subject != null && !_isNewThread)
+          _ComposeSubjectLine(subject: subject),
+        if (_uploadedImages.isNotEmpty)
+          _ComposeImageStrip(
+            images: List.unmodifiable(_uploadedImages),
+            onRemove: _removeUploadedImage,
+          ),
+        Expanded(
+          child: _ComposeMessageField(
+            controller: _messageController,
+            focusNode: _messageFocusNode,
+            hintText: _isNewThread
+                ? '输入主题内容…'
+                : (_isEditing ? '输入编辑后的内容…' : '输入回复内容…'),
+            onTap: () {
+              if (_showEmoticonPanel) {
+                setState(() => _showEmoticonPanel = false);
+              }
+            },
+          ),
+        ),
+        ClipRect(
+          child: AnimatedAlign(
+            duration: S1Motion.medium,
+            curve: S1Motion.standard,
+            heightFactor: showPanel ? 1 : 0,
+            alignment: Alignment.bottomCenter,
+            child: ComposeEmoticonPanel(
+              onSelect: _insertEmoticon,
+              recent: _recentEmoticons,
+            ),
+          ),
+        ),
+        _ComposeBottomBar(
+          busy: busy,
+          canSubmit: _canSubmit,
+          canPreview: _canPreview,
+          isSubmitting: _isSubmitting,
+          isUploadingImage: _isUploadingImage,
+          emoticonPanelOpen: showPanel,
+          onPickImage: _pickAndUploadImage,
+          onToggleEmoticon: _toggleEmoticonPanel,
+          onPreview: _showPreview,
+          onSubmit: _submit,
+          submitLabel: _isEditing ? '保存编辑' : '发送',
+        ),
+      ],
+    );
 
     return PopScope(
       canPop: _allowPop || !_isDirty,
@@ -1071,112 +1164,278 @@ class _ComposeScreenState extends ConsumerState<ComposeScreen> {
           elevation: 0,
           title: Text(_title, style: textTheme.titleLarge),
         ),
-        body: Column(
+        // 宽屏：写作区用 standard 限宽（840/1040）+ 一体 Card，避免「中间一条手机栏」。
+        body: S1ContentWidth(
+          mode: S1ContentWidthMode.standard,
+          child: context.isExpandedOrAbove
+              ? Padding(
+                  padding: const EdgeInsets.fromLTRB(24, 8, 24, 16),
+                  child: Card(
+                    key: const ValueKey('compose_desktop_card'),
+                    elevation: 0,
+                    color: S1Surface.card(scheme),
+                    clipBehavior: Clip.antiAlias,
+                    margin: EdgeInsets.zero,
+                    shape: const RoundedRectangleBorder(
+                      borderRadius: S1Shape.large,
+                      side: BorderSide.none,
+                    ),
+                    child: formColumn,
+                  ),
+                )
+              : formColumn,
+        ),
+      ),
+    );
+  }
+}
+
+/// 发帖 / 回复预览：Dialog 画布 + 一帖 Card（对齐读帖 surface 层级）。
+/// 主题在卡上方；卡内只预览楼层正文。
+class _ComposePreviewSheet extends StatelessWidget {
+  const _ComposePreviewSheet({
+    required this.subject,
+    required this.isNewThread,
+    required this.isEditing,
+    required this.quoteInfo,
+    required this.previewBbcode,
+    required this.tid,
+    required this.authorName,
+    this.authorAvatar,
+  });
+
+  final String? subject;
+  final bool isNewThread;
+  final bool isEditing;
+  final QuoteInfo? quoteInfo;
+  final String previewBbcode;
+  final String? tid;
+  final String authorName;
+  final String? authorAvatar;
+
+  String get _floorLabel {
+    if (isEditing) return '编辑';
+    if (isNewThread) return '#1';
+    return '回复';
+  }
+
+  /// 回复已有「即将回复」副文案，不再叠一颗「回复」Chip；新主题 / 编辑保留楼层标记。
+  bool get _showFloorMark => isNewThread || isEditing;
+
+  String get _metaLabel {
+    if (isEditing) return '编辑后效果';
+    if (isNewThread) return '即将发布';
+    return '即将回复';
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final scheme = Theme.of(context).colorScheme;
+    final textTheme = Theme.of(context).textTheme;
+    final desktop = context.isExpandedOrAbove;
+    final maxHeight =
+        MediaQuery.sizeOf(context).height * (desktop ? 0.78 : 0.72);
+    final imageIndexCounter = PostImageIndexCounter();
+    final letter = authorName.isNotEmpty ? authorName[0] : '?';
+    // 主题始终在卡上方作上下文；卡内只预览楼层正文（含签名）。
+    final showSubjectAbove = subject != null;
+
+    final postCard = Card(
+      elevation: 0,
+      color: S1Surface.card(scheme),
+      margin: EdgeInsets.zero,
+      clipBehavior: Clip.antiAlias,
+      shape: S1Shape.cardShape,
+      child: Padding(
+        padding: const EdgeInsets.all(12),
+        child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-            if (_isNewThread)
-              _NewThreadHeader(
-                form: _newThreadForm,
-                controller: _subjectController,
-                selectedTypeId: _selectedTypeId,
-                onTypeChanged: (value) {
-                  setState(() {
-                    _selectedTypeId = value;
-                    _persistNewThreadDraft();
-                  });
-                },
-              ),
-            if (_isEditing)
-              _EditPostHeader(
-                form: _editForm,
-                controller: _subjectController,
-                selectedTypeId: _selectedTypeId,
-                selectedReadPerm: _selectedReadPerm,
-                onTypeChanged: (value) {
-                  setState(() {
-                    _selectedTypeId = value;
-                    _persistEditDraft();
-                  });
-                },
-                onReadPermChanged: (value) {
-                  setState(() {
-                    _selectedReadPerm = value;
-                    _persistEditDraft();
-                  });
-                },
-              ),
-            if (_isEditing && (_editUncertain || _editConflict))
-              _EditPostStatus(
-                message: _editUncertain
-                    ? '编辑结果不确定，请先核对服务器内容。'
-                    : '服务器内容已变化，请重新载入后再编辑。',
-                actionLabel: '核对服务器',
-                onPressed: _recheckEditState,
-              ),
-            if (_includeQuote && !_isNewThread)
-              _ComposeQuoteBanner(
-                post: _draft?.post,
-                displayFloor: _draft?.displayFloor ?? 0,
-                onRemove: _removeQuote,
-                loading: _quotePrefetching,
-                error: _quotePrefetchError,
-              ),
-            if (subject != null && !_isNewThread)
-              _ComposeSubjectLine(subject: subject),
-            if (_uploadedImages.isNotEmpty)
-              _ComposeImageStrip(
-                images: List.unmodifiable(_uploadedImages),
-                onRemove: _removeUploadedImage,
-              ),
-            Expanded(
-              child: _ComposeMessageField(
-                controller: _messageController,
-                focusNode: _messageFocusNode,
-                hintText: _isNewThread
-                    ? '输入主题内容…'
-                    : (_isEditing ? '输入编辑后的内容…' : '输入回复内容…'),
-                onTap: () {
-                  if (_showEmoticonPanel) {
-                    setState(() => _showEmoticonPanel = false);
-                  }
-                },
-              ),
-            ),
-          ],
-        ),
-        bottomNavigationBar: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            ClipRect(
-              child: AnimatedAlign(
-                duration: S1Motion.medium,
-                curve: S1Motion.standard,
-                heightFactor: showPanel ? 1 : 0,
-                alignment: Alignment.bottomCenter,
-                child: ComposeEmoticonPanel(
-                  onSelect: _insertEmoticon,
-                  recent: _recentEmoticons,
+            Row(
+              children: [
+                WebAvatar(
+                  url: authorAvatar,
+                  radius: 20,
+                  fallbackLetter: letter,
                 ),
-              ),
+                const SizedBox(width: 8),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        authorName,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: textTheme.bodyMedium?.copyWith(
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                      Text(
+                        _metaLabel,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: textTheme.labelSmall?.copyWith(
+                          color: scheme.onSurfaceVariant,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                if (_showFloorMark)
+                  DecoratedBox(
+                    decoration: BoxDecoration(
+                      color: scheme.secondaryContainer,
+                      borderRadius: S1Shape.extraSmall,
+                    ),
+                    child: Padding(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 8,
+                        vertical: 4,
+                      ),
+                      child: CompactLabel.text(
+                        _floorLabel,
+                        style: CompactLabel.style(
+                          context,
+                          base: textTheme.labelSmall,
+                          color: scheme.onSecondaryContainer,
+                          fontWeight: FontWeight.w500,
+                        ),
+                      ),
+                    ),
+                  ),
+              ],
             ),
-            _ComposeBottomBar(
-              busy: busy,
-              canSubmit: _canSubmit,
-              canPreview: _canPreview,
-              isSubmitting: _isSubmitting,
-              isUploadingImage: _isUploadingImage,
-              emoticonPanelOpen: showPanel,
-              onPickImage: _pickAndUploadImage,
-              onToggleEmoticon: _toggleEmoticonPanel,
-              onPreview: _showPreview,
-              onSubmit: _submit,
-              submitLabel: _isEditing ? '保存编辑' : '发送',
+            Divider(height: 16, color: scheme.outlineVariant),
+            if (quoteInfo != null)
+              QuoteBlock(
+                content: quoteInfo!.noticeTrimStr,
+                imageIndexCounter: imageIndexCounter,
+                currentTid: tid,
+              ),
+            BbcodeRenderer(
+              bbcode: previewBbcode.isEmpty ? '（无内容）' : previewBbcode,
+              imageIndexCounter: imageIndexCounter,
+              // Dialog 打开动画首帧 SelectionArea 会 assert !debugNeedsLayout。
+              selectable: false,
             ),
           ],
         ),
       ),
     );
+
+    final header = Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        Row(
+          children: [
+            Icon(
+              Icons.visibility_outlined,
+              size: 20,
+              color: scheme.onSurfaceVariant,
+            ),
+            const SizedBox(width: 8),
+            Expanded(
+              child: Text(
+                '预览',
+                style: textTheme.titleMedium?.copyWith(
+                  color: scheme.onSurface,
+                ),
+              ),
+            ),
+            // PC Dialog：TextButton「关闭」属 M3 actions 语义；不放顶栏 X
+            //（AGENTS：adaptive sheet 不放关闭 chrome，桌面靠 scrim / Escape）。
+            if (desktop)
+              TextButton(
+                onPressed: () => Navigator.of(context).maybePop(),
+                child: const Text('关闭'),
+              ),
+          ],
+        ),
+        if (showSubjectAbove) ...[
+          const SizedBox(height: 8),
+          Text(
+            isNewThread ? subject! : '主题 · $subject',
+            maxLines: 2,
+            overflow: TextOverflow.ellipsis,
+            style: (isNewThread ? textTheme.titleMedium : textTheme.labelLarge)
+                ?.copyWith(
+              color: isNewThread ? scheme.onSurface : scheme.onSurfaceVariant,
+              fontWeight: isNewThread ? FontWeight.w600 : null,
+            ),
+          ),
+        ],
+      ],
+    );
+
+    return SafeArea(
+      child: desktop
+          ? ConstrainedBox(
+              constraints: BoxConstraints(maxHeight: maxHeight),
+              child: SingleChildScrollView(
+                padding: const EdgeInsets.fromLTRB(16, 8, 8, 16),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    header,
+                    const SizedBox(height: 12),
+                    Padding(
+                      padding: const EdgeInsets.only(right: 8),
+                      child: postCard,
+                    ),
+                  ],
+                ),
+              ),
+            )
+          : SizedBox(
+              height: maxHeight,
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  Padding(
+                    padding: const EdgeInsets.fromLTRB(16, 12, 16, 0),
+                    child: header,
+                  ),
+                  const SizedBox(height: 12),
+                  Expanded(
+                    child: SingleChildScrollView(
+                      padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
+                      child: postCard,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+    );
   }
+}
+
+/// 发帖元信息（标题 / 分类 / 权限）共用：filled 色阶，无硬描边。
+InputDecoration _composeMetaDecoration(
+  BuildContext context, {
+  required String labelText,
+}) {
+  final scheme = Theme.of(context).colorScheme;
+  return InputDecoration(
+    labelText: labelText,
+    filled: true,
+    fillColor: scheme.surfaceContainerHigh,
+    border: const OutlineInputBorder(
+      borderRadius: S1Shape.small,
+      borderSide: BorderSide.none,
+    ),
+    enabledBorder: const OutlineInputBorder(
+      borderRadius: S1Shape.small,
+      borderSide: BorderSide.none,
+    ),
+    focusedBorder: OutlineInputBorder(
+      borderRadius: S1Shape.small,
+      borderSide: BorderSide(color: scheme.primary, width: 2),
+    ),
+    contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+  );
 }
 
 /// 正文 filled 输入：空态用 Highest 凹槽；有内容 / 聚焦时降到 Low，区分「内容态」。
@@ -1197,6 +1456,12 @@ class _NewThreadHeader extends StatelessWidget {
   Widget build(BuildContext context) {
     final textTheme = Theme.of(context).textTheme;
     final scheme = Theme.of(context).colorScheme;
+    if (form == null) {
+      return const Padding(
+        padding: EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+        child: LinearProgressIndicator(),
+      );
+    }
     if (form?.error != null) {
       return Padding(
         padding: const EdgeInsets.all(16),
@@ -1207,39 +1472,50 @@ class _NewThreadHeader extends StatelessWidget {
       );
     }
     final types = form?.threadTypes ?? const <String, String>{};
-    return Padding(
-      padding: const EdgeInsets.fromLTRB(16, 12, 16, 4),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: [
-          TextField(
-            controller: controller,
-            textInputAction: TextInputAction.next,
-            style: textTheme.bodyLarge,
-            decoration: const InputDecoration(labelText: '主题标题'),
-          ),
-          if (types.isNotEmpty) ...[
-            const SizedBox(height: 12),
-            DropdownButtonFormField<String>(
-              initialValue: selectedTypeId,
-              decoration: const InputDecoration(labelText: '主题分类'),
-              items: [
-                if (!(form?.typeRequired ?? false))
-                  const DropdownMenuItem<String>(
-                    value: null,
-                    child: Text('不分类'),
-                  ),
-                for (final entry in types.entries)
-                  DropdownMenuItem<String>(
-                    value: entry.key,
-                    child: Text(entry.value),
-                  ),
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        Padding(
+          padding: const EdgeInsets.fromLTRB(16, 16, 16, 12),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              TextField(
+                controller: controller,
+                textInputAction: TextInputAction.next,
+                style: textTheme.titleMedium,
+                decoration: _composeMetaDecoration(context, labelText: '主题标题'),
+              ),
+              if (types.isNotEmpty) ...[
+                const SizedBox(height: 12),
+                DropdownButtonFormField<String>(
+                  initialValue: selectedTypeId,
+                  decoration:
+                      _composeMetaDecoration(context, labelText: '主题分类'),
+                  items: [
+                    if (!(form?.typeRequired ?? false))
+                      const DropdownMenuItem<String>(
+                        value: null,
+                        child: Text('不分类'),
+                      ),
+                    for (final entry in types.entries)
+                      DropdownMenuItem<String>(
+                        value: entry.key,
+                        child: Text(entry.value),
+                      ),
+                  ],
+                  onChanged: onTypeChanged,
+                ),
               ],
-              onChanged: onTypeChanged,
-            ),
-          ],
-        ],
-      ),
+            ],
+          ),
+        ),
+        Divider(
+          height: 1,
+          thickness: 1,
+          color: scheme.outlineVariant.withValues(alpha: S1Alpha.half),
+        ),
+      ],
     );
   }
 }
@@ -1275,59 +1551,77 @@ class _EditPostHeader extends StatelessWidget {
         ),
       );
     }
-    if (form == null) return const LinearProgressIndicator();
-    return Padding(
-      padding: const EdgeInsets.fromLTRB(16, 12, 16, 4),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: [
-          if (form.isFirst)
-            TextField(
-              controller: controller,
-              textInputAction: TextInputAction.next,
-              style: textTheme.bodyLarge,
-              decoration: const InputDecoration(labelText: '主题标题'),
-            ),
-          if (form.threadTypes.isNotEmpty) ...[
-            const SizedBox(height: 12),
-            DropdownButtonFormField<String>(
-              initialValue: form.threadTypes.containsKey(selectedTypeId)
-                  ? selectedTypeId
-                  : null,
-              decoration: const InputDecoration(labelText: '主题分类'),
-              items: [
-                const DropdownMenuItem<String>(
-                  value: null,
-                  child: Text('不分类'),
+    if (form == null) {
+      return const Padding(
+        padding: EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+        child: LinearProgressIndicator(),
+      );
+    }
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        Padding(
+          padding: const EdgeInsets.fromLTRB(16, 16, 16, 12),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              if (form.isFirst)
+                TextField(
+                  controller: controller,
+                  textInputAction: TextInputAction.next,
+                  style: textTheme.titleMedium,
+                  decoration:
+                      _composeMetaDecoration(context, labelText: '主题标题'),
                 ),
-                for (final entry in form.threadTypes.entries)
-                  DropdownMenuItem<String>(
-                    value: entry.key,
-                    child: Text(entry.value),
-                  ),
+              if (form.threadTypes.isNotEmpty) ...[
+                if (form.isFirst) const SizedBox(height: 12),
+                DropdownButtonFormField<String>(
+                  initialValue: form.threadTypes.containsKey(selectedTypeId)
+                      ? selectedTypeId
+                      : null,
+                  decoration:
+                      _composeMetaDecoration(context, labelText: '主题分类'),
+                  items: [
+                    const DropdownMenuItem<String>(
+                      value: null,
+                      child: Text('不分类'),
+                    ),
+                    for (final entry in form.threadTypes.entries)
+                      DropdownMenuItem<String>(
+                        value: entry.key,
+                        child: Text(entry.value),
+                      ),
+                  ],
+                  onChanged: onTypeChanged,
+                ),
               ],
-              onChanged: onTypeChanged,
-            ),
-          ],
-          if (form.readPermissions.isNotEmpty) ...[
-            const SizedBox(height: 12),
-            DropdownButtonFormField<String>(
-              initialValue: form.readPermissions.contains(selectedReadPerm)
-                  ? selectedReadPerm
-                  : null,
-              decoration: const InputDecoration(labelText: '阅读权限'),
-              items: [
-                for (final permission in form.readPermissions)
-                  DropdownMenuItem<String>(
-                    value: permission,
-                    child: Text(permission == '0' ? '不限' : permission),
-                  ),
+              if (form.readPermissions.isNotEmpty) ...[
+                const SizedBox(height: 12),
+                DropdownButtonFormField<String>(
+                  initialValue: form.readPermissions.contains(selectedReadPerm)
+                      ? selectedReadPerm
+                      : null,
+                  decoration:
+                      _composeMetaDecoration(context, labelText: '阅读权限'),
+                  items: [
+                    for (final permission in form.readPermissions)
+                      DropdownMenuItem<String>(
+                        value: permission,
+                        child: Text(permission == '0' ? '不限' : permission),
+                      ),
+                  ],
+                  onChanged: onReadPermChanged,
+                ),
               ],
-              onChanged: onReadPermChanged,
-            ),
-          ],
-        ],
-      ),
+            ],
+          ),
+        ),
+        Divider(
+          height: 1,
+          thickness: 1,
+          color: scheme.outlineVariant.withValues(alpha: S1Alpha.half),
+        ),
+      ],
     );
   }
 }
@@ -1397,8 +1691,13 @@ class _ComposeMessageField extends StatelessWidget {
     final hasContent = controller.text.trim().isNotEmpty;
     final focused = focusNode.hasFocus;
     final active = hasContent || focused;
-    final fillColor =
-        active ? scheme.surfaceContainerLow : scheme.surfaceContainerHighest;
+    final desktop = context.isExpandedOrAbove;
+    // 桌面 Card 内透明贴合奶油表面；手机保持 Highest 凹槽 / Low 内容态。
+    final fillColor = desktop
+        ? Colors.transparent
+        : (active
+            ? scheme.surfaceContainerLow
+            : scheme.surfaceContainerHighest);
 
     return AnimatedContainer(
       duration: S1Motion.short,
@@ -1419,21 +1718,10 @@ class _ComposeMessageField extends StatelessWidget {
           hintStyle: textTheme.bodyLarge?.copyWith(
             color: scheme.onSurfaceVariant,
           ),
+          // expands 输入框底边 underline 会横在工具栏上方，看起来像粗分隔线。
           border: InputBorder.none,
-          enabledBorder: hasContent
-              ? UnderlineInputBorder(
-                  borderSide: BorderSide(
-                    color: scheme.outlineVariant,
-                    width: 1,
-                  ),
-                )
-              : InputBorder.none,
-          focusedBorder: UnderlineInputBorder(
-            borderSide: BorderSide(
-              color: scheme.primary,
-              width: 2,
-            ),
-          ),
+          enabledBorder: InputBorder.none,
+          focusedBorder: InputBorder.none,
           contentPadding: const EdgeInsets.all(16),
         ),
       ),
@@ -1678,9 +1966,10 @@ class _ComposeBottomBar extends StatelessWidget {
     final scheme = Theme.of(context).colorScheme;
     final textTheme = Theme.of(context).textTheme;
     final bottomInset = MediaQuery.viewInsetsOf(context).bottom;
+    final desktop = context.isExpandedOrAbove;
 
     return Material(
-      color: S1BottomBarStyle.background(scheme),
+      color: desktop ? Colors.transparent : S1BottomBarStyle.background(scheme),
       elevation: 0,
       child: AnimatedPadding(
         duration: S1Motion.rapid,
@@ -1688,52 +1977,68 @@ class _ComposeBottomBar extends StatelessWidget {
         padding: EdgeInsets.only(bottom: bottomInset),
         child: SafeArea(
           top: false,
-          child: Padding(
-            padding: const EdgeInsets.fromLTRB(4, 8, 16, 8),
-            child: Row(
-              children: [
-                TextButton.icon(
-                  onPressed: busy ? null : onToggleEmoticon,
-                  icon: Icon(
-                    emoticonPanelOpen
-                        ? Icons.keyboard_outlined
-                        : Icons.emoji_emotions_outlined,
-                  ),
-                  label: Text(emoticonPanelOpen ? '键盘' : '表情'),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Divider(
+                height: 1,
+                thickness: 1,
+                color: scheme.outlineVariant.withValues(alpha: S1Alpha.half),
+              ),
+              Padding(
+                padding: const EdgeInsets.fromLTRB(4, 8, 16, 8),
+                child: Row(
+                  children: [
+                    TextButton.icon(
+                      onPressed: busy ? null : onToggleEmoticon,
+                      icon: Icon(
+                        emoticonPanelOpen
+                            ? Icons.keyboard_outlined
+                            : Icons.emoji_emotions_outlined,
+                      ),
+                      label: Text(emoticonPanelOpen ? '键盘' : '表情'),
+                    ),
+                    TextButton.icon(
+                      onPressed: busy ? null : onPickImage,
+                      icon: isUploadingImage
+                          ? SizedBox(
+                              width: 18,
+                              height: 18,
+                              child: CircularProgressIndicator(
+                                strokeWidth: 2,
+                                color: scheme.onSurfaceVariant,
+                              ),
+                            )
+                          : const Icon(Icons.image_outlined),
+                      label: Text(isUploadingImage ? '上传中' : '图片'),
+                    ),
+                    const Spacer(),
+                    IconButton(
+                      tooltip: '预览',
+                      onPressed: canPreview && !busy ? onPreview : null,
+                      icon: const Icon(Icons.visibility_outlined),
+                    ),
+                    FilledButton(
+                      onPressed: canSubmit ? onSubmit : null,
+                      style: FilledButton.styleFrom(
+                        disabledForegroundColor: scheme.onSurface
+                            .withValues(alpha: S1Alpha.disabledIcon),
+                        disabledBackgroundColor:
+                            scheme.onSurface.withValues(alpha: S1Alpha.subtle),
+                      ),
+                      child: isSubmitting
+                          ? Text(
+                              '发送中…',
+                              style: textTheme.labelLarge?.copyWith(
+                                color: scheme.onPrimary,
+                              ),
+                            )
+                          : Text(submitLabel),
+                    ),
+                  ],
                 ),
-                TextButton.icon(
-                  onPressed: busy ? null : onPickImage,
-                  icon: isUploadingImage
-                      ? SizedBox(
-                          width: 18,
-                          height: 18,
-                          child: CircularProgressIndicator(
-                            strokeWidth: 2,
-                            color: scheme.onSurfaceVariant,
-                          ),
-                        )
-                      : const Icon(Icons.image_outlined),
-                  label: Text(isUploadingImage ? '上传中' : '图片'),
-                ),
-                const Spacer(),
-                IconButton(
-                  tooltip: '预览',
-                  onPressed: canPreview && !busy ? onPreview : null,
-                  icon: const Icon(Icons.visibility_outlined),
-                ),
-                FilledButton(
-                  onPressed: canSubmit ? onSubmit : null,
-                  child: isSubmitting
-                      ? Text(
-                          '发送中…',
-                          style: textTheme.labelLarge?.copyWith(
-                            color: scheme.onPrimary,
-                          ),
-                        )
-                      : Text(submitLabel),
-                ),
-              ],
-            ),
+              ),
+            ],
           ),
         ),
       ),

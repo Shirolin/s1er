@@ -70,46 +70,33 @@ class _RateLogCardState extends ConsumerState<RateLogCard> {
         : rateLog.entries.length;
     final collapsedHiddenCount = totalEntryCount - collapsedEntries.length;
 
-    return Card(
-      margin: const EdgeInsets.only(top: 8),
-      elevation: 0,
-      color: S1Surface.card(scheme),
-      shape: S1Shape.cardShape,
-      child: InkWell(
-        borderRadius: S1Shape.medium,
-        onTap: () => setState(() => _expanded = !_expanded),
-        child: AnimatedSize(
-          duration: const Duration(milliseconds: 200),
-          curve: Curves.easeInOut,
-          alignment: Alignment.topCenter,
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              _SummaryRow(
-                totalScore: rateLog.totalScore,
-                participantCount: rateLog.participantCount,
-                accentColor: accentColor,
-                expanded: _expanded,
-                hiddenCount: collapsedHiddenCount,
-              ),
-              if (!_expanded && collapsedEntries.isNotEmpty)
-                Container(
-                  padding: const EdgeInsets.only(bottom: 8),
-                  decoration: BoxDecoration(
-                    color: scheme.surfaceContainer,
-                    borderRadius: BorderRadius.vertical(
-                      bottom: S1Shape.medium.bottomLeft,
-                    ),
-                  ),
-                  child: Column(
+    return Padding(
+      padding: const EdgeInsets.only(top: 8),
+      child: Material(
+        color: S1Surface.nestedPanel(scheme),
+        elevation: 0,
+        shape: S1Shape.cardShape,
+        clipBehavior: Clip.antiAlias,
+        child: InkWell(
+          onTap: () => setState(() => _expanded = !_expanded),
+          child: AnimatedSize(
+            duration: const Duration(milliseconds: 200),
+            curve: Curves.easeInOut,
+            alignment: Alignment.topCenter,
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                _SummaryRow(
+                  totalScore: rateLog.totalScore,
+                  participantCount: rateLog.participantCount,
+                  accentColor: accentColor,
+                  expanded: _expanded,
+                  hiddenCount: collapsedHiddenCount,
+                ),
+                if (!_expanded && collapsedEntries.isNotEmpty)
+                  _EntriesPanel(
+                    scheme: scheme,
                     children: [
-                      Divider(
-                        height: 1,
-                        indent: 12,
-                        endIndent: 12,
-                        color: scheme.outlineVariant,
-                      ),
-                      const SizedBox(height: 4),
                       ...collapsedEntries.map(
                         (entry) => _EntryRow(
                           entry: entry,
@@ -118,25 +105,10 @@ class _RateLogCardState extends ConsumerState<RateLogCard> {
                       ),
                     ],
                   ),
-                ),
-              if (_expanded) ...[
-                Container(
-                  padding: const EdgeInsets.only(bottom: 8),
-                  decoration: BoxDecoration(
-                    color: scheme.surfaceContainer,
-                    borderRadius: BorderRadius.vertical(
-                      bottom: S1Shape.medium.bottomLeft,
-                    ),
-                  ),
-                  child: Column(
+                if (_expanded)
+                  _EntriesPanel(
+                    scheme: scheme,
                     children: [
-                      Divider(
-                        height: 1,
-                        indent: 12,
-                        endIndent: 12,
-                        color: scheme.outlineVariant,
-                      ),
-                      const SizedBox(height: 4),
                       ...displayEntries.map(
                         (entry) => _EntryRow(
                           entry: entry,
@@ -179,10 +151,36 @@ class _RateLogCardState extends ConsumerState<RateLogCard> {
                         ),
                     ],
                   ),
-                ),
               ],
-            ],
+            ),
           ),
+        ),
+      ),
+    );
+  }
+}
+
+class _EntriesPanel extends StatelessWidget {
+  const _EntriesPanel({
+    required this.scheme,
+    required this.children,
+  });
+
+  final ColorScheme scheme;
+  final List<Widget> children;
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(8, 0, 8, 8),
+      child: DecoratedBox(
+        decoration: BoxDecoration(
+          color: S1Surface.nestedPanelItem(scheme),
+          borderRadius: S1Shape.small,
+        ),
+        child: Padding(
+          padding: const EdgeInsets.symmetric(vertical: 4),
+          child: Column(children: children),
         ),
       ),
     );

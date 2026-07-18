@@ -20,6 +20,10 @@ enum S1ContentWidthMode {
 /// - [S1ContentWidthMode.reading]: 720dp (comfortable thread body measure).
 /// - [S1ContentWidthMode.form]: 720dp.
 ///
+/// On wide screens the child is given a **tight** width and, when the parent
+/// height is bounded, a tight height — so `Column` + `Expanded` (compose forms)
+/// still layout correctly. Prefer this over `Center` + loose `ConstrainedBox`.
+///
 /// Usage:
 /// ```dart
 /// S1ContentWidth(child: ListView(...))
@@ -50,11 +54,20 @@ class S1ContentWidth extends StatelessWidget {
           : S1Breakpoints.contentWidthLarge,
     };
 
-    return Center(
-      child: ConstrainedBox(
-        constraints: BoxConstraints(maxWidth: maxWidth),
-        child: child,
-      ),
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final width = maxWidth.clamp(0.0, constraints.maxWidth).toDouble();
+        final height =
+            constraints.hasBoundedHeight ? constraints.maxHeight : null;
+        return Align(
+          alignment: Alignment.topCenter,
+          child: SizedBox(
+            width: width,
+            height: height,
+            child: child,
+          ),
+        );
+      },
     );
   }
 }

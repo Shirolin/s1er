@@ -53,22 +53,12 @@ class _UserSpaceScreenState extends ConsumerState<UserSpaceScreen>
     );
     _visitedTabs = {_tabController.index};
     _tabController.addListener(_onTabChanged);
-    if (widget.initialTab == 1) {
-      WidgetsBinding.instance.addPostFrameCallback((_) {
-        if (!mounted) return;
-        ref.read(userSpaceProvider(_params).notifier).ensureRepliesLoaded();
-      });
-    }
   }
 
   void _onTabChanged() {
     if (_tabController.indexIsChanging) return;
-    final index = _tabController.index;
-    _visitedTabs.add(index);
+    _visitedTabs.add(_tabController.index);
     setState(() {});
-    if (index == 1) {
-      ref.read(userSpaceProvider(_params).notifier).ensureRepliesLoaded();
-    }
   }
 
   @override
@@ -78,9 +68,32 @@ class _UserSpaceScreenState extends ConsumerState<UserSpaceScreen>
     super.dispose();
   }
 
+  Future<void> _refreshVisited() async {
+    final futures = <Future<void>>[];
+    if (_visitedTabs.contains(0)) {
+      futures.add(
+        ref.read(userSpaceThreadsProvider(_params).notifier).refresh(),
+      );
+    }
+    if (_visitedTabs.contains(1)) {
+      futures.add(
+        ref.read(userSpaceRepliesProvider(_params).notifier).refresh(),
+      );
+    }
+    await Future.wait(futures);
+  }
+
+  int _browserPage() {
+    final isReplyTab = _tabController.index == 1;
+    if (isReplyTab) {
+      return ref.watch(userSpaceRepliesProvider(_params)).asData?.value.page ??
+          1;
+    }
+    return ref.watch(userSpaceThreadsProvider(_params)).asData?.value.page ?? 1;
+  }
+
   @override
   Widget build(BuildContext context) {
-    final async = ref.watch(userSpaceProvider(_params));
     final auth = ref.watch(authStateProvider);
     final pmBlocked = ref.watch(
       blacklistHasScopeProvider(
@@ -95,9 +108,7 @@ class _UserSpaceScreenState extends ConsumerState<UserSpaceScreen>
     final browserUrl = ApiConfig.userSpaceBrowserUrl(
       uid: widget.uid,
       type: isReplyTab ? 'reply' : 'thread',
-      page: isReplyTab
-          ? async.asData?.value.replyPage ?? 1
-          : async.asData?.value.threadPage ?? 1,
+      page: _browserPage(),
     );
 
     return S1DesktopScaffold(
@@ -122,8 +133,7 @@ class _UserSpaceScreenState extends ConsumerState<UserSpaceScreen>
                 ),
               ),
             AppBarMoreMenu(
-              onRefresh: () =>
-                  ref.read(userSpaceProvider(_params).notifier).refresh(),
+              onRefresh: _refreshVisited,
               browserUrl: browserUrl,
             ),
           ],
@@ -136,46 +146,19 @@ class _UserSpaceScreenState extends ConsumerState<UserSpaceScreen>
           ),
         ),
         body: S1ContentWidth(
-          child: async.when(
-            loading: () => const Column(
-              children: [
-                LinearProgressIndicator(),
-                Expanded(child: SizedBox()),
-              ],
-            ),
-            error: (e, st) => S1ErrorView(
-              error: e,
-              onRetry: () =>
-                  ref.read(userSpaceProvider(_params).notifier).refresh(),
-              onLogin: () => context.push('/login'),
-            ),
-            data: (state) => TabBarView(
-              controller: _tabController,
-              physics: const NeverScrollableScrollPhysics(),
-              children: [
-                if (_visitedTabs.contains(0))
-                  _ThreadList(
-                    items: state.threads,
-                    currentPage: state.threadPage,
-                    totalPages: state.threadTotalPages,
-                    uid: widget.uid,
-                    isSelf: widget.isSelf,
-                  )
-                else
-                  const SizedBox.shrink(),
-                if (_visitedTabs.contains(1))
-                  _ReplyList(
-                    items: state.replies,
-                    currentPage: state.replyPage,
-                    totalPages: state.replyTotalPages,
-                    uid: widget.uid,
-                    isSelf: widget.isSelf,
-                    repliesLoaded: state.repliesLoaded,
-                  )
-                else
-                  const SizedBox.shrink(),
-              ],
-            ),
+          child: TabBarView(
+            controller: _tabController,
+            physics: const NeverScrollableScrollPhysics(),
+            children: [
+              if (_visitedTabs.contains(0))
+                _ThreadList(uid: widget.uid, isSelf: widget.isSelf)
+              else
+                const SizedBox.shrink(),
+              if (_visitedTabs.contains(1))
+                _ReplyList(uid: widget.uid, isSelf: widget.isSelf)
+              else
+                const SizedBox.shrink(),
+            ],
           ),
         ),
       ),
@@ -185,118 +168,127 @@ class _UserSpaceScreenState extends ConsumerState<UserSpaceScreen>
 
 class _ThreadList extends ConsumerWidget {
   const _ThreadList({
-    required this.items,
-    required this.currentPage,
-    required this.totalPages,
     required this.uid,
     required this.isSelf,
   });
-  final List<UserSpaceItem> items;
-  final int currentPage;
-  final int totalPages;
   final String uid;
   final bool isSelf;
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    if (items.isEmpty) {
-      return ListView(
-        children: const [
-          SizedBox(height: 48),
-          Center(child: Text('暂无主题')),
-        ],
-      );
-    }
-    return Column(
-      children: [
-        Expanded(
-          child: S1SwipePagination(
-            currentPage: currentPage,
-            totalPages: totalPages,
-            onPageChanged: (page) => ref
-                .read(userSpaceProvider((uid, isSelf)).notifier)
-                .goToThreadPage(page),
-            pageBuilder: (context, scrollController) => ListView.builder(
-              controller: scrollController,
-              itemCount: items.length,
-              itemBuilder: (context, index) => KeyedSubtree(
-                key: ValueKey('uspace_thread_${items[index].tid}'),
-                child: _ThreadCard(item: items[index]),
+    final params = (uid, isSelf);
+    final async = ref.watch(userSpaceThreadsProvider(params));
+    return async.when(
+      loading: () => const Center(child: CircularProgressIndicator()),
+      error: (e, st) => S1ErrorView(
+        error: e,
+        onRetry: () =>
+            ref.read(userSpaceThreadsProvider(params).notifier).refresh(),
+        onLogin: () => context.push('/login'),
+      ),
+      data: (state) {
+        if (state.items.isEmpty) {
+          return ListView(
+            children: const [
+              SizedBox(height: 48),
+              Center(child: Text('暂无主题')),
+            ],
+          );
+        }
+        return Column(
+          children: [
+            Expanded(
+              child: S1SwipePagination(
+                currentPage: state.page,
+                totalPages: state.totalPages,
+                onPageChanged: (page) => ref
+                    .read(userSpaceThreadsProvider(params).notifier)
+                    .goToPage(page),
+                pageBuilder: (context, scrollController) => ListView.builder(
+                  controller: scrollController,
+                  itemCount: state.items.length,
+                  itemBuilder: (context, index) => KeyedSubtree(
+                    key: ValueKey('uspace_thread_${state.items[index].tid}'),
+                    child: _ThreadCard(item: state.items[index]),
+                  ),
+                ),
               ),
             ),
-          ),
-        ),
-        PaginationBar(
-          currentPage: currentPage,
-          totalPages: totalPages,
-          onPageChanged: (page) => ref
-              .read(userSpaceProvider((uid, isSelf)).notifier)
-              .goToThreadPage(page),
-        ),
-      ],
+            PaginationBar(
+              currentPage: state.page,
+              totalPages: state.totalPages,
+              onPageChanged: (page) => ref
+                  .read(userSpaceThreadsProvider(params).notifier)
+                  .goToPage(page),
+            ),
+          ],
+        );
+      },
     );
   }
 }
 
 class _ReplyList extends ConsumerWidget {
   const _ReplyList({
-    required this.items,
-    required this.currentPage,
-    required this.totalPages,
     required this.uid,
     required this.isSelf,
-    required this.repliesLoaded,
   });
-  final List<UserSpaceItem> items;
-  final int currentPage;
-  final int totalPages;
   final String uid;
   final bool isSelf;
-  final bool repliesLoaded;
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    if (!repliesLoaded) {
-      return const Center(child: CircularProgressIndicator());
-    }
-    if (items.isEmpty) {
-      return ListView(
-        children: const [
-          SizedBox(height: 48),
-          Center(child: Text('暂无回复')),
-        ],
-      );
-    }
-    return Column(
-      children: [
-        Expanded(
-          child: S1SwipePagination(
-            currentPage: currentPage,
-            totalPages: totalPages,
-            onPageChanged: (page) => ref
-                .read(userSpaceProvider((uid, isSelf)).notifier)
-                .goToReplyPage(page),
-            pageBuilder: (context, scrollController) => ListView.builder(
-              controller: scrollController,
-              itemCount: items.length,
-              itemBuilder: (context, index) {
-                final item = items[index];
-                return KeyedSubtree(
-                  key: ValueKey('uspace_reply_${item.pid ?? item.tid}'),
-                  child: _ReplyCard(item: item),
-                );
-              },
+    final params = (uid, isSelf);
+    final async = ref.watch(userSpaceRepliesProvider(params));
+    return async.when(
+      loading: () => const Center(child: CircularProgressIndicator()),
+      error: (e, st) => S1ErrorView(
+        error: e,
+        onRetry: () =>
+            ref.read(userSpaceRepliesProvider(params).notifier).refresh(),
+        onLogin: () => context.push('/login'),
+      ),
+      data: (state) {
+        if (state.items.isEmpty) {
+          return ListView(
+            children: const [
+              SizedBox(height: 48),
+              Center(child: Text('暂无回复')),
+            ],
+          );
+        }
+        return Column(
+          children: [
+            Expanded(
+              child: S1SwipePagination(
+                currentPage: state.page,
+                totalPages: state.totalPages,
+                onPageChanged: (page) => ref
+                    .read(userSpaceRepliesProvider(params).notifier)
+                    .goToPage(page),
+                pageBuilder: (context, scrollController) => ListView.builder(
+                  controller: scrollController,
+                  itemCount: state.items.length,
+                  itemBuilder: (context, index) {
+                    final item = state.items[index];
+                    return KeyedSubtree(
+                      key: ValueKey('uspace_reply_${item.pid ?? item.tid}'),
+                      child: _ReplyCard(item: item),
+                    );
+                  },
+                ),
+              ),
             ),
-          ),
-        ),
-        PaginationBar(
-          currentPage: currentPage,
-          totalPages: totalPages,
-          onPageChanged: (page) => ref
-              .read(userSpaceProvider((uid, isSelf)).notifier)
-              .goToReplyPage(page),
-        ),
-      ],
+            PaginationBar(
+              currentPage: state.page,
+              totalPages: state.totalPages,
+              onPageChanged: (page) => ref
+                  .read(userSpaceRepliesProvider(params).notifier)
+                  .goToPage(page),
+            ),
+          ],
+        );
+      },
     );
   }
 }

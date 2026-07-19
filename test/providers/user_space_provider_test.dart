@@ -8,7 +8,7 @@ import 'package:s1er/providers/user_space_provider.dart';
 import 'package:s1er/services/http_client.dart';
 
 void main() {
-  group('UserSpaceNotifier', () {
+  group('user space list providers', () {
     late _UserSpaceAdapter adapter;
     late ProviderContainer container;
 
@@ -30,52 +30,103 @@ void main() {
       container.dispose();
     });
 
-    test('build loads only threads for other user space', () async {
+    test('threads provider loads only thread requests', () async {
       final sub =
-          container.listen(userSpaceProvider(('42', false)), (_, __) {});
+          container.listen(userSpaceThreadsProvider(('42', false)), (_, __) {});
       addTearDown(sub.close);
 
-      await container.read(userSpaceProvider(('42', false)).future);
+      await container.read(userSpaceThreadsProvider(('42', false)).future);
 
       expect(adapter.requestTypes, ['thread']);
     });
 
-    test('ensureRepliesLoaded fetches replies after initial build', () async {
+    test('replies provider loads independently without threads', () async {
       final sub =
-          container.listen(userSpaceProvider(('42', false)), (_, __) {});
+          container.listen(userSpaceRepliesProvider(('42', false)), (_, __) {});
       addTearDown(sub.close);
 
-      final notifier =
-          container.read(userSpaceProvider(('42', false)).notifier);
-      await container.read(userSpaceProvider(('42', false)).future);
-      expect(adapter.requestTypes, ['thread']);
+      await container.read(userSpaceRepliesProvider(('42', false)).future);
 
-      await notifier.ensureRepliesLoaded();
-
-      expect(adapter.requestTypes, ['thread', 'reply']);
+      expect(adapter.requestTypes, ['reply']);
       expect(
         container
-            .read(userSpaceProvider(('42', false)))
+            .read(userSpaceRepliesProvider(('42', false)))
             .asData!
             .value
-            .repliesLoaded,
-        isTrue,
+            .page,
+        1,
       );
     });
 
-    test('refresh reloads only threads when replies not loaded', () async {
+    test('self threads use mythread module', () async {
       final sub =
-          container.listen(userSpaceProvider(('42', false)), (_, __) {});
+          container.listen(userSpaceThreadsProvider(('42', true)), (_, __) {});
       addTearDown(sub.close);
 
-      final notifier =
-          container.read(userSpaceProvider(('42', false)).notifier);
-      await container.read(userSpaceProvider(('42', false)).future);
+      await container.read(userSpaceThreadsProvider(('42', true)).future);
+
+      expect(adapter.requestTypes, ['mythread']);
+    });
+
+    test('listening both providers fetches thread and reply', () async {
+      final threadSub =
+          container.listen(userSpaceThreadsProvider(('42', false)), (_, __) {});
+      final replySub =
+          container.listen(userSpaceRepliesProvider(('42', false)), (_, __) {});
+      addTearDown(threadSub.close);
+      addTearDown(replySub.close);
+
+      await Future.wait([
+        container.read(userSpaceThreadsProvider(('42', false)).future),
+        container.read(userSpaceRepliesProvider(('42', false)).future),
+      ]);
+
+      expect(adapter.requestTypes, containsAll(['thread', 'reply']));
+      expect(adapter.requestTypes, hasLength(2));
+    });
+
+    test('refresh reloads only the same provider', () async {
+      final threadSub =
+          container.listen(userSpaceThreadsProvider(('42', false)), (_, __) {});
+      final replySub =
+          container.listen(userSpaceRepliesProvider(('42', false)), (_, __) {});
+      addTearDown(threadSub.close);
+      addTearDown(replySub.close);
+
+      await Future.wait([
+        container.read(userSpaceThreadsProvider(('42', false)).future),
+        container.read(userSpaceRepliesProvider(('42', false)).future),
+      ]);
       adapter.requestTypes.clear();
 
-      await notifier.refresh();
+      await container
+          .read(userSpaceThreadsProvider(('42', false)).notifier)
+          .refresh();
 
       expect(adapter.requestTypes, ['thread']);
+    });
+
+    test('goToPage only hits the same list type', () async {
+      final sub =
+          container.listen(userSpaceRepliesProvider(('42', false)), (_, __) {});
+      addTearDown(sub.close);
+
+      await container.read(userSpaceRepliesProvider(('42', false)).future);
+      adapter.requestTypes.clear();
+
+      await container
+          .read(userSpaceRepliesProvider(('42', false)).notifier)
+          .goToPage(2);
+
+      expect(adapter.requestTypes, ['reply']);
+      expect(
+        container
+            .read(userSpaceRepliesProvider(('42', false)))
+            .asData!
+            .value
+            .page,
+        2,
+      );
     });
   });
 }

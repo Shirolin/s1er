@@ -252,7 +252,7 @@ class S1ScrollNavGroup extends StatelessWidget {
     }
 
     return Material(
-      color: scheme.surfaceContainerHigh,
+      color: S1Surface.floatingControl(scheme),
       elevation: 0,
       shape: const RoundedRectangleBorder(
         borderRadius: S1Shape.large,

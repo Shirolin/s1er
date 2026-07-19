@@ -36,6 +36,41 @@ void main() {
     expect(find.byType(S1ScrollNavGroup), findsOneWidget);
   });
 
+  testWidgets('S1ScrollNavGroup uses floatingControl surface in dark theme',
+      (tester) async {
+    final theme = AppTheme.darkTheme('sand');
+    final scheme = theme.colorScheme;
+
+    await tester.pumpWidget(
+      MaterialApp(
+        theme: theme,
+        home: const Scaffold(
+          body: S1ScrollNavGroup(
+            config: S1ScrollNavConfig(
+              showScrollToTop: true,
+              showScrollAdvance: true,
+              onScrollToTop: _noop,
+              onScrollToNextFloor: _noop,
+              onScrollToBottom: _noop,
+            ),
+          ),
+        ),
+      ),
+    );
+
+    final material = tester.widget<Material>(
+      find
+          .descendant(
+            of: find.byType(S1ScrollNavGroup),
+            matching: find.byType(Material),
+          )
+          .first,
+    );
+    expect(material.color, S1Surface.floatingControl(scheme));
+    expect(material.color, isNot(S1Surface.card(scheme)));
+    expect(material.elevation, 0);
+  });
+
   testWidgets('S1ScrollNavGroup shows forward icon in nextPage mode',
       (tester) async {
     var nextPageTapped = false;

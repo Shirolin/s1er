@@ -39,6 +39,7 @@ abstract class S1Shape {
 /// 4. **强调** = `primaryContainer`（选中）/ `secondaryContainer`（打开）等
 ///
 /// 深色：page=Lowest，card=High，nestedPanel=Low，nestedPanelItem=Highest。
+/// 弱浮层 [floatingControl]：浅色 High（对 Low 卡 / Highest 画布），深色 Highest（对 High 卡 / Lowest 画布）。
 /// FAB 用 `tertiaryContainer`（Reply 薄荷绿）。导航铬件与画布同色。
 abstract class S1Surface {
   static Color page(ColorScheme scheme) => scheme.brightness == Brightness.light
@@ -59,6 +60,12 @@ abstract class S1Surface {
   static Color nestedPanelItem(ColorScheme scheme) =>
       scheme.brightness == Brightness.light
           ? scheme.surfaceContainerHighest
+          : scheme.surfaceContainerHighest;
+
+  /// 叠在内容上的弱浮层（滚动导航组等）：与 [card] / [page] 均错开一档。
+  static Color floatingControl(ColorScheme scheme) =>
+      scheme.brightness == Brightness.light
+          ? scheme.surfaceContainerHigh
           : scheme.surfaceContainerHighest;
 
   /// NavigationRail / NavigationBar / PaginationBar — 与画布齐平。

@@ -110,6 +110,19 @@ void main() {
         S1Surface.nestedPanel(lightScheme),
         isNot(S1Surface.card(lightScheme)),
       );
+      // 弱浮层：与帖卡、画布均错开。
+      expect(
+        S1Surface.floatingControl(lightScheme),
+        lightScheme.surfaceContainerHigh,
+      );
+      expect(
+        S1Surface.floatingControl(lightScheme),
+        isNot(S1Surface.card(lightScheme)),
+      );
+      expect(
+        S1Surface.floatingControl(lightScheme),
+        isNot(S1Surface.page(lightScheme)),
+      );
 
       final dark = AppTheme.darkTheme('sand');
       final darkScheme = dark.colorScheme;
@@ -131,6 +144,18 @@ void main() {
       expect(
         S1Surface.nestedPanel(darkScheme),
         isNot(S1Surface.card(darkScheme)),
+      );
+      expect(
+        S1Surface.floatingControl(darkScheme),
+        darkScheme.surfaceContainerHighest,
+      );
+      expect(
+        S1Surface.floatingControl(darkScheme),
+        isNot(S1Surface.card(darkScheme)),
+      );
+      expect(
+        S1Surface.floatingControl(darkScheme),
+        isNot(S1Surface.page(darkScheme)),
       );
     });
 

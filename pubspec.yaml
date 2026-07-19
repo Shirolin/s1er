@@ -41,6 +41,7 @@ dependencies:
   sentry_flutter: ^9.0.0
   ironpress: ^0.2.0
   device_info_plus: ^13.2.0
+  window_manager: ^0.5.1
 dev_dependencies:
   flutter_test:
     sdk: flutter

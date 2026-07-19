@@ -1,3 +1,5 @@
+import 'dart:convert';
+
 import 'package:dio/dio.dart';
 import 'package:flutter/foundation.dart';
 
@@ -39,16 +41,7 @@ class UpdateCheckService {
   Future<AppUpdateManifest> fetchManifest() async {
     try {
       final response = await _dio.get<dynamic>(_manifestUrl);
-      final data = response.data;
-      if (data is Map<String, dynamic>) {
-        return AppUpdateManifest.fromJson(data);
-      }
-      if (data is Map) {
-        return AppUpdateManifest.fromJson(Map<String, dynamic>.from(data));
-      }
-      throw FormatException(
-        'Unexpected manifest payload type: ${data.runtimeType}',
-      );
+      return AppUpdateManifest.fromJson(_coerceManifestMap(response.data));
     } on DioException catch (e, st) {
       final message = _messageForDio(e);
       if (_isExpectedManifestMiss(e)) {
@@ -147,5 +140,27 @@ class UpdateCheckService {
       final code when code != null => '检查更新失败（HTTP $code）',
       _ => '检查更新失败',
     };
+  }
+
+  /// GitHub raw often serves JSON as `text/plain`, so Dio may leave [data]
+  /// as a [String] even with [ResponseType.json].
+  static Map<String, dynamic> _coerceManifestMap(Object? data) {
+    if (data is Map<String, dynamic>) return data;
+    if (data is Map) return Map<String, dynamic>.from(data);
+    if (data is String) {
+      final trimmed = data.trim();
+      if (trimmed.isEmpty) {
+        throw const FormatException('Empty manifest payload');
+      }
+      final decoded = jsonDecode(trimmed);
+      if (decoded is Map<String, dynamic>) return decoded;
+      if (decoded is Map) return Map<String, dynamic>.from(decoded);
+      throw FormatException(
+        'Unexpected JSON root type: ${decoded.runtimeType}',
+      );
+    }
+    throw FormatException(
+      'Unexpected manifest payload type: ${data.runtimeType}',
+    );
   }
 }

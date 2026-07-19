@@ -47,6 +47,29 @@ void main() {
     expect(form.selectedReadPermission, '0');
   });
 
+  test('parses touch/mobile editor (#needmessage / #needsubject)', () {
+    const mobileForm = '''
+<form id="postform">
+  <input type="hidden" name="formhash" id="formhash" value="mobile-fh" />
+  <input type="hidden" name="special" value="0" />
+  <input type="text" id="needsubject" name="subject" value="触屏标题" />
+  <select id="typeid" name="typeid">
+    <option value="2" selected="selected">讨论</option>
+  </select>
+  <textarea class="pt" id="needmessage" name="message">触屏 [i]正文[/i]</textarea>
+</form>
+''';
+    final form = ApiService.parseEditPostFormResponse(
+      mobileForm,
+      isFirst: true,
+    );
+    expect(form.canEdit, isTrue);
+    expect(form.formhash, 'mobile-fh');
+    expect(form.subject, '触屏标题');
+    expect(form.message, '触屏 [i]正文[/i]');
+    expect(form.selectedTypeId, '2');
+  });
+
   test('permission error never becomes an editable form', () {
     final form = ApiService.parseEditPostFormResponse(
       '<div id="messagetext"><p>没有权限编辑他人发表的帖子</p></div>',
@@ -54,6 +77,15 @@ void main() {
     );
     expect(form.canEdit, isFalse);
     expect(form.error, contains('没有权限'));
+  });
+
+  test('surfaces touch jump_c tip instead of missing-field error', () {
+    final form = ApiService.parseEditPostFormResponse(
+      '<div class="jump_c"><p>抱歉，指定的主题不存在或已被删除或正在被审核</p></div>',
+      isFirst: false,
+    );
+    expect(form.canEdit, isFalse);
+    expect(form.error, contains('指定的主题不存在'));
   });
 
   test('content conflict performs no POST', () async {

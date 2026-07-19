@@ -1,6 +1,8 @@
 // scripts/sync_app_icons.dart
 // Run with: dart run scripts/sync_app_icons.dart
 //
+// Canonical rules (do not reinvent): docs/app-icons.md
+//
 // Android default (black) REUSES existing flutter_launcher_icons output
 // (@mipmap/ic_launcher) — never regenerate it.
 //
@@ -8,7 +10,9 @@
 //   solid bg + shared transparent fg + 16% inset (same as stock).
 //
 // Finished themed masters (androidMasterAsIcon, e.g. xb2):
-//   ONLY scale master → mipmap densities. No adaptive XML / inset / crop.
+//   Adaptive: master → foreground WITH the same 16% inset as solid-plate,
+//   plus master → full-bleed background (mask ring continues artwork).
+//   Legacy mipmaps: scale only. Never solid white letterbox / never 0% crop.
 //
 // Steps to add an icon:
 // 1. Add preview + master under assets/branding/
@@ -78,7 +82,7 @@ Future<void> main() async {
   stdout.writeln(
     'black → stock ic_launcher; '
     'solid-plate → adaptive 16% shared fg; '
-    'finished master → mipmap scale only.',
+    'finished master → adaptive 16% fg + full-bleed bg.',
   );
 
   await _cleanupOrphanBlackMipmaps(root);
@@ -106,7 +110,7 @@ Future<void> main() async {
     await _writeAndroidAlternate(root, variant, decoded);
     stdout.writeln(
       '  Android: ${variant.id} → ${variant.androidMipmap}'
-      '${variant.androidMasterAsIcon ? ' (master as icon)' : ' (solid-plate adaptive)'}',
+      '${variant.androidMasterAsIcon ? ' (master 16% fg + bleed bg)' : ' (solid-plate 16% inset)'}',
     );
   }
 
@@ -162,21 +166,48 @@ Future<void> _writeAndroidAlternate(
   anydpi.createSync(recursive: true);
   final adaptiveXml = File(p.join(anydpi.path, '$name.xml'));
 
-  // Drop any per-variant adaptive foreground leftovers.
+  // Drop stale per-variant adaptive drawables before rewriting.
   for (final density in _adaptiveForegroundSizes.keys) {
-    final fg = File(
-      p.join(res, 'drawable-$density', '${name}_foreground.png'),
-    );
-    if (fg.existsSync()) {
-      fg.deleteSync();
+    for (final suffix in const ['_foreground', '_background']) {
+      final stale = File(
+        p.join(res, 'drawable-$density', '$name$suffix.png'),
+      );
+      if (stale.existsSync()) {
+        stale.deleteSync();
+      }
     }
   }
 
   if (variant.androidMasterAsIcon) {
-    // Finished artwork: mipmaps only — never adaptive inset/crop.
-    if (adaptiveXml.existsSync()) {
-      adaptiveXml.deleteSync();
+    // Finished artwork: 16% safe-zone fg + full-bleed bg (same master).
+    final fgDrawable = '${name}_foreground';
+    final bgDrawable = '${name}_background';
+    final inset = AppIconCatalog.adaptiveInsetPercent;
+    for (final entry in _adaptiveForegroundSizes.entries) {
+      final dir = Directory(p.join(res, 'drawable-${entry.key}'));
+      dir.createSync(recursive: true);
+      final resized = img.copyResize(
+        master,
+        width: entry.value,
+        height: entry.value,
+        interpolation: img.Interpolation.average,
+      );
+      final encoded = img.encodePng(resized);
+      await File(p.join(dir.path, '$fgDrawable.png')).writeAsBytes(encoded);
+      await File(p.join(dir.path, '$bgDrawable.png')).writeAsBytes(encoded);
     }
+    await adaptiveXml.writeAsString('''
+<?xml version="1.0" encoding="utf-8"?>
+<adaptive-icon xmlns:android="http://schemas.android.com/apk/res/android">
+  <background android:drawable="@drawable/$bgDrawable"/>
+  <foreground>
+      <inset
+          android:drawable="@drawable/$fgDrawable"
+          android:inset="$inset%" />
+  </foreground>
+</adaptive-icon>
+'''
+        .trimLeft());
     await _removeColorResource(root, bgName);
     return;
   }

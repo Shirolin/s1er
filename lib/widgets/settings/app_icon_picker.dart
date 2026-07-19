@@ -133,6 +133,13 @@ class AppIconPicker extends ConsumerWidget {
             ),
           ),
         ],
+        const SizedBox(height: 8),
+        Text(
+          '重启生效',
+          style: textTheme.bodySmall?.copyWith(
+            color: scheme.onSurfaceVariant,
+          ),
+        ),
       ],
     );
   }

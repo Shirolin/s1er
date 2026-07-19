@@ -13,6 +13,7 @@ import 'models/emoticon_catalog.dart';
 import 'providers/settings_provider.dart';
 import 'services/app_database.dart';
 import 'services/app_local_data.dart';
+import 'utils/desktop_window.dart';
 import 'services/http_client.dart';
 import 'services/sentry_bootstrap.dart';
 import 'services/talker.dart';
@@ -42,6 +43,9 @@ Future<void> _loadEmoticonCatalog() async {
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
+
+  // Desktop: hide native title bar before first frame (Windows / macOS / Linux).
+  await S1DesktopWindow.ensureInitialized();
 
   // ── Check for persisted crash from a previous broken run ─────────
   if (kIsWeb) {

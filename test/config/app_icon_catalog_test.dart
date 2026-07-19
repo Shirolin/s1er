@@ -32,11 +32,12 @@ void main() {
       );
     });
 
-    test('black stock; white solid-plate; xb2 finished master', () {
+    test('black stock; white solid-plate; xb2 master with 16% safe zone', () {
       expect(AppIconCatalog.defaultVariant.androidMipmap, 'ic_launcher');
       expect(AppIconCatalog.defaultVariant.reuseExistingAndroid, isTrue);
       expect(AppIconCatalog.find('white')!.androidMasterAsIcon, isFalse);
       expect(AppIconCatalog.find('xb2')!.androidMasterAsIcon, isTrue);
+      expect(AppIconCatalog.adaptiveInsetPercent, 16);
       expect(
         AppIconCatalog.androidGeneratedVariants.map((v) => v.id),
         ['white', 'xb2'],

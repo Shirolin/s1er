@@ -83,6 +83,7 @@ flutter run -d <device-id>
 ## 文档
 
 - [开发指南](docs/development.md)（代理、配置、脚本）
+- [启动器图标](docs/app-icons.md)（成品图 / solid-plate 管线，勿混用）
 - [架构说明](docs/architecture.md)
 - [贡献指南](CONTRIBUTING.md)
 - [备份格式 v1](docs/backup-format-v1.md)

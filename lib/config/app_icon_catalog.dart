@@ -1,5 +1,7 @@
 /// Launcher icon variants available for user selection.
 ///
+/// Canonical processing rules: `docs/app-icons.md` (solid-plate vs finished master).
+///
 /// To add a new icon:
 /// 1. Place a finished square PNG under `assets/branding/`
 /// 2. Add an [AppIconVariant] here
@@ -10,8 +12,9 @@
 /// - Default `black` reuses stock `@mipmap/ic_launcher` (flutter_launcher_icons).
 /// - Solid-plate `white` reuses shared transparent fg + plate color + 16% inset
 ///   (same recipe as stock black).
-/// - Finished themed masters (`androidMasterAsIcon`) are **only scaled** to
-///   mipmap densities — no adaptive inset / no re-crop.
+/// - Finished themed masters (`androidMasterAsIcon`): master as **foreground with
+///   the same 16% inset**, plus master as full-bleed **background** (so the mask
+///   ring continues the artwork — no white letterbox, no over-crop).
 class AppIconVariant {
   const AppIconVariant({
     required this.id,
@@ -36,7 +39,9 @@ class AppIconVariant {
   final String? masterPath;
   final bool reuseExistingAndroid;
 
-  /// When true, Android uses the master PNG as the launcher icon (mipmap only).
+  /// When true, Android uses the finished master as adaptive foreground with
+  /// [AppIconCatalog.adaptiveInsetPercent], and the same master full-bleed as
+  /// background (artwork continues under the mask ring).
   final bool androidMasterAsIcon;
 
   final bool isDefault;

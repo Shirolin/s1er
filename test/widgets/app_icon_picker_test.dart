@@ -44,6 +44,7 @@ void main() {
 
     expect(find.text('黑底'), findsOneWidget);
     expect(find.text('白底'), findsOneWidget);
+    expect(find.text('重启生效'), findsOneWidget);
 
     await tester.tap(find.text('白底'));
     await tester.pumpAndSettle();

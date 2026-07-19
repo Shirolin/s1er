@@ -26,6 +26,7 @@
 | 测试夹具位图 | image | ^4.2.0 |
 | 网络状态 | connectivity_plus | ^6.1.4 |
 | 设备机型标签 | device_info_plus（小尾巴细机型；失败回退平台名） | ^13.2.0 |
+| 桌面窗口管理 | window_manager（自绘标题栏；仅 Windows / macOS / Linux） | ^0.5.1 |
 | 备份（L1 ZIP） | archive / file_selector / share_plus | ^4.0.9 / ^1.1.0 / ^13.2.0 |
 | 回复插图 | file_selector + p.sda1.dev 外链图床 | 已有 file_selector；不做 Discuz attach |
 | 麻将脸表情 | `assets/emoticons/` + packs/list/ATTRIBUTION | 自 s1emoticon Release；无 LICENSE 已声明 |
@@ -224,6 +225,7 @@ flutter run -d chrome --dart-define=TALKER_LOG_LEVEL=all --dart-define=TALKER_MA
 - 技术栈现代化定案与拆分：`docs/plans/2026-07-12-tech-stack-modernization.md`（P0–P6 已落地后以本文件锁定表为准）
 - flutter_riverpod 临时固定为 `3.2.1`：`3.3.2` 存在上游 [#4765](https://github.com/rrousselGit/riverpod/issues/4765) 的 Provider 订阅恢复期 `markNeedsBuild` 回归；升级前必须先通过路由 Provider 链回归测试。
 - 分享卡导出（方案 C）：Native `ironpress`（mozjpeg / oxipng / libwebp 预编译）；默认 WebP，可选 JPEG / PNG。Web：`canvas.toBlob`（webp/jpeg）或引擎 Skia PNG。原定 `imagekit_ffi`（方案 B）因 `hooks` 与 `drift`/`sqlite3` 冲突未采用。
+- 启动器图标：黑/白 = solid-plate + **16%** 前景 inset；成品主题图（如 xb2，`androidMasterAsIcon`）= **同一 16% 前景 + 同图 full-bleed 背景**。禁止 mipmap-only、禁止成品图 0% 单层、禁止成品图再套纯色底板。细则：`docs/app-icons.md`；改完跑 `dart run scripts/sync_app_icons.dart`。
 
 ### M3 允许模式
 

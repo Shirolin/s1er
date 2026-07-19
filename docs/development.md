@@ -115,7 +115,11 @@ flutter run -d chrome --dart-define=PROXY_PORT=19081
 | `scripts/watch_proxy.ps1` | 监听代理文件变更并自动重启 |
 | `scripts/download_emoticons.dart` | 从 s1emoticon GitHub Release 按 `download_list.txt` 导入；见 `ATTRIBUTION.md` |
 | `scripts/audit_m3.dart` | 扫描 Material Design 3 合规问题 |
+| `scripts/sync_app_icons.dart` | 按 `AppIconCatalog` 生成 Android/iOS 交替启动器图标；规则见 [启动器图标](app-icons.md) |
+| `scripts/gen_windows_icon.dart` | 从黑底成品图生成 Windows `app_icon.ico`（无运行时切换） |
 | `scripts/build.ps1` | Windows 交互式构建菜单；Release 项需要维护者签名配置 |
+
+启动器图标（黑/白 solid-plate vs 成品主题图如 xb2）：见 [启动器图标](app-icons.md)。改 catalog 或 branding 后务必跑 sync 并提交生成资源。
 
 麻将脸维护：原 png/gif **已入库**于 `assets/emoticons/`（不转 WebP）。包定义见 `packs.json`，下载清单见 `download_list.txt`，来源声明见 [`ATTRIBUTION.md`](../assets/emoticons/ATTRIBUTION.md)。维护脚本从 [kawaiidora/s1emoticon](https://github.com/kawaiidora/s1emoticon) 的 **GitHub Release zip** 按清单导入（该仓当前**无 LICENSE**，仅致谢再分发）；勿进 CI、勿扫论坛 CDN。
 

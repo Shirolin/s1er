@@ -277,9 +277,15 @@ class ApiService {
 
     try {
       final document = parse(html);
-      final textarea = document.querySelector('textarea#e_textarea');
+      // PC 模板用 #e_textarea；触屏/手机模板用 #needmessage（客户端 UA 为
+      // mobile 时 S1 会下发触屏页）。再兜底 name=message。
+      final textarea = document.querySelector('textarea#e_textarea') ??
+          document.querySelector('textarea#needmessage') ??
+          document.querySelector('textarea[name="message"]');
       final message = textarea?.text ?? '';
-      final subjectInput = document.querySelector('input#subject');
+      final subjectInput = document.querySelector('input#subject') ??
+          document.querySelector('input#needsubject') ??
+          document.querySelector('input[name="subject"]');
       final subject = subjectInput?.attributes['value'] ?? '';
       final formhash =
           document.querySelector('input[name="formhash"]')?.attributes['value'];
@@ -310,7 +316,7 @@ class ApiService {
                 '0',
           ) ??
           0;
-      if (message.trim().isEmpty || formhash == null || formhash.isEmpty) {
+      if (textarea == null || formhash == null || formhash.isEmpty) {
         return const EditPostFormInfo(error: '编辑表单缺少正文或验证串');
       }
       if (isFirst && special != 0) {
@@ -338,6 +344,12 @@ class ApiService {
       dotAll: true,
     ).firstMatch(html)?.group(1)?.trim();
     if (message != null && message.isNotEmpty) return message;
+    // 触屏提示页：<div class="jump_c"><p>…</p></div>
+    final jump = RegExp(
+      r'''class=["'][^"']*jump_c[^"']*["'][^>]*>\s*<p>([^<]+)''',
+      dotAll: true,
+    ).firstMatch(html)?.group(1)?.trim();
+    if (jump != null && jump.isNotEmpty) return jump;
     final handler = RegExp(
       r"(?:errorhandle_[^\(]*|showmessage)\('([^']*)'",
     ).firstMatch(html)?.group(1)?.trim();

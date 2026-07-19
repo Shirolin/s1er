@@ -29,6 +29,30 @@ void main() {
       expect(m.minSupported, '1.0.0');
     });
 
+    test('fetchManifest parses text/plain JSON string (GitHub raw)', () async {
+      final payload = {
+        'latest': '1.2.0',
+        'minSupported': '1.0.0',
+        'notes': 'Beta',
+        'publishedAt': '2026-07-17',
+        'channels': {
+          'github': 'https://github.com/Shirolin/s1er/releases/latest',
+        },
+      };
+      final dio = Dio()
+        ..httpClientAdapter = _JsonAdapter(
+          payload,
+          contentType: 'text/plain; charset=utf-8',
+        );
+      final service = UpdateCheckService(
+        dio: dio,
+        manifestUrl: 'https://example.com/latest.json',
+      );
+      final m = await service.fetchManifest();
+      expect(m.latest, '1.2.0');
+      expect(m.notes, 'Beta');
+    });
+
     test('fetchManifest wraps Dio errors', () async {
       final dio = Dio()..httpClientAdapter = _FailingAdapter();
       final service = UpdateCheckService(
@@ -162,9 +186,13 @@ void main() {
 }
 
 class _JsonAdapter implements HttpClientAdapter {
-  _JsonAdapter(this.payload);
+  _JsonAdapter(
+    this.payload, {
+    this.contentType = Headers.jsonContentType,
+  });
 
   final Map<String, dynamic> payload;
+  final String contentType;
 
   @override
   void close({bool force = false}) {}
@@ -179,7 +207,7 @@ class _JsonAdapter implements HttpClientAdapter {
       jsonEncode(payload),
       200,
       headers: {
-        Headers.contentTypeHeader: [Headers.jsonContentType],
+        Headers.contentTypeHeader: [contentType],
       },
     );
   }

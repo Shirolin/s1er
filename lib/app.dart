@@ -28,6 +28,7 @@ import 'screens/pm_conversation_screen.dart';
 import 'services/talker.dart';
 import 'theme/app_theme.dart';
 import 'utils/thread_navigation.dart';
+import 'widgets/s1_desktop_window_frame.dart';
 import 'widgets/thread_open_intent_scope.dart';
 import 'widgets/update_prompt_host.dart';
 
@@ -257,7 +258,7 @@ class _S1AppState extends ConsumerState<S1App> with WidgetsBindingObserver {
               data: MediaQuery.of(
                 context,
               ).copyWith(textScaler: TextScaler.linear(textScaleFactor)),
-              child: child!,
+              child: S1DesktopWindowFrame(child: child!),
             ),
           );
         },

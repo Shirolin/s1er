@@ -87,7 +87,7 @@ v1 **不使用** JSONL；列表一律为 JSON 数组。
 |:---|:---|:---|
 | `theme_mode` | string | `system` / `light` / `dark` |
 | `theme_color` | string | 种子色名 |
-| `app_icon` | string | 启动器图标 id（如 `black` / `white`；未知值导入方应回退默认） |
+| `app_icon` | string | 启动器图标 id（如 `black` / `white` / `xb2`；未知值导入方应回退默认；管线见 [app-icons.md](app-icons.md)） |
 | `show_images` | bool | |
 | `image_load_policy` | string | `always` / `wifi_only` / `manual`（正文图片） |
 | `avatar_load_policy` | string | `always` / `wifi_only` / `manual`（头像） |

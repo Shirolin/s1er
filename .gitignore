@@ -1,6 +1,8 @@
 # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-# S1er — Flutter 项目 .gitignore（最佳实践）
+# S1er — Flutter 应用项目 .gitignore
 # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+# 各平台（android/ios/windows/linux/macos）已在各子目录
+# 另有独立 .gitignore，此处只兜底全局通用模式。
 
 
 # ── OS / Editor 临时文件 ──────────────────────────────
@@ -10,6 +12,7 @@
 *.swn
 *.bak
 *.orig
+
 .DS_Store
 .DS_Store?
 .AppleDouble
@@ -19,9 +22,6 @@ Icon?
 Thumbs.db
 Desktop.ini
 ehthumbs.db
-*.log
-*.class
-*.pyc
 
 
 # ── IDE 配置 ──────────────────────────────────────────
@@ -34,6 +34,9 @@ ehthumbs.db
 # VS Code / Cursor
 .vscode/
 *.code-workspace
+
+# Cursor 本地元数据
+.cursor/
 
 # Atom
 .atom/
@@ -49,6 +52,15 @@ ehthumbs.db
 *.sublime-project
 *.sublime-workspace
 
+# AI Agent 工作目录
+.agents/
+.claude/
+.gemini/
+.kilo/
+.vibe/
+.mimocode/
+.codex/
+
 
 # ── Flutter / Dart ────────────────────────────────────
 .dart_tool/
@@ -61,17 +73,15 @@ ehthumbs.db
 .flutter-plugins-dependencies
 **/doc/api/
 
-# Symbolication / Obfuscation
-app.*.symbols
-app.*.map.json
-
-
-# ── Generated Dart 代码 ──────────────────────────────
-# 代码生成器输出（json_serializable, freezed, mockito 等）
+# 代码生成器（json_serializable, freezed, mockito 等）
 *.g.dart
 !lib/services/app_database.g.dart
 *.freezed.dart
 *.mocks.dart
+
+# Symbolication / Obfuscation（release 构建副产物）
+app.*.symbols
+app.*.map.json
 
 
 # ── 构建产物 ──────────────────────────────────────────
@@ -81,87 +91,55 @@ app.*.map.json
 *.js.deps
 *.js.map
 
+# 本地发布包
+/dist/
+*.aab
+
+# Android（子目录未必覆盖全部构建路径）
+/android/.gradle/
+/android/build/
+/android/key.properties
+/android/local.properties
+
 
 # ── 依赖管理 ─────────────────────────────────────────
-# pubspec.lock 应 commit（Flutter 应用项目 — 见 Dart 官方推荐）
-# 如果你是 package/library 项目，取消下面注释：
+# 应用项目：pubspec.lock 应 commit（Dart 官方推荐）
+# package/library 项目则取消下面注释：
 # pubspec.lock
 
 
-# ── OS 平台（子目录已有独立 .gitignore，此处仅兜底） ──
-# Android
-*.jks
-*.keystore
-/android/.gradle/
-/android/.kotlin/
-/android/app/debug/
-/android/app/profile/
-/android/app/release/
-/android/build/
-/android/local.properties
-/android/key.properties
-/android/app/key.properties
-
-# iOS / macOS
-*.xcworkspace
-*.xcuserdata
-DerivedData/
-Pods/
-*.app
-*.ipa
-*.dSYM.zip
-*.dSYM
-
-# Windows
-*.exe
-*.exe.config
-*.pdb
-*.msi
-*.msp
-*.nupkg
-
-# Linux
-*.o
-*.a
-
-
 # ── 测试与覆盖率 ─────────────────────────────────────
-/test/.test_runner_temp/
 *.test_log.txt
 
 
-# ── 项目特有 ──────────────────────────────────────────
-
-# AI Agent 工作目录（Cursor / Claude 等本地缓存）
-.agents/
-.claude/
-.gemini/
-.kilo/
-.vibe/
-.mimocode/
-.codex/
-.cursor/
-
-# 本地计划与报告（仅匹配根目录）
-/plans/
-/reports/
+# ── 日志 ──────────────────────────────────────────────
+*.log
 
 # CORS 代理日志
 proxy_server.log
 
-# 临时脚本（非项目正式代码）
+
+# ── 项目特有 ──────────────────────────────────────────
+# 临时脚本（对话中自动生成的提取/调试工具，非项目正式代码）
 scripts/fix-repos.js
 scripts/maven-proxy.js
 /distill_*.js
+/tool/
 
-# Hive 运行时数据
+# Hive 运行时数据（本地 Drift 之外的历史遗留；目前仅兜底）
 *.hive
 *.hive.lock
 
-# ironpress：flutter test 时从 pub-cache 拷贝的本机库（勿提交）
+# ironpress：flutter test 时从 pub-cache 拷贝的本机库
 /windows/libs/
 /linux/libs/
 /macos/libs/
+
+# 本地计划文件（仅根目录）
+/plans/
+
+# M3 审计报告（每次全量跑自动生成）
+/reports/
 
 
 # ── 安全 ──────────────────────────────────────────────
@@ -174,6 +152,6 @@ scripts/maven-proxy.js
 *.pem
 *.crt
 
-# Local release artifacts
-/dist/
-
+# Android 签名
+*.jks
+*.keystore

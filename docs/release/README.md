@@ -46,9 +46,16 @@ version: 0.1.0+1
    - `channels.*`：有直链则填，否则 `null`（客户端回退 `github`）
 3. 需要踢掉过旧安装包时，抬高 `minSupported`（低于该版本每次冷启动强提醒，可关但下次仍弹）。仅抬 build、name 不变时一般不用动。
 4. 打 GitHub Release（附各平台安装包，如有）；tag 建议与 name 对齐（如 `v0.1.0`）。
-   - **Android**：**两种都发**
-     - **universal（fat）**：`s1er-…-android.apk`（含全部 ABI；应用内更新直链也用这个）
-     - **分架构**：`…-android-arm64-v8a.apk` / `…-armeabi-v7a.apk` / `…-x86_64.apk`（体积更小，用户自选）
+   - **Android 文件名规范**（`s1er-<name>+<build>-android-<variant>.apk`）：
+
+     | 文件后缀 | 含义 |
+     |:---|:---|
+     | `-android-universal.apk` | 合一包（全部 ABI）；应用内更新直链用这个 |
+     | `-android-arm64-v8a.apk` | 仅 arm64（多数真机） |
+     | `-android-armeabi-v7a.apk` | 仅 32 位 ARM |
+     | `-android-x86_64.apk` | 仅 x86_64（模拟器等） |
+
+   - Release 正文由 `release.ps1 create` 自动写入「下哪个包」选型表。
    - **Windows**：`s1er-…-windows-x64.zip`。
 5. 将 `pubspec.yaml` + `latest.json` 等改动提交到 `main`（raw URL 指向 main）。
 

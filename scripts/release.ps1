@@ -84,12 +84,13 @@ function Set-PubspecVersion([string]$Name, [int]$Build) {
 function Get-ArtifactPaths($v) {
     $label = $v.Label
     return [pscustomobject]@{
-        Apk       = Join-Path $Dist "s1er-$label-android.apk"
-        ApkArm64  = Join-Path $Dist "s1er-$label-android-arm64-v8a.apk"
+        # Naming: platform + variant. universal = all ABIs; others are single-ABI.
+        Apk        = Join-Path $Dist "s1er-$label-android-universal.apk"
+        ApkArm64   = Join-Path $Dist "s1er-$label-android-arm64-v8a.apk"
         ApkArmeabi = Join-Path $Dist "s1er-$label-android-armeabi-v7a.apk"
-        ApkX64    = Join-Path $Dist "s1er-$label-android-x86_64.apk"
-        Zip       = Join-Path $Dist "s1er-$label-windows-x64.zip"
-        Notes     = Join-Path $Dist "release-notes-$($v.Tag).md"
+        ApkX64     = Join-Path $Dist "s1er-$label-android-x86_64.apk"
+        Zip        = Join-Path $Dist "s1er-$label-windows-x64.zip"
+        Notes      = Join-Path $Dist "release-notes-$($v.Tag).md"
     }
 }
 
@@ -237,14 +238,22 @@ function Write-NotesFile($v, $path) {
     $body = @"
 ## S1er $($v.Name)
 
-Build ``$($v.Label)`` (about page: ``$($v.Name) ($($v.Build))``).
+Build ``$($v.Label)``（关于页：``$($v.Name) ($($v.Build))``）
 
-### Assets
-- Android universal (all ABIs): ``$(Split-Path $arts.Apk -Leaf)``
-- Android arm64-v8a: ``$(Split-Path $arts.ApkArm64 -Leaf)``
-- Android armeabi-v7a: ``$(Split-Path $arts.ApkArmeabi -Leaf)``
-- Android x86_64: ``$(Split-Path $arts.ApkX64 -Leaf)``
-- Windows: ``$(Split-Path $arts.Zip -Leaf)`` (unzip, run ``s1er.exe``)
+### 下哪个包？（Android）
+
+| 文件 | 选谁 |
+|:---|:---|
+| ``$(Split-Path $arts.Apk -Leaf)`` | **不确定就下这个**（universal，含全部架构，体积最大） |
+| ``$(Split-Path $arts.ApkArm64 -Leaf)`` | 近 5 年大多数真机（arm64） |
+| ``$(Split-Path $arts.ApkArmeabi -Leaf)`` | 较老的 32 位 ARM 机 |
+| ``$(Split-Path $arts.ApkX64 -Leaf)`` | 模拟器 / 少数 x86 平板 |
+
+装错架构会提示解析包失败或无法安装，换对应 ABI 或改下 universal 即可。
+
+### 其它
+
+- Windows：``$(Split-Path $arts.Zip -Leaf)``（解压后运行 ``s1er.exe``）
 
 第三方 Stage1st 客户端；详见 CHANGELOG / README。
 "@
@@ -322,7 +331,7 @@ function Step-Manifest {
     if (-not (Test-Path $Manifest)) { throw "Missing $Manifest" }
 
     # In-app update CTA uses the universal fat APK (no ABI pick needed).
-    $apkFile = "s1er-$($v.Label)-android.apk"
+    $apkFile = "s1er-$($v.Label)-android-universal.apk"
     $zipFile = "s1er-$($v.Label)-windows-x64.zip"
     $apkUrl = "https://github.com/$RepoSlug/releases/download/$($v.Tag)/$([uri]::EscapeDataString($apkFile))"
     $zipUrl = "https://github.com/$RepoSlug/releases/download/$($v.Tag)/$([uri]::EscapeDataString($zipFile))"

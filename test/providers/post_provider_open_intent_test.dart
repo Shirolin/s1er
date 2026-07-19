@@ -38,6 +38,7 @@ void main() {
 
     setUp(() {
       adapter = _ThreadDetailAdapter();
+      clearRateLogSessionCacheForTest();
     });
 
     tearDown(() {
@@ -331,6 +332,7 @@ void main() {
 
     setUp(() {
       adapter = _ThreadDetailAdapter();
+      clearRateLogSessionCacheForTest();
     });
 
     tearDown(() {

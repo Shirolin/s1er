@@ -9,7 +9,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
-- **读帖性能**：评分 HTML 按楼层 `rate` 按需拉取并会话缓存；图片字节与 API 限速分桶；楼层行级订阅黑名单/登录态；链接密集楼层才 keep-alive；BBCode 作者色与大页 `parsePostList` / 评分解析走缓存或 isolate；分享卡大图 RGBA 合成下沉 isolate；`postProvider` 短时会话 keepAlive；表情面板可见区再解码；Drift 为阅读历史/投票增加 `uid` 索引
+- **读帖性能**：评分 HTML 进程内会话缓存去重（Mobile `postlist` 无楼层 `rate`，不能按 JSON 跳过）；图片与 API 限速分桶但均为 2/s；楼层行级订阅黑名单/登录态；PostItem 全量 keep-alive（优先不卡顿）；BBCode 作者色与大页解析可走缓存/isolate；分享卡大图 RGBA 合成下沉 isolate；表情面板可见区再解码；Drift 为阅读历史/投票增加 `uid` 索引
 - **版本约定**：Beta 阶段使用 `0.x`（见 `docs/release/README.md`）；当前 `0.1.0`
 - **Pre-commit**：支持环境变量 `S1_PRECOMMIT`（`full` 默认全量 / `lite` 仅 format+analyze / `skip` 跳过）；钩子委托 `scripts/pre-commit-hook.sh`，详见 [CONTRIBUTING.md](CONTRIBUTING.md) / [docs/development.md](docs/development.md)
 - **文档分流**：README 瘦身为产品入口（截图、下载、亮点、短快速开始）；贡献流程 → [CONTRIBUTING.md](CONTRIBUTING.md)；代理与 `--dart-define` → [docs/development.md](docs/development.md)；架构 → [docs/architecture.md](docs/architecture.md)

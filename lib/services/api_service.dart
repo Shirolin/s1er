@@ -1,6 +1,6 @@
 import 'dart:convert';
 import 'package:dio/dio.dart';
-import 'package:flutter/foundation.dart' show kIsWeb;
+import 'package:flutter/foundation.dart' show kIsWeb, compute;
 import 'package:html/parser.dart' show parse;
 import '../config/api_config.dart';
 import '../models/thread.dart';
@@ -519,6 +519,19 @@ class ApiService {
     return postList
         .map((p) => Post.fromJson(p as Map<String, dynamic>))
         .toList();
+  }
+
+  /// 楼层较多时在后台 isolate 解析，避免阻塞首帧。
+  static Future<List<Post>> parsePostListAsync(Map<String, dynamic> json) {
+    final variables = json['Variables'] as Map<String, dynamic>?;
+    final postList = variables?['postlist'] as List?;
+    if (postList == null || postList.isEmpty) {
+      return Future.value(const []);
+    }
+    if (postList.length < 12) {
+      return Future.value(parsePostList(json));
+    }
+    return compute(parsePostList, json);
   }
 
   static Map<String, int> parseCommentCount(Map<String, dynamic> json) {

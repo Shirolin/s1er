@@ -363,7 +363,7 @@ class _SharePreviewSheetState extends ConsumerState<_SharePreviewSheet> {
       raw.lengthInBytes,
     );
 
-    final opaque = flattenRgbaOntoOpaqueRgba(
+    final opaque = await flattenRgbaOntoOpaqueRgbaAsync(
       rgba: rgbaBytes,
       width: width,
       height: height,

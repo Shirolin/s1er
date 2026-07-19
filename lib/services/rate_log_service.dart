@@ -1,4 +1,5 @@
 import 'package:dio/dio.dart';
+import 'package:flutter/foundation.dart';
 import 'package:html/parser.dart' show parse;
 import '../config/api_config.dart';
 import '../models/rate_log.dart';
@@ -24,6 +25,9 @@ class RateLogService {
         options: Options(responseType: ResponseType.plain),
       );
       final html = response.data as String;
+      if (html.length > 32 * 1024) {
+        return compute(_parseRateLogsIsolate, html);
+      }
       return parseRateLogs(html);
     } catch (_) {
       return {};
@@ -40,11 +44,23 @@ class RateLogService {
         options: Options(responseType: ResponseType.plain),
       );
       final html = response.data as String;
-      final results = parseRateLogs(html, fallbackPid: pid);
+      final results = html.length > 32 * 1024
+          ? await compute(_parseFullRateLogsIsolate, (html, pid))
+          : parseRateLogs(html, fallbackPid: pid);
       return results[pid];
     } catch (_) {
       return null;
     }
+  }
+
+  static Map<String, PostRateLog> _parseRateLogsIsolate(String html) {
+    return parseRateLogs(html);
+  }
+
+  static Map<String, PostRateLog> _parseFullRateLogsIsolate(
+    (String html, String pid) args,
+  ) {
+    return parseRateLogs(args.$1, fallbackPid: args.$2);
   }
 
   static Map<String, PostRateLog> parseRateLogs(

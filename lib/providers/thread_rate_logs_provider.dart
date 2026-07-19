@@ -1,5 +1,6 @@
 import 'dart:async';
 
+import 'package:flutter/foundation.dart' show visibleForTesting;
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../config/constants.dart';
@@ -8,26 +9,60 @@ import 'post_provider.dart';
 
 typedef RateLogKey = (String tid, String pid);
 
+/// 进程内会话缓存：不依赖 keepAlive Timer，避免 widget 测试残留定时器。
+class _RateLogSessionStore {
+  _RateLogSessionStore._();
+
+  static final Map<(String tid, int page), _RateLogPageCache> _pages = {};
+
+  static Map<String, PostRateLog>? get(String tid, int page) {
+    final key = (tid, page);
+    final cached = _pages[key];
+    if (cached == null) return null;
+    if (DateTime.now().difference(cached.loadedAt) >=
+        S1Constants.postSessionCacheExpiry) {
+      _pages.remove(key);
+      return null;
+    }
+    return cached.logs;
+  }
+
+  static void put(String tid, int page, Map<String, PostRateLog> logs) {
+    _pages[(tid, page)] = _RateLogPageCache(logs, DateTime.now());
+  }
+
+  static void updatePid(String tid, int page, String pid, PostRateLog log) {
+    final key = (tid, page);
+    final cached = _pages[key];
+    if (cached == null) return;
+    _pages[key] = _RateLogPageCache(
+      {...cached.logs, pid: log},
+      DateTime.now(),
+    );
+  }
+
+  static void clearTid(String tid) {
+    _pages.removeWhere((key, _) => key.$1 == tid);
+  }
+
+  @visibleForTesting
+  static void clearAll() => _pages.clear();
+}
+
 class ThreadRateLogsNotifier extends Notifier<Map<String, PostRateLog>> {
   ThreadRateLogsNotifier(this.tid);
 
   final String tid;
   int? _loadedPage;
-  final Map<int, _RateLogPageCache> _pageCache = {};
   final Map<int, Future<void>> _inFlightPages = {};
 
   @override
-  Map<String, PostRateLog> build() {
-    final link = ref.keepAlive();
-    final timer = Timer(S1Constants.cacheExpiry, link.close);
-    ref.onDispose(timer.cancel);
-    return const {};
-  }
+  Map<String, PostRateLog> build() => const {};
 
   void clear() {
     _loadedPage = null;
-    _pageCache.clear();
     _inFlightPages.clear();
+    _RateLogSessionStore.clearTid(tid);
     state = const {};
   }
 
@@ -45,11 +80,13 @@ class ThreadRateLogsNotifier extends Notifier<Map<String, PostRateLog>> {
   }
 
   Future<void> ensurePageRateLogs(int page, {bool force = false}) {
-    final cached = _pageCache[page];
-    if (!force && cached != null && !cached.isExpired) {
-      _loadedPage = page;
-      replacePage(cached.logs);
-      return Future.value();
+    if (!force) {
+      final cached = _RateLogSessionStore.get(tid, page);
+      if (cached != null) {
+        _loadedPage = page;
+        mergePage(cached);
+        return Future.value();
+      }
     }
 
     final inFlight = _inFlightPages[page];
@@ -66,9 +103,10 @@ class ThreadRateLogsNotifier extends Notifier<Map<String, PostRateLog>> {
   Future<void> _fetchPage(int page) async {
     final service = ref.read(rateLogServiceProvider);
     final rateLogs = await service.fetchRateLogs(tid, page: page);
+    // 即使 provider 已 dispose，仍写入会话缓存，避免返回同页重复拉 HTML。
+    _RateLogSessionStore.put(tid, page, rateLogs);
     if (!ref.mounted) return;
-    _pageCache[page] = _RateLogPageCache(rateLogs, DateTime.now());
-    replacePage(rateLogs);
+    mergePage(rateLogs);
     _loadedPage = page;
   }
 
@@ -79,13 +117,7 @@ class ThreadRateLogsNotifier extends Notifier<Map<String, PostRateLog>> {
     setForPid(pid, full);
     final page = _loadedPage;
     if (page != null) {
-      final cached = _pageCache[page];
-      if (cached != null) {
-        _pageCache[page] = _RateLogPageCache(
-          {...cached.logs, pid: full},
-          DateTime.now(),
-        );
-      }
+      _RateLogSessionStore.updatePid(tid, page, pid, full);
     }
   }
 }
@@ -95,15 +127,16 @@ class _RateLogPageCache {
 
   final Map<String, PostRateLog> logs;
   final DateTime loadedAt;
-
-  bool get isExpired =>
-      DateTime.now().difference(loadedAt) >= S1Constants.cacheExpiry;
 }
 
 final threadRateLogsProvider = NotifierProvider.autoDispose
     .family<ThreadRateLogsNotifier, Map<String, PostRateLog>, String>(
   ThreadRateLogsNotifier.new,
 );
+
+/// Test helper: clear process-wide rate-log session cache.
+@visibleForTesting
+void clearRateLogSessionCacheForTest() => _RateLogSessionStore.clearAll();
 
 /// 按 (tid, pid) 订阅单条评分日志。
 final rateLogProvider = Provider.autoDispose.family<PostRateLog?, RateLogKey>(

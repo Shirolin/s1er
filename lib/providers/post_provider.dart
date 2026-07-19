@@ -120,6 +120,9 @@ class PostNotifier extends AsyncNotifier<PostListState> {
 
   @override
   Future<PostListState> build() async {
+    // 与读帖同生命周期挂住评分 provider；select 常量避免 merge 触发本 Notifier 重建。
+    ref.watch(threadRateLogsProvider(tid).select((_) => null));
+
     final intent = ref.read(threadOpenIntentProvider(tid));
     final mode = intent?.mode ?? ThreadOpenMode.resume;
 
@@ -141,7 +144,7 @@ class PostNotifier extends AsyncNotifier<PostListState> {
     var page = resolveThreadInitialPage(intent: intent, record: record);
     var loaded = await _loadPage(page);
 
-    // B3：在首屏暴露前用 API 回复数再校正（首个未读楼所在页）
+    // B3：列表未提供 live 回复数、且 API 发现更多未读时再校正一页。
     if (record != null &&
         record.isFinished &&
         record.hasNewReplies(loaded.totalReplies)) {
@@ -149,7 +152,10 @@ class PostNotifier extends AsyncNotifier<PostListState> {
         loaded.totalReplies,
         perPage: loaded.perPage,
       );
-      if (loaded.currentPage < targetPage) {
+      final listLive = intent?.liveTotalReplies;
+      final needsCorrection = loaded.currentPage < targetPage &&
+          (listLive == null || listLive < loaded.totalReplies);
+      if (needsCorrection) {
         loaded = await _loadPage(targetPage);
         return loaded.copyWith(openScrollTarget: const ScrollToPageTop());
       }
@@ -207,9 +213,14 @@ class PostNotifier extends AsyncNotifier<PostListState> {
       page: page,
       authorId: _filterAuthorId,
     );
-    final loaded = _buildStateFromResult(result, page);
-    if (!ref.mounted) return loaded;
+    final posts = await ApiService.parsePostListAsync(result);
+    if (!ref.mounted) {
+      return _buildStateFromResult(result, page, posts: posts);
+    }
+    final loaded = _buildStateFromResult(result, page, posts: posts);
 
+    // 评分明细只在 HTML viewthread 的 #ratelog_*；Mobile JSON 的 postlist
+    // 不含楼层 rate（thread.rate 仅主题级标记）。会话缓存避免同页重复拉取。
     unawaited(
       ref
           .read(threadRateLogsProvider(tid).notifier)
@@ -221,8 +232,12 @@ class PostNotifier extends AsyncNotifier<PostListState> {
     return loaded;
   }
 
-  PostListState _buildStateFromResult(Map<String, dynamic> result, int page) {
-    final posts = ApiService.parsePostList(result);
+  PostListState _buildStateFromResult(
+    Map<String, dynamic> result,
+    int page, {
+    List<Post>? posts,
+  }) {
+    final parsedPosts = posts ?? ApiService.parsePostList(result);
     final variables = result['Variables'] as Map<String, dynamic>? ?? {};
     final thread = variables['thread'] as Map<String, dynamic>? ?? {};
     final perPage = int.tryParse(variables['ppp']?.toString() ?? '') ??
@@ -235,7 +250,7 @@ class PostNotifier extends AsyncNotifier<PostListState> {
         int.tryParse(thread['special']?.toString() ?? '') ?? 0;
 
     return PostListState(
-      posts: posts,
+      posts: parsedPosts,
       currentPage: page,
       totalPages: totalPages,
       threadSubject: thread['subject']?.toString(),

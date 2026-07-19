@@ -62,12 +62,20 @@ final blacklistProvider =
   BlacklistNotifier.new,
 );
 
+/// uid → scopes 索引，供 O(1) 作用域查询。
+final blacklistScopeIndexProvider = Provider<Map<String, Set<String>>>((ref) {
+  final list = ref.watch(blacklistProvider);
+  return {
+    for (final entry in list) entry.uid: entry.scope.toSet(),
+  };
+});
+
 /// 某用户是否在指定作用域下被屏蔽（随 blacklistProvider 更新）。
 final blacklistHasScopeProvider = Provider.autoDispose
     .family<bool, ({String uid, String scope})>((ref, args) {
-  final list = ref.watch(blacklistProvider);
-  for (final entry in list) {
-    if (entry.uid == args.uid && entry.hasScope(args.scope)) return true;
-  }
-  return false;
+  return ref.watch(
+    blacklistScopeIndexProvider.select(
+      (index) => index[args.uid]?.contains(args.scope) ?? false,
+    ),
+  );
 });

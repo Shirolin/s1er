@@ -35,12 +35,14 @@ class S1HttpClient {
   late Dio _dio;
   bool _initialized = false;
   PersistCookieJar? _cookieJar;
-  final List<DateTime> _requestTimestamps = [];
+  final List<DateTime> _apiRequestTimestamps = [];
+  final List<DateTime> _mediaRequestTimestamps = [];
   final Ref? _ref;
   final ProviderContainer? _testContainer;
   final DateTime Function() _now;
   final Future<void> Function(Duration) _delay;
-  Future<void> _rateLimitQueue = Future.value();
+  Future<void> _apiRateLimitQueue = Future.value();
+  Future<void> _mediaRateLimitQueue = Future.value();
 
   static String get _proxyUrl => 'http://localhost:${EnvConfig.proxyPort}';
   static bool get _isWeb => kIsWeb;
@@ -93,7 +95,7 @@ class S1HttpClient {
     _dio.interceptors.add(
       InterceptorsWrapper(
         onRequest: (options, handler) async {
-          await _enforceRateLimit();
+          await _enforceRateLimit(isMedia: _isMediaRequest(options));
 
           final currentFormhash = _read(formhashProvider);
           if (currentFormhash.isNotEmpty &&
@@ -174,25 +176,41 @@ class S1HttpClient {
     _initialized = true;
   }
 
-  Future<void> _enforceRateLimit() async {
-    final previous = _rateLimitQueue;
+  static bool _isMediaRequest(RequestOptions options) {
+    if (options.responseType == ResponseType.bytes) return true;
+    final flag = options.extra['s1Media'];
+    return flag == true;
+  }
+
+  Future<void> _enforceRateLimit({bool isMedia = false}) async {
+    final previous = isMedia ? _mediaRateLimitQueue : _apiRateLimitQueue;
     final gate = Completer<void>();
-    _rateLimitQueue = gate.future;
+    if (isMedia) {
+      _mediaRateLimitQueue = gate.future;
+    } else {
+      _apiRateLimitQueue = gate.future;
+    }
     await previous;
+
+    final timestamps =
+        isMedia ? _mediaRequestTimestamps : _apiRequestTimestamps;
+    final maxPerSecond = isMedia
+        ? S1Constants.maxMediaRequestsPerSecond
+        : S1Constants.maxRequestsPerSecond;
 
     try {
       while (true) {
         final now = _now();
-        _requestTimestamps.removeWhere(
+        timestamps.removeWhere(
           (timestamp) =>
               now.difference(timestamp) >= const Duration(seconds: 1),
         );
-        if (_requestTimestamps.length < S1Constants.maxRequestsPerSecond) {
-          _requestTimestamps.add(_now());
+        if (timestamps.length < maxPerSecond) {
+          timestamps.add(_now());
           return;
         }
 
-        final oldest = _requestTimestamps.first;
+        final oldest = timestamps.first;
         final waitTime = const Duration(seconds: 1) - now.difference(oldest);
         if (waitTime.isNegative || waitTime == Duration.zero) {
           continue;
@@ -205,7 +223,8 @@ class S1HttpClient {
   }
 
   @visibleForTesting
-  Future<void> debugEnforceRateLimit() => _enforceRateLimit();
+  Future<void> debugEnforceRateLimit({bool isMedia = false}) =>
+      _enforceRateLimit(isMedia: isMedia);
 
   Future<Response> get(
     String url, {

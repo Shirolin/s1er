@@ -59,6 +59,7 @@ class _PostItemState extends ConsumerState<PostItem>
   late PostImageIndexCounter _imageIndexCounter;
 
   /// 保留已构建楼层，避免滚出视口后销毁 Html（链接密集楼层重建可达秒级）。
+  /// 内存换流畅：优先不卡顿，长帖内存略涨可接受。
   @override
   bool get wantKeepAlive => true;
 
@@ -262,7 +263,7 @@ class _PostRateLogSection extends ConsumerWidget {
     if (rateLog == null || rateLog.isEmpty) {
       return const SizedBox.shrink();
     }
-    return RateLogCard(tid: tid, pid: pid);
+    return RateLogCard(tid: tid, pid: pid, rateLog: rateLog);
   }
 }
 

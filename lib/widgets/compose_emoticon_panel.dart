@@ -4,6 +4,7 @@ import '../models/emoticon_catalog.dart';
 import '../theme/app_theme.dart';
 import '../theme/s1_haptics.dart';
 import 'emoticon_widget.dart';
+import 'lazy_visibility_loader.dart';
 
 /// 回复页表情面板：键盘高度的 input accessory（与底部操作栏一体），
 /// 不是 modal / docked bottom sheet。
@@ -193,12 +194,44 @@ class _EmoticonGrid extends StatelessWidget {
             child: Tooltip(
               message: item.entity,
               child: Center(
-                child: EmoticonImage(item: item, size: 40),
+                child: _DeferredEmoticonImage(item: item, size: 40),
               ),
             ),
           ),
         );
       },
+    );
+  }
+}
+
+/// 进入视口后再解码 asset，避免大包一次性打满主线程。
+class _DeferredEmoticonImage extends StatefulWidget {
+  const _DeferredEmoticonImage({required this.item, required this.size});
+
+  final EmoticonItem item;
+  final double size;
+
+  @override
+  State<_DeferredEmoticonImage> createState() => _DeferredEmoticonImageState();
+}
+
+class _DeferredEmoticonImageState extends State<_DeferredEmoticonImage> {
+  bool _visible = false;
+
+  @override
+  Widget build(BuildContext context) {
+    return LazyVisibilityLoader(
+      preloadMargin: 80,
+      onVisible: () {
+        if (!_visible && mounted) setState(() => _visible = true);
+      },
+      child: SizedBox(
+        width: widget.size,
+        height: widget.size,
+        child: _visible
+            ? EmoticonImage(item: widget.item, size: widget.size)
+            : const SizedBox.shrink(),
+      ),
     );
   }
 }

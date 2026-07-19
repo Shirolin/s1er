@@ -445,14 +445,6 @@ class _ThreadDetailScreenState extends ConsumerState<ThreadDetailScreen> {
     await ref.read(postProvider(widget.tid).notifier).refresh();
   }
 
-  bool _canRatePost(Post post) {
-    final auth = ref.read(authStateProvider);
-    if (!auth.isLoggedIn) return false;
-    final currentUid = auth.user?.uid;
-    if (currentUid == null || currentUid.isEmpty) return false;
-    return post.authorId != currentUid;
-  }
-
   Future<void> _openRateDialog(Post post) async {
     if (!ref.read(authStateProvider).isLoggedIn) {
       await context.push('/login');
@@ -519,76 +511,42 @@ class _ThreadDetailScreenState extends ConsumerState<ThreadDetailScreen> {
     final floorOffset = (state.currentPage - 1) * state.perPage;
     final displayFloor = floorOffset + postIndex + 1;
 
-    final isPostBlocked = post.authorId.isNotEmpty &&
-        ref.watch(
-          blacklistHasScopeProvider(
-            (
-              uid: post.authorId,
-              scope: BlacklistRecord.scopePost,
-            ),
-          ),
-        );
-    final isExpanded = _expandedBlockedPids.contains(post.pid);
-
-    if (isPostBlocked && !isExpanded) {
-      return RepaintBoundary(
-        key: ValueKey(post.pid),
-        child: KeyedSubtree(
-          key: postKey,
-          child: _BlockedPostPlaceholder(
-            author: post.author,
-            onExpand: () {
-              setState(() => _expandedBlockedPids.add(post.pid));
-            },
-          ),
-        ),
-      );
-    }
-
-    final currentUid = ref.watch(authStateProvider).user?.uid;
-    final canAddToBlacklist =
-        post.authorId.isNotEmpty && post.authorId != currentUid;
-    final canEdit = post.authorId.isNotEmpty &&
-        post.authorId == currentUid &&
-        !(post.isFirst && state.threadSpecial != 0);
-
-    return RepaintBoundary(
+    return _ThreadDetailPostTile(
       key: ValueKey(post.pid),
-      child: PostItem(
-        key: postKey,
-        post: post,
-        displayFloor: displayFloor,
-        tid: widget.tid,
-        currentPage: state.currentPage,
-        isHighlighted: highlightPid != null && post.pid == highlightPid,
-        onFilterByAuthor: () {
-          ref.read(postProvider(widget.tid).notifier).filterByAuthor(
-                post.authorId,
-                post.author,
-              );
-          _scrollToTop();
-        },
-        onReply: state.allowReply
-            ? () => _openCompose(
-                  state,
-                  replyTo: post,
-                  displayFloor: displayFloor,
-                )
-            : null,
-        onShare: () => ref.read(postShareProvider.notifier).share(
-              context: context,
-              post: post,
-              displayFloor: displayFloor,
-              threadSubject: state.threadSubject,
-            ),
-        onEdit: canEdit ? () => _openEdit(state, post) : null,
-        onRate: _canRatePost(post) ? () => _openRateDialog(post) : null,
-        onAddToBlacklist:
-            canAddToBlacklist ? () => _confirmAddToBlacklist(post) : null,
-        onReport: ref.read(authStateProvider).isLoggedIn
-            ? () => _openReportDialog(post, state)
-            : null,
-      ),
+      postKey: postKey,
+      post: post,
+      tid: widget.tid,
+      state: state,
+      displayFloor: displayFloor,
+      isHighlighted: highlightPid != null && post.pid == highlightPid,
+      isExpandedBlocked: _expandedBlockedPids.contains(post.pid),
+      onExpandBlocked: () {
+        setState(() => _expandedBlockedPids.add(post.pid));
+      },
+      onFilterByAuthor: () {
+        ref.read(postProvider(widget.tid).notifier).filterByAuthor(
+              post.authorId,
+              post.author,
+            );
+        _scrollToTop();
+      },
+      onReply: state.allowReply
+          ? () => _openCompose(
+                state,
+                replyTo: post,
+                displayFloor: displayFloor,
+              )
+          : null,
+      onShare: () => ref.read(postShareProvider.notifier).share(
+            context: context,
+            post: post,
+            displayFloor: displayFloor,
+            threadSubject: state.threadSubject,
+          ),
+      onEdit: () => _openEdit(state, post),
+      onRate: () => _openRateDialog(post),
+      onAddToBlacklist: () => _confirmAddToBlacklist(post),
+      onReport: () => _openReportDialog(post, state),
     );
   }
 
@@ -994,6 +952,103 @@ class _ThreadDetailScreenState extends ConsumerState<ThreadDetailScreen> {
     return widget.embedded
         ? screen
         : S1DesktopScaffold(highlightedTab: 0, child: screen);
+  }
+}
+
+/// 行级订阅黑名单 / 登录态，避免父级 ListView 因 watch 全页重建。
+class _ThreadDetailPostTile extends ConsumerWidget {
+  const _ThreadDetailPostTile({
+    super.key,
+    required this.postKey,
+    required this.post,
+    required this.tid,
+    required this.state,
+    required this.displayFloor,
+    required this.isHighlighted,
+    required this.isExpandedBlocked,
+    required this.onExpandBlocked,
+    required this.onFilterByAuthor,
+    required this.onReply,
+    required this.onShare,
+    required this.onEdit,
+    required this.onRate,
+    required this.onAddToBlacklist,
+    required this.onReport,
+  });
+
+  final Key? postKey;
+  final Post post;
+  final String tid;
+  final PostListState state;
+  final int displayFloor;
+  final bool isHighlighted;
+  final bool isExpandedBlocked;
+  final VoidCallback onExpandBlocked;
+  final VoidCallback onFilterByAuthor;
+  final VoidCallback? onReply;
+  final VoidCallback onShare;
+  final VoidCallback onEdit;
+  final VoidCallback onRate;
+  final VoidCallback onAddToBlacklist;
+  final VoidCallback onReport;
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final isPostBlocked = post.authorId.isNotEmpty &&
+        ref.watch(
+          blacklistHasScopeProvider(
+            (
+              uid: post.authorId,
+              scope: BlacklistRecord.scopePost,
+            ),
+          ),
+        );
+
+    if (isPostBlocked && !isExpandedBlocked) {
+      return RepaintBoundary(
+        child: KeyedSubtree(
+          key: postKey,
+          child: _BlockedPostPlaceholder(
+            author: post.author,
+            onExpand: onExpandBlocked,
+          ),
+        ),
+      );
+    }
+
+    final currentUid = ref.watch(
+      authStateProvider.select((auth) => auth.user?.uid),
+    );
+    final isLoggedIn = ref.watch(
+      authStateProvider.select((auth) => auth.isLoggedIn),
+    );
+    final canAddToBlacklist =
+        post.authorId.isNotEmpty && post.authorId != currentUid;
+    final canEdit = post.authorId.isNotEmpty &&
+        post.authorId == currentUid &&
+        !(post.isFirst && state.threadSpecial != 0);
+    final canRate = isLoggedIn &&
+        currentUid != null &&
+        currentUid.isNotEmpty &&
+        post.authorId != currentUid;
+
+    return RepaintBoundary(
+      child: PostItem(
+        key: postKey,
+        post: post,
+        displayFloor: displayFloor,
+        tid: tid,
+        currentPage: state.currentPage,
+        isHighlighted: isHighlighted,
+        onFilterByAuthor: onFilterByAuthor,
+        onReply: onReply,
+        onShare: onShare,
+        onEdit: canEdit ? onEdit : null,
+        onRate: canRate ? onRate : null,
+        onAddToBlacklist: canAddToBlacklist ? onAddToBlacklist : null,
+        onReport: isLoggedIn ? onReport : null,
+      ),
+    );
   }
 }
 

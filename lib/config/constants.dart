@@ -9,9 +9,18 @@ class S1Constants {
       'Mozilla/5.0 (iPhone; CPU iPhone OS 17_0 like Mac OS X) '
       'AppleWebKit/605.1.15 (KHTML, like Gecko) '
       'Version/17.0 Mobile/15E148 Safari/604.1';
+
+  /// API / HTML 等论坛交互请求的全局上限（保护 S1 服务器）。
   static const int maxRequestsPerSecond = 2;
+
+  /// 图片字节等媒体请求的独立配额（与 API 同为 2/s，但不共用队列，避免互相堵）。
+  static const int maxMediaRequestsPerSecond = 2;
+
   static const int cookieRefreshIntervalMinutes = 30;
   static const Duration cacheExpiry = Duration(minutes: 5);
+
+  /// 读帖页状态会话缓存（离开详情后短时保留，避免返回同帖重拉）。
+  static const Duration postSessionCacheExpiry = Duration(minutes: 2);
 
   /// 帖子详情页每页帖数的兜底值。
   /// 权威来源是 API 的 `ppp` 字段（viewthread，实际为 40）；仅在拿不到

@@ -9,9 +9,17 @@ import 'user_profile_sheet.dart';
 import 's1_click_region.dart';
 
 class RateLogCard extends ConsumerStatefulWidget {
-  const RateLogCard({super.key, required this.tid, required this.pid});
+  const RateLogCard({
+    super.key,
+    required this.tid,
+    required this.pid,
+    this.rateLog,
+  });
   final String tid;
   final String pid;
+
+  /// 由父级传入时可避免重复 watch [rateLogProvider]。
+  final PostRateLog? rateLog;
 
   @override
   ConsumerState<RateLogCard> createState() => _RateLogCardState();
@@ -40,7 +48,8 @@ class _RateLogCardState extends ConsumerState<RateLogCard> {
 
   @override
   Widget build(BuildContext context) {
-    final rateLog = ref.watch(rateLogProvider((widget.tid, widget.pid)));
+    final rateLog =
+        widget.rateLog ?? ref.watch(rateLogProvider((widget.tid, widget.pid)));
     if (rateLog == null || rateLog.isEmpty) {
       return const SizedBox.shrink();
     }

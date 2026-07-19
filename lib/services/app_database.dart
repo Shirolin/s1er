@@ -70,7 +70,30 @@ class AppDatabase extends _$AppDatabase {
   AppDatabase.forTesting(super.executor);
 
   @override
-  int get schemaVersion => 1;
+  int get schemaVersion => 2;
+
+  @override
+  MigrationStrategy get migration => MigrationStrategy(
+        onCreate: (Migrator m) async {
+          await m.createAll();
+          await _createUidIndexes();
+        },
+        onUpgrade: (Migrator m, int from, int to) async {
+          if (from < 2) {
+            await _createUidIndexes();
+          }
+        },
+      );
+
+  Future<void> _createUidIndexes() async {
+    await customStatement(
+      'CREATE INDEX IF NOT EXISTS reading_histories_uid '
+      'ON reading_histories (uid)',
+    );
+    await customStatement(
+      'CREATE INDEX IF NOT EXISTS poll_votes_uid ON poll_votes (uid)',
+    );
+  }
 
   static QueryExecutor _openExecutor() {
     return driftDatabase(

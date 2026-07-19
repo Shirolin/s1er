@@ -9,7 +9,7 @@ import '../config/env_config.dart';
 import '../models/emoticon_catalog.dart';
 import '../providers/settings_provider.dart';
 import '../theme/app_theme.dart';
-import '../utils/author_color_adapter.dart';
+import '../utils/author_color_cache.dart';
 import '../utils/bbcode_cache.dart';
 import '../utils/bbcode_parser.dart';
 import '../utils/post_image_index_counter.dart';
@@ -330,7 +330,11 @@ class _MemoizedHtmlBlockState extends State<_MemoizedHtmlBlock> {
     final imagesExpanded = widget.imagesExpanded;
 
     final scheme = Theme.of(context).colorScheme;
-    final html = AuthorColorAdapter.adaptHtml(widget.html, scheme);
+    final html = AuthorColorCache.adapt(
+      widget.html,
+      scheme,
+      _cachedThemeToken ?? 0,
+    );
     final profileDetail = 'links=${_countAnchors(html)} len=${html.length}';
     final textTheme = Theme.of(context).textTheme;
     final bodySize = S1Typography.bodySize(textTheme);

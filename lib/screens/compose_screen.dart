@@ -1503,8 +1503,7 @@ class _ComposeScreenState extends ConsumerState<ComposeScreen> {
     }
     if (!_isDirty) return;
 
-    final title =
-        _isNewThread ? '离开发帖？' : (_isEditing ? '离开编辑？' : '离开回复？');
+    final title = _isNewThread ? '离开发帖？' : (_isEditing ? '离开编辑？' : '离开回复？');
     final choice = await showS1DraftLeaveDialog(
       context,
       title: title,

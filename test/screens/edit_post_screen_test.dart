@@ -279,7 +279,8 @@ void main() {
     );
   });
 
-  testWidgets('edit success pops back even when draft is dirty', (tester) async {
+  testWidgets('edit success pops back even when draft is dirty',
+      (tester) async {
     EditPostSubmitResult? popped;
     await tester.pumpWidget(
       ProviderScope(

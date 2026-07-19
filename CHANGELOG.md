@@ -9,6 +9,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
+- **平台验收**：Windows 标为已验证（与 Web / Android 并列）；同步 README、宣传站与 AGENTS 完成标准
 - **读帖性能**：评分 HTML 进程内会话缓存去重（Mobile `postlist` 无楼层 `rate`，不能按 JSON 跳过）；图片与 API 限速分桶但均为 2/s；楼层行级订阅黑名单/登录态；PostItem 全量 keep-alive（优先不卡顿）；BBCode 作者色与大页解析可走缓存/isolate；分享卡大图 RGBA 合成下沉 isolate；表情面板可见区再解码；Drift 为阅读历史/投票增加 `uid` 索引
 - **版本约定**：Beta 阶段使用 `0.x`（见 `docs/release/README.md`）；当前 `0.1.0`
 - **Pre-commit**：支持环境变量 `S1_PRECOMMIT`（`full` 默认全量 / `lite` 仅 format+analyze / `skip` 跳过）；钩子委托 `scripts/pre-commit-hook.sh`，详见 [CONTRIBUTING.md](CONTRIBUTING.md) / [docs/development.md](docs/development.md)
@@ -43,12 +44,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Platform Support
 
-- Web（需本地 CORS 代理）
-- Android
+- Web（需本地 CORS 代理；已验证）
+- Android（已验证 · APK）
+- Windows（已验证 · zip x64）
 - iOS（代码已就绪，待签名与真机测试）
-- Windows
 - macOS（代码已就绪，待签名与真机测试）
-- Linux
+- Linux（代码已就绪，待系统验收）
 
 ### Known Limitations
 

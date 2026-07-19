@@ -205,7 +205,7 @@ flutter run -d chrome --dart-define=TALKER_LOG_LEVEL=all --dart-define=TALKER_MA
 - 无 [CRITICAL] 级别审计问题
 - 已原子提交，commit message 符合 Angular 规范（`<type>(<scope>): <subject>`）
 - 通过 `flutter analyze` 无 error/warning（analysis_options.yaml 规则）
-- 多平台兼容性已考虑（至少 Web + Android 双平台验证关键路径）
+- 多平台兼容性已考虑（至少 Web + Android + Windows 验证关键路径）
 
 ---
 

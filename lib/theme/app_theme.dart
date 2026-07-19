@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 
 /// M3 Shape tokens — 统一圆角半径
@@ -146,6 +147,55 @@ abstract class S1Typography {
       textTheme.bodyMedium?.height ?? defaultBodyLineHeight;
 }
 
+/// 桌面端系统字体（零体积）：避免 Material 默认 Roboto 缺失后按码点乱回退，
+/// 导致同句「有的字粗、有的字细」或图标私用区被错误字体画出乱符。
+///
+/// 不打包 TTF；依赖本机已装中文字体（中文 Windows 通常有微软雅黑）。
+abstract final class S1Fonts {
+  /// 主族；移动端 / Web 保持框架默认（null）。
+  static String? get fontFamily {
+    if (kIsWeb) return null;
+    return switch (defaultTargetPlatform) {
+      TargetPlatform.windows => 'Microsoft YaHei UI',
+      TargetPlatform.macOS => 'PingFang SC',
+      TargetPlatform.linux => 'Noto Sans CJK SC',
+      _ => null,
+    };
+  }
+
+  static List<String> get fontFamilyFallback {
+    if (kIsWeb) return const [];
+    return switch (defaultTargetPlatform) {
+      TargetPlatform.windows => const [
+          'Microsoft YaHei',
+          'Segoe UI',
+          'SimHei',
+        ],
+      TargetPlatform.macOS => const [
+          'Hiragino Sans GB',
+          'Heiti SC',
+        ],
+      TargetPlatform.linux => const [
+          'Noto Sans CJK JP',
+          'WenQuanYi Micro Hei',
+          'Droid Sans Fallback',
+        ],
+      _ => const [],
+    };
+  }
+
+  /// 把主族 / 回退链写进 [TextTheme]（[Icon] 仍走 MaterialIcons，不受影响）。
+  static TextTheme applyTo(TextTheme base) {
+    final family = fontFamily;
+    final fallback = fontFamilyFallback;
+    if (family == null && fallback.isEmpty) return base;
+    return base.apply(
+      fontFamily: family,
+      fontFamilyFallback: fallback,
+    );
+  }
+}
+
 /// M3 动效时长 / 曲线（短过渡与面板进出共用）。
 abstract class S1Motion {
   static const Duration rapid = Duration(milliseconds: 100);
@@ -215,12 +265,19 @@ class AppTheme {
   }
 
   static ThemeData fromColorScheme(ColorScheme colorScheme) {
-    final textTheme =
-        ThemeData(useMaterial3: true, colorScheme: colorScheme).textTheme;
+    final textTheme = S1Fonts.applyTo(
+      ThemeData(useMaterial3: true, colorScheme: colorScheme).textTheme,
+    );
 
     return ThemeData(
       useMaterial3: true,
       colorScheme: colorScheme,
+      fontFamily: S1Fonts.fontFamily,
+      fontFamilyFallback: S1Fonts.fontFamilyFallback.isEmpty
+          ? null
+          : S1Fonts.fontFamilyFallback,
+      textTheme: textTheme,
+      primaryTextTheme: textTheme,
       scaffoldBackgroundColor: S1Surface.page(colorScheme),
       appBarTheme: AppBarTheme(
         centerTitle: true,

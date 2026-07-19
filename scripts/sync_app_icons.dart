@@ -4,15 +4,20 @@
 // Android default (black) REUSES existing flutter_launcher_icons output
 // (@mipmap/ic_launcher) — never regenerate it.
 //
-// Alternate Android icons use the same adaptive recipe:
-//   solid background + assets/branding/s1er_logo_transparent.png + 16% inset
-// Legacy mipmaps for alternates are scaled from the variant master PNG.
+// Solid-plate alternates (e.g. white):
+//   solid bg + shared transparent fg + 16% inset (same as stock).
+//
+// Finished themed masters (androidMasterAsIcon, e.g. xb2):
+//   ONLY scale master → mipmap densities. No adaptive XML / inset / crop.
 //
 // Steps to add an icon:
 // 1. Add preview + master under assets/branding/
 // 2. Add AppIconVariant in lib/config/app_icon_catalog.dart
 // 3. dart run scripts/sync_app_icons.dart
 // 4. Commit generated android/ / ios/ resources
+//
+// Windows exe/taskbar icon (default black only; no runtime switching):
+//   dart run scripts/gen_windows_icon.dart
 
 import 'dart:io';
 
@@ -58,12 +63,22 @@ const _mipmapSizes = <String, int>{
   'xxxhdpi': 192,
 };
 
+/// Adaptive foreground canvas (dp 108) — same buckets as flutter_launcher_icons.
+const _adaptiveForegroundSizes = <String, int>{
+  'mdpi': 108,
+  'hdpi': 162,
+  'xhdpi': 216,
+  'xxhdpi': 324,
+  'xxxhdpi': 432,
+};
+
 Future<void> main() async {
   final root = Directory.current.path;
   stdout.writeln('Syncing app icons from AppIconCatalog…');
   stdout.writeln(
-    'Android black → reuse @mipmap/ic_launcher; '
-    'others → adaptive (transparent + ${AppIconCatalog.adaptiveInsetPercent}% inset).',
+    'black → stock ic_launcher; '
+    'solid-plate → adaptive 16% shared fg; '
+    'finished master → mipmap scale only.',
   );
 
   await _cleanupOrphanBlackMipmaps(root);
@@ -89,7 +104,10 @@ Future<void> main() async {
       return;
     }
     await _writeAndroidAlternate(root, variant, decoded);
-    stdout.writeln('  Android: ${variant.id} → ${variant.androidMipmap}');
+    stdout.writeln(
+      '  Android: ${variant.id} → ${variant.androidMipmap}'
+      '${variant.androidMasterAsIcon ? ' (master as icon)' : ' (solid-plate adaptive)'}',
+    );
   }
 
   await _patchAndroidManifest(root);
@@ -117,7 +135,6 @@ Future<void> _cleanupOrphanBlackMipmaps(String root) async {
   }
 }
 
-/// Alternate icons: same adaptive recipe as flutter_launcher_icons default.
 Future<void> _writeAndroidAlternate(
   String root,
   AppIconVariant variant,
@@ -127,7 +144,7 @@ Future<void> _writeAndroidAlternate(
   final name = variant.androidMipmap;
   final bgName = '${name}_background';
 
-  // Legacy mipmaps: scale the precomposed master (parity with image_path).
+  // Always write density mipmaps from the finished master (scale only).
   for (final entry in _mipmapSizes.entries) {
     final dir = Directory(p.join(res, 'mipmap-${entry.key}'));
     dir.createSync(recursive: true);
@@ -141,12 +158,32 @@ Future<void> _writeAndroidAlternate(
         .writeAsBytes(img.encodePng(resized));
   }
 
-  // Adaptive: solid bg + shared transparent foreground + 16% inset.
-  // Reuses @drawable/ic_launcher_foreground from flutter_launcher_icons.
   final anydpi = Directory(p.join(res, 'mipmap-anydpi-v26'));
   anydpi.createSync(recursive: true);
+  final adaptiveXml = File(p.join(anydpi.path, '$name.xml'));
+
+  // Drop any per-variant adaptive foreground leftovers.
+  for (final density in _adaptiveForegroundSizes.keys) {
+    final fg = File(
+      p.join(res, 'drawable-$density', '${name}_foreground.png'),
+    );
+    if (fg.existsSync()) {
+      fg.deleteSync();
+    }
+  }
+
+  if (variant.androidMasterAsIcon) {
+    // Finished artwork: mipmaps only — never adaptive inset/crop.
+    if (adaptiveXml.existsSync()) {
+      adaptiveXml.deleteSync();
+    }
+    await _removeColorResource(root, bgName);
+    return;
+  }
+
+  // Solid-plate (e.g. white): same adaptive recipe as stock black.
   final inset = AppIconCatalog.adaptiveInsetPercent;
-  await File(p.join(anydpi.path, '$name.xml')).writeAsString('''
+  await adaptiveXml.writeAsString('''
 <?xml version="1.0" encoding="utf-8"?>
 <adaptive-icon xmlns:android="http://schemas.android.com/apk/res/android">
   <background android:drawable="@color/$bgName"/>
@@ -160,6 +197,32 @@ Future<void> _writeAndroidAlternate(
       .trimLeft());
 
   await _upsertColorResource(root, bgName, variant.backgroundColor);
+}
+
+Future<void> _removeColorResource(String root, String name) async {
+  final file = File(
+    p.join(
+      root,
+      'android',
+      'app',
+      'src',
+      'main',
+      'res',
+      'values',
+      'colors.xml',
+    ),
+  );
+  if (!file.existsSync()) return;
+  var content = await file.readAsString();
+  final next = content.replaceAll(
+    RegExp(
+      r'\s*<color name="' + RegExp.escape(name) + r'">[^<]*</color>\s*',
+    ),
+    '\n',
+  );
+  if (next != content) {
+    await file.writeAsString(next);
+  }
 }
 
 Future<void> _upsertColorResource(
@@ -334,26 +397,17 @@ ${alternateEntries.toString().trimRight()}
 	<key>UIApplicationSupportsAlternateIcons</key>
 	<true/>''';
 
-  content = content.replaceAll(
-    RegExp(
-      r'\t<key>CFBundleIcons</key>\s*<dict>[\s\S]*?</dict>\s*'
-      r'(?:\t<key>UIApplicationSupportsAlternateIcons</key>\s*<true/>\s*)?',
-    ),
-    '',
+  // Keep everything up to the end of iPad orientations, then append icon block.
+  final anchor = RegExp(
+    r'(<key>UISupportedInterfaceOrientations~ipad</key>\s*<array>[\s\S]*?</array>)'
+    r'[\s\S]*</dict>\s*</plist>\s*$',
   );
-  content = content.replaceAll(
-    RegExp(
-      r'\t<key>UIApplicationSupportsAlternateIcons</key>\s*<true/>\s*',
-    ),
-    '',
-  );
-
-  final closing = RegExp(r'</dict>\s*</plist>\s*$');
-  if (!closing.hasMatch(content)) {
-    stderr.writeln('Warning: could not find Info.plist closing tags');
+  final match = anchor.firstMatch(content);
+  if (match == null) {
+    stderr.writeln('Warning: could not locate iPad orientations anchor');
     return;
   }
-  content = content.replaceFirst(closing, '$block\n</dict>\n</plist>\n');
+  content = '${match.group(1)}\n$block\n</dict>\n</plist>\n';
 
   await file.writeAsString(content);
   stdout.writeln('  Info.plist CFBundleAlternateIcons updated');

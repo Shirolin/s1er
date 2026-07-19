@@ -13,6 +13,7 @@ class MainActivity : FlutterActivity() {
     private val iconAliasSuffixes = linkedMapOf(
         "black" to ".IconBlack",
         "white" to ".IconWhite",
+        "xb2" to ".IconXb2",
     )
 
     override fun configureFlutterEngine(flutterEngine: FlutterEngine) {

@@ -58,6 +58,8 @@ flutter_launcher_icons:
   adaptive_icon_foreground: assets/branding/s1er_logo_transparent.png
   remove_alpha_ios: true
   min_sdk_android: 21
+  # Windows ICO: dart run scripts/gen_windows_icon.dart (multi-size; do not
+  # use flutter_launcher_icons windows: — it emits a single 256 PNG-ICO).
 
 flutter:
   uses-material-design: true
@@ -66,6 +68,7 @@ flutter:
     - assets/branding/s1er_mark.png
     - assets/branding/s1er_logo_black.png
     - assets/branding/s1er_logo_white.png
+    - assets/branding/s1er_logo_xb2.png
     - assets/emoticons/
     - assets/emoticons/face2017/
     - assets/emoticons/carton2017/

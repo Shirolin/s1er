@@ -10,6 +10,8 @@
 /* APP_ICON_PBX_BUILD_FILE_BEGIN */
 		5C3098A2DAFF3C5000000000 /* AppIcon-white@2x.png in Resources */ = {isa = PBXBuildFile; fileRef = 2C829201B184B50000000000 /* AppIcon-white@2x.png */; };
 		777E229355AC2E2000000000 /* AppIcon-white@3x.png in Resources */ = {isa = PBXBuildFile; fileRef = 2E376AA010E907FD00000000 /* AppIcon-white@3x.png */; };
+		65D7FACB20B0018300000000 /* AppIcon-xb2@2x.png in Resources */ = {isa = PBXBuildFile; fileRef = 40FD350227F1108A00000000 /* AppIcon-xb2@2x.png */; };
+		678CD36A168C9E8900000000 /* AppIcon-xb2@3x.png in Resources */ = {isa = PBXBuildFile; fileRef = 42B20DA126A6F25100000000 /* AppIcon-xb2@3x.png */; };
 /* APP_ICON_PBX_BUILD_FILE_END */
 		1498D2341E8E89220040F4C2 /* GeneratedPluginRegistrant.m in Sources */ = {isa = PBXBuildFile; fileRef = 1498D2331E8E89220040F4C2 /* GeneratedPluginRegistrant.m */; };
 		331C808B294A63AB00263BE5 /* RunnerTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 331C807B294A618700263BE5 /* RunnerTests.swift */; };
@@ -49,6 +51,8 @@
 /* APP_ICON_PBX_FILE_REF_BEGIN */
 		2C829201B184B50000000000 /* AppIcon-white@2x.png */ = {isa = PBXFileReference; lastKnownFileType = image.png; name = "AppIcon-white@2x.png"; path = "AlternateAppIcons/AppIcon-white@2x.png"; sourceTree = "<group>"; };
 		2E376AA010E907FD00000000 /* AppIcon-white@3x.png */ = {isa = PBXFileReference; lastKnownFileType = image.png; name = "AppIcon-white@3x.png"; path = "AlternateAppIcons/AppIcon-white@3x.png"; sourceTree = "<group>"; };
+		40FD350227F1108A00000000 /* AppIcon-xb2@2x.png */ = {isa = PBXFileReference; lastKnownFileType = image.png; name = "AppIcon-xb2@2x.png"; path = "AlternateAppIcons/AppIcon-xb2@2x.png"; sourceTree = "<group>"; };
+		42B20DA126A6F25100000000 /* AppIcon-xb2@3x.png */ = {isa = PBXFileReference; lastKnownFileType = image.png; name = "AppIcon-xb2@3x.png"; path = "AlternateAppIcons/AppIcon-xb2@3x.png"; sourceTree = "<group>"; };
 /* APP_ICON_PBX_FILE_REF_END */
 		1498D2321E8E86230040F4C2 /* GeneratedPluginRegistrant.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = GeneratedPluginRegistrant.h; sourceTree = "<group>"; };
 		1498D2331E8E89220040F4C2 /* GeneratedPluginRegistrant.m */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.objc; path = GeneratedPluginRegistrant.m; sourceTree = "<group>"; };
@@ -130,6 +134,8 @@
 /* APP_ICON_PBX_GROUP_BEGIN */
 				2C829201B184B50000000000 /* AppIcon-white@2x.png */,
 				2E376AA010E907FD00000000 /* AppIcon-white@3x.png */,
+				40FD350227F1108A00000000 /* AppIcon-xb2@2x.png */,
+				42B20DA126A6F25100000000 /* AppIcon-xb2@3x.png */,
 /* APP_ICON_PBX_GROUP_END */
 				1498D2321E8E86230040F4C2 /* GeneratedPluginRegistrant.h */,
 				1498D2331E8E89220040F4C2 /* GeneratedPluginRegistrant.m */,
@@ -244,6 +250,8 @@
 /* APP_ICON_PBX_RESOURCES_BEGIN */
 				5C3098A2DAFF3C5000000000 /* AppIcon-white@2x.png in Resources */,
 				777E229355AC2E2000000000 /* AppIcon-white@3x.png in Resources */,
+				65D7FACB20B0018300000000 /* AppIcon-xb2@2x.png in Resources */,
+				678CD36A168C9E8900000000 /* AppIcon-xb2@3x.png in Resources */,
 /* APP_ICON_PBX_RESOURCES_END */
 			);
 			runOnlyForDeploymentPostprocessing = 0;

@@ -15,31 +15,31 @@ void main() {
       expect(AppIconCatalog.normalize('nope'), 'black');
       expect(AppIconCatalog.normalize('white'), 'white');
       expect(AppIconCatalog.normalize('black'), 'black');
+      expect(AppIconCatalog.normalize('xb2'), 'xb2');
     });
 
     test('contains known variants only', () {
       expect(AppIconCatalog.contains('black'), isTrue);
       expect(AppIconCatalog.contains('white'), isTrue);
+      expect(AppIconCatalog.contains('xb2'), isTrue);
       expect(AppIconCatalog.contains('seasonal'), isFalse);
     });
 
     test('alternateVariants excludes default', () {
       expect(
         AppIconCatalog.alternateVariants.map((v) => v.id),
-        ['white'],
+        ['white', 'xb2'],
       );
     });
 
-    test('black reuses stock ic_launcher; white is generated', () {
+    test('black stock; white solid-plate; xb2 finished master', () {
       expect(AppIconCatalog.defaultVariant.androidMipmap, 'ic_launcher');
       expect(AppIconCatalog.defaultVariant.reuseExistingAndroid, isTrue);
-      expect(
-        AppIconCatalog.find('white')!.androidMipmap,
-        'ic_launcher_white',
-      );
+      expect(AppIconCatalog.find('white')!.androidMasterAsIcon, isFalse);
+      expect(AppIconCatalog.find('xb2')!.androidMasterAsIcon, isTrue);
       expect(
         AppIconCatalog.androidGeneratedVariants.map((v) => v.id),
-        ['white'],
+        ['white', 'xb2'],
       );
     });
   });

@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:s1er/theme/app_theme.dart';
@@ -222,6 +223,29 @@ void main() {
     test('S1Typography defaults match settings', () {
       expect(S1Typography.defaultBodySize, 14);
       expect(S1Typography.defaultCodeSize, 12);
+    });
+
+    test('desktop themes pin a system CJK family (no bundled TTF)', () {
+      final previous = debugDefaultTargetPlatformOverride;
+      addTearDown(() => debugDefaultTargetPlatformOverride = previous);
+
+      debugDefaultTargetPlatformOverride = TargetPlatform.windows;
+      final windows = AppTheme.lightTheme('sand');
+      expect(
+        windows.textTheme.bodyMedium?.fontFamily,
+        'Microsoft YaHei UI',
+      );
+      expect(
+        windows.textTheme.bodyMedium?.fontFamilyFallback,
+        containsAll(['Microsoft YaHei', 'Segoe UI']),
+      );
+
+      debugDefaultTargetPlatformOverride = TargetPlatform.android;
+      final android = AppTheme.lightTheme('sand');
+      expect(
+        android.textTheme.bodyMedium?.fontFamily,
+        isNot('Microsoft YaHei UI'),
+      );
     });
   });
 }

@@ -53,4 +53,50 @@ void main() {
       isTrue,
     );
   });
+
+  group('resolveFloorInPageForProgress', () {
+    test('uses leading floor while not at page bottom', () {
+      expect(
+        resolveFloorInPageForProgress(
+          leadingIndex: 2,
+          postCount: 5,
+          atPageBottom: false,
+        ),
+        3,
+      );
+    });
+
+    test('uses last floor when scrolled to page bottom', () {
+      expect(
+        resolveFloorInPageForProgress(
+          leadingIndex: 2,
+          postCount: 5,
+          atPageBottom: true,
+        ),
+        5,
+      );
+    });
+
+    test('clamps leading index to post count', () {
+      expect(
+        resolveFloorInPageForProgress(
+          leadingIndex: 99,
+          postCount: 5,
+          atPageBottom: false,
+        ),
+        5,
+      );
+    });
+
+    test('empty page falls back to floor 1', () {
+      expect(
+        resolveFloorInPageForProgress(
+          leadingIndex: 0,
+          postCount: 0,
+          atPageBottom: true,
+        ),
+        1,
+      );
+    });
+  });
 }

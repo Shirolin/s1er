@@ -69,6 +69,19 @@ bool shouldWriteReadingProgressUpdate({
   return lastRecordedFloorInPage != currentFloorInPage;
 }
 
+/// 阅读进度写回用的页内楼层（1-based）。
+///
+/// 平常取视口锚线上方最后一楼；已滚到页底时取本页末楼，避免短帖读完后仍停在较早楼层。
+int resolveFloorInPageForProgress({
+  required int leadingIndex,
+  required int postCount,
+  required bool atPageBottom,
+}) {
+  if (postCount <= 0) return 1;
+  if (atPageBottom) return postCount;
+  return leadingIndex.clamp(0, postCount - 1) + 1;
+}
+
 /// 滚动 FAB 显隐状态（用 [ValueNotifier] 更新，避免重建列表）。
 class _ScrollFabVisibility {
   const _ScrollFabVisibility({
@@ -188,12 +201,24 @@ class _ThreadDetailScreenState extends ConsumerState<ThreadDetailScreen> {
             const Duration(milliseconds: 400)) {
       return;
     }
-    final index = ScrollFloorNavigator.findLeadingVisiblePostIndex(
+    final floorInPage = _resolveVisibleFloorInPage(state);
+    if (floorInPage == null) return;
+    _lastFloorProgressAt = now;
+    _recordProgress(state, floorInPage: floorInPage);
+  }
+
+  int? _resolveVisibleFloorInPage(PostListState state) {
+    if (state.posts.isEmpty) return null;
+    final leading = ScrollFloorNavigator.findLeadingVisiblePostIndex(
       postKeys: _postKeys,
     );
-    if (index == null) return;
-    _lastFloorProgressAt = now;
-    _recordProgress(state, floorInPage: index + 1);
+    final atBottom = _scrollFabVisibility.value.atPageBottom;
+    if (leading == null && !atBottom) return null;
+    return resolveFloorInPageForProgress(
+      leadingIndex: leading ?? 0,
+      postCount: state.posts.length,
+      atPageBottom: atBottom,
+    );
   }
 
   Future<void> _consumeOpenScrollTarget(PostListState state) async {

@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.1.1] - 2026-07-19
+
 ### Changed
 
 - **平台验收**：Windows 标为已验证（与 Web / Android 并列）；同步 README、宣传站与 AGENTS 完成标准

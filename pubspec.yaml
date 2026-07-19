@@ -4,7 +4,7 @@ publish_to: 'none'
 homepage: https://shirolin.github.io/s1er/
 repository: https://github.com/Shirolin/s1er
 issue_tracker: https://github.com/Shirolin/s1er/issues
-version: 0.1.0+1
+version: 0.1.1+1
 
 environment:
   sdk: '>=3.4.0 <4.0.0'
@@ -60,7 +60,7 @@ flutter_launcher_icons:
   remove_alpha_ios: true
   min_sdk_android: 21
   # Windows ICO: dart run scripts/gen_windows_icon.dart (multi-size; do not
-  # use flutter_launcher_icons windows: — it emits a single 256 PNG-ICO).
+  # use flutter_launcher_icons windows: �?it emits a single 256 PNG-ICO).
 
 flutter:
   uses-material-design: true

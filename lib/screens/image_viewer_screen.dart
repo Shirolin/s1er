@@ -3,7 +3,7 @@ import 'dart:math' as math;
 import 'dart:typed_data';
 import 'dart:ui' as ui;
 
-import 'package:flutter/foundation.dart' show kIsWeb;
+import 'package:flutter/foundation.dart' show debugPrint, kIsWeb;
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
@@ -148,14 +148,8 @@ class _ImageViewerScreenState extends ConsumerState<ImageViewerScreen> {
         if (mounted) _tryApplyInitialFit();
       });
     } catch (e, st) {
-      FlutterError.reportError(
-        FlutterErrorDetails(
-          exception: e,
-          stack: st,
-          library: 'image_viewer_screen',
-          context: ErrorDescription('load image for viewer'),
-        ),
-      );
+      // Expected network/decode failures — local log only, never Sentry.
+      debugPrint('load image for viewer: $e\n$st');
       if (mounted) {
         setState(() => _loadState = _ViewerLoadState.error);
       }

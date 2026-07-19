@@ -34,7 +34,7 @@
 | Cookie 管理 | dio_cookie_manager / cookie_jar | ^3.1.1 / ^4.0.8 |
 | 安全存储 | flutter_secure_storage | ^10.x |
 | 加密 | cryptography | ^2.x |
-| 崩溃监控 | sentry_flutter（可选，通过 --dart-define 注入 DSN 启用） | ^8.0.0 |
+| 崩溃监控 | sentry_flutter（可选，通过 --dart-define 注入 DSN 启用） | ^9.0.0 |
 | 包管理 | flutter pub | — |
 | Lint | flutter_lints | ^6.0.0 |
 | 运行环境 | Flutter SDK >=3.4 | 支持 Web / Android / iOS / Windows / macOS / Linux |
@@ -181,6 +181,9 @@ flutter run -d chrome --dart-define=TALKER_LOG_LEVEL=all --dart-define=TALKER_MA
 | `IMAGE_UPLOAD_TIMEOUT` | int | `120` | 外链图床上传 send/receive 超时（秒；Web 代理 `/ext-upload` 同上限） |
 | `UPDATE_MANIFEST_URL` | String | GitHub raw `docs/release/latest.json` | 应用升级清单 URL |
 | `DISTRIBUTION` | String | `github` | 分发渠道：`github` / `play`（影响升级 CTA 链接） |
+| `SENTRY_DSN` | String | 空 | 非空时启用 Sentry；详见 `docs/sentry-setup.md` |
+| `SENTRY_TRACES_SAMPLE_RATE` | String | `0` | 性能采样 0–1；默认仅错误 |
+| `SENTRY_DEBUG_UPLOAD` | bool | `false` | debug 构建是否实际上传 |
 
 新增配置项规则：
 1. 在 `EnvConfig` 中添加 `static const` 字段，使用 `Xxx.fromEnvironment('KEY', defaultValue: ...)` 

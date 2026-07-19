@@ -6,7 +6,6 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:talker_dio_logger/talker_dio_logger.dart';
-import 'package:sentry_flutter/sentry_flutter.dart';
 import 'app.dart';
 import 'config/env_config.dart';
 import 'theme/app_theme.dart';
@@ -15,6 +14,7 @@ import 'providers/settings_provider.dart';
 import 'services/app_database.dart';
 import 'services/app_local_data.dart';
 import 'services/http_client.dart';
+import 'services/sentry_bootstrap.dart';
 import 'services/talker.dart';
 import 'utils/web_reload.dart'
     if (dart.library.js_interop) 'utils/web_reload_web.dart';
@@ -52,44 +52,11 @@ void main() async {
     }
   }
 
-  if (EnvConfig.sentryEnabled) {
-    try {
-      await SentryFlutter.init(
-        (options) {
-          options.dsn = EnvConfig.sentryDsn;
-          options.tracesSampleRate = 0.2;
-        },
-      );
-    } catch (e, st) {
-      talker.handle(e, st, 'Sentry init skipped');
-    }
-  }
+  await initSentryIfEnabled();
 
-  // ── Web error handlers: persist to localStorage + console log ────
+  // ── Web: console + localStorage, while still forwarding to Sentry ─
   if (kIsWeb) {
-    FlutterError.onError = (details) {
-      final exception = details.exception;
-      if (exception is AssertionError &&
-          exception.message
-              .toString()
-              .contains('ViewInsets cannot be negative')) {
-        return;
-      }
-      // ignore: avoid_print — intentional console logging.
-      print('FlutterError: $exception\n${details.stack}');
-      FlutterError.presentError(details);
-    };
-
-    PlatformDispatcher.instance.onError = (error, stack) {
-      if (error is AssertionError &&
-          error.message.toString().contains('ViewInsets cannot be negative')) {
-        return true;
-      }
-      // ignore: avoid_print — intentional console logging.
-      print('FATAL: $error\n$stack');
-      persistInitError('$error');
-      return true;
-    };
+    installWebSentryAwareErrorHandlers(persistInitError: persistInitError);
   }
 
   // ── Init chain: persist to localStorage on failure ───────────────
@@ -138,6 +105,7 @@ void main() async {
     );
   } catch (e, st) {
     talker.handle(e, st, 'App init failed');
+    await captureSentryException(e, st, hint: 'App init failed');
     if (kIsWeb) {
       persistInitError('$e');
     }

@@ -90,6 +90,25 @@ class EnvConfig {
 
   static bool get sentryEnabled => sentryDsn.isNotEmpty;
 
+  /// Performance traces 采样率（0–1；默认 0 = 仅错误，不开性能）
+  static const String _sentryTracesSampleRateRaw = String.fromEnvironment(
+    'SENTRY_TRACES_SAMPLE_RATE',
+    defaultValue: '0',
+  );
+
+  static double get sentryTracesSampleRate {
+    final parsed = double.tryParse(_sentryTracesSampleRateRaw) ?? 0;
+    if (parsed < 0) return 0;
+    if (parsed > 1) return 1;
+    return parsed;
+  }
+
+  /// Debug 构建是否允许实际上传（默认 false，防止本机误开 DSN 刷配额）
+  static const bool sentryDebugUpload = bool.fromEnvironment(
+    'SENTRY_DEBUG_UPLOAD',
+    defaultValue: false,
+  );
+
   // ── 便捷判断 ──────────────────────────────────────────
 
   static bool get talkerLogAll => talkerLogLevel == 'all';

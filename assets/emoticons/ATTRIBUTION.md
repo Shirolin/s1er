@@ -35,4 +35,4 @@ dart run scripts/download_emoticons.dart --write-list # 按 packs.json 重生 do
 dart run scripts/download_emoticons.dart --tag=r5.13  # 指定 Release tag
 ```
 
-详见仓库根目录 `README.md`。请勿将下载脚本放入 CI，勿对论坛 CDN 做全量扫描。
+详见 [开发指南](../../docs/development.md)。请勿将下载脚本放入 CI，勿对论坛 CDN 做全量扫描。

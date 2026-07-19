@@ -6,7 +6,7 @@
     <title>S1er — Stage1st 第三方客户端</title>
     <meta
       name="description"
-      content="S1er 是使用 Flutter 构建的非官方 Stage1st（S1）论坛客户端，支持 Web、Android、iOS 与桌面平台。Material Design 3、麻将脸、本地阅读体验。"
+      content="S1er 是使用 Flutter 构建的非官方 Stage1st（S1）论坛客户端。当前已验证 Web 调试与 Android APK；其它平台工程已就绪、验收推进中。Material Design 3、麻将脸、本地阅读体验。"
     />
     <meta name="keywords" content="Stage1st, S1, S1er, 论坛客户端, Flutter, Material Design 3, 动漫论坛, 游戏论坛, 泥潭" />
     <meta name="theme-color" content="#08090d" />
@@ -25,14 +25,14 @@
     <meta property="og:title" content="S1er — Stage1st 第三方客户端" />
     <meta
       property="og:description"
-      content="Material Design 3 · 多平台 · 开源。浏览、发帖、麻将脸与本地阅读体验。"
+      content="Material Design 3 · 开源 Beta。已验证 Web 与 Android APK；其它平台工程已就绪。"
     />
     <meta property="og:image" content="https://shirolin.github.io/s1er/assets/branding/s1er_logo_transparent.png" />
     <meta property="og:url" content="https://shirolin.github.io/s1er/" />
     <meta property="og:type" content="website" />
     <meta name="twitter:card" content="summary_large_image" />
     <meta name="twitter:title" content="S1er — Stage1st 第三方客户端" />
-    <meta name="twitter:description" content="Material Design 3 · 多平台 · 开源。浏览、发帖、麻将脸与本地阅读体验。" />
+    <meta name="twitter:description" content="Material Design 3 · 开源 Beta。已验证 Web 与 Android APK；其它平台工程已就绪。" />
     <meta name="twitter:image" content="https://shirolin.github.io/s1er/assets/branding/s1er_logo_transparent.png" />
   </head>
   <body>
@@ -121,7 +121,7 @@
             </h1>
 
             <p class="hero__lead reveal-hero">
-              基于 Flutter 的 Stage1st 第三方论坛客户端：版块浏览、主题阅读、发帖互动与麻将脸，同一套体验覆盖 Web 与原生多端。
+              基于 Flutter 的 Stage1st 第三方论坛客户端：版块浏览、主题阅读、发帖互动与麻将脸。当前以 Web 调试与 Android APK 为主验收，其它端工程已就绪。
             </p>
 
             <div class="hero__actions reveal-hero">
@@ -463,54 +463,54 @@
         <div class="section__inner">
           <header class="section__header reveal">
             <p class="section__eyebrow">平台</p>
-            <h2>一套代码，多端可用</h2>
+            <h2>一套代码，验收逐步推进</h2>
             <p class="section__lead">
-              Flutter 覆盖 Web、Android、iOS、Windows、macOS 与 Linux。发布包以 GitHub Releases 为准；当前 Beta，关键路径以 Web 与 Android 验收为主。
+              仓库含 Web、Android、iOS、Windows、macOS 与 Linux 工程。当前已验证 Web 调试与 Android APK；其余平台可自构建，尚未做系统验收。发布包以 GitHub Releases 为准。
             </p>
           </header>
 
           <ul class="platforms reveal">
-            <li class="platform-card">
+            <li class="platform-card platform-card--verified">
               <span class="platform-card__icon" aria-hidden="true">
                 <svg viewBox="0 0 24 24"><path fill="currentColor" d="M12 2a10 10 0 1 0 0 20 10 10 0 0 0 0-20zm7.93 9h-3.09a15.6 15.6 0 0 0-1.2-5.02A8.03 8.03 0 0 1 19.93 11zM12 4c.9 0 2.2 1.9 2.82 5H9.18C9.8 5.9 11.1 4 12 4zM8.36 5.98A15.6 15.6 0 0 0 7.16 11H4.07a8.03 8.03 0 0 1 4.29-5.02zM4.07 13h3.09c.2 1.8.64 3.5 1.2 5.02A8.03 8.03 0 0 1 4.07 13zM12 20c-.9 0-2.2-1.9-2.82-5h5.64C14.2 18.1 12.9 20 12 20zm3.64-1.98c.56-1.52 1-3.22 1.2-5.02h3.09a8.03 8.03 0 0 1-4.29 5.02zM9.18 13h5.64c-.18 1.72-.6 3.3-1.1 4.5-.32.76-.68 1.3-1.12 1.6-.2.14-.4.2-.6.2s-.4-.06-.6-.2c-.44-.3-.8-.84-1.12-1.6-.5-1.2-.92-2.78-1.1-4.5z"/></svg>
               </span>
               <span class="platform-card__name">Web</span>
-              <span class="platform-card__hint">优先验收</span>
+              <span class="platform-card__hint">已验证 · 调试</span>
             </li>
-            <li class="platform-card">
+            <li class="platform-card platform-card--verified">
               <span class="platform-card__icon" aria-hidden="true">
                 <svg viewBox="0 0 24 24"><path fill="currentColor" d="M17.6 9.48 19.44 6.3a.65.65 0 0 0-1.12-.66l-1.9 3.28A11.3 11.3 0 0 0 12 8.1c-1.6 0-3.1.3-4.42.82L5.68 5.64a.65.65 0 1 0-1.12.66L6.4 9.48C3.74 11.2 2 14.1 2 17.4h20c0-3.3-1.74-6.2-4.4-7.92zM7.2 15.2a1.1 1.1 0 1 1 0-2.2 1.1 1.1 0 0 1 0 2.2zm9.6 0a1.1 1.1 0 1 1 0-2.2 1.1 1.1 0 0 1 0 2.2z"/></svg>
               </span>
               <span class="platform-card__name">Android</span>
-              <span class="platform-card__hint">优先验收</span>
+              <span class="platform-card__hint">已验证 · APK</span>
             </li>
-            <li class="platform-card">
+            <li class="platform-card platform-card--pending">
               <span class="platform-card__icon" aria-hidden="true">
                 <svg viewBox="0 0 24 24"><path fill="currentColor" d="M16.7 12.7c0-2.2 1.8-3.3 1.9-3.4-1-1.5-2.6-1.7-3.2-1.7-1.3-.1-2.6.8-3.3.8s-1.7-.8-2.9-.7c-1.5 0-2.9.9-3.6 2.2-1.6 2.7-.4 6.7 1.1 8.9.7 1.1 1.6 2.3 2.8 2.2 1.1 0 1.5-.7 2.9-.7s1.7.7 2.9.7 1.9-1.1 2.7-2.2c.9-1.2 1.2-2.4 1.2-2.5-.1 0-2.4-.9-2.4-3.6zm-2.2-6.4c.6-.8 1.1-1.9.9-3-.9 0-2 .6-2.6 1.4-.6.7-1.1 1.8-.9 2.9 1 .1 2-.5 2.6-1.3z"/></svg>
               </span>
               <span class="platform-card__name">iOS</span>
-              <span class="platform-card__hint">工程已就绪</span>
+              <span class="platform-card__hint">未验证</span>
             </li>
-            <li class="platform-card">
+            <li class="platform-card platform-card--pending">
               <span class="platform-card__icon" aria-hidden="true">
                 <svg viewBox="0 0 24 24"><path fill="currentColor" d="M3 5.5A1.5 1.5 0 0 1 4.5 4h15A1.5 1.5 0 0 1 21 5.5v10a1.5 1.5 0 0 1-1.5 1.5H13v1.5h3a.75.75 0 0 1 0 1.5H8a.75.75 0 0 1 0-1.5h3V17H4.5A1.5 1.5 0 0 1 3 15.5v-10zM4.5 5.5v9h15v-9h-15z"/></svg>
               </span>
               <span class="platform-card__name">Windows</span>
-              <span class="platform-card__hint">桌面端</span>
+              <span class="platform-card__hint">未验证</span>
             </li>
-            <li class="platform-card">
+            <li class="platform-card platform-card--pending">
               <span class="platform-card__icon" aria-hidden="true">
                 <svg viewBox="0 0 24 24"><path fill="currentColor" d="M4 17.5V16h16v1.5a1.5 1.5 0 0 1-1.5 1.5h-13A1.5 1.5 0 0 1 4 17.5zM5 6.5A1.5 1.5 0 0 1 6.5 5h11A1.5 1.5 0 0 1 19 6.5V15H5V6.5zm2 .5v7h10V7H7z"/></svg>
               </span>
               <span class="platform-card__name">macOS</span>
-              <span class="platform-card__hint">桌面端</span>
+              <span class="platform-card__hint">未验证</span>
             </li>
-            <li class="platform-card">
+            <li class="platform-card platform-card--pending">
               <span class="platform-card__icon" aria-hidden="true">
                 <svg viewBox="0 0 24 24"><path fill="currentColor" d="M12.5 2.1c-.3-.1-.7-.1-1 0-1.4.4-2.5 2.3-2.9 4.6-.2 1.1-.1 2.2.1 3.1-.7.3-1.3.8-1.7 1.5-.5.9-.6 2-.3 3 .4 1.3 1.3 2.4 2.5 3l.2 2.1c.1.7.7 1.2 1.4 1.2h2.4c.7 0 1.3-.5 1.4-1.2l.2-2.1c1.2-.6 2.1-1.7 2.5-3 .3-1 .2-2.1-.3-3-.4-.7-1-1.2-1.7-1.5.2-.9.3-2 .1-3.1-.4-2.3-1.5-4.2-2.9-4.6zm-1.1 1.6c.1 0 .2 0 .3 0 .7.2 1.5 1.5 1.8 3.3.1.8.1 1.6 0 2.3h-4c-.1-.7-.1-1.5 0-2.3.3-1.8 1.1-3.1 1.8-3.3.1 0 .1 0 .1 0z"/></svg>
               </span>
               <span class="platform-card__name">Linux</span>
-              <span class="platform-card__hint">桌面端</span>
+              <span class="platform-card__hint">未验证</span>
             </li>
           </ul>
         </div>
@@ -551,7 +551,7 @@
             />
             <h2>开始使用 S1er</h2>
             <p>
-              从 GitHub Releases 获取最新构建，或克隆仓库自行编译。
+              从 GitHub Releases 获取最新构建，或克隆仓库自行编译。未验证平台请以源码构建并自行验收。
               <span class="cta__version" data-version-text>当前 v0.1.0 · Beta</span>
             </p>
             <div class="cta__actions">

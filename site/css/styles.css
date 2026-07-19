@@ -295,7 +295,7 @@ a:hover {
 }
 
 .text-gradient {
-  background: linear-gradient(120deg, var(--cyan-bright), var(--cyan) 40%, var(--violet));
+  background: linear-gradient(135deg, var(--cyan-bright) 0%, var(--cyan) 50%, #bca5ff 100%);
   -webkit-background-clip: text;
   background-clip: text;
   color: transparent;
@@ -593,28 +593,38 @@ a:hover {
   transform: rotateY(-3deg) rotateX(2deg);
 }
 
-.hero-stage__phone {
+.hero-stage .hero-stage__phone {
   position: absolute;
   z-index: 2;
   width: min(9.5rem, 28vw);
   animation: float-soft 6.5s var(--ease) infinite;
 }
 
-.hero-stage__phone--front {
-  right: -0.25rem;
-  bottom: -1.25rem;
+.hero-stage .hero-stage__phone--front {
+  right: -1.75rem;
+  bottom: -2rem;
+  width: min(8.2rem, 22vw);
   animation-delay: 0.4s;
+  z-index: 3;
+  box-shadow:
+    0 0 0 1px rgba(255, 255, 255, 0.12),
+    0 28px 72px rgba(0, 0, 0, 0.65),
+    0 0 60px rgba(61, 184, 255, 0.1);
 }
 
-.hero-stage__phone--back {
-  left: -0.5rem;
-  bottom: 8%;
-  width: min(8rem, 24vw);
-  opacity: 0.92;
-  z-index: 0;
+.hero-stage .hero-stage__phone--back {
+  left: -2.5rem;
+  bottom: 16%;
+  width: min(7rem, 18vw);
+  opacity: 0.95;
+  z-index: 2;
   transform: rotate(-8deg);
   animation-name: float-soft-alt;
   animation-delay: 1.1s;
+  animation-duration: 7.8s;
+  box-shadow:
+    0 0 0 1px rgba(255, 255, 255, 0.08),
+    0 24px 54px rgba(0, 0, 0, 0.55);
 }
 
 @media (max-width: 640px) {
@@ -640,10 +650,10 @@ a:hover {
 @keyframes float-soft {
   0%,
   100% {
-    transform: translateY(0);
+    transform: translateY(0) rotate(0deg);
   }
   50% {
-    transform: translateY(-10px);
+    transform: translateY(-12px) rotate(1.2deg);
   }
 }
 
@@ -653,7 +663,7 @@ a:hover {
     transform: rotate(-8deg) translateY(0);
   }
   50% {
-    transform: rotate(-8deg) translateY(-8px);
+    transform: rotate(-6.5deg) translateY(-10px);
   }
 }
 
@@ -679,8 +689,11 @@ a:hover {
   align-items: center;
   gap: 0.35rem;
   padding: 0.7rem 0.9rem;
-  background: linear-gradient(180deg, #151922, #10131a);
+  background: rgba(21, 25, 34, 0.75);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
   border-bottom: 1px solid var(--border);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.05);
 }
 
 .device-window__dot {
@@ -1229,6 +1242,26 @@ a:hover {
   font-size: 0.75rem;
   color: var(--ink-faint);
   font-weight: 500;
+}
+
+.platform-card--verified {
+  border-color: rgba(61, 184, 255, 0.28);
+  background: rgba(61, 184, 255, 0.05);
+}
+
+.platform-card--verified .platform-card__hint {
+  color: var(--cyan-bright);
+  font-weight: 600;
+}
+
+.platform-card--pending {
+  opacity: 0.78;
+}
+
+.platform-card--pending .platform-card__icon {
+  color: var(--ink-faint);
+  background: rgba(255, 255, 255, 0.04);
+  border-color: var(--border);
 }
 
 /* —— Trust —— */

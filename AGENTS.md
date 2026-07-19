@@ -184,6 +184,9 @@ flutter run -d chrome --dart-define=TALKER_LOG_LEVEL=all --dart-define=TALKER_MA
 | `SENTRY_DSN` | String | 空 | 非空时启用 Sentry；详见 `docs/sentry-setup.md` |
 | `SENTRY_TRACES_SAMPLE_RATE` | String | `0` | 性能采样 0–1；默认仅错误 |
 | `SENTRY_DEBUG_UPLOAD` | bool | `false` | debug 构建是否实际上传 |
+| `SENTRY_DSN` | String | 空 | 非空时启用 Sentry；详见 `docs/sentry-setup.md` |
+| `SENTRY_TRACES_SAMPLE_RATE` | String | `0` | 性能采样 0–1；默认仅错误 |
+| `SENTRY_DEBUG_UPLOAD` | bool | `false` | debug 构建是否实际上传 |
 
 新增配置项规则：
 1. 在 `EnvConfig` 中添加 `static const` 字段，使用 `Xxx.fromEnvironment('KEY', defaultValue: ...)` 
@@ -248,9 +251,9 @@ flutter run -d chrome --dart-define=TALKER_LOG_LEVEL=all --dart-define=TALKER_MA
 
 - **Flutter SDK**：预装在 `/home/ubuntu/flutter`（stable，Dart 3.12+），已通过 `~/.bashrc` 加入交互式 shell 的 PATH。非交互式脚本请用全路径 `/home/ubuntu/flutter/bin/flutter`。
 - **Lint / Test**：`flutter analyze`（当前 0 issue）与 `flutter test`（250+ 测试）。注意：**首次** `flutter test` 会一次性编译引擎测试产物，可能数分钟无输出（输出被 shell 缓冲），属正常；产物缓存后整套测试约数秒到十几秒。用 `--reporter expanded` 可看到实时进度。
-- **Pre-commit**：安装 `.\scripts\install_precommit.ps1` 后，默认 `S1_PRECOMMIT=full`（format + analyze + test + M3）。小改用 `S1_PRECOMMIT=lite`；完全跳过用 `skip` 或 `git commit --no-verify`（**仅当用户明确要求跳过时**）。源脚本：`scripts/pre-commit-hook.sh`；用法见 README「Pre-commit 质量检查」。
+- **Pre-commit**：安装 `.\scripts\install_precommit.ps1` 后，默认 `S1_PRECOMMIT=full`（format + analyze + test + M3）。小改用 `S1_PRECOMMIT=lite`；完全跳过用 `skip` 或 `git commit --no-verify`（**仅当用户明确要求跳过时**）。源脚本：`scripts/pre-commit-hook.sh`；用法见 [CONTRIBUTING.md](CONTRIBUTING.md)。
 - **M3 审计**：`dart run scripts/audit_m3.dart --fail-on-error` 扫描 `lib/`（P0/P1）与 `test/`，报告输出至 `reports/m3_audit_<date>.md`。
-- **运行 Web 开发环境（推荐的可测试目标）**：需要同时启动两个进程（标准命令见 `README.md`）：
+- **运行 Web 开发环境（推荐的可测试目标）**：需要同时启动两个进程（标准命令见 [docs/development.md](docs/development.md)）：
   1. CORS 代理：`dart run scripts/proxy_server.dart`，监听 `http://localhost:19080`，转发到 `https://stage1st.com/2b/...` 并处理 CORS/Cookie。
   2. Flutter Web：`flutter run -d web-server --web-port 8080 --web-hostname 0.0.0.0`（无头 VM 用 `web-server` 设备，避免依赖 Chrome 调试扩展；桌面 Chrome 可直接访问 `http://localhost:8080`）。
   Web 端 API 请求由 `S1HttpClient` 在 `kIsWeb` 时重写到代理端口，**代理必须先启动**，否则论坛数据加载失败。

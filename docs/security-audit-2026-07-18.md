@@ -38,7 +38,7 @@ S1er 仅为第三方客户端。禁止把论坛或第三方服务器当靶场。
 |:---|:---|
 | Drift 明文 | 设置、草稿、阅读历史、黑名单等存本地 SQLite；设备被物理妥协时可读（Cookie 另有加密） |
 | 备份 ZIP 明文 | 用户主动导出的 L1 包不含 Cookie，但含历史/黑名单等；分享前需自知 |
-| Web 开发代理 | 本机 `localhost` 代理为开发便利；共享机器请设 `PROXY_AUTH_TOKEN`（见 README） |
+| Web 开发代理 | 本机 `localhost` 代理为开发便利；共享机器请设 `PROXY_AUTH_TOKEN`（见 [docs/development.md](development.md)） |
 | 无证书 pinning | 依赖系统 TLS 信任；企业 MITM 环境下流量可见 |
 | Web CSP | 生产 Web 部署尚未强制 CSP（纵深防御，后续可选） |
 | 未使用的 `webview_flutter` 依赖 | 业务未引用；后续可移除 |

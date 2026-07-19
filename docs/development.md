@@ -118,6 +118,7 @@ flutter run -d chrome --dart-define=PROXY_PORT=19081
 | `scripts/sync_app_icons.dart` | 按 `AppIconCatalog` 生成 Android/iOS 交替启动器图标；规则见 [启动器图标](app-icons.md) |
 | `scripts/gen_windows_icon.dart` | 从黑底成品图生成 Windows `app_icon.ico`（无运行时切换） |
 | `scripts/build.ps1` | Windows 交互式构建菜单；Release 项需要维护者签名配置 |
+| `scripts/release.ps1` | 发版分步：bump / 本机构建 / 建空 Release /（可选）CLI 上传 / 写 `latest.json`；见 [发版说明](release/README.md) |
 
 启动器图标（黑/白 solid-plate vs 成品主题图如 xb2）：见 [启动器图标](app-icons.md)。改 catalog 或 branding 后务必跑 sync 并提交生成资源。
 

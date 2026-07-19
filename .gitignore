@@ -173,3 +173,7 @@ scripts/maven-proxy.js
 *.key
 *.pem
 *.crt
+
+# Local release artifacts
+/dist/
+

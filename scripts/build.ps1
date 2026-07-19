@@ -72,11 +72,11 @@ function Show-Menu {
     }
     Write-Host ""
     
-    Write-Host "  [1] Split APKs (Recommended)" -ForegroundColor Green
-    Write-Host "      -> armeabi-v7a / arm64-v8a / x86_64"
+    Write-Host "  [1] Universal APK" -ForegroundColor Green
+    Write-Host "      -> One APK, all ABIs (also used by release.ps1 + in-app update)"
     Write-Host ""
-    Write-Host "  [2] Single APK (All architectures)" -ForegroundColor Yellow
-    Write-Host "      -> For direct distribution, larger file"
+    Write-Host "  [2] Split APKs (per-ABI)" -ForegroundColor Green
+    Write-Host "      -> Smaller files; release.ps1 ships these alongside [1]"
     Write-Host ""
     Write-Host "  [3] Android App Bundle (AAB)" -ForegroundColor Yellow
     Write-Host "      -> For Google Play Store"
@@ -118,6 +118,31 @@ function Test-SigningConfig {
     return $true
 }
 
+function Build-SingleAPK {
+    if (-not (Test-SigningConfig)) { return }
+
+    Write-Host ""
+    Write-Host "Building universal (multi-ABI) APK with release signing + obfuscate..." -ForegroundColor Green
+    Build-WithDsn @("build", "apk", "--obfuscate", "--split-debug-info=build/debug-info")
+    if ($LASTEXITCODE -eq 0) {
+        $apk = Get-ChildItem build\app\outputs\flutter-apk\app-release.apk -ErrorAction SilentlyContinue
+        if ($apk) {
+            $size = [math]::Round($apk.Length / 1MB, 1)
+            $path = $apk.FullName
+            Write-Host ""
+            Write-Host "Build successful!" -ForegroundColor Green
+            Write-Host "Output: $path - $size MB" -ForegroundColor Yellow
+            Write-Host "  (universal: contains armeabi-v7a / arm64-v8a / x86_64)" -ForegroundColor Gray
+            Write-Host ""
+            Write-Host "Debug symbols saved to: build\debug-info\" -ForegroundColor Gray
+            Write-Host "  (Keep these for crash symbolication)" -ForegroundColor Gray
+        }
+    } else {
+        Write-Host ""
+        Write-Host "Build failed!" -ForegroundColor Red
+    }
+}
+
 function Build-SplitAPK {
     if (-not (Test-SigningConfig)) { return }
 
@@ -137,30 +162,6 @@ function Build-SplitAPK {
         Write-Host ""
         Write-Host "Debug symbols saved to: build\debug-info\" -ForegroundColor Gray
         Write-Host "  (Keep these for crash symbolication)" -ForegroundColor Gray
-    } else {
-        Write-Host ""
-        Write-Host "Build failed!" -ForegroundColor Red
-    }
-}
-
-function Build-SingleAPK {
-    if (-not (Test-SigningConfig)) { return }
-
-    Write-Host ""
-    Write-Host "Building single APK with release signing + obfuscate..." -ForegroundColor Green
-    Build-WithDsn @("build", "apk", "--obfuscate", "--split-debug-info=build/debug-info")
-    if ($LASTEXITCODE -eq 0) {
-        $apk = Get-ChildItem build\app\outputs\flutter-apk\app-release.apk -ErrorAction SilentlyContinue
-        if ($apk) {
-            $size = [math]::Round($apk.Length / 1MB, 1)
-            $path = $apk.FullName
-            Write-Host ""
-            Write-Host "Build successful!" -ForegroundColor Green
-            Write-Host "Output: $path - $size MB" -ForegroundColor Yellow
-            Write-Host ""
-            Write-Host "Debug symbols saved to: build\debug-info\" -ForegroundColor Gray
-            Write-Host "  (Keep these for crash symbolication)" -ForegroundColor Gray
-        }
     } else {
         Write-Host ""
         Write-Host "Build failed!" -ForegroundColor Red
@@ -239,20 +240,19 @@ function Verify-Signature {
     # Find APK to verify
     $apkPath = $null
     
-    # Try split APK first
-    $splitApk = Get-ChildItem build\app\outputs\flutter-apk\app-arm64-v8a-release.apk -ErrorAction SilentlyContinue
-    if ($splitApk) {
-        $apkPath = $splitApk.FullName
+    # Prefer universal APK (GitHub / sideload default)
+    $singleApk = Get-ChildItem build\app\outputs\flutter-apk\app-release.apk -ErrorAction SilentlyContinue
+    if ($singleApk) {
+        $apkPath = $singleApk.FullName
     }
-    
-    # Try single APK
+
     if (-not $apkPath) {
-        $singleApk = Get-ChildItem build\app\outputs\flutter-apk\app-release.apk -ErrorAction SilentlyContinue
-        if ($singleApk) {
-            $apkPath = $singleApk.FullName
+        $splitApk = Get-ChildItem build\app\outputs\flutter-apk\app-arm64-v8a-release.apk -ErrorAction SilentlyContinue
+        if ($splitApk) {
+            $apkPath = $splitApk.FullName
         }
     }
-    
+
     if (-not $apkPath) {
         Write-Host ""
         Write-Host "No APK found. Please build first (option 1 or 2)." -ForegroundColor Yellow
@@ -292,8 +292,8 @@ do {
     $choice = Read-Host "Select (0-7)"
     
     switch ($choice) {
-        "1" { Build-SplitAPK }
-        "2" { Build-SingleAPK }
+        "1" { Build-SingleAPK }
+        "2" { Build-SplitAPK }
         "3" { Build-AAB }
         "4" { Build-Debug }
         "5" { Analyze-APK }

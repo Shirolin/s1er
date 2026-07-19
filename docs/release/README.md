@@ -46,7 +46,37 @@ version: 0.1.0+1
    - `channels.*`：有直链则填，否则 `null`（客户端回退 `github`）
 3. 需要踢掉过旧安装包时，抬高 `minSupported`（低于该版本每次冷启动强提醒，可关但下次仍弹）。仅抬 build、name 不变时一般不用动。
 4. 打 GitHub Release（附各平台安装包，如有）；tag 建议与 name 对齐（如 `v0.1.0`）。
+   - **Android**：**两种都发**
+     - **universal（fat）**：`s1er-…-android.apk`（含全部 ABI；应用内更新直链也用这个）
+     - **分架构**：`…-android-arm64-v8a.apk` / `…-armeabi-v7a.apk` / `…-x86_64.apk`（体积更小，用户自选）
+   - **Windows**：`s1er-…-windows-x64.zip`。
 5. 将 `pubspec.yaml` + `latest.json` 等改动提交到 `main`（raw URL 指向 main）。
+
+## 半自动分步脚本（推荐）
+
+本机构建与 GitHub 上传拆开，避免长时间干等 CLI 上传（大 APK 在部分网络下极慢；**浏览器拖文件往往更快**）。
+
+```powershell
+.\scripts\release.ps1 status          # 当前版本与 dist\ 产物
+.\scripts\release.ps1 bump-build      # 只涨 +build（括号内）；不改 name
+.\scripts\release.ps1 build           # fat + 分架构 APK + Windows zip → dist\（不上传）
+.\scripts\release.ps1 create          # 建空 Release + 打开网页
+# 在网页上把 dist\ 里的 apk / zip 拖上去
+.\scripts\release.ps1 manifest        # 写 latest.json 直链
+# 自行 commit / push pubspec.yaml + docs/release/latest.json
+```
+
+升产品版本（应用内会提示更新）：
+
+```powershell
+.\scripts\release.ps1 bump-name -BumpName patch   # 或 minor / major
+.\scripts\release.ps1 build
+.\scripts\release.ps1 create
+# 浏览器上传 …
+.\scripts\release.ps1 manifest
+```
+
+可选：`.\scripts\release.ps1 upload` 用 `gh` 传附件（慢）；`-SkipApk` / `-SkipWindows` 只打一端；`-DryRun` 演练。
 
 ## 本地覆盖
 

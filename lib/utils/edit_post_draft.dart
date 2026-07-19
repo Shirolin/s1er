@@ -34,6 +34,7 @@ abstract class EditPostDraftStore {
     String? leadingQuote,
     bool? includeQuote,
     List<String>? mediaTags,
+
     /// 与 [mediaTags] 一一对应的稳定 slot（`⟦图N⟧` 的 N）；缺省视为 1..n。
     List<int>? mediaSlots,
   }) {

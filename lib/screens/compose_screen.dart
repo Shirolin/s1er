@@ -446,11 +446,10 @@ class _ComposeScreenState extends ConsumerState<ComposeScreen> {
     if (saved != null && _editDraftDiffers(saved, form)) {
       final restore = await showS1ConfirmDialog(
         context,
-        title: '恢复编辑草稿？',
-        content: '本地有未提交的编辑草稿，与当前服务器内容不同。\n'
-            '选择「恢复草稿」继续本地内容；选择「使用服务器内容」将清除本地草稿。',
-        confirmLabel: '恢复草稿',
-        cancelLabel: '使用服务器内容',
+        title: '使用本地草稿？',
+        content: '本机有未提交的编辑，与服务器内容不同。',
+        confirmLabel: '用本地草稿',
+        cancelLabel: '用服务器内容',
       );
       if (!mounted) return;
       if (restore) {
@@ -1239,8 +1238,7 @@ class _ComposeScreenState extends ConsumerState<ComposeScreen> {
         if (!mounted) return;
         if (result.isSuccess) {
           _clearNewThreadDraft();
-          setState(() => _allowPop = true);
-          context.pop(result);
+          _allowPopAndExit(result);
         } else {
           S1SnackBar.error(
             context,
@@ -1307,8 +1305,7 @@ class _ComposeScreenState extends ConsumerState<ComposeScreen> {
         if (!mounted) return;
         if (result.isSuccess) {
           _clearEditDraft(pid);
-          setState(() => _allowPop = true);
-          context.pop(result);
+          _allowPopAndExit(result);
         } else if (result.isConflict) {
           setState(() => _editConflict = true);
           S1SnackBar.error(
@@ -1374,8 +1371,7 @@ class _ComposeScreenState extends ConsumerState<ComposeScreen> {
           if (snapshotId != null) QuoteSnapshotStore.remove(snapshotId);
           _clearReplyDraft();
           S1SnackBar.show(context, message: '回复成功', bottomClearance: 16);
-          setState(() => _allowPop = true);
-          context.pop(result);
+          _allowPopAndExit(result);
         } else {
           S1SnackBar.error(
             context,
@@ -1436,11 +1432,10 @@ class _ComposeScreenState extends ConsumerState<ComposeScreen> {
             latest.subject.trim() == _subjectController.text.trim());
     if (matchesDesired) {
       _clearEditDraft(widget.editPid);
-      setState(() {
-        _editLoading = false;
-        _allowPop = true;
-      });
-      context.pop(const EditPostSubmitResult.success(message: '编辑成功'));
+      setState(() => _editLoading = false);
+      _allowPopAndExit(
+        const EditPostSubmitResult.success(message: '编辑成功'),
+      );
       return;
     }
     final baseline = _editForm;
@@ -1463,16 +1458,57 @@ class _ComposeScreenState extends ConsumerState<ComposeScreen> {
     );
   }
 
+  /// 先放开 [PopScope.canPop]，再在下一帧退出。
+  ///
+  /// 同帧 `setState(_allowPop=true)` + `pop` 时 canPop 仍是旧值，弹出会被拦下；
+  /// 而 [_handlePop] 见 `_allowPop` 已为 true 会直接 return，页面就卡住。
+  ///
+  /// 正式路由走 [GoRouter.push]，必须用 [GoRouter.pop] 才能把结果交回等待方；
+  /// Widget 测试若只有 [MaterialApp]/[Navigator] 则回退 [Navigator.pop]。
+  void _allowPopAndExit([Object? result]) {
+    _allowPop = true;
+    if (mounted) setState(() {});
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) return;
+      // 再等一帧，确保 PopScope.canPop 已随本帧重建生效。
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (!mounted) return;
+        _popComposeRoute(result);
+      });
+    });
+  }
+
+  void _popComposeRoute([Object? result]) {
+    final router = GoRouter.maybeOf(context);
+    if (router != null) {
+      if (router.canPop()) {
+        router.pop(result);
+        return;
+      }
+    }
+    if (Navigator.of(context).canPop()) {
+      Navigator.of(context).pop(result);
+    }
+  }
+
   Future<void> _handlePop(bool didPop, Object? result) async {
-    if (didPop || _allowPop) return;
+    if (didPop) return;
+    if (_allowPop) {
+      // 与 [_allowPopAndExit] 同竞态：允许后重试一次。
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (!mounted) return;
+        _popComposeRoute(result);
+      });
+      return;
+    }
     if (!_isDirty) return;
 
-    final title = _isNewThread ? '离开新主题？' : (_isEditing ? '离开编辑？' : '离开回复？');
+    final title =
+        _isNewThread ? '离开发帖？' : (_isEditing ? '离开编辑？' : '离开回复？');
     final choice = await showS1DraftLeaveDialog(
       context,
       title: title,
-      content: '保留：下次进入可继续编辑本地草稿。\n'
-          '放弃草稿：清除本地草稿且不可恢复。',
+      content: '未发送内容仅保存在本机。放弃后不可恢复。',
     );
     if (!mounted) return;
     switch (choice) {
@@ -1485,11 +1521,7 @@ class _ComposeScreenState extends ConsumerState<ComposeScreen> {
         _clearDraftForMode();
         break;
     }
-    setState(() => _allowPop = true);
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      if (!mounted) return;
-      Navigator.of(context).maybePop();
-    });
+    _allowPopAndExit();
   }
 
   @override

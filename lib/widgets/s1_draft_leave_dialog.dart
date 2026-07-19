@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 
 import '../theme/s1_haptics.dart';
 
-/// 脏状态下离开 Compose：取消 / 保留并返回 / 放弃草稿。
+/// 脏状态下离开 Compose：继续编辑 / 保留并离开 / 放弃草稿。
 enum S1DraftLeaveChoice {
   stay,
   keepAndLeave,
@@ -24,14 +24,14 @@ Future<S1DraftLeaveChoice> showS1DraftLeaveDialog(
       actions: [
         TextButton(
           onPressed: () => Navigator.of(ctx).pop(S1DraftLeaveChoice.stay),
-          child: const Text('取消'),
+          child: const Text('继续编辑'),
         ),
         TextButton(
           onPressed: () {
             S1Haptics.medium();
             Navigator.of(ctx).pop(S1DraftLeaveChoice.keepAndLeave);
           },
-          child: const Text('保留并返回'),
+          child: const Text('保留并离开'),
         ),
         FilledButton(
           onPressed: () {

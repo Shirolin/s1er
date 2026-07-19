@@ -221,7 +221,7 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(find.text('离开回复？'), findsOneWidget);
-    await tester.tap(find.text('保留并返回'));
+    await tester.tap(find.text('保留并离开'));
     await tester.pumpAndSettle();
 
     final drafts = ComposeMessageDraft.parseStore(
@@ -270,7 +270,7 @@ void main() {
     );
     await tester.tap(find.text('open'));
     await tester.pumpAndSettle();
-    await tester.tap(find.text('保留并返回'));
+    await tester.tap(find.text('保留并离开'));
     await tester.pumpAndSettle();
     expect(choice, S1DraftLeaveChoice.keepAndLeave);
   });

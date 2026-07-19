@@ -2,6 +2,7 @@ import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:go_router/go_router.dart';
 import 'package:s1er/models/edit_post_form_info.dart';
 import 'package:s1er/models/edit_post_submit_result.dart';
 import 'package:s1er/providers/auth_provider.dart';
@@ -276,6 +277,126 @@ void main() {
       controller.lastMessage,
       '先[img]https://a.test/2.png[/img]再[img]https://a.test/1.png[/img]',
     );
+  });
+
+  testWidgets('edit success pops back even when draft is dirty', (tester) async {
+    EditPostSubmitResult? popped;
+    await tester.pumpWidget(
+      ProviderScope(
+        overrides: [
+          localDataProvider.overrideWithValue(local),
+          authStateProvider.overrideWith(_LoggedInAuthNotifier.new),
+          composeControllerProvider.overrideWith(
+            (ref) => _EditComposeController(ref),
+          ),
+        ],
+        child: MaterialApp(
+          theme: AppTheme.lightTheme('purple'),
+          home: Builder(
+            builder: (context) {
+              return Scaffold(
+                body: Center(
+                  child: FilledButton(
+                    onPressed: () async {
+                      popped = await Navigator.of(context)
+                          .push<EditPostSubmitResult>(
+                        MaterialPageRoute(
+                          builder: (_) => const ComposeScreen(
+                            tid: '100',
+                            fid: '4',
+                            editPid: '200',
+                            editIsFirst: false,
+                          ),
+                        ),
+                      );
+                    },
+                    child: const Text('open-edit'),
+                  ),
+                ),
+              );
+            },
+          ),
+        ),
+      ),
+    );
+
+    await tester.tap(find.text('open-edit'));
+    await tester.pumpAndSettle();
+
+    expect(find.text('编辑回复'), findsOneWidget);
+    await tester.enterText(find.byType(TextField).last, '改过的正文');
+    await tester.pump();
+    await tester.tap(find.text('保存编辑'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('确认编辑'));
+    await tester.pumpAndSettle();
+
+    expect(find.text('open-edit'), findsOneWidget);
+    expect(popped?.isSuccess, isTrue);
+  });
+
+  testWidgets('edit success pops via GoRouter when dirty', (tester) async {
+    EditPostSubmitResult? popped;
+    final router = GoRouter(
+      initialLocation: '/',
+      routes: [
+        GoRoute(
+          path: '/',
+          builder: (context, state) => Scaffold(
+            body: Center(
+              child: FilledButton(
+                onPressed: () async {
+                  popped = await context.push<EditPostSubmitResult>(
+                    '/thread/100/post/200/edit?fid=4&first=0',
+                  );
+                },
+                child: const Text('open-edit'),
+              ),
+            ),
+          ),
+        ),
+        GoRoute(
+          path: '/thread/:tid/post/:pid/edit',
+          builder: (context, state) => ComposeScreen(
+            tid: state.pathParameters['tid'],
+            fid: state.uri.queryParameters['fid'],
+            editPid: state.pathParameters['pid'],
+            editIsFirst: state.uri.queryParameters['first'] == '1',
+          ),
+        ),
+      ],
+    );
+
+    await tester.pumpWidget(
+      ProviderScope(
+        overrides: [
+          localDataProvider.overrideWithValue(local),
+          authStateProvider.overrideWith(_LoggedInAuthNotifier.new),
+          composeControllerProvider.overrideWith(
+            (ref) => _EditComposeController(ref),
+          ),
+        ],
+        child: MaterialApp.router(
+          theme: AppTheme.lightTheme('purple'),
+          routerConfig: router,
+        ),
+      ),
+    );
+
+    await tester.tap(find.text('open-edit'));
+    await tester.pumpAndSettle();
+
+    expect(find.text('编辑回复'), findsOneWidget);
+    await tester.enterText(find.byType(TextField).last, '改过的正文');
+    await tester.pump();
+    await tester.tap(find.text('保存编辑'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('确认编辑'));
+    await tester.pumpAndSettle();
+
+    expect(find.text('open-edit'), findsOneWidget);
+    expect(popped?.isSuccess, isTrue);
+    expect(router.state.uri.path, '/');
   });
 }
 

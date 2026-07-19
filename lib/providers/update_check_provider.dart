@@ -25,6 +25,8 @@ class UpdateEvaluation {
     required this.downloadUrl,
     required this.shouldShowDialog,
     this.userMessage,
+    this.netdiskUrl = '',
+    this.canInAppDownload = false,
   });
 
   final UpdateAvailability availability;
@@ -32,11 +34,25 @@ class UpdateEvaluation {
   final AppUpdateManifest manifest;
   final String downloadUrl;
 
+  /// 白名单校验后的网盘外链；空则不展示网盘按钮。
+  final String netdiskUrl;
+
+  /// Android 非 Play 且有合法 APK 直链时为 true。
+  final bool canInAppDownload;
+
   /// 是否应展示升级 Dialog（启动自动 / 手动均适用）。
   final bool shouldShowDialog;
 
   /// 手动检查时无 Dialog 时的 SnackBar 文案；启动静默时可为 null。
   final String? userMessage;
+
+  String? get netdiskHint {
+    final hint = manifest.channels.netdiskHint?.trim();
+    if (hint == null || hint.isEmpty) return null;
+    return hint;
+  }
+
+  bool get hasNetdisk => netdiskUrl.isNotEmpty;
 
   bool get isUpdate =>
       availability == UpdateAvailability.force ||
@@ -53,6 +69,8 @@ UpdateEvaluation evaluateUpdate({
   required DateTime now,
   required bool manual,
   Duration cooldown = UpdatePromptStore.cooldown,
+  String netdiskUrl = '',
+  bool canInAppDownload = false,
 }) {
   final local = localVersion.trim();
 
@@ -62,6 +80,8 @@ UpdateEvaluation evaluateUpdate({
       localVersion: local,
       manifest: manifest,
       downloadUrl: downloadUrl,
+      netdiskUrl: netdiskUrl,
+      canInAppDownload: canInAppDownload,
       shouldShowDialog: true,
     );
   }
@@ -72,6 +92,8 @@ UpdateEvaluation evaluateUpdate({
       localVersion: local,
       manifest: manifest,
       downloadUrl: downloadUrl,
+      netdiskUrl: netdiskUrl,
+      canInAppDownload: canInAppDownload,
       shouldShowDialog: false,
       userMessage: manual ? '已是最新版本' : null,
     );
@@ -87,6 +109,8 @@ UpdateEvaluation evaluateUpdate({
       localVersion: local,
       manifest: manifest,
       downloadUrl: downloadUrl,
+      netdiskUrl: netdiskUrl,
+      canInAppDownload: canInAppDownload,
       shouldShowDialog: false,
       userMessage: manual ? '已忽略此版本的更新提示' : null,
     );
@@ -100,6 +124,8 @@ UpdateEvaluation evaluateUpdate({
         localVersion: local,
         manifest: manifest,
         downloadUrl: downloadUrl,
+        netdiskUrl: netdiskUrl,
+        canInAppDownload: canInAppDownload,
         shouldShowDialog: false,
       );
     }
@@ -110,6 +136,8 @@ UpdateEvaluation evaluateUpdate({
     localVersion: local,
     manifest: manifest,
     downloadUrl: downloadUrl,
+    netdiskUrl: netdiskUrl,
+    canInAppDownload: canInAppDownload,
     shouldShowDialog: true,
   );
 }
@@ -229,10 +257,19 @@ class UpdateCheckNotifier extends Notifier<UpdateCheckState> {
       isWeb: kIsWeb,
       platform: defaultTargetPlatform,
     );
+    final netdiskUrl = UpdateCheckService.resolveNetdiskUrl(manifest);
+    final canInApp = UpdateCheckService.canInAppAndroidDownload(
+      manifest: manifest,
+      distribution: EnvConfig.distribution,
+      isWeb: kIsWeb,
+      platform: defaultTargetPlatform,
+    );
     return evaluateUpdate(
       localVersion: info.version,
       manifest: manifest,
       downloadUrl: downloadUrl,
+      netdiskUrl: netdiskUrl,
+      canInAppDownload: canInApp,
       ignoredVersion: UpdatePromptStore.ignoredVersion(store),
       lastPromptMs: UpdatePromptStore.lastPromptMs(store),
       now: now,

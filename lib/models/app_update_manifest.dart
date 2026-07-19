@@ -39,6 +39,8 @@ class AppUpdateChannels {
   const AppUpdateChannels({
     required this.github,
     this.androidApk,
+    this.androidNetdisk,
+    this.netdiskHint,
     this.windows,
     this.linux,
     this.macos,
@@ -52,12 +54,20 @@ class AppUpdateChannels {
       return raw;
     }
 
+    String? optionalText(String key) {
+      final raw = json[key]?.toString().trim();
+      if (raw == null || raw.isEmpty) return null;
+      return raw;
+    }
+
     final github = optionalUrl('github') ??
         'https://github.com/Shirolin/s1er/releases/latest';
 
     return AppUpdateChannels(
       github: github,
       androidApk: optionalUrl('androidApk'),
+      androidNetdisk: optionalUrl('androidNetdisk'),
+      netdiskHint: optionalText('netdiskHint'),
       windows: optionalUrl('windows'),
       linux: optionalUrl('linux'),
       macos: optionalUrl('macos'),
@@ -67,6 +77,12 @@ class AppUpdateChannels {
 
   final String github;
   final String? androidApk;
+
+  /// 国内网盘分享链接（仅外链打开，不进 APK 下载白名单）。
+  final String? androidNetdisk;
+
+  /// 提取码等说明（可空）。
+  final String? netdiskHint;
   final String? windows;
   final String? linux;
   final String? macos;

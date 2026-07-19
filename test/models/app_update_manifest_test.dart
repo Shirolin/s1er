@@ -12,6 +12,8 @@ void main() {
         'channels': {
           'github': 'https://github.com/Shirolin/s1er/releases/latest',
           'androidApk': 'https://example.com/app.apk',
+          'androidNetdisk': 'https://pan.baidu.com/s/xxxx',
+          'netdiskHint': '提取码：abcd',
           'windows': null,
           'play': 'https://play.google.com/store/apps/details?id=x',
         },
@@ -20,6 +22,8 @@ void main() {
       expect(m.minSupported, '1.0.0');
       expect(m.notes, '修复若干问题');
       expect(m.channels.androidApk, 'https://example.com/app.apk');
+      expect(m.channels.androidNetdisk, 'https://pan.baidu.com/s/xxxx');
+      expect(m.channels.netdiskHint, '提取码：abcd');
       expect(m.channels.windows, isNull);
       expect(m.channels.play, contains('play.google.com'));
     });

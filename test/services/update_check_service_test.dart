@@ -182,6 +182,110 @@ void main() {
         isFalse,
       );
     });
+
+    test('fetchManifest falls back to next URL after 404', () async {
+      final payload = {
+        'latest': '3.0.0',
+        'minSupported': '1.0.0',
+        'notes': '',
+        'publishedAt': '2026-07-19',
+        'channels': {
+          'github': 'https://github.com/Shirolin/s1er/releases/latest',
+        },
+      };
+      final dio = Dio()
+        ..httpClientAdapter = _FailoverAdapter(
+          failUrl: 'https://primary.example/latest.json',
+          payload: payload,
+        );
+      final service = UpdateCheckService(
+        dio: dio,
+        manifestUrls: const [
+          'https://primary.example/latest.json',
+          'https://cdn.jsdelivr.net/gh/Shirolin/s1er@main/docs/release/latest.json',
+        ],
+      );
+      final m = await service.fetchManifest();
+      expect(m.latest, '3.0.0');
+    });
+
+    test('resolveNetdiskUrl allows baidu and rejects others', () {
+      final ok = AppUpdateManifest.fromJson({
+        'latest': '1.0.0',
+        'channels': {
+          'androidNetdisk': 'https://pan.baidu.com/s/xxxx',
+          'netdiskHint': '提取码：ab',
+        },
+      });
+      expect(
+        UpdateCheckService.resolveNetdiskUrl(ok),
+        'https://pan.baidu.com/s/xxxx',
+      );
+
+      final bad = AppUpdateManifest.fromJson({
+        'latest': '1.0.0',
+        'channels': {
+          'androidNetdisk': 'https://evil.example/share',
+        },
+      });
+      expect(UpdateCheckService.resolveNetdiskUrl(bad), '');
+      expect(
+        UpdateCheckService.isAllowedNetdiskUrl('https://evil.example/x'),
+        isFalse,
+      );
+    });
+
+    test('canInAppAndroidDownload requires android apk and non-play', () {
+      final m = AppUpdateManifest.fromJson({
+        'latest': '1.0.0',
+        'channels': {
+          'androidApk':
+              'https://github.com/example/releases/download/v1/app.apk',
+        },
+      });
+      expect(
+        UpdateCheckService.canInAppAndroidDownload(
+          manifest: m,
+          distribution: 'github',
+          isWeb: false,
+          platform: TargetPlatform.android,
+        ),
+        isTrue,
+      );
+      expect(
+        UpdateCheckService.canInAppAndroidDownload(
+          manifest: m,
+          distribution: 'play',
+          isWeb: false,
+          platform: TargetPlatform.android,
+        ),
+        isFalse,
+      );
+      expect(
+        UpdateCheckService.canInAppAndroidDownload(
+          manifest: m,
+          distribution: 'github',
+          isWeb: false,
+          platform: TargetPlatform.windows,
+        ),
+        isFalse,
+      );
+    });
+
+    test('default manifestUrls include jsDelivr fallback', () {
+      final service = UpdateCheckService(
+        manifestUrl:
+            'https://raw.githubusercontent.com/Shirolin/s1er/main/docs/release/latest.json',
+      );
+      expect(service.manifestUrls.length, 2);
+      expect(service.manifestUrls.last, UpdateCheckService.jsDelivrManifestUrl);
+      expect(
+        UpdateCheckService.isAllowedDownloadUrl(
+          UpdateCheckService.jsDelivrManifestUrl,
+        ),
+        isTrue,
+      );
+    });
   });
 }
 
@@ -251,6 +355,43 @@ class _StatusAdapter implements HttpClientAdapter {
         requestOptions: options,
         statusCode: statusCode,
       ),
+    );
+  }
+}
+
+class _FailoverAdapter implements HttpClientAdapter {
+  _FailoverAdapter({
+    required this.failUrl,
+    required this.payload,
+  });
+
+  final String failUrl;
+  final Map<String, dynamic> payload;
+
+  @override
+  void close({bool force = false}) {}
+
+  @override
+  Future<ResponseBody> fetch(
+    RequestOptions options,
+    Stream<Uint8List>? requestStream,
+    Future<void>? cancelFuture,
+  ) async {
+    if (options.uri.toString() == failUrl ||
+        options.path == failUrl ||
+        options.uri.toString().startsWith(failUrl)) {
+      throw DioException(
+        requestOptions: options,
+        type: DioExceptionType.badResponse,
+        response: Response(requestOptions: options, statusCode: 404),
+      );
+    }
+    return ResponseBody.fromString(
+      jsonEncode(payload),
+      200,
+      headers: {
+        Headers.contentTypeHeader: [Headers.jsonContentType],
+      },
     );
   }
 }

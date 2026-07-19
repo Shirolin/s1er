@@ -1,6 +1,6 @@
 # 启动器图标（App Icon）
 
-运行时可切换的桌面图标。目录：`lib/config/app_icon_catalog.dart`；生成：`dart run scripts/sync_app_icons.dart`。设置页备注「重启生效」。
+运行时可切换的桌面图标。目录：`lib/config/app_icon_catalog.dart`；生成：`dart run scripts/sync_app_icons.dart`。Android 切换前会确认（更换后进程可能退出）；iOS 跟系统确认提示。
 
 ## 资源角色（`assets/branding/`）
 

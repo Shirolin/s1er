@@ -38,6 +38,11 @@ class AppIconPicker extends ConsumerWidget {
                     onTap: () async {
                       if (isSelected) return;
                       S1Haptics.selection();
+                      final confirmed = await _confirmIconChange(
+                        context,
+                        label: variant.label,
+                      );
+                      if (!confirmed || !context.mounted) return;
                       final ok = await ref
                           .read(settingsProvider.notifier)
                           .setAppIcon(variant.id);
@@ -133,14 +138,41 @@ class AppIconPicker extends ConsumerWidget {
             ),
           ),
         ],
-        const SizedBox(height: 8),
-        Text(
-          '重启生效',
-          style: textTheme.bodySmall?.copyWith(
-            color: scheme.onSurfaceVariant,
-          ),
-        ),
       ],
     );
   }
+}
+
+/// Android 切换 activity-alias 常会杀进程；先确认避免被当成闪退。
+/// iOS 由系统自行提示，此处直接放行。
+Future<bool> _confirmIconChange(
+  BuildContext context, {
+  required String label,
+}) async {
+  if (kIsWeb || defaultTargetPlatform != TargetPlatform.android) {
+    return true;
+  }
+
+  final result = await showDialog<bool>(
+    context: context,
+    builder: (ctx) {
+      return AlertDialog(
+        title: const Text('更换应用图标'),
+        content: Text(
+          '将切换为「$label」。更换后应用会关闭，需手动重新打开。是否继续？',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(ctx).pop(false),
+            child: const Text('取消'),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.of(ctx).pop(true),
+            child: const Text('更换并关闭'),
+          ),
+        ],
+      );
+    },
+  );
+  return result ?? false;
 }

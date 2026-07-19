@@ -5,7 +5,9 @@
   "publishedAt": "2026-07-19",
   "channels": {
     "github": "https://github.com/Shirolin/s1er/releases/latest",
-    "androidApk": "https://github.com/Shirolin/s1er/releases/download/v0.1.1/s1er-0.1.1%2B1-android-universal.apk",
+    "androidApk": "https://github.com/Shirolin/s1er/releases/download/v0.1.1/s1er-0.1.1%2B1-android-arm64-v8a.apk",
+    "androidNetdisk": "https://pan.quark.cn/s/c05196e3c06a",
+    "netdiskHint": "夸克网盘（GitHub 下载慢时可走这里）",
     "windows": "https://github.com/Shirolin/s1er/releases/download/v0.1.1/s1er-0.1.1%2B1-windows-x64.zip",
     "linux": null,
     "macos": null,

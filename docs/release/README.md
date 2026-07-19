@@ -44,6 +44,7 @@ version: 0.1.0+1
    - `notes`：面向用户的更新说明（可空；可写「Beta」）
    - `publishedAt`：发布日（`YYYY-MM-DD`）
    - `channels.*`：有直链则填，否则 `null`（客户端回退 `github`）
+   - Android 国内备选：`androidNetdisk`（分享链接）+ `netdiskHint`（提取码等说明，可空）
 3. 需要踢掉过旧安装包时，抬高 `minSupported`（低于该版本每次冷启动强提醒，可关但下次仍弹）。仅抬 build、name 不变时一般不用动。
 4. 打 GitHub Release（附各平台安装包，如有）；tag 建议与 name 对齐（如 `v0.1.0`）。
    - **Android 文件名规范**（`s1er-<name>+<build>-android-<variant>.apk`）：
@@ -100,3 +101,21 @@ flutter run --dart-define=DISTRIBUTION=play
 
 1. 将仓库设为 public；或
 2. 把 `latest.json` 挂到任意公开 HTTPS（Gist / 独立 public 仓库 / CDN），并用 `UPDATE_MANIFEST_URL` 指向它。
+
+### 国内访问与网盘
+
+客户端拉取清单时按序尝试：`UPDATE_MANIFEST_URL`（默认 GitHub raw）→ jsDelivr（`cdn.jsdelivr.net/gh/Shirolin/s1er@main/docs/release/latest.json`）。
+
+Android（非 Play）升级 Dialog：
+
+- **立即更新**：应用内下载 `channels.androidApk`（GitHub Releases；国内可能失败）
+- **网盘下载**：外链打开 `channels.androidNetdisk`（不解析网盘直链）；`channels.netdiskHint` 展示提取码等说明
+
+填写示例：
+
+```json
+"androidNetdisk": "https://pan.quark.cn/s/c05196e3c06a",
+"netdiskHint": "夸克网盘（GitHub 下载慢时可走这里）"
+```
+
+无网盘时两项可保持 `null`；非法主机不会显示网盘按钮。`release.ps1 manifest` 会保留已有网盘字段，只改版本与 APK/Windows 直链。

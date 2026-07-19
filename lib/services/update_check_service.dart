@@ -13,7 +13,11 @@ class UpdateCheckService {
   UpdateCheckService({
     Dio? dio,
     String? manifestUrl,
-  })  : _manifestUrl = manifestUrl ?? EnvConfig.updateManifestUrl,
+    List<String>? manifestUrls,
+  })  : _manifestUrls = _buildManifestUrls(
+          primary: manifestUrl ?? EnvConfig.updateManifestUrl,
+          overrides: manifestUrls,
+        ),
         _dio = dio ??
             Dio(
               BaseOptions(
@@ -34,26 +38,81 @@ class UpdateCheckService {
             );
 
   final Dio _dio;
-  final String _manifestUrl;
+  final List<String> _manifestUrls;
 
-  String get manifestUrl => _manifestUrl;
+  /// 国内可达的 jsDelivr 镜像（与 raw 同源文件）。
+  static const String jsDelivrManifestUrl =
+      'https://cdn.jsdelivr.net/gh/Shirolin/s1er@main/docs/release/latest.json';
+
+  String get manifestUrl => _manifestUrls.first;
+
+  @visibleForTesting
+  List<String> get manifestUrls => List<String>.unmodifiable(_manifestUrls);
+
+  static List<String> _buildManifestUrls({
+    required String primary,
+    List<String>? overrides,
+  }) {
+    if (overrides != null && overrides.isNotEmpty) {
+      return overrides
+          .map((u) => u.trim())
+          .where((u) => u.isNotEmpty)
+          .toList(growable: false);
+    }
+    final urls = <String>[];
+    final trimmed = primary.trim();
+    if (trimmed.isNotEmpty) urls.add(trimmed);
+    if (trimmed != jsDelivrManifestUrl) {
+      urls.add(jsDelivrManifestUrl);
+    }
+    return urls;
+  }
 
   Future<AppUpdateManifest> fetchManifest() async {
-    try {
-      final response = await _dio.get<dynamic>(_manifestUrl);
-      return AppUpdateManifest.fromJson(_coerceManifestMap(response.data));
-    } on DioException catch (e, st) {
-      final message = _messageForDio(e);
-      if (_isExpectedManifestMiss(e)) {
-        talker.warning('Fetch update manifest skipped: $message');
-      } else {
-        talker.handle(e, st, 'Fetch update manifest failed');
+    Object? lastError;
+    StackTrace? lastStack;
+    var lastMessage = '检查更新失败';
+
+    for (var i = 0; i < _manifestUrls.length; i++) {
+      final url = _manifestUrls[i];
+      try {
+        final response = await _dio.get<dynamic>(url);
+        return AppUpdateManifest.fromJson(_coerceManifestMap(response.data));
+      } on DioException catch (e, st) {
+        lastError = e;
+        lastStack = st;
+        lastMessage = _messageForDio(e);
+        final isLast = i == _manifestUrls.length - 1;
+        if (_isExpectedManifestMiss(e)) {
+          talker.warning(
+            'Fetch update manifest skipped ($url): $lastMessage',
+          );
+        } else if (isLast) {
+          talker.handle(e, st, 'Fetch update manifest failed');
+        } else {
+          talker.warning(
+            'Fetch update manifest failed ($url), trying next: $lastMessage',
+          );
+        }
+      } on FormatException catch (e, st) {
+        lastError = e;
+        lastStack = st;
+        lastMessage = '更新清单格式无效';
+        final isLast = i == _manifestUrls.length - 1;
+        if (isLast) {
+          talker.handle(e, st, 'Parse update manifest failed');
+          rethrow;
+        }
+        talker.warning(
+          'Parse update manifest failed ($url), trying next: $e',
+        );
       }
-      throw UpdateCheckException(message, e);
-    } on FormatException catch (e, st) {
-      talker.handle(e, st, 'Parse update manifest failed');
-      rethrow;
     }
+
+    if (lastError is FormatException) {
+      Error.throwWithStackTrace(lastError, lastStack ?? StackTrace.current);
+    }
+    throw UpdateCheckException(lastMessage, lastError);
   }
 
   /// 私有仓库 raw URL / 错链等：客户端无法公开拉取，属预期失败。
@@ -63,13 +122,30 @@ class UpdateCheckService {
     return code == 404 || code == 401 || code == 403;
   }
 
-  /// 允许的升级下载 / 商店主机（https only）。
+  /// 允许的升级下载 / 商店 / 清单镜像主机（https only）。
   static const Set<String> allowedDownloadHosts = {
     'github.com',
     'www.github.com',
     'raw.githubusercontent.com',
     'objects.githubusercontent.com',
+    'cdn.jsdelivr.net',
     'play.google.com',
+  };
+
+  /// 允许用 [url_launcher] 打开的网盘主机（不用于 APK Dio 下载）。
+  static const Set<String> allowedNetdiskHosts = {
+    'pan.baidu.com',
+    'yun.baidu.com',
+    'www.aliyundrive.com',
+    'www.alipan.com',
+    'alipan.com',
+    'www.quark.cn',
+    'pan.quark.cn',
+    'www.123pan.com',
+    'www.123865.com',
+    'www.lanzoui.com',
+    'www.lanzoux.com',
+    'wwwa.lanzoui.com',
   };
 
   /// 按分发渠道与平台解析下载 / 商店 URL。
@@ -83,11 +159,14 @@ class UpdateCheckService {
   }) {
     final dist = distribution.trim().toLowerCase();
     if (dist == 'play') {
-      final play = _sanitizeDownloadUrl(manifest.channels.play);
+      final play = _sanitizeUrl(
+        manifest.channels.play,
+        allowedDownloadHosts,
+      );
       if (play != null) return play;
     }
     if (isWeb) {
-      return _sanitizeDownloadUrl(manifest.channels.github) ?? '';
+      return _sanitizeUrl(manifest.channels.github, allowedDownloadHosts) ?? '';
     }
 
     final target = platform ?? defaultTargetPlatform;
@@ -98,16 +177,43 @@ class UpdateCheckService {
       TargetPlatform.macOS => manifest.channels.macos,
       _ => null,
     };
-    final sanitizedPlatform = _sanitizeDownloadUrl(platformUrl);
+    final sanitizedPlatform = _sanitizeUrl(platformUrl, allowedDownloadHosts);
     if (sanitizedPlatform != null) return sanitizedPlatform;
-    return _sanitizeDownloadUrl(manifest.channels.github) ?? '';
+    return _sanitizeUrl(manifest.channels.github, allowedDownloadHosts) ?? '';
   }
 
-  @visibleForTesting
-  static bool isAllowedDownloadUrl(String url) =>
-      _sanitizeDownloadUrl(url) != null;
+  /// 解析网盘外链；非法主机返回空字符串（UI 不展示网盘按钮）。
+  static String resolveNetdiskUrl(AppUpdateManifest manifest) {
+    return _sanitizeUrl(
+          manifest.channels.androidNetdisk,
+          allowedNetdiskHosts,
+        ) ??
+        '';
+  }
 
-  static String? _sanitizeDownloadUrl(String? url) {
+  /// Android 应用内下载是否可用（非 Play、有合法 APK 直链）。
+  static bool canInAppAndroidDownload({
+    required AppUpdateManifest manifest,
+    String distribution = EnvConfig.distribution,
+    bool isWeb = kIsWeb,
+    TargetPlatform? platform,
+  }) {
+    if (isWeb) return false;
+    if (distribution.trim().toLowerCase() == 'play') return false;
+    final target = platform ?? defaultTargetPlatform;
+    if (target != TargetPlatform.android) return false;
+    final apk =
+        _sanitizeUrl(manifest.channels.androidApk, allowedDownloadHosts);
+    return apk != null;
+  }
+
+  static bool isAllowedDownloadUrl(String url) =>
+      _sanitizeUrl(url, allowedDownloadHosts) != null;
+
+  static bool isAllowedNetdiskUrl(String url) =>
+      _sanitizeUrl(url, allowedNetdiskHosts) != null;
+
+  static String? _sanitizeUrl(String? url, Set<String> allowedHosts) {
     if (url == null) return null;
     final trimmed = url.trim();
     if (trimmed.isEmpty) return null;
@@ -115,7 +221,7 @@ class UpdateCheckService {
     if (uri == null || uri.scheme.toLowerCase() != 'https') return null;
     if (uri.userInfo.isNotEmpty) return null;
     final host = uri.host.toLowerCase();
-    if (!allowedDownloadHosts.contains(host)) return null;
+    if (!allowedHosts.contains(host)) return null;
     if (uri.hasPort && uri.port != 443) return null;
     return trimmed;
   }

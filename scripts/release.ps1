@@ -347,6 +347,13 @@ function Step-Manifest {
     $json.channels.github = "https://github.com/$RepoSlug/releases/latest"
     $json.channels.androidApk = $apkUrl
     $json.channels.windows = $zipUrl
+    # Preserve netdisk fields if already set (manual); ensure keys exist.
+    if (-not ($json.channels.PSObject.Properties.Name -contains 'androidNetdisk')) {
+        $json.channels | Add-Member -NotePropertyName androidNetdisk -NotePropertyValue $null
+    }
+    if (-not ($json.channels.PSObject.Properties.Name -contains 'netdiskHint')) {
+        $json.channels | Add-Member -NotePropertyName netdiskHint -NotePropertyValue $null
+    }
 
     $out = $json | ConvertTo-Json -Depth 6
     if ($DryRun) {

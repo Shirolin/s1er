@@ -34,6 +34,8 @@ abstract class EditPostDraftStore {
     String? leadingQuote,
     bool? includeQuote,
     List<String>? mediaTags,
+    /// 与 [mediaTags] 一一对应的稳定 slot（`⟦图N⟧` 的 N）；缺省视为 1..n。
+    List<int>? mediaSlots,
   }) {
     final next = parse(drafts);
     next[pid] = {
@@ -44,6 +46,7 @@ abstract class EditPostDraftStore {
       if (leadingQuote != null) 'leadingQuote': leadingQuote,
       if (includeQuote != null) 'includeQuote': includeQuote,
       if (mediaTags != null) 'mediaTags': mediaTags,
+      if (mediaSlots != null) 'mediaSlots': mediaSlots,
       'updatedAt': DateTime.now().toUtc().toIso8601String(),
     };
     return next;

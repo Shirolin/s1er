@@ -84,6 +84,7 @@ class _ComposeUploadedImage {
     required this.tag,
     required this.label,
     this.previewUrl,
+    this.slot,
   });
 
   /// 提交时写回的完整 BBCode。
@@ -92,6 +93,9 @@ class _ComposeUploadedImage {
 
   /// `[img]` 外链或已解析的论坛附件图 URL；无则 Chip 只显示图标。
   final String? previewUrl;
+
+  /// 编辑页占位 `⟦图N⟧` 的稳定编号；回复/新主题为 null。
+  final int? slot;
 
   bool get hasThumb => previewUrl != null && previewUrl!.trim().isNotEmpty;
 
@@ -198,7 +202,9 @@ class _ComposeScreenState extends ConsumerState<ComposeScreen> {
       return _subjectController.text.trim().isNotEmpty && (hasText || hasMedia);
     }
     if (_isEditing) {
-      return _editForm != null && (hasText || hasMedia);
+      final plain =
+          stripComposeMediaPlaceholders(_messageController.text).trim();
+      return _editForm != null && (plain.isNotEmpty || hasMedia);
     }
     return hasText || hasMedia || _quoting;
   }
@@ -223,14 +229,37 @@ class _ComposeScreenState extends ConsumerState<ComposeScreen> {
   List<String> get _currentMediaTags =>
       [for (final image in _uploadedImages) image.tag];
 
-  String _bodyWithMedia(String body) =>
-      appendComposeMedia(body, _currentMediaTags);
+  List<int> get _currentMediaSlots => [
+        for (final image in _uploadedImages) image.slot ?? 0,
+      ];
+
+  Map<int, String> get _currentMediaBySlot => {
+        for (final image in _uploadedImages)
+          if (image.slot != null && image.slot! > 0) image.slot!: image.tag,
+      };
+
+  /// 编辑：占位还原；回复/新主题：媒体仍接文末（回复图已 inline 在正文）。
+  String _bodyWithMedia(String body) {
+    if (_editMediaDetached) {
+      return expandComposeMediaPlaceholders(body, _currentMediaBySlot);
+    }
+    return appendComposeMedia(body, _currentMediaTags);
+  }
 
   /// 预览用正文：论坛 `[attachimg]` 换成可渲染的 `[img]url[/img]`。
   String _previewBodyWithMedia(String body) => rewriteAttachimgForPreview(
         _bodyWithMedia(body),
         _attachImageUrls,
       );
+
+  int _nextEditMediaSlot() {
+    var maxSlot = 0;
+    for (final image in _uploadedImages) {
+      final slot = image.slot ?? 0;
+      if (slot > maxSlot) maxSlot = slot;
+    }
+    return maxSlot + 1;
+  }
 
   void _mergeAttachImageUrls(Map<String, String> next) {
     if (next.isEmpty) return;
@@ -243,13 +272,19 @@ class _ComposeScreenState extends ConsumerState<ComposeScreen> {
       ..addAll(next);
   }
 
-  void _applyEditMedia(List<ComposeMediaTag> media) {
+  void _applyEditMedia(
+    List<ComposeMediaTag> media, {
+    List<int>? slots,
+  }) {
     _replaceUploadedImages([
-      for (final item in media)
+      for (var i = 0; i < media.length; i++)
         _ComposeUploadedImage(
-          tag: item.tag,
-          label: item.label,
-          previewUrl: item.previewUrl,
+          tag: media[i].tag,
+          label: media[i].label,
+          previewUrl: media[i].previewUrl,
+          slot: (slots != null && i < slots.length && slots[i] > 0)
+              ? slots[i]
+              : i + 1,
         ),
     ]);
     for (final item in media) {
@@ -258,6 +293,35 @@ class _ComposeScreenState extends ConsumerState<ComposeScreen> {
         _imageLabelsByUrl[url] = item.label;
       }
     }
+  }
+
+  /// 正文占位为序：重排 Chip；删掉正文里已不存在的 slot。
+  void _syncEditMediaFromBody() {
+    if (!_editMediaDetached || _suppressMediaSync) return;
+    final bySlot = <int, _ComposeUploadedImage>{
+      for (final image in _uploadedImages)
+        if (image.slot != null) image.slot!: image,
+    };
+    final ordered = <_ComposeUploadedImage>[];
+    final seen = <int>{};
+    for (final slot in extractComposeMediaPlaceholderSlots(
+      _messageController.text,
+    )) {
+      if (seen.contains(slot)) continue;
+      final image = bySlot[slot];
+      if (image == null) continue;
+      ordered.add(image);
+      seen.add(slot);
+    }
+    final same = ordered.length == _uploadedImages.length &&
+        List.generate(
+          ordered.length,
+          (i) =>
+              ordered[i].slot == _uploadedImages[i].slot &&
+              ordered[i].tag == _uploadedImages[i].tag,
+        ).every((ok) => ok);
+    if (same) return;
+    setState(() => _replaceUploadedImages(ordered));
   }
 
   String get _draftEntryKey {
@@ -360,7 +424,7 @@ class _ComposeScreenState extends ConsumerState<ComposeScreen> {
     final parts = EditPostMessageParts.split(form.message);
     _mergeAttachImageUrls(widget.editAttachImageUrls);
     _mergeAttachImageUrls(form.attachImageUrls);
-    final mediaSplit = splitComposeMedia(
+    final mediaSplit = splitComposeMediaWithPlaceholders(
       parts.body,
       attachImageUrls: _attachImageUrls,
     );
@@ -394,9 +458,14 @@ class _ComposeScreenState extends ConsumerState<ComposeScreen> {
         _suppressMediaSync = true;
         final draftMsg = saved['message'] as String? ?? mediaSplit.body;
         final draftParts = EditPostMessageParts.split(draftMsg);
+        // 草稿存的是可编辑正文（可含 ⟦图N⟧），不是整帖 raw。
+        final draftBodyRaw = draftParts.hasLeadingQuote
+            ? draftParts.body
+            : (saved['message'] as String? ?? draftParts.body);
         final draftMedia = _mediaFromDraft(
           saved['mediaTags'],
-          fallbackBody: draftParts.body,
+          mediaSlots: saved['mediaSlots'],
+          fallbackBody: draftBodyRaw,
         );
         _subjectController.text = saved['subject'] as String? ?? form.subject;
         _messageController.text = draftMedia.body;
@@ -413,7 +482,7 @@ class _ComposeScreenState extends ConsumerState<ComposeScreen> {
           _includeEditQuote = saved['includeQuote'] as bool? ??
               (_editLeadingQuote != null &&
                   _editLeadingQuote!.trim().isNotEmpty);
-          _applyEditMedia(draftMedia.media);
+          _applyEditMedia(draftMedia.media, slots: draftMedia.effectiveSlots);
         });
         _suppressMediaSync = false;
         _suppressDraftSave = false;
@@ -423,13 +492,14 @@ class _ComposeScreenState extends ConsumerState<ComposeScreen> {
     }
   }
 
-  /// 草稿里的 `mediaTags`；旧草稿无该字段时从正文再拆一遍。
+  /// 草稿里的 `mediaTags` + 可选 `mediaSlots` + 正文（可含 `⟦图N⟧`）；旧草稿无占位时补上。
   ComposeMediaSplit _mediaFromDraft(
     Object? mediaTags, {
+    Object? mediaSlots,
     required String fallbackBody,
   }) {
     if (mediaTags is! List) {
-      return splitComposeMedia(
+      return splitComposeMediaWithPlaceholders(
         fallbackBody,
         attachImageUrls: _attachImageUrls,
       );
@@ -448,12 +518,43 @@ class _ComposeScreenState extends ConsumerState<ComposeScreen> {
         media.add(ComposeMediaTag(tag: tag, label: '图片'));
       }
     }
+
+    final slots = <int>[];
+    if (mediaSlots is List) {
+      for (final raw in mediaSlots) {
+        final slot = raw is int ? raw : int.tryParse(raw.toString()) ?? 0;
+        slots.add(slot);
+      }
+    }
+    while (slots.length < media.length) {
+      final next = slots.isEmpty
+          ? 1
+          : (slots.where((s) => s > 0).fold<int>(0, (a, b) => a > b ? a : b) +
+              1);
+      slots.add(next);
+    }
+    if (slots.length > media.length) {
+      slots.removeRange(media.length, slots.length);
+    }
+    for (var i = 0; i < slots.length; i++) {
+      if (slots[i] < 1) slots[i] = i + 1;
+    }
+
+    // 去掉残留真实媒体 BBCode，保留已有 ⟦图N⟧。
+    var body = splitComposeMedia(
+      fallbackBody,
+      attachImageUrls: _attachImageUrls,
+    ).body;
+    if (media.isNotEmpty && !composeMediaPlaceholderPattern.hasMatch(body)) {
+      body = appendComposeMedia(
+        body,
+        [for (final slot in slots) composeMediaPlaceholder(slot)],
+      );
+    }
     return ComposeMediaSplit(
-      body: splitComposeMedia(
-        fallbackBody,
-        attachImageUrls: _attachImageUrls,
-      ).body,
+      body: body.trimRight(),
       media: media,
+      slots: slots,
     );
   }
 
@@ -473,7 +574,7 @@ class _ComposeScreenState extends ConsumerState<ComposeScreen> {
 
   bool _editDraftDiffers(Map<String, Object?> draft, EditPostFormInfo form) {
     final parts = EditPostMessageParts.split(form.message);
-    final serverMedia = splitComposeMedia(
+    final serverMedia = splitComposeMediaWithPlaceholders(
       parts.body,
       attachImageUrls: {
         ...widget.editAttachImageUrls,
@@ -484,6 +585,7 @@ class _ComposeScreenState extends ConsumerState<ComposeScreen> {
     final draftParts = EditPostMessageParts.split(draftMsg);
     final draftMedia = _mediaFromDraft(
       draft['mediaTags'],
+      mediaSlots: draft['mediaSlots'],
       fallbackBody: draftParts.body,
     );
     final draftInclude =
@@ -541,6 +643,7 @@ class _ComposeScreenState extends ConsumerState<ComposeScreen> {
             leadingQuote: _editLeadingQuote,
             includeQuote: _includeEditQuote,
             mediaTags: _currentMediaTags,
+            mediaSlots: _currentMediaSlots,
           ),
         ),
       );
@@ -745,6 +848,9 @@ class _ComposeScreenState extends ConsumerState<ComposeScreen> {
       setState(() {
         _replaceUploadedImages(next);
       });
+    } else if (_editMediaDetached) {
+      _syncEditMediaFromBody();
+      if (mounted) setState(() {});
     } else if (mounted) {
       setState(() {});
     }
@@ -931,9 +1037,28 @@ class _ComposeScreenState extends ConsumerState<ComposeScreen> {
 
   void _removeUploadedImage(_ComposeUploadedImage image) {
     if (_editMediaDetached) {
+      final slot = image.slot;
+      _suppressMediaSync = true;
+      if (slot != null) {
+        final next = removeComposeMediaPlaceholder(
+          _messageController.text,
+          slot,
+        );
+        _messageController.value = TextEditingValue(
+          text: next,
+          selection: TextSelection.collapsed(
+            offset: next.length.clamp(0, next.length),
+          ),
+        );
+      }
       setState(() {
-        _uploadedImages.removeWhere((item) => item.tag == image.tag);
+        _uploadedImages.removeWhere(
+          (item) =>
+              identical(item, image) ||
+              (item.slot != null && item.slot == image.slot),
+        );
       });
+      _suppressMediaSync = false;
       final url = image.previewUrl;
       if (url != null) _imageLabelsByUrl.remove(url);
       _persistEditDraft();
@@ -983,16 +1108,36 @@ class _ComposeScreenState extends ConsumerState<ComposeScreen> {
       final label = pending.filename.trim().isEmpty ? '图片' : pending.filename;
       _imageLabelsByUrl[url] = label;
       if (_editMediaDetached) {
+        final slot = _nextEditMediaSlot();
+        final selection = _messageController.selection;
+        final start = selection.isValid
+            ? selection.start
+            : _messageController.text.length;
+        final end =
+            selection.isValid ? selection.end : _messageController.text.length;
+        final inserted = insertComposeMediaPlaceholderAt(
+          text: _messageController.text,
+          start: start,
+          end: end,
+          slot: slot,
+        );
+        _suppressMediaSync = true;
+        _messageController.value = TextEditingValue(
+          text: inserted.text,
+          selection: TextSelection.collapsed(offset: inserted.cursor),
+        );
         setState(() {
           _uploadedImages.add(
             _ComposeUploadedImage(
               tag: '[img]$url[/img]',
               label: label,
               previewUrl: url,
+              slot: slot,
             ),
           );
           _pendingUpload = null;
         });
+        _suppressMediaSync = false;
         _persistEditDraft();
         S1SnackBar.show(context, message: '图片已添加', bottomClearance: 72);
       } else {
@@ -1127,7 +1272,8 @@ class _ComposeScreenState extends ConsumerState<ComposeScreen> {
         );
         return;
       }
-      if (userText.isEmpty && _uploadedImages.isEmpty) {
+      if (stripComposeMediaPlaceholders(userText).trim().isEmpty &&
+          _uploadedImages.isEmpty) {
         S1SnackBar.show(context, message: '请输入正文', bottomClearance: 72);
         return;
       }
@@ -1281,16 +1427,9 @@ class _ComposeScreenState extends ConsumerState<ComposeScreen> {
     );
     final latestParts = EditPostMessageParts.split(latest.message);
     _mergeAttachImageUrls(latest.attachImageUrls);
-    final latestMedia = splitComposeMedia(
-      latestParts.body,
-      attachImageUrls: _attachImageUrls,
-    );
     final latestCore = EditPostMessageParts.compose(
       leadingQuote: latestParts.leadingQuote,
-      body: appendComposeMedia(
-        latestMedia.body,
-        latestMedia.media.map((m) => m.tag),
-      ),
+      body: latestParts.body,
     );
     final matchesDesired = desiredCore.trim() == latestCore.trim() &&
         (!widget.editIsFirst ||
@@ -2356,7 +2495,7 @@ class _ComposeMediaPreviewHint extends StatelessWidget {
       child: Padding(
         padding: const EdgeInsets.fromLTRB(12, 0, 12, 8),
         child: Text(
-          '无缩略图的论坛附件仍会保存；预览时可能显示附件码。',
+          '正文中的 ⟦图N⟧ 可挪动以调整排版；无缩略图的论坛附件仍会保存。',
           style: textTheme.bodySmall?.copyWith(
             color: scheme.onSurfaceVariant,
           ),
@@ -2400,7 +2539,11 @@ class _ComposeImageStrip extends StatelessWidget {
                 label: SizedBox(
                   width: maxLabelWidth,
                   child: Text(
-                    displayLabelForIndex(index),
+                    displayLabelForIndex(
+                      (image.slot != null && image.slot! > 0)
+                          ? image.slot! - 1
+                          : index,
+                    ),
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
                     style: textTheme.labelMedium,

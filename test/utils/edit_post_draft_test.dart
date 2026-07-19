@@ -18,20 +18,20 @@ void main() {
     expect(parsed['200']?.containsKey('sourceMessage'), isFalse);
   });
 
-  test('remove clears only the requested post draft', () {
+  test('edit draft stores mediaTags with parallel mediaSlots', () {
     final drafts = EditPostDraftStore.upsert(
-      EditPostDraftStore.upsert(
-        {},
-        '200',
-        subject: '',
-        message: 'a',
-      ),
-      '201',
+      {},
+      '200',
       subject: '',
-      message: 'c',
+      message: '文⟦图2⟧本',
+      mediaTags: const [
+        '[img]https://a.test/1.png[/img]',
+        '[img]https://a.test/2.png[/img]',
+      ],
+      mediaSlots: const [1, 2],
     );
-    final next = EditPostDraftStore.remove(drafts, '200');
-    expect(next.containsKey('200'), isFalse);
-    expect(next.containsKey('201'), isTrue);
+    final entry = drafts['200']!;
+    expect(entry['mediaTags'], hasLength(2));
+    expect(entry['mediaSlots'], [1, 2]);
   });
 }

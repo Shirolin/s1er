@@ -154,7 +154,7 @@ void main() {
     expect(find.byTooltip('移除引用'), findsOneWidget);
   });
 
-  testWidgets('edit mode moves images to chip strip out of text field',
+  testWidgets('edit mode moves images to placeholders out of raw bbcode',
       (tester) async {
     await tester.pumpWidget(
       ProviderScope(
@@ -180,7 +180,8 @@ void main() {
     await tester.pump();
     await tester.pump(const Duration(milliseconds: 50));
 
-    expect(find.text('看这张图'), findsOneWidget);
+    expect(find.textContaining('看这张图'), findsOneWidget);
+    expect(find.textContaining('⟦图1⟧'), findsOneWidget);
     expect(find.text('图片 1'), findsOneWidget);
     expect(find.byType(InputChip), findsOneWidget);
     expect(
@@ -220,15 +221,61 @@ void main() {
     await tester.pump();
     await tester.pump(const Duration(milliseconds: 50));
 
-    expect(find.text('附图说明'), findsOneWidget);
+    expect(find.textContaining('附图说明'), findsOneWidget);
+    expect(find.textContaining('⟦图1⟧'), findsOneWidget);
     expect(find.text('图片 1'), findsOneWidget);
     expect(find.byTooltip('论坛图片 · 99'), findsOneWidget);
     expect(
-      find.textContaining('无缩略图的论坛附件仍会保存'),
+      find.textContaining('⟦图N⟧ 可挪动'),
       findsOneWidget,
     );
     expect(find.textContaining('[attachimg]'), findsNothing);
     expect(find.byIcon(Icons.image_not_supported_outlined), findsOneWidget);
+  });
+
+  testWidgets('edit mode expands placeholders in original layout on submit',
+      (tester) async {
+    late _CaptureLayoutEditComposeController controller;
+    await tester.pumpWidget(
+      ProviderScope(
+        overrides: [
+          localDataProvider.overrideWithValue(local),
+          authStateProvider.overrideWith(_LoggedInAuthNotifier.new),
+          composeControllerProvider.overrideWith((ref) {
+            controller = _CaptureLayoutEditComposeController(ref);
+            return controller;
+          }),
+        ],
+        child: MaterialApp(
+          theme: AppTheme.lightTheme('purple'),
+          home: const ComposeScreen(
+            tid: '100',
+            fid: '4',
+            editPid: '200',
+            editIsFirst: false,
+          ),
+        ),
+      ),
+    );
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 50));
+
+    expect(find.textContaining('⟦图1⟧'), findsOneWidget);
+    expect(find.textContaining('⟦图2⟧'), findsOneWidget);
+
+    final field = find.byType(TextField).last;
+    await tester.enterText(field, '先⟦图2⟧再⟦图1⟧');
+    await tester.pump();
+    await tester.tap(find.text('保存编辑'));
+    await tester.pump();
+    await tester.tap(find.text('确认编辑'));
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 50));
+
+    expect(
+      controller.lastMessage,
+      '先[img]https://a.test/2.png[/img]再[img]https://a.test/1.png[/img]',
+    );
   });
 }
 
@@ -366,6 +413,42 @@ class _AttachEditComposeController extends ComposeController {
     String? readPerm,
     required EditPostFormInfo baseline,
   }) async {
+    return const EditPostSubmitResult.success(message: '编辑成功');
+  }
+}
+
+class _CaptureLayoutEditComposeController extends ComposeController {
+  _CaptureLayoutEditComposeController(super.ref);
+
+  String? lastMessage;
+
+  @override
+  Future<EditPostFormInfo> fetchEditPostForm({
+    required String fid,
+    required String tid,
+    required String pid,
+    required bool isFirst,
+  }) async {
+    return const EditPostFormInfo(
+      message:
+          '前[img]https://a.test/1.png[/img]后[img]https://a.test/2.png[/img]',
+      formhash: 'fixture',
+    );
+  }
+
+  @override
+  Future<EditPostSubmitResult> submitEditPost({
+    required String fid,
+    required String tid,
+    required String pid,
+    required bool isFirst,
+    required String subject,
+    required String message,
+    String? typeId,
+    String? readPerm,
+    required EditPostFormInfo baseline,
+  }) async {
+    lastMessage = message;
     return const EditPostSubmitResult.success(message: '编辑成功');
   }
 }

@@ -140,13 +140,22 @@ class ComposeMediaSplit {
   const ComposeMediaSplit({
     required this.body,
     required this.media,
+    this.slots = const [],
   });
 
-  /// 去掉媒体标签后的纯文本（空白已轻度收束）。
+  /// 去掉媒体标签后的纯文本（空白已轻度收束）；编辑占位路径可含 `⟦图N⟧`。
   final String body;
 
   /// 按原文出现顺序的媒体标记。
   final List<ComposeMediaTag> media;
+
+  /// 与 [media] 一一对应的稳定 slot；空列表表示按 1..n 赋值。
+  final List<int> slots;
+
+  List<int> get effectiveSlots {
+    if (slots.length == media.length) return slots;
+    return [for (var i = 0; i < media.length; i++) i + 1];
+  }
 }
 
 /// 抽出 `[img]` / `[attachimg]` / `[attach]`，正文只留文字。
@@ -202,7 +211,11 @@ ComposeMediaSplit splitComposeMedia(
   body = body.replaceAll(RegExp(r'[^\S\n]{2,}'), ' ');
   body = body.replaceAll(RegExp(r' ?\n ?'), '\n');
   body = body.replaceAll(RegExp(r'\n{3,}'), '\n\n');
-  return ComposeMediaSplit(body: body.trimRight(), media: media);
+  return ComposeMediaSplit(
+    body: body.trimRight(),
+    media: media,
+    slots: [for (var i = 0; i < media.length; i++) i + 1],
+  );
 }
 
 /// 将媒体标记按序追加到正文末尾（中间空一行，若正文非空）。
@@ -213,6 +226,141 @@ String appendComposeMedia(String body, Iterable<String> tags) {
   final trimmed = body.trimRight();
   if (trimmed.isEmpty) return joined;
   return '$trimmed\n\n$joined';
+}
+
+/// 编辑页正文占位：`⟦图1⟧`（数字为稳定 slot，与 Chip 对应）。
+final composeMediaPlaceholderPattern = RegExp(r'⟦图(\d+)⟧');
+
+String composeMediaPlaceholder(int slot) => '⟦图$slot⟧';
+
+int? parseComposeMediaPlaceholderSlot(String token) {
+  final match = composeMediaPlaceholderPattern.firstMatch(token);
+  if (match == null) return null;
+  return int.tryParse(match.group(1) ?? '');
+}
+
+/// 按出现顺序提取占位 slot（可重复；调用方决定是否去重）。
+List<int> extractComposeMediaPlaceholderSlots(String text) {
+  final slots = <int>[];
+  for (final match in composeMediaPlaceholderPattern.allMatches(text)) {
+    final slot = int.tryParse(match.group(1) ?? '');
+    if (slot != null && slot > 0) slots.add(slot);
+  }
+  return slots;
+}
+
+String stripComposeMediaPlaceholders(String text) =>
+    text.replaceAll(composeMediaPlaceholderPattern, '');
+
+/// 抽出媒体标签，并在原位置留下 [composeMediaPlaceholder]。
+///
+/// 编辑页用：正文可挪动占位以改图文排版；提交再 [expandComposeMediaPlaceholders]。
+ComposeMediaSplit splitComposeMediaWithPlaceholders(
+  String text, {
+  Map<String, String> attachImageUrls = const {},
+}) {
+  final media = <ComposeMediaTag>[];
+  var attachIndex = 0;
+  var slot = 0;
+  final buffer = StringBuffer();
+  var last = 0;
+  for (final match in _mediaTagPattern.allMatches(text)) {
+    buffer.write(text.substring(last, match.start));
+    last = match.end;
+    final full = match.group(0) ?? '';
+    if (full.isEmpty) continue;
+    final imgUrl = match.group(1)?.trim();
+    final attachImgId = match.group(2)?.trim();
+    final attachId = match.group(3)?.trim();
+    ComposeMediaTag? item;
+    if (imgUrl != null && imgUrl.isNotEmpty) {
+      item = ComposeMediaTag(
+        tag: '[img]$imgUrl[/img]',
+        label: filenameFromUrl(imgUrl),
+        previewUrl: imgUrl,
+      );
+    } else if (attachImgId != null && attachImgId.isNotEmpty) {
+      attachIndex += 1;
+      final preview = attachImageUrls[attachImgId]?.trim();
+      final hasPreview = preview != null && preview.isNotEmpty;
+      item = ComposeMediaTag(
+        tag: '[attachimg]$attachImgId[/attachimg]',
+        label: hasPreview
+            ? filenameFromUrl(preview)
+            : attachimgFallbackLabel(attachImgId, index: attachIndex),
+        previewUrl: hasPreview ? preview : null,
+      );
+    } else if (attachId != null && attachId.isNotEmpty) {
+      attachIndex += 1;
+      item = ComposeMediaTag(
+        tag: '[attach]$attachId[/attach]',
+        label: '论坛附件 · $attachId',
+      );
+    }
+    if (item == null) continue;
+    slot += 1;
+    media.add(item);
+    buffer.write(composeMediaPlaceholder(slot));
+  }
+  buffer.write(text.substring(last));
+
+  var body = buffer.toString();
+  body = body.replaceAll(RegExp(r'[^\S\n]{2,}'), ' ');
+  body = body.replaceAll(RegExp(r' ?\n ?'), '\n');
+  body = body.replaceAll(RegExp(r'\n{3,}'), '\n\n');
+  return ComposeMediaSplit(
+    body: body.trimRight(),
+    media: media,
+    slots: [for (var i = 0; i < media.length; i++) i + 1],
+  );
+}
+
+/// 把正文里的 `⟦图N⟧` 还原为 [tagsBySlot] 中对应 slot 的 BBCode。
+///
+/// 无效占位删除；未被引用的 tag 按 slot 升序追加到文末（防丢图）。
+///
+/// 必须用 slot→tag 映射，不能用 Chip 列表下标：用户挪动占位后 Chip 顺序会变，
+/// 但 `⟦图N⟧` 的 N 仍对应稳定 slot。
+String expandComposeMediaPlaceholders(
+  String body,
+  Map<int, String> tagsBySlot,
+) {
+  final used = <int>{};
+  final expanded = body.replaceAllMapped(composeMediaPlaceholderPattern, (m) {
+    final slot = int.tryParse(m.group(1) ?? '') ?? 0;
+    final tag = tagsBySlot[slot]?.trim() ?? '';
+    if (slot < 1 || tag.isEmpty) return '';
+    used.add(slot);
+    return tag;
+  });
+  final unusedSlots = tagsBySlot.keys.where((s) => !used.contains(s)).toList()
+    ..sort();
+  final unused = [
+    for (final slot in unusedSlots)
+      if ((tagsBySlot[slot] ?? '').trim().isNotEmpty) tagsBySlot[slot]!.trim(),
+  ];
+  if (unused.isEmpty) return expanded.trimRight();
+  return appendComposeMedia(expanded, unused);
+}
+
+/// 从正文移除指定 slot 的占位。
+String removeComposeMediaPlaceholder(String text, int slot) {
+  return text.replaceAll(composeMediaPlaceholder(slot), '');
+}
+
+/// 在光标处插入媒体占位。
+({String text, int cursor}) insertComposeMediaPlaceholderAt({
+  required String text,
+  required int start,
+  required int end,
+  required int slot,
+}) {
+  return insertSnippetPadded(
+    text: text,
+    start: start,
+    end: end,
+    snippet: composeMediaPlaceholder(slot),
+  );
 }
 
 /// 移除正文中所有指向 [url] 的 `[img]…[/img]`。

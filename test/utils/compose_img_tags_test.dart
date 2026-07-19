@@ -161,4 +161,52 @@ void main() {
       expect(split.media.single.label, 'x.png');
     });
   });
+
+  group('compose media placeholders', () {
+    test('split keeps layout with placeholders', () {
+      final split = splitComposeMediaWithPlaceholders(
+        '前[img]https://a.test/1.png[/img]中'
+        '[attachimg]9[/attachimg]后',
+        attachImageUrls: {'9': 'https://a.test/9.png'},
+      );
+      expect(split.body, '前⟦图1⟧中⟦图2⟧后');
+      expect(split.media.map((m) => m.tag).toList(), [
+        '[img]https://a.test/1.png[/img]',
+        '[attachimg]9[/attachimg]',
+      ]);
+      expect(split.effectiveSlots, [1, 2]);
+    });
+
+    test('expand restores by slot not list order', () {
+      const body = 'A⟦图2⟧B⟦图1⟧C';
+      final expanded = expandComposeMediaPlaceholders(body, {
+        1: '[img]https://a.test/1.png[/img]',
+        2: '[img]https://a.test/2.png[/img]',
+      });
+      expect(
+        expanded,
+        'A[img]https://a.test/2.png[/img]B[img]https://a.test/1.png[/img]C',
+      );
+    });
+
+    test('expand appends unused tags at end', () {
+      final expanded = expandComposeMediaPlaceholders('只看⟦图1⟧', {
+        1: '[img]https://a.test/1.png[/img]',
+        2: '[img]https://a.test/2.png[/img]',
+      });
+      expect(
+        expanded,
+        '只看[img]https://a.test/1.png[/img]\n\n'
+        '[img]https://a.test/2.png[/img]',
+      );
+    });
+
+    test('remove and strip placeholders', () {
+      expect(
+        removeComposeMediaPlaceholder('前⟦图1⟧中⟦图2⟧后', 1),
+        '前中⟦图2⟧后',
+      );
+      expect(stripComposeMediaPlaceholders('文⟦图1⟧本'), '文本');
+    });
+  });
 }

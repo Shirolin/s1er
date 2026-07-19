@@ -1,12 +1,12 @@
 {
   "latest": "0.1.0",
   "minSupported": "0.1.0",
-  "notes": "Beta",
-  "publishedAt": "2026-07-17",
+  "notes": "Beta — 首个 GitHub Release（Android APK + Windows zip）",
+  "publishedAt": "2026-07-19",
   "channels": {
     "github": "https://github.com/Shirolin/s1er/releases/latest",
-    "androidApk": null,
-    "windows": null,
+    "androidApk": "https://github.com/Shirolin/s1er/releases/download/v0.1.0/s1er-0.1.0%2B1-android.apk",
+    "windows": "https://github.com/Shirolin/s1er/releases/download/v0.1.0/s1er-0.1.0%2B1-windows-x64.zip",
     "linux": null,
     "macos": null,
     "play": null

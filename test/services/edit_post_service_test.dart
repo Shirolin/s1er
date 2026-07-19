@@ -70,6 +70,23 @@ void main() {
     expect(form.selectedTypeId, '2');
   });
 
+  test('extracts aimg urls from edit form html for preview', () {
+    const html = '''
+<form>
+  <input type="hidden" name="formhash" value="fh" />
+  <textarea id="e_textarea">看图[attachimg]2098060[/attachimg]</textarea>
+  <a href="https://img.stage1st.com/forum/a.png"><img id="aimg_2098060"
+    src="https://img.stage1st.com/forum/a.png.thumb.jpg" /></a>
+</form>
+''';
+    final form = ApiService.parseEditPostFormResponse(html, isFirst: false);
+    expect(form.canEdit, isTrue);
+    expect(
+      form.attachImageUrls['2098060'],
+      'https://img.stage1st.com/forum/a.png',
+    );
+  });
+
   test('permission error never becomes an editable form', () {
     final form = ApiService.parseEditPostFormResponse(
       '<div id="messagetext"><p>没有权限编辑他人发表的帖子</p></div>',

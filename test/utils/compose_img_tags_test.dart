@@ -75,5 +75,90 @@ void main() {
       expect(capped.first, '[f:099]');
       expect(capped.length, 24);
     });
+
+    test('splitComposeMedia pulls img and attach tags out of body', () {
+      const raw = '看图 [img]https://p.sda1.dev/a.png[/img]\n'
+          '还有 [attachimg]12[/attachimg] 和 [attach]34[/attach]';
+      final split = splitComposeMedia(raw);
+      expect(split.body, '看图\n还有 和');
+      expect(split.media.map((m) => m.tag), [
+        '[img]https://p.sda1.dev/a.png[/img]',
+        '[attachimg]12[/attachimg]',
+        '[attach]34[/attach]',
+      ]);
+      expect(split.media.first.previewUrl, 'https://p.sda1.dev/a.png');
+      expect(split.media[1].previewUrl, isNull);
+      expect(split.media[1].label, '论坛图片 · 12');
+      expect(split.media[1].isAttachimg, isTrue);
+      expect(split.media[2].label, '论坛附件 · 34');
+      expect(split.media[2].isForumAttach, isTrue);
+    });
+
+    test('appendComposeMedia joins tags after body', () {
+      expect(
+        appendComposeMedia('正文', [
+          '[img]https://a/1.png[/img]',
+          '[attachimg]9[/attachimg]',
+        ]),
+        '正文\n\n[img]https://a/1.png[/img]\n[attachimg]9[/attachimg]',
+      );
+      expect(
+        appendComposeMedia('  ', ['[img]https://a/1.png[/img]']),
+        '[img]https://a/1.png[/img]',
+      );
+    });
+
+    test('extractAttachImageUrls maps aimg id to full href', () {
+      const html =
+          '<div class="img"><a href="https://img.stage1st.com/forum/a.png" '
+          'target="_blank"><img id="aimg_2098060" '
+          'src="https://img.stage1st.com/forum/a.png.thumb.jpg" /></a></div>';
+      expect(
+        extractAttachImageUrls(html),
+        {'2098060': 'https://img.stage1st.com/forum/a.png'},
+      );
+    });
+
+    test('rewriteAttachimgForPreview swaps known aids', () {
+      const raw = '文\n[attachimg]2098060[/attachimg]\n[attachimg]1[/attachimg]';
+      expect(
+        rewriteAttachimgForPreview(raw, {
+          '2098060': 'https://img.stage1st.com/forum/a.png',
+        }),
+        '文\n[img]https://img.stage1st.com/forum/a.png[/img]\n'
+        '[attachimg]1[/attachimg]',
+      );
+      expect(
+        hasUnresolvedAttachimg(
+          rewriteAttachimgForPreview(raw, {
+            '2098060': 'https://img.stage1st.com/forum/a.png',
+          }),
+        ),
+        isTrue,
+      );
+      expect(
+        hasUnresolvedAttachimg(
+          rewriteAttachimgForPreview(raw, {
+            '2098060': 'https://img.stage1st.com/forum/a.png',
+            '1': 'https://img.stage1st.com/forum/b.png',
+          }),
+        ),
+        isFalse,
+      );
+    });
+
+    test('attachimgFallbackLabel includes aid', () {
+      expect(attachimgFallbackLabel('12', index: 1), '论坛图片 · 12');
+      expect(attachimgFallbackLabel('  ', index: 2), '论坛图片 2');
+    });
+
+    test('splitComposeMedia uses attachImageUrls for previewUrl', () {
+      final split = splitComposeMedia(
+        '[attachimg]12[/attachimg]',
+        attachImageUrls: {'12': 'https://img.stage1st.com/x.png'},
+      );
+      expect(split.media.single.previewUrl, 'https://img.stage1st.com/x.png');
+      expect(split.media.single.label, 'x.png');
+    });
   });
 }

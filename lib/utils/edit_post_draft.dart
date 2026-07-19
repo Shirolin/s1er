@@ -1,3 +1,6 @@
+/// 编辑帖本地草稿，按 pid 保存，永不写入服务端。
+///
+/// 与回复正文草稿 `compose_message_drafts`、新主题 `new_thread_drafts` 键空间互斥。
 abstract class EditPostDraftStore {
   static const settingsKey = 'edit_post_drafts';
 
@@ -28,10 +31,9 @@ abstract class EditPostDraftStore {
     required String message,
     String? typeId,
     String? readPerm,
-    required String sourceSubject,
-    required String sourceMessage,
-    String? sourceTypeId,
-    String? sourceReadPerm,
+    String? leadingQuote,
+    bool? includeQuote,
+    List<String>? mediaTags,
   }) {
     final next = parse(drafts);
     next[pid] = {
@@ -39,10 +41,9 @@ abstract class EditPostDraftStore {
       'message': message,
       if (typeId != null) 'typeId': typeId,
       if (readPerm != null) 'readPerm': readPerm,
-      'sourceSubject': sourceSubject,
-      'sourceMessage': sourceMessage,
-      if (sourceTypeId != null) 'sourceTypeId': sourceTypeId,
-      if (sourceReadPerm != null) 'sourceReadPerm': sourceReadPerm,
+      if (leadingQuote != null) 'leadingQuote': leadingQuote,
+      if (includeQuote != null) 'includeQuote': includeQuote,
+      if (mediaTags != null) 'mediaTags': mediaTags,
       'updatedAt': DateTime.now().toUtc().toIso8601String(),
     };
     return next;

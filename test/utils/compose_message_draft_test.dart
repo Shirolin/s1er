@@ -48,5 +48,11 @@ void main() {
       drafts = ComposeMessageDraft.removeEntry(drafts, '100:42');
       expect(ComposeMessageDraft.toStoreValue(drafts), isNull);
     });
+
+    test('upsert empty message removes entry', () {
+      var drafts = ComposeMessageDraft.upsert({}, '100', 'hello');
+      drafts = ComposeMessageDraft.upsert(drafts, '100', '  ');
+      expect(ComposeMessageDraft.toStoreValue(drafts), isNull);
+    });
   });
 }

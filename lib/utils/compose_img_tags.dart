@@ -1,11 +1,100 @@
-/// 回复正文中的 `[img]url[/img]` 解析与编辑辅助。
+/// 回复/编辑正文中的图片与附件 BBCode 解析辅助。
 library;
+
+import 'package:html/parser.dart' show parseFragment;
+
+import 'post_image_urls.dart';
 
 final _imgTagPattern = RegExp(
   r'\[img\](.*?)\[/img\]',
   caseSensitive: false,
   dotAll: true,
 );
+
+/// `[img]` / `[attachimg]` / `[attach]`（编辑页可能带回论坛原生附件码）。
+final _mediaTagPattern = RegExp(
+  r'\[img\](.*?)\[/img\]'
+  r'|\[attachimg\](\d+)\[/attachimg\]'
+  r'|\[attach\](\d+)\[/attach\]',
+  caseSensitive: false,
+  dotAll: true,
+);
+
+/// 从读帖/编辑页 HTML 提取 `aimg_{aid}` → 图片 URL。
+///
+/// 优先用外层 `<a href>` 原图（与 [PostImageUrls] 一致），否则用 `img src`。
+Map<String, String> extractAttachImageUrls(String html) {
+  if (html.trim().isEmpty) return const {};
+  final map = <String, String>{};
+  try {
+    final fragment = parseFragment(html);
+    final root = fragment;
+    for (final img in root.querySelectorAll('img')) {
+      final id = img.id.trim();
+      if (!id.startsWith('aimg_')) continue;
+      final aid = id.substring('aimg_'.length).trim();
+      if (aid.isEmpty) continue;
+      final src = img.attributes['src']?.trim() ?? '';
+      String? href;
+      var parent = img.parent;
+      while (parent != null) {
+        if (parent.localName == 'a') {
+          href = parent.attributes['href']?.trim();
+          break;
+        }
+        parent = parent.parent;
+      }
+      final resolved = PostImageUrls.resolve(src: src, linkHref: href);
+      final url =
+          resolved.fullUrl.isNotEmpty ? resolved.fullUrl : resolved.previewUrl;
+      if (url.isNotEmpty) map[aid] = url;
+    }
+    for (final el in root.querySelectorAll('[aid]')) {
+      final aid = el.attributes['aid']?.trim() ?? '';
+      if (aid.isEmpty || map.containsKey(aid)) continue;
+      final img = el.localName == 'img' ? el : el.querySelector('img');
+      final src = img?.attributes['src']?.trim() ?? '';
+      if (src.startsWith('http://') || src.startsWith('https://')) {
+        map[aid] = src;
+      }
+    }
+  } catch (_) {
+    // HTML 异常时不影响编辑主流程。
+  }
+  return map;
+}
+
+final _attachimgTagPattern = RegExp(
+  r'\[attachimg\](\d+)\[/attachimg\]',
+  caseSensitive: false,
+);
+
+/// 预览用：把 `[attachimg]aid[/attachimg]` 换成已解析的 `[img]url[/img]`。
+///
+/// 提交仍应保留原始 `[attachimg]`，勿对写回正文使用本函数。
+String rewriteAttachimgForPreview(
+  String bbcode,
+  Map<String, String> attachImageUrls,
+) {
+  if (bbcode.isEmpty || attachImageUrls.isEmpty) return bbcode;
+  return bbcode.replaceAllMapped(_attachimgTagPattern, (match) {
+    final aid = match.group(1) ?? '';
+    final url = attachImageUrls[aid]?.trim() ?? '';
+    if (url.isEmpty) return match.group(0)!;
+    return '[img]$url[/img]';
+  });
+}
+
+/// 预览正文里是否仍残留无法改写的 `[attachimg]`（缺 aid→URL）。
+bool hasUnresolvedAttachimg(String bbcode) =>
+    _attachimgTagPattern.hasMatch(bbcode);
+
+/// Chip / 提示用：无预览地址时带上 aid，方便对照读帖。
+String attachimgFallbackLabel(String aid, {required int index}) {
+  final trimmed = aid.trim();
+  if (trimmed.isEmpty) return '论坛图片 $index';
+  return '论坛图片 · $trimmed';
+}
 
 /// 按出现顺序提取 URL（去重保序：首次出现为准）。
 List<String> extractImgUrls(String text) {
@@ -18,6 +107,112 @@ List<String> extractImgUrls(String text) {
     urls.add(url);
   }
   return urls;
+}
+
+/// 一条可回写的媒体标记（外链表或论坛附件）。
+class ComposeMediaTag {
+  const ComposeMediaTag({
+    required this.tag,
+    required this.label,
+    this.previewUrl,
+  });
+
+  /// 完整 BBCode，提交时原样写回。
+  final String tag;
+
+  /// Chip Tooltip / 无缩略图时的说明（文件名或「论坛图片 · aid」）。
+  final String label;
+
+  /// 可拉缩略图的地址：`[img]` 外链，或已解析的论坛 `[attachimg]`。
+  final String? previewUrl;
+
+  bool get isExternalImg => previewUrl != null && previewUrl!.isNotEmpty;
+
+  bool get isAttachimg =>
+      RegExp(r'^\[attachimg\]', caseSensitive: false).hasMatch(tag);
+
+  bool get isForumAttach =>
+      RegExp(r'^\[attach\]', caseSensitive: false).hasMatch(tag);
+}
+
+/// 正文与媒体标记拆分结果。
+class ComposeMediaSplit {
+  const ComposeMediaSplit({
+    required this.body,
+    required this.media,
+  });
+
+  /// 去掉媒体标签后的纯文本（空白已轻度收束）。
+  final String body;
+
+  /// 按原文出现顺序的媒体标记。
+  final List<ComposeMediaTag> media;
+}
+
+/// 抽出 `[img]` / `[attachimg]` / `[attach]`，正文只留文字。
+///
+/// 编辑页用：输入框不堆长 URL；Chip 条管理图片；提交再 [appendComposeMedia]。
+///
+/// [attachImageUrls]：`aid → 图片 URL`，用于给论坛附件 Chip 填预览地址。
+ComposeMediaSplit splitComposeMedia(
+  String text, {
+  Map<String, String> attachImageUrls = const {},
+}) {
+  final media = <ComposeMediaTag>[];
+  var attachIndex = 0;
+  for (final match in _mediaTagPattern.allMatches(text)) {
+    final full = match.group(0) ?? '';
+    if (full.isEmpty) continue;
+    final imgUrl = match.group(1)?.trim();
+    final attachImgId = match.group(2)?.trim();
+    final attachId = match.group(3)?.trim();
+    if (imgUrl != null && imgUrl.isNotEmpty) {
+      media.add(
+        ComposeMediaTag(
+          tag: '[img]$imgUrl[/img]',
+          label: filenameFromUrl(imgUrl),
+          previewUrl: imgUrl,
+        ),
+      );
+    } else if (attachImgId != null && attachImgId.isNotEmpty) {
+      attachIndex += 1;
+      final preview = attachImageUrls[attachImgId]?.trim();
+      final hasPreview = preview != null && preview.isNotEmpty;
+      media.add(
+        ComposeMediaTag(
+          tag: '[attachimg]$attachImgId[/attachimg]',
+          label: hasPreview
+              ? filenameFromUrl(preview)
+              : attachimgFallbackLabel(attachImgId, index: attachIndex),
+          previewUrl: hasPreview ? preview : null,
+        ),
+      );
+    } else if (attachId != null && attachId.isNotEmpty) {
+      attachIndex += 1;
+      media.add(
+        ComposeMediaTag(
+          tag: '[attach]$attachId[/attach]',
+          label: '论坛附件 · $attachId',
+        ),
+      );
+    }
+  }
+
+  var body = text.replaceAll(_mediaTagPattern, '');
+  body = body.replaceAll(RegExp(r'[^\S\n]{2,}'), ' ');
+  body = body.replaceAll(RegExp(r' ?\n ?'), '\n');
+  body = body.replaceAll(RegExp(r'\n{3,}'), '\n\n');
+  return ComposeMediaSplit(body: body.trimRight(), media: media);
+}
+
+/// 将媒体标记按序追加到正文末尾（中间空一行，若正文非空）。
+String appendComposeMedia(String body, Iterable<String> tags) {
+  final list = [for (final tag in tags) tag.trim()].where((t) => t.isNotEmpty);
+  if (list.isEmpty) return body.trimRight();
+  final joined = list.join('\n');
+  final trimmed = body.trimRight();
+  if (trimmed.isEmpty) return joined;
+  return '$trimmed\n\n$joined';
 }
 
 /// 移除正文中所有指向 [url] 的 `[img]…[/img]`。

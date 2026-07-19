@@ -75,5 +75,25 @@ void main() {
       expect(preview, isNot(contains('[quote]')));
       expect(preview.length, lessThanOrEqualTo(21));
     });
+
+    test('parseClientQuote extracts author and plain body', () {
+      const raw =
+          '[quote][size=2][url=forum.php?mod=redirect&goto=findpost&pid=1&ptid=100]'
+          '二十二颗牛油果[/url] 发表于 07-19 14:32[/size]\n'
+          '现在实体版有好价吗\n'
+          '[/quote]';
+      final parsed = QuoteBuilder.parseClientQuote(raw);
+      expect(parsed.author, '二十二颗牛油果');
+      expect(parsed.preview, '现在实体版有好价吗');
+      expect(parsed.preview, isNot(contains('[/size]')));
+    });
+
+    test('parseClientQuote accepts year in dateline', () {
+      const raw =
+          '[size=2][url=x]alice[/url] 发表于 2024-07-19 14:32[/size]\nbody';
+      final parsed = QuoteBuilder.parseClientQuote(raw);
+      expect(parsed.author, 'alice');
+      expect(parsed.preview, 'body');
+    });
   });
 }

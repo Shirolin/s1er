@@ -147,6 +147,16 @@ class QuoteBlock extends StatelessWidget {
     ).firstMatch(text);
     if (match3 != null) return match3.group(0)?.trim();
 
+    // BBCode：`[url=…]作者[/url] 发表于 07-19 14:32`（同年无年号）
+    final bbAuthor = RegExp(
+      r'\[url=[^\]]+\]([^\[]+)\[/url\]\s*发表于\s*',
+      caseSensitive: false,
+    ).firstMatch(text);
+    if (bbAuthor != null) {
+      final name = bbAuthor.group(1)?.trim() ?? '';
+      if (name.isNotEmpty) return name;
+    }
+
     return null;
   }
 
@@ -181,13 +191,27 @@ class QuoteBlock extends StatelessWidget {
     result =
         result.replaceAll(RegExp(r'</div>$', caseSensitive: false), '').trim();
 
-    final authorLine = RegExp(
-      r'^.*?发表于\s*\d{4}-\d{1,2}-\d{1,2}\s*\d{2}:\d{2}(?::\d{2})?\s*(?:<br\s*/?>|\n)?',
-      multiLine: true,
+    // BBCode 头须先于「发表于」泛匹配：否则会吃掉头却留下孤立的 `[/size]`。
+    final bbHeader = RegExp(
+      r'^\[size=\d+\]\s*\[url=[^\]]+\][^\[]*\[/url\]\s*发表于\s*'
+      r'(?:\d{4}-)?\d{1,2}-\d{1,2}\s*\d{2}:\d{2}(?::\d{2})?\s*\[/size\]\s*',
       caseSensitive: false,
     ).firstMatch(result);
-    if (authorLine != null) {
-      result = result.substring(authorLine.end);
+    if (bbHeader != null) {
+      result = result.substring(bbHeader.end);
+    } else {
+      final authorLine = RegExp(
+        r'^.*?发表于\s*(?:\d{4}-)?\d{1,2}-\d{1,2}\s*\d{2}:\d{2}(?::\d{2})?\s*(?:<br\s*/?>|\n)?',
+        multiLine: true,
+        caseSensitive: false,
+      ).firstMatch(result);
+      if (authorLine != null) {
+        result = result.substring(authorLine.end);
+      }
+      result = result.replaceFirst(
+        RegExp(r'^\[/size\]\s*', caseSensitive: false),
+        '',
+      );
     }
 
     result = result.replaceFirst(

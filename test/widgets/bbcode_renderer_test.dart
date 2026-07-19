@@ -177,6 +177,26 @@ void main() {
       expect(find.byType(BbcodeRenderer), findsOneWidget);
     });
 
+    testWidgets('strips Discuz BBCode quote header without leftover [/size]',
+        (tester) async {
+      await tester.pumpWidget(
+        _wrapBbcode(
+          QuoteBlock(
+            content:
+                '[size=2][url=forum.php?mod=redirect&goto=findpost&pid=1&ptid=100]'
+                '二十二颗牛油果[/url] 发表于 07-19 14:32[/size]\n'
+                '现在实体版有好价吗',
+            imageIndexCounter: counter,
+          ),
+        ),
+      );
+      await tester.pumpAndSettle();
+      expect(find.text('二十二颗牛油果'), findsOneWidget);
+      expect(find.textContaining('现在实体版有好价吗'), findsOneWidget);
+      expect(find.textContaining('[/size]'), findsNothing);
+      expect(find.textContaining('[size='), findsNothing);
+    });
+
     testWidgets('handles empty content', (tester) async {
       await tester.pumpWidget(
         _wrapBbcode(

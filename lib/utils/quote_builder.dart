@@ -44,6 +44,53 @@ class QuoteBuilder {
     return '${plain.substring(0, maxLength)}…';
   }
 
+  /// Discuz 客户端引用头：`[size=2][url=…]作者[/url] 发表于 …[/size]`。
+  ///
+  /// 兼容同年无年号（`07-19 14:32`）与带年号（`2024-07-19 14:32`）。
+  static final _clientQuoteHeader = RegExp(
+    r'^\[size=\d+\]\s*\[url=[^\]]+\]([^\[]*)\[/url\]\s*发表于\s*'
+    r'(?:\d{4}-)?\d{1,2}-\d{1,2}\s*\d{2}:\d{2}(?::\d{2})?\s*\[/size\]\s*',
+    caseSensitive: false,
+  );
+
+  /// 解析编辑页前置 `[quote]`（或仅内层）为作者 + 纯文本摘要。
+  ///
+  /// 供编辑页引用条使用：与回复页引用条一样展示纯文本，不把原始 BBCode
+  /// 直接塞进 [QuoteBlock]。
+  static ({String? author, String preview}) parseClientQuote(String raw) {
+    var text = raw.trim();
+    final wrapped = RegExp(
+      r'^\[quote\]([\s\S]*?)\[/quote\]\s*$',
+      caseSensitive: false,
+    ).firstMatch(text);
+    if (wrapped != null) {
+      text = (wrapped.group(1) ?? '').trim();
+    }
+
+    String? author;
+    final header = _clientQuoteHeader.firstMatch(text);
+    if (header != null) {
+      author = header.group(1)?.trim();
+      if (author != null && author.isEmpty) author = null;
+      text = text.substring(header.end);
+    } else {
+      final urlAuthor = RegExp(
+        r'\[url=[^\]]+\]([^\[]+)\[/url\]\s*发表于\s*',
+        caseSensitive: false,
+      ).firstMatch(text);
+      if (urlAuthor != null) {
+        author = urlAuthor.group(1)?.trim();
+        if (author != null && author.isEmpty) author = null;
+      }
+    }
+
+    // 去掉残留的收尾 size（旧解析半截头时常见）。
+    text =
+        text.replaceFirst(RegExp(r'^\[/size\]\s*', caseSensitive: false), '');
+
+    return (author: author, preview: previewText(text));
+  }
+
   static String stripNestedQuotes(String text) {
     var result = text;
     result = result.replaceAll(

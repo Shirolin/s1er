@@ -84,6 +84,21 @@ class PostSignature {
     return '$body\n\n$sig';
   }
 
+  /// 剥离文末客户端小尾巴（`[size=1][color=gray]——…[/color][/size]`）。
+  ///
+  /// 编辑回填时用：输入框不展示旧尾巴，提交再按当前设置追加。
+  static String stripTrailing(String message) {
+    return message.replaceFirst(_trailingSignaturePattern, '').trimRight();
+  }
+
+  static bool hasTrailing(String message) =>
+      _trailingSignaturePattern.hasMatch(message);
+
+  static final RegExp _trailingSignaturePattern = RegExp(
+    r'(?:\r?\n){0,2}\[size=1\]\[color=gray\]——[\s\S]*?\[/color\]\[/size\]\s*$',
+    caseSensitive: false,
+  );
+
   /// 可见落款行（[clientLabel] 可为纯文本或已包好的 `[url]…[/url]`）。
   static String _plainLine({
     required String custom,

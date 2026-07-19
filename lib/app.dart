@@ -7,6 +7,7 @@ import 'package:go_router/go_router.dart';
 import 'package:talker_flutter/talker_flutter.dart';
 import 'config/constants.dart';
 import 'config/resource_domains.dart';
+import 'models/edit_post_route_extra.dart';
 import 'providers/reading_history_coordinator.dart';
 import 'providers/settings_provider.dart';
 import 'providers/update_check_provider.dart';
@@ -113,20 +114,29 @@ final _router = GoRouter(
       builder: (context, state) => ComposeScreen(
         tid: state.uri.queryParameters['tid'],
         fid: state.uri.queryParameters['fid'],
-        draftId: state.uri.queryParameters['draftId'],
+        quoteSnapshotId: state.uri.queryParameters['quoteSnapshotId'] ??
+            state.uri.queryParameters['draftId'],
         reppost: state.uri.queryParameters['reppost'],
         subject: state.uri.queryParameters['subject'],
       ),
     ),
     GoRoute(
       path: '/thread/:tid/post/:pid/edit',
-      builder: (context, state) => ComposeScreen(
-        tid: state.pathParameters['tid'],
-        fid: state.uri.queryParameters['fid'],
-        editPid: state.pathParameters['pid'],
-        editPage: int.tryParse(state.uri.queryParameters['page'] ?? ''),
-        editIsFirst: state.uri.queryParameters['first'] == '1',
-      ),
+      builder: (context, state) {
+        final extra = state.extra;
+        final seedUrls = extra is EditPostRouteExtra
+            ? extra.attachImageUrls
+            : const <String, String>{};
+        return ComposeScreen(
+          tid: state.pathParameters['tid'],
+          fid: state.uri.queryParameters['fid'],
+          subject: state.uri.queryParameters['subject'],
+          editPid: state.pathParameters['pid'],
+          editPage: int.tryParse(state.uri.queryParameters['page'] ?? ''),
+          editIsFirst: state.uri.queryParameters['first'] == '1',
+          editAttachImageUrls: seedUrls,
+        );
+      },
     ),
     GoRoute(
       path: '/forum/:fid/new-thread',

@@ -118,14 +118,15 @@ class ComposeController {
     String? typeId,
     String? readPerm,
     required EditPostFormInfo baseline,
-  }) {
+  }) async {
+    final signed = await _messageWithSignature(message);
     return _ref.read(apiServiceProvider).submitEditPost(
           fid: fid,
           tid: tid,
           pid: pid,
           isFirst: isFirst,
           subject: subject,
-          message: message,
+          message: signed,
           typeId: typeId,
           readPerm: readPerm,
           baseline: baseline,

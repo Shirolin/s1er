@@ -8,6 +8,7 @@ import '../config/constants.dart';
 import '../models/blacklist_record.dart';
 import '../models/post.dart';
 import '../models/reply_submit_result.dart';
+import '../models/edit_post_route_extra.dart';
 import '../models/edit_post_submit_result.dart';
 import '../providers/blacklist_provider.dart';
 import '../providers/in_thread_jump_provider.dart';
@@ -16,7 +17,8 @@ import '../providers/auth_provider.dart';
 import '../providers/reading_history_provider.dart';
 import '../providers/settings_provider.dart';
 import '../providers/thread_open_intent_provider.dart';
-import '../utils/compose_draft_store.dart';
+import '../utils/compose_img_tags.dart';
+import '../utils/quote_snapshot_store.dart';
 import '../widgets/app_bar_more_menu.dart';
 import '../widgets/favorite_bookmark_button.dart';
 import '../widgets/in_thread_jump_capture.dart';
@@ -402,9 +404,9 @@ class _ThreadDetailScreenState extends ConsumerState<ThreadDetailScreen> {
       return;
     }
 
-    String? draftId;
+    String? quoteSnapshotId;
     if (replyTo != null) {
-      draftId = ComposeDraftStore.put(
+      quoteSnapshotId = QuoteSnapshotStore.put(
         replyTo,
         displayFloor: displayFloor ?? replyTo.floor,
       );
@@ -417,8 +419,8 @@ class _ThreadDetailScreenState extends ConsumerState<ThreadDetailScreen> {
     if (subject != null && subject.isNotEmpty) {
       query.write('&subject=${Uri.encodeQueryComponent(subject)}');
     }
-    if (draftId != null) {
-      query.write('&draftId=$draftId');
+    if (quoteSnapshotId != null) {
+      query.write('&quoteSnapshotId=$quoteSnapshotId');
     }
     if (replyTo != null) {
       query.write('&reppost=${replyTo.pid}');
@@ -435,11 +437,23 @@ class _ThreadDetailScreenState extends ConsumerState<ThreadDetailScreen> {
     if (!auth.isLoggedIn || auth.user?.uid != post.authorId) return;
     final fid = state.threadFid;
     if (fid == null || fid.isEmpty) return;
-    final result = await context.push<EditPostSubmitResult>(
+    final editQuery = StringBuffer(
       '/thread/${widget.tid}/post/${post.pid}/edit'
       '?fid=${Uri.encodeQueryComponent(fid)}'
       '&page=${state.currentPage}'
       '&first=${post.isFirst ? '1' : '0'}',
+    );
+    final threadSubject = state.threadSubject?.trim();
+    if (threadSubject != null && threadSubject.isNotEmpty) {
+      editQuery.write(
+        '&subject=${Uri.encodeQueryComponent(threadSubject)}',
+      );
+    }
+    final result = await context.push<EditPostSubmitResult>(
+      editQuery.toString(),
+      extra: EditPostRouteExtra(
+        attachImageUrls: extractAttachImageUrls(post.message),
+      ),
     );
     if (!mounted || result == null || !result.isSuccess) return;
     await ref.read(postProvider(widget.tid).notifier).refresh();

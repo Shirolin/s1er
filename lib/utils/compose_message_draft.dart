@@ -1,6 +1,7 @@
 /// 回复正文草稿：SettingsStore JSON map 的编解码与 entry key。
 ///
-/// 与内存里的 [ComposeDraftStore]（引用目标帖快照）并存，勿混用。
+/// 与内存里的 [QuoteSnapshotStore]（被引楼快照）并存，勿混用。
+/// 禁止编辑/新主题路径读写本 key。
 abstract class ComposeMessageDraft {
   static const settingsKey = 'compose_message_drafts';
   static const Duration debounce = Duration(milliseconds: 400);
@@ -41,16 +42,18 @@ abstract class ComposeMessageDraft {
     return message;
   }
 
-  /// 写入 / 更新一条草稿。
+  /// 写入 / 更新一条草稿；空正文则删除条目。
   static Map<String, Map<String, Object?>> upsert(
     Map<String, Map<String, Object?>> drafts,
     String key,
     String message, {
     DateTime? updatedAt,
   }) {
-    final next = Map<String, Map<String, Object?>>.from(
-      drafts.map((k, v) => MapEntry(k, Map<String, Object?>.from(v))),
-    );
+    final next = Map<String, Map<String, Object?>>.from(drafts);
+    if (message.trim().isEmpty) {
+      next.remove(key);
+      return next;
+    }
     next[key] = {
       'message': message,
       'updatedAt': (updatedAt ?? DateTime.now().toUtc()).toIso8601String(),
@@ -58,22 +61,16 @@ abstract class ComposeMessageDraft {
     return next;
   }
 
-  /// 删除一条草稿。
   static Map<String, Map<String, Object?>> removeEntry(
     Map<String, Map<String, Object?>> drafts,
     String key,
   ) {
-    if (!drafts.containsKey(key)) return drafts;
-    final next = Map<String, Map<String, Object?>>.from(
-      drafts.map((k, v) => MapEntry(k, Map<String, Object?>.from(v))),
-    );
+    final next = Map<String, Map<String, Object?>>.from(drafts);
     next.remove(key);
     return next;
   }
 
-  /// 供 SettingsStore.put：空 map 返回 null 以清除整键。
   static Object? toStoreValue(Map<String, Map<String, Object?>> drafts) {
-    if (drafts.isEmpty) return null;
-    return drafts.map((k, v) => MapEntry(k, Map<String, Object?>.from(v)));
+    return drafts.isEmpty ? null : drafts;
   }
 }

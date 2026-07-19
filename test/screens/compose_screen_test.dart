@@ -16,7 +16,7 @@ import 'package:s1er/services/app_database.dart';
 import 'package:s1er/services/app_local_data.dart';
 import 'package:s1er/providers/device_model_label_provider.dart';
 import 'package:s1er/theme/app_theme.dart';
-import 'package:s1er/utils/compose_draft_store.dart';
+import 'package:s1er/utils/quote_snapshot_store.dart';
 import 'package:s1er/utils/compose_message_draft.dart';
 import 'package:s1er/utils/window_size.dart';
 import 'package:s1er/widgets/quote_block.dart';
@@ -62,7 +62,7 @@ void main() {
 
   testWidgets('ComposeScreen shows quote preview when draft is provided',
       (tester) async {
-    final draftId = ComposeDraftStore.put(samplePost, displayFloor: 5);
+    final snapshotId = QuoteSnapshotStore.put(samplePost, displayFloor: 5);
 
     await tester.pumpWidget(
       ProviderScope(
@@ -72,7 +72,7 @@ void main() {
           home: ComposeScreen(
             tid: '100',
             fid: '4',
-            draftId: draftId,
+            quoteSnapshotId: snapshotId,
             reppost: '42',
             subject: '示例主题标题',
           ),
@@ -166,7 +166,7 @@ void main() {
 
   testWidgets('ComposeScreen preview shows QuoteBlock when quoting',
       (tester) async {
-    final draftId = ComposeDraftStore.put(samplePost, displayFloor: 5);
+    final snapshotId = QuoteSnapshotStore.put(samplePost, displayFloor: 5);
 
     await tester.pumpWidget(
       ProviderScope(
@@ -176,7 +176,7 @@ void main() {
           home: ComposeScreen(
             tid: '100',
             fid: '4',
-            draftId: draftId,
+            quoteSnapshotId: snapshotId,
             reppost: '42',
             subject: '示例主题标题',
           ),

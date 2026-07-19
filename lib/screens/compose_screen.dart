@@ -1,7 +1,9 @@
 import 'dart:async';
 import 'dart:typed_data';
 
+import 'package:cached_network_image/cached_network_image.dart';
 import 'package:file_selector/file_selector.dart';
+import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
@@ -15,24 +17,28 @@ import '../models/user.dart';
 import '../providers/auth_provider.dart';
 import '../providers/compose_provider.dart';
 import '../providers/forum_name_provider.dart';
+import '../providers/image_cache_provider.dart';
 import '../providers/settings_provider.dart';
 import '../providers/thread_list_provider.dart';
 import '../theme/app_theme.dart';
 import '../theme/s1_haptics.dart';
 import '../utils/compact_label.dart';
-import '../utils/compose_draft_store.dart';
 import '../utils/compose_img_tags.dart';
 import '../utils/compose_message_draft.dart';
 import '../utils/new_thread_draft.dart';
 import '../utils/edit_post_draft.dart';
+import '../utils/edit_post_message.dart';
+import '../utils/platform_image_url.dart';
 import '../utils/post_image_index_counter.dart';
 import '../utils/quote_builder.dart';
+import '../utils/quote_snapshot_store.dart';
 import '../utils/s1_snack_bar.dart';
 import '../utils/window_size.dart';
 import '../widgets/bbcode_renderer.dart';
 import '../widgets/compose_emoticon_panel.dart';
 import '../widgets/quote_block.dart';
 import '../widgets/s1_confirm_dialog.dart';
+import '../widgets/s1_draft_leave_dialog.dart';
 import '../widgets/s1_adaptive_sheet.dart';
 import '../widgets/s1_content_width.dart';
 import '../widgets/web_avatar.dart';
@@ -44,18 +50,21 @@ class ComposeScreen extends ConsumerStatefulWidget {
     super.key,
     this.tid,
     this.fid,
-    this.draftId,
+    this.quoteSnapshotId,
     this.reppost,
     this.subject,
     this.newThread = false,
     this.editPid,
     this.editPage,
     this.editIsFirst = false,
+    this.editAttachImageUrls = const {},
   });
 
   final String? tid;
   final String? fid;
-  final String? draftId;
+
+  /// 被引楼 [QuoteSnapshotStore] 内存 key，不是正文草稿。
+  final String? quoteSnapshotId;
   final String? reppost;
   final String? subject;
   final bool newThread;
@@ -63,15 +72,34 @@ class ComposeScreen extends ConsumerStatefulWidget {
   final int? editPage;
   final bool editIsFirst;
 
+  /// 从读帖 HTML 带入的 `aid → URL`，与编辑表单解析结果合并。
+  final Map<String, String> editAttachImageUrls;
+
   @override
   ConsumerState<ComposeScreen> createState() => _ComposeScreenState();
 }
 
 class _ComposeUploadedImage {
-  const _ComposeUploadedImage({required this.url, required this.label});
+  const _ComposeUploadedImage({
+    required this.tag,
+    required this.label,
+    this.previewUrl,
+  });
 
-  final String url;
+  /// 提交时写回的完整 BBCode。
+  final String tag;
   final String label;
+
+  /// `[img]` 外链或已解析的论坛附件图 URL；无则 Chip 只显示图标。
+  final String? previewUrl;
+
+  bool get hasThumb => previewUrl != null && previewUrl!.trim().isNotEmpty;
+
+  bool get isAttachimg =>
+      RegExp(r'^\[attachimg\]', caseSensitive: false).hasMatch(tag);
+
+  bool get isForumAttach =>
+      RegExp(r'^\[attach\]', caseSensitive: false).hasMatch(tag);
 }
 
 class _ComposeScreenState extends ConsumerState<ComposeScreen> {
@@ -83,7 +111,7 @@ class _ComposeScreenState extends ConsumerState<ComposeScreen> {
   bool _redirectedToLogin = false;
   bool _allowPop = false;
   bool _showEmoticonPanel = false;
-  ComposeDraft? _draft;
+  QuoteSnapshot? _draft;
   bool _includeQuote = false;
   QuoteInfo? _quoteInfo;
   bool _quotePrefetching = false;
@@ -93,6 +121,7 @@ class _ComposeScreenState extends ConsumerState<ComposeScreen> {
   List<String> _recentEmoticons = [];
   Timer? _draftSaveTimer;
   bool _suppressDraftSave = false;
+  bool _suppressMediaSync = false;
   NewThreadFormInfo? _newThreadForm;
   bool _newThreadLoading = false;
   String? _selectedTypeId;
@@ -101,11 +130,23 @@ class _ComposeScreenState extends ConsumerState<ComposeScreen> {
   bool _editLoading = false;
   bool _editUncertain = false;
   bool _editConflict = false;
+
+  /// 编辑页从服务器原文拆出的前置 `[quote]`（可移除，不进输入框）。
+  String? _editLeadingQuote;
+
+  /// 加载时拆出的正文基线（已去媒体标签；用于脏检查 / 草稿）。
+  String _editLoadedBody = '';
+  List<String> _editLoadedMediaTags = const [];
+  bool _includeEditQuote = false;
+  Map<String, String> _attachImageUrls = const {};
   ({Uint8List bytes, String filename})? _pendingUpload;
 
   bool get _hasValidTid => widget.tid != null && widget.tid!.isNotEmpty;
   bool get _isNewThread => widget.newThread;
   bool get _isEditing => widget.editPid != null && widget.editPid!.isNotEmpty;
+
+  /// 编辑模式：媒体只走 Chip 条，不把长 `[img]` / `[attach]` 留在输入框。
+  bool get _editMediaDetached => _isEditing;
 
   String? get _quotePid => widget.reppost ?? _draft?.post.pid;
 
@@ -117,13 +158,24 @@ class _ComposeScreenState extends ConsumerState<ComposeScreen> {
 
   bool get _quoting => _includeQuote && _quoteInfo != null;
 
+  bool get _editMediaChanged {
+    if (_uploadedImages.length != _editLoadedMediaTags.length) return true;
+    for (var i = 0; i < _uploadedImages.length; i++) {
+      if (_uploadedImages[i].tag != _editLoadedMediaTags[i]) return true;
+    }
+    return false;
+  }
+
   bool get _isDirty {
     if (_isEditing && _editForm != null) {
-      return _messageController.text != _editForm!.message ||
+      final hadQuoteOnLoad =
+          _editLeadingQuote != null && _editLeadingQuote!.trim().isNotEmpty;
+      return _messageController.text != _editLoadedBody ||
           _subjectController.text != _editForm!.subject ||
           _selectedTypeId != _editForm!.selectedTypeId ||
           _selectedReadPerm != _editForm!.selectedReadPermission ||
-          _uploadedImages.isNotEmpty;
+          _includeEditQuote != hadQuoteOnLoad ||
+          _editMediaChanged;
     }
     return _messageController.text.trim().isNotEmpty ||
         ((_isNewThread || _isEditing) &&
@@ -141,17 +193,71 @@ class _ComposeScreenState extends ConsumerState<ComposeScreen> {
         _editConflict;
     if (busy) return false;
     final hasText = _messageController.text.trim().isNotEmpty;
+    final hasMedia = _uploadedImages.isNotEmpty;
     if (_isNewThread) {
-      return _subjectController.text.trim().isNotEmpty && hasText;
+      return _subjectController.text.trim().isNotEmpty && (hasText || hasMedia);
     }
     if (_isEditing) {
-      return _editForm != null && hasText;
+      return _editForm != null && (hasText || hasMedia);
     }
-    return hasText || _quoting;
+    return hasText || hasMedia || _quoting;
   }
 
   bool get _canPreview {
-    return _messageController.text.trim().isNotEmpty || _quoting;
+    if (_isEditing) {
+      return _messageController.text.trim().isNotEmpty ||
+          _uploadedImages.isNotEmpty ||
+          _showingEditQuote;
+    }
+    return _messageController.text.trim().isNotEmpty ||
+        _uploadedImages.isNotEmpty ||
+        _quoting;
+  }
+
+  bool get _showingEditQuote =>
+      _isEditing &&
+      _includeEditQuote &&
+      _editLeadingQuote != null &&
+      _editLeadingQuote!.trim().isNotEmpty;
+
+  List<String> get _currentMediaTags =>
+      [for (final image in _uploadedImages) image.tag];
+
+  String _bodyWithMedia(String body) =>
+      appendComposeMedia(body, _currentMediaTags);
+
+  /// 预览用正文：论坛 `[attachimg]` 换成可渲染的 `[img]url[/img]`。
+  String _previewBodyWithMedia(String body) => rewriteAttachimgForPreview(
+        _bodyWithMedia(body),
+        _attachImageUrls,
+      );
+
+  void _mergeAttachImageUrls(Map<String, String> next) {
+    if (next.isEmpty) return;
+    _attachImageUrls = {..._attachImageUrls, ...next};
+  }
+
+  void _replaceUploadedImages(Iterable<_ComposeUploadedImage> next) {
+    _uploadedImages
+      ..clear()
+      ..addAll(next);
+  }
+
+  void _applyEditMedia(List<ComposeMediaTag> media) {
+    _replaceUploadedImages([
+      for (final item in media)
+        _ComposeUploadedImage(
+          tag: item.tag,
+          label: item.label,
+          previewUrl: item.previewUrl,
+        ),
+    ]);
+    for (final item in media) {
+      final url = item.previewUrl;
+      if (url != null && url.isNotEmpty) {
+        _imageLabelsByUrl[url] = item.label;
+      }
+    }
   }
 
   String get _draftEntryKey {
@@ -165,8 +271,8 @@ class _ComposeScreenState extends ConsumerState<ComposeScreen> {
     _messageController.addListener(_onMessageChanged);
     _subjectController.addListener(_onSubjectChanged);
     _messageFocusNode.addListener(_onMessageFocusChanged);
-    if (widget.draftId != null) {
-      _draft = ComposeDraftStore.peek(widget.draftId!);
+    if (widget.quoteSnapshotId != null) {
+      _draft = QuoteSnapshotStore.peek(widget.quoteSnapshotId!);
     }
     final pid = _quotePid;
     _includeQuote = pid != null && pid.isNotEmpty;
@@ -174,7 +280,10 @@ class _ComposeScreenState extends ConsumerState<ComposeScreen> {
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (!mounted) return;
       _loadRecentEmoticons();
-      if (!_isEditing) _restoreMessageDraft();
+      // 仅回复模式恢复 compose_message_drafts；编辑/新主题绝不读该键。
+      if (!_isEditing && !_isNewThread) {
+        _restoreReplyDraft();
+      }
       if (!ref.read(authStateProvider).isLoggedIn && !_redirectedToLogin) {
         _redirectedToLogin = true;
         // 勿 pop 再 push：会在 Web 上触发 disposed EngineFlutterView 断言刷屏
@@ -199,15 +308,26 @@ class _ComposeScreenState extends ConsumerState<ComposeScreen> {
         await ref.read(composeControllerProvider).fetchNewThreadForm(fid: fid);
     if (!mounted) return;
     final saved = _readNewThreadDraft(fid);
+    var restored = false;
     setState(() {
       _newThreadForm = form;
       _newThreadLoading = false;
       if (saved != null) {
-        _subjectController.text = saved['subject'] as String? ?? '';
-        _messageController.text = saved['message'] as String? ?? '';
-        _selectedTypeId = saved['typeId'] as String?;
+        final subject = saved['subject'] as String? ?? '';
+        final message = saved['message'] as String? ?? '';
+        if (subject.trim().isNotEmpty || message.trim().isNotEmpty) {
+          _suppressDraftSave = true;
+          _subjectController.text = subject;
+          _messageController.text = message;
+          _selectedTypeId = saved['typeId'] as String?;
+          _suppressDraftSave = false;
+          restored = true;
+        }
       }
     });
+    if (restored && mounted) {
+      S1SnackBar.show(context, message: '已恢复草稿', bottomClearance: 72);
+    }
   }
 
   Future<void> _loadEditForm() async {
@@ -237,35 +357,104 @@ class _ComposeScreenState extends ConsumerState<ComposeScreen> {
       return;
     }
     final saved = _readEditDraft(pid);
+    final parts = EditPostMessageParts.split(form.message);
+    _mergeAttachImageUrls(widget.editAttachImageUrls);
+    _mergeAttachImageUrls(form.attachImageUrls);
+    final mediaSplit = splitComposeMedia(
+      parts.body,
+      attachImageUrls: _attachImageUrls,
+    );
+    _suppressMediaSync = true;
     setState(() {
       _editForm = form;
       _editLoading = false;
       _selectedTypeId = form.selectedTypeId;
       _selectedReadPerm = form.selectedReadPermission;
       _subjectController.text = form.subject;
-      _messageController.text = form.message;
+      _editLeadingQuote = parts.leadingQuote;
+      _editLoadedBody = mediaSplit.body;
+      _editLoadedMediaTags = [for (final m in mediaSplit.media) m.tag];
+      _includeEditQuote = parts.hasLeadingQuote;
+      _messageController.text = mediaSplit.body;
+      _applyEditMedia(mediaSplit.media);
     });
+    _suppressMediaSync = false;
     if (saved != null && _editDraftDiffers(saved, form)) {
       final restore = await showS1ConfirmDialog(
         context,
         title: '恢复编辑草稿？',
-        content: '服务器内容可能已有变化，恢复草稿后仍会再次检查冲突。\n'
-            '点击“确定”恢复草稿，点击“取消”使用服务器内容。',
+        content: '本地有未提交的编辑草稿，与当前服务器内容不同。\n'
+            '选择「恢复草稿」继续本地内容；选择「使用服务器内容」将清除本地草稿。',
         confirmLabel: '恢复草稿',
+        cancelLabel: '使用服务器内容',
       );
       if (!mounted) return;
       if (restore) {
         _suppressDraftSave = true;
+        _suppressMediaSync = true;
+        final draftMsg = saved['message'] as String? ?? mediaSplit.body;
+        final draftParts = EditPostMessageParts.split(draftMsg);
+        final draftMedia = _mediaFromDraft(
+          saved['mediaTags'],
+          fallbackBody: draftParts.body,
+        );
         _subjectController.text = saved['subject'] as String? ?? form.subject;
-        _messageController.text = saved['message'] as String? ?? form.message;
+        _messageController.text = draftMedia.body;
         _selectedTypeId = saved['typeId'] as String? ?? form.selectedTypeId;
         _selectedReadPerm =
             saved['readPerm'] as String? ?? form.selectedReadPermission;
+        final draftQuote = saved['leadingQuote'] as String?;
+        setState(() {
+          if (draftQuote != null && draftQuote.trim().isNotEmpty) {
+            _editLeadingQuote = draftQuote;
+          } else if (draftParts.hasLeadingQuote) {
+            _editLeadingQuote = draftParts.leadingQuote;
+          }
+          _includeEditQuote = saved['includeQuote'] as bool? ??
+              (_editLeadingQuote != null &&
+                  _editLeadingQuote!.trim().isNotEmpty);
+          _applyEditMedia(draftMedia.media);
+        });
+        _suppressMediaSync = false;
         _suppressDraftSave = false;
       } else {
         _clearEditDraft(pid);
       }
     }
+  }
+
+  /// 草稿里的 `mediaTags`；旧草稿无该字段时从正文再拆一遍。
+  ComposeMediaSplit _mediaFromDraft(
+    Object? mediaTags, {
+    required String fallbackBody,
+  }) {
+    if (mediaTags is! List) {
+      return splitComposeMedia(
+        fallbackBody,
+        attachImageUrls: _attachImageUrls,
+      );
+    }
+    final media = <ComposeMediaTag>[];
+    for (final item in mediaTags) {
+      final tag = item.toString().trim();
+      if (tag.isEmpty) continue;
+      final parsed = splitComposeMedia(
+        tag,
+        attachImageUrls: _attachImageUrls,
+      ).media;
+      if (parsed.isNotEmpty) {
+        media.addAll(parsed);
+      } else {
+        media.add(ComposeMediaTag(tag: tag, label: '图片'));
+      }
+    }
+    return ComposeMediaSplit(
+      body: splitComposeMedia(
+        fallbackBody,
+        attachImageUrls: _attachImageUrls,
+      ).body,
+      media: media,
+    );
   }
 
   Map<String, Object?>? _readEditDraft(String pid) {
@@ -283,20 +472,48 @@ class _ComposeScreenState extends ConsumerState<ComposeScreen> {
   }
 
   bool _editDraftDiffers(Map<String, Object?> draft, EditPostFormInfo form) {
-    return (draft['message'] as String? ?? '') != form.message ||
+    final parts = EditPostMessageParts.split(form.message);
+    final serverMedia = splitComposeMedia(
+      parts.body,
+      attachImageUrls: {
+        ...widget.editAttachImageUrls,
+        ...form.attachImageUrls,
+      },
+    );
+    final draftMsg = draft['message'] as String? ?? '';
+    final draftParts = EditPostMessageParts.split(draftMsg);
+    final draftMedia = _mediaFromDraft(
+      draft['mediaTags'],
+      fallbackBody: draftParts.body,
+    );
+    final draftInclude =
+        draft['includeQuote'] as bool? ?? draftParts.hasLeadingQuote;
+    final mediaChanged = draftMedia.media.length != serverMedia.media.length ||
+        List.generate(
+          draftMedia.media.length,
+          (i) => draftMedia.media[i].tag != serverMedia.media[i].tag,
+        ).any((changed) => changed);
+    return draftMedia.body != serverMedia.body ||
+        mediaChanged ||
+        draftInclude != parts.hasLeadingQuote ||
         (draft['subject'] as String? ?? '') != form.subject ||
         (draft['typeId'] as String?) != form.selectedTypeId ||
         (draft['readPerm'] as String?) != form.selectedReadPermission;
   }
 
   void _persistEditDraft() {
+    if (_suppressDraftSave) return;
     final pid = widget.editPid;
     final form = _editForm;
     if (!_isEditing || pid == null || form == null) return;
-    final unchanged = _messageController.text == form.message &&
+    final hadQuoteOnLoad =
+        _editLeadingQuote != null && _editLeadingQuote!.trim().isNotEmpty;
+    final unchanged = _messageController.text == _editLoadedBody &&
         _subjectController.text == form.subject &&
         _selectedTypeId == form.selectedTypeId &&
-        _selectedReadPerm == form.selectedReadPermission;
+        _selectedReadPerm == form.selectedReadPermission &&
+        _includeEditQuote == hadQuoteOnLoad &&
+        !_editMediaChanged;
     try {
       final store = ref.read(settingsStoreProvider);
       final drafts = EditPostDraftStore.parse(
@@ -321,10 +538,9 @@ class _ComposeScreenState extends ConsumerState<ComposeScreen> {
             message: _messageController.text,
             typeId: _selectedTypeId,
             readPerm: _selectedReadPerm,
-            sourceSubject: form.subject,
-            sourceMessage: form.message,
-            sourceTypeId: form.selectedTypeId,
-            sourceReadPerm: form.selectedReadPermission,
+            leadingQuote: _editLeadingQuote,
+            includeQuote: _includeEditQuote,
+            mediaTags: _currentMediaTags,
           ),
         ),
       );
@@ -364,6 +580,7 @@ class _ComposeScreenState extends ConsumerState<ComposeScreen> {
   }
 
   void _persistNewThreadDraft() {
+    if (_suppressDraftSave) return;
     final fid = widget.fid;
     if (!_isNewThread || fid == null || fid.isEmpty) return;
     try {
@@ -421,7 +638,8 @@ class _ComposeScreenState extends ConsumerState<ComposeScreen> {
     }
   }
 
-  void _restoreMessageDraft() {
+  void _restoreReplyDraft() {
+    if (_isEditing || _isNewThread) return;
     final tid = widget.tid;
     if (tid == null || tid.isEmpty) return;
     try {
@@ -443,13 +661,14 @@ class _ComposeScreenState extends ConsumerState<ComposeScreen> {
     }
   }
 
-  void _scheduleDraftSave() {
-    if (_suppressDraftSave) return;
+  void _scheduleReplyDraftSave() {
+    if (_suppressDraftSave || _isEditing || _isNewThread) return;
     _draftSaveTimer?.cancel();
-    _draftSaveTimer = Timer(ComposeMessageDraft.debounce, _persistDraft);
+    _draftSaveTimer = Timer(ComposeMessageDraft.debounce, _persistReplyDraft);
   }
 
-  void _persistDraft() {
+  void _persistReplyDraft() {
+    if (_isEditing || _isNewThread) return;
     final tid = widget.tid;
     if (tid == null || tid.isEmpty) return;
     try {
@@ -471,7 +690,8 @@ class _ComposeScreenState extends ConsumerState<ComposeScreen> {
     }
   }
 
-  void _clearMessageDraft() {
+  void _clearReplyDraft() {
+    if (_isEditing || _isNewThread) return;
     _draftSaveTimer?.cancel();
     final tid = widget.tid;
     if (tid == null || tid.isEmpty) return;
@@ -490,29 +710,59 @@ class _ComposeScreenState extends ConsumerState<ComposeScreen> {
     }
   }
 
+  void _flushDraftForMode() {
+    if (_isEditing) {
+      _persistEditDraft();
+    } else if (_isNewThread) {
+      _persistNewThreadDraft();
+    } else {
+      _persistReplyDraft();
+    }
+  }
+
+  void _clearDraftForMode() {
+    if (_isEditing) {
+      _clearEditDraft(widget.editPid);
+    } else if (_isNewThread) {
+      _clearNewThreadDraft();
+    } else {
+      _clearReplyDraft();
+    }
+  }
+
   void _onMessageChanged() {
     if (!mounted) return;
-    final urls = extractImgUrls(_messageController.text);
-    final next = <_ComposeUploadedImage>[
-      for (final url in urls)
-        _ComposeUploadedImage(
-          url: url,
-          label: _imageLabelsByUrl[url] ?? filenameFromUrl(url),
-        ),
-    ];
-    setState(() {
-      _uploadedImages
-        ..clear()
-        ..addAll(next);
-    });
-    _scheduleDraftSave();
-    if (_isNewThread) _persistNewThreadDraft();
-    if (_isEditing) _persistEditDraft();
+    if (!_suppressMediaSync && !_editMediaDetached) {
+      final urls = extractImgUrls(_messageController.text);
+      final next = <_ComposeUploadedImage>[
+        for (final url in urls)
+          _ComposeUploadedImage(
+            tag: '[img]$url[/img]',
+            label: _imageLabelsByUrl[url] ?? filenameFromUrl(url),
+            previewUrl: url,
+          ),
+      ];
+      setState(() {
+        _replaceUploadedImages(next);
+      });
+    } else if (mounted) {
+      setState(() {});
+    }
+    if (_isEditing) {
+      _persistEditDraft();
+    } else if (_isNewThread) {
+      _persistNewThreadDraft();
+    } else {
+      _scheduleReplyDraftSave();
+    }
   }
 
   void _onSubjectChanged() {
-    if (_isNewThread) _persistNewThreadDraft();
-    if (_isEditing) _persistEditDraft();
+    if (_isNewThread) {
+      _persistNewThreadDraft();
+    } else if (_isEditing) {
+      _persistEditDraft();
+    }
     if (mounted) setState(() {});
   }
 
@@ -607,11 +857,28 @@ class _ComposeScreenState extends ConsumerState<ComposeScreen> {
     if (_showEmoticonPanel) {
       setState(() => _showEmoticonPanel = false);
     }
-    final quoteInfo = _quoting ? _quoteInfo : null;
+    final QuoteInfo? quoteInfo;
+    final String previewBbcode;
     final tid = widget.tid;
-    final previewBbcode = _isEditing
-        ? message
-        : await ref.read(composeControllerProvider).applySignature(message);
+    if (_isEditing) {
+      final parts = EditPostMessageParts(
+        leadingQuote: _showingEditQuote ? _editLeadingQuote : null,
+        body: message,
+      );
+      quoteInfo = parts.hasLeadingQuote
+          ? QuoteInfo(
+              noticeAuthor: '',
+              noticeTrimStr: parts.leadingQuote!,
+            )
+          : null;
+      previewBbcode = await ref
+          .read(composeControllerProvider)
+          .applySignature(_previewBodyWithMedia(message));
+    } else {
+      quoteInfo = _quoting ? _quoteInfo : null;
+      previewBbcode =
+          await ref.read(composeControllerProvider).applySignature(message);
+    }
     if (!mounted) return;
 
     final previewSubject = _isNewThread
@@ -638,6 +905,7 @@ class _ComposeScreenState extends ConsumerState<ComposeScreen> {
         tid: tid,
         authorName: authorName,
         authorAvatar: authorAvatar,
+        attachPreviewLimited: hasUnresolvedAttachimg(previewBbcode),
       ),
     );
   }
@@ -645,8 +913,12 @@ class _ComposeScreenState extends ConsumerState<ComposeScreen> {
   @override
   void dispose() {
     _draftSaveTimer?.cancel();
-    if (!_allowPop && _messageController.text.trim().isNotEmpty) {
-      _persistDraft();
+    // 仅回复模式 flush compose_message_drafts；编辑/新主题禁止写入该键。
+    if (!_allowPop &&
+        !_isEditing &&
+        !_isNewThread &&
+        _messageController.text.trim().isNotEmpty) {
+      _persistReplyDraft();
     }
     _messageController.removeListener(_onMessageChanged);
     _subjectController.removeListener(_onSubjectChanged);
@@ -658,8 +930,19 @@ class _ComposeScreenState extends ConsumerState<ComposeScreen> {
   }
 
   void _removeUploadedImage(_ComposeUploadedImage image) {
-    final next = removeImgTag(_messageController.text, image.url);
-    _imageLabelsByUrl.remove(image.url);
+    if (_editMediaDetached) {
+      setState(() {
+        _uploadedImages.removeWhere((item) => item.tag == image.tag);
+      });
+      final url = image.previewUrl;
+      if (url != null) _imageLabelsByUrl.remove(url);
+      _persistEditDraft();
+      return;
+    }
+    final url = image.previewUrl;
+    if (url == null || url.isEmpty) return;
+    final next = removeImgTag(_messageController.text, url);
+    _imageLabelsByUrl.remove(url);
     _messageController.value = TextEditingValue(
       text: next,
       selection: TextSelection.collapsed(
@@ -699,23 +982,39 @@ class _ComposeScreenState extends ConsumerState<ComposeScreen> {
       if (!mounted) return;
       final label = pending.filename.trim().isEmpty ? '图片' : pending.filename;
       _imageLabelsByUrl[url] = label;
-      final selection = _messageController.selection;
-      final start =
-          selection.isValid ? selection.start : _messageController.text.length;
-      final end =
-          selection.isValid ? selection.end : _messageController.text.length;
-      final result = insertImgTagAt(
-        text: _messageController.text,
-        start: start,
-        end: end,
-        url: url,
-      );
-      _messageController.value = TextEditingValue(
-        text: result.text,
-        selection: TextSelection.collapsed(offset: result.cursor),
-      );
-      setState(() => _pendingUpload = null);
-      S1SnackBar.show(context, message: '图片已插入', bottomClearance: 72);
+      if (_editMediaDetached) {
+        setState(() {
+          _uploadedImages.add(
+            _ComposeUploadedImage(
+              tag: '[img]$url[/img]',
+              label: label,
+              previewUrl: url,
+            ),
+          );
+          _pendingUpload = null;
+        });
+        _persistEditDraft();
+        S1SnackBar.show(context, message: '图片已添加', bottomClearance: 72);
+      } else {
+        final selection = _messageController.selection;
+        final start = selection.isValid
+            ? selection.start
+            : _messageController.text.length;
+        final end =
+            selection.isValid ? selection.end : _messageController.text.length;
+        final result = insertImgTagAt(
+          text: _messageController.text,
+          start: start,
+          end: end,
+          url: url,
+        );
+        _messageController.value = TextEditingValue(
+          text: result.text,
+          selection: TextSelection.collapsed(offset: result.cursor),
+        );
+        setState(() => _pendingUpload = null);
+        S1SnackBar.show(context, message: '图片已插入', bottomClearance: 72);
+      }
     } catch (e) {
       if (mounted) {
         S1SnackBar.show(
@@ -828,7 +1127,7 @@ class _ComposeScreenState extends ConsumerState<ComposeScreen> {
         );
         return;
       }
-      if (userText.isEmpty) {
+      if (userText.isEmpty && _uploadedImages.isEmpty) {
         S1SnackBar.show(context, message: '请输入正文', bottomClearance: 72);
         return;
       }
@@ -844,13 +1143,17 @@ class _ComposeScreenState extends ConsumerState<ComposeScreen> {
       S1Haptics.medium();
       setState(() => _isSubmitting = true);
       try {
+        final composed = EditPostMessageParts.compose(
+          leadingQuote: _showingEditQuote ? _editLeadingQuote : null,
+          body: _bodyWithMedia(userText),
+        );
         final result = await ref.read(composeControllerProvider).submitEditPost(
               fid: widget.fid!,
               tid: widget.tid!,
               pid: pid,
               isFirst: widget.editIsFirst,
               subject: _subjectController.text,
-              message: userText,
+              message: composed,
               typeId: _selectedTypeId,
               readPerm: _selectedReadPerm,
               baseline: form,
@@ -921,9 +1224,9 @@ class _ComposeScreenState extends ConsumerState<ComposeScreen> {
 
       if (mounted) {
         if (result.isSuccess) {
-          final draftId = widget.draftId;
-          if (draftId != null) ComposeDraftStore.remove(draftId);
-          _clearMessageDraft();
+          final snapshotId = widget.quoteSnapshotId;
+          if (snapshotId != null) QuoteSnapshotStore.remove(snapshotId);
+          _clearReplyDraft();
           S1SnackBar.show(context, message: '回复成功', bottomClearance: 16);
           setState(() => _allowPop = true);
           context.pop(result);
@@ -952,6 +1255,11 @@ class _ComposeScreenState extends ConsumerState<ComposeScreen> {
     });
   }
 
+  void _removeEditQuote() {
+    setState(() => _includeEditQuote = false);
+    _persistEditDraft();
+  }
+
   Future<void> _recheckEditState() async {
     if (!_isEditing ||
         widget.fid == null ||
@@ -967,10 +1275,26 @@ class _ComposeScreenState extends ConsumerState<ComposeScreen> {
           isFirst: widget.editIsFirst,
         );
     if (!mounted) return;
-    final matchesDesired =
-        latest.message.trim() == _messageController.text.trim() &&
-            (!widget.editIsFirst ||
-                latest.subject.trim() == _subjectController.text.trim());
+    final desiredCore = EditPostMessageParts.compose(
+      leadingQuote: _showingEditQuote ? _editLeadingQuote : null,
+      body: _bodyWithMedia(_messageController.text),
+    );
+    final latestParts = EditPostMessageParts.split(latest.message);
+    _mergeAttachImageUrls(latest.attachImageUrls);
+    final latestMedia = splitComposeMedia(
+      latestParts.body,
+      attachImageUrls: _attachImageUrls,
+    );
+    final latestCore = EditPostMessageParts.compose(
+      leadingQuote: latestParts.leadingQuote,
+      body: appendComposeMedia(
+        latestMedia.body,
+        latestMedia.media.map((m) => m.tag),
+      ),
+    );
+    final matchesDesired = desiredCore.trim() == latestCore.trim() &&
+        (!widget.editIsFirst ||
+            latest.subject.trim() == _subjectController.text.trim());
     if (matchesDesired) {
       _clearEditDraft(widget.editPid);
       setState(() {
@@ -1004,23 +1328,29 @@ class _ComposeScreenState extends ConsumerState<ComposeScreen> {
     if (didPop || _allowPop) return;
     if (!_isDirty) return;
 
-    final discard = await showS1ConfirmDialog(
+    final title = _isNewThread ? '离开新主题？' : (_isEditing ? '离开编辑？' : '离开回复？');
+    final choice = await showS1DraftLeaveDialog(
       context,
-      title: _isNewThread ? '放弃新主题？' : (_isEditing ? '放弃编辑？' : '放弃回复？'),
-      content: _isNewThread
-          ? '放弃后将清除本地新主题草稿。'
-          : (_isEditing ? '编辑草稿将被保留，下次可继续恢复。' : '本回复草稿将被放弃。'),
-      confirmLabel: '放弃',
-      destructive: true,
+      title: title,
+      content: '保留：下次进入可继续编辑本地草稿。\n'
+          '放弃草稿：清除本地草稿且不可恢复。',
     );
-    if (!mounted || !discard) return;
-    if (_isEditing) {
-      _persistEditDraft();
-    } else {
-      _clearMessageDraft();
+    if (!mounted) return;
+    switch (choice) {
+      case S1DraftLeaveChoice.stay:
+        return;
+      case S1DraftLeaveChoice.keepAndLeave:
+        _flushDraftForMode();
+        break;
+      case S1DraftLeaveChoice.discardAndLeave:
+        _clearDraftForMode();
+        break;
     }
     setState(() => _allowPop = true);
-    context.pop();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) return;
+      Navigator.of(context).maybePop();
+    });
   }
 
   @override
@@ -1034,7 +1364,8 @@ class _ComposeScreenState extends ConsumerState<ComposeScreen> {
         _editLoading ||
         _editUncertain ||
         _editConflict;
-    final subject = _isEditing ? null : _subjectLabel;
+    // 回复编辑与回复页一致展示主题；一楼编辑已有可改标题控件，不再叠一行。
+    final subject = (_isEditing && widget.editIsFirst) ? null : _subjectLabel;
     final keyboardInset = MediaQuery.viewInsetsOf(context).bottom;
     final showPanel = _showEmoticonPanel && keyboardInset <= 0;
     final fid = widget.fid;
@@ -1109,7 +1440,7 @@ class _ComposeScreenState extends ConsumerState<ComposeScreen> {
             actionLabel: '核对服务器',
             onPressed: _recheckEditState,
           ),
-        if (_includeQuote && !_isNewThread)
+        if (_includeQuote && !_isNewThread && !_isEditing)
           _ComposeQuoteBanner(
             post: _draft?.post,
             displayFloor: _draft?.displayFloor ?? 0,
@@ -1117,13 +1448,31 @@ class _ComposeScreenState extends ConsumerState<ComposeScreen> {
             loading: _quotePrefetching,
             error: _quotePrefetchError,
           ),
+        if (_showingEditQuote) ...[
+          Builder(
+            builder: (context) {
+              final parsed = QuoteBuilder.parseClientQuote(_editLeadingQuote!);
+              final author = parsed.author;
+              return _ComposeQuoteBanner(
+                title: (author != null && author.isNotEmpty)
+                    ? '引用 · $author'
+                    : '引用楼层',
+                preview: parsed.preview,
+                onRemove: _removeEditQuote,
+              );
+            },
+          ),
+        ],
         if (subject != null && !_isNewThread)
           _ComposeSubjectLine(subject: subject),
-        if (_uploadedImages.isNotEmpty)
+        if (_uploadedImages.isNotEmpty) ...[
           _ComposeImageStrip(
             images: List.unmodifiable(_uploadedImages),
             onRemove: _removeUploadedImage,
           ),
+          if (_uploadedImages.any((image) => !image.hasThumb))
+            const _ComposeMediaPreviewHint(),
+        ],
         Expanded(
           child: _ComposeMessageField(
             controller: _messageController,
@@ -1227,6 +1576,7 @@ class _ComposePreviewSheet extends StatelessWidget {
     required this.tid,
     required this.authorName,
     this.authorAvatar,
+    this.attachPreviewLimited = false,
   });
 
   final String? subject;
@@ -1237,6 +1587,9 @@ class _ComposePreviewSheet extends StatelessWidget {
   final String? tid;
   final String authorName;
   final String? authorAvatar;
+
+  /// 仍有未解析的 `[attachimg]`，预览里可能显示附件码。
+  final bool attachPreviewLimited;
 
   String get _floorLabel {
     if (isEditing) return '编辑';
@@ -1334,7 +1687,11 @@ class _ComposePreviewSheet extends StatelessWidget {
             Divider(height: 16, color: scheme.outlineVariant),
             if (quoteInfo != null)
               QuoteBlock(
-                content: quoteInfo!.noticeTrimStr,
+                content: EditPostMessageParts(
+                      leadingQuote: quoteInfo!.noticeTrimStr,
+                      body: '',
+                    ).quoteInner ??
+                    quoteInfo!.noticeTrimStr,
                 imageIndexCounter: imageIndexCounter,
                 currentTid: tid,
               ),
@@ -1388,6 +1745,15 @@ class _ComposePreviewSheet extends StatelessWidget {
                 ?.copyWith(
               color: isNewThread ? scheme.onSurface : scheme.onSurfaceVariant,
               fontWeight: isNewThread ? FontWeight.w600 : null,
+            ),
+          ),
+        ],
+        if (attachPreviewLimited) ...[
+          const SizedBox(height: 8),
+          Text(
+            '部分论坛附件图暂无地址，预览可能显示附件码；保存后仍会按原附件提交。',
+            style: textTheme.bodySmall?.copyWith(
+              color: scheme.onSurfaceVariant,
             ),
           ),
         ],
@@ -1880,6 +2246,8 @@ class _ComposeQuoteBanner extends StatelessWidget {
   const _ComposeQuoteBanner({
     this.post,
     this.displayFloor = 0,
+    this.title,
+    this.preview,
     required this.onRemove,
     this.loading = false,
     this.error,
@@ -1887,6 +2255,10 @@ class _ComposeQuoteBanner extends StatelessWidget {
 
   final Post? post;
   final int displayFloor;
+
+  /// 编辑页等：直接给标题/摘要（优先于 [post]）。
+  final String? title;
+  final String? preview;
   final VoidCallback onRemove;
   final bool loading;
   final String? error;
@@ -1896,12 +2268,14 @@ class _ComposeQuoteBanner extends StatelessWidget {
     final scheme = Theme.of(context).colorScheme;
     final textTheme = Theme.of(context).textTheme;
     final post = this.post;
-    final preview = post == null ? '' : QuoteBuilder.previewText(post.message);
-    final title = post == null
-        ? '引用楼层'
-        : displayFloor > 0
-            ? '引用 #$displayFloor 楼 · ${post.author}'
-            : '引用 ${post.author}';
+    final resolvedPreview =
+        preview ?? (post == null ? '' : QuoteBuilder.previewText(post.message));
+    final resolvedTitle = title ??
+        (post == null
+            ? '引用楼层'
+            : displayFloor > 0
+                ? '引用 #$displayFloor 楼 · ${post.author}'
+                : '引用 ${post.author}');
 
     return Material(
       color: scheme.surfaceContainerHigh,
@@ -1926,7 +2300,7 @@ class _ComposeQuoteBanner extends StatelessWidget {
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         Text(
-                          title,
+                          resolvedTitle,
                           style: textTheme.labelLarge?.copyWith(
                             color: scheme.onSurface,
                             fontWeight: FontWeight.w600,
@@ -1941,10 +2315,10 @@ class _ComposeQuoteBanner extends StatelessWidget {
                             ),
                           ),
                         ],
-                        if (preview.isNotEmpty) ...[
+                        if (resolvedPreview.isNotEmpty) ...[
                           const SizedBox(height: 4),
                           Text(
-                            preview,
+                            resolvedPreview,
                             maxLines: 3,
                             overflow: TextOverflow.ellipsis,
                             style: textTheme.bodySmall?.copyWith(
@@ -1965,6 +2339,28 @@ class _ComposeQuoteBanner extends StatelessWidget {
             ),
           ),
         ],
+      ),
+    );
+  }
+}
+
+class _ComposeMediaPreviewHint extends StatelessWidget {
+  const _ComposeMediaPreviewHint();
+
+  @override
+  Widget build(BuildContext context) {
+    final scheme = Theme.of(context).colorScheme;
+    final textTheme = Theme.of(context).textTheme;
+    return Material(
+      color: scheme.surfaceContainerLow,
+      child: Padding(
+        padding: const EdgeInsets.fromLTRB(12, 0, 12, 8),
+        child: Text(
+          '无缩略图的论坛附件仍会保存；预览时可能显示附件码。',
+          style: textTheme.bodySmall?.copyWith(
+            color: scheme.onSurfaceVariant,
+          ),
+        ),
       ),
     );
   }
@@ -2000,11 +2396,7 @@ class _ComposeImageStrip extends StatelessWidget {
             return Tooltip(
               message: image.label,
               child: InputChip(
-                avatar: Icon(
-                  Icons.image_outlined,
-                  size: 18,
-                  color: scheme.onSecondaryContainer,
-                ),
+                avatar: _ComposeImageChipAvatar(image: image),
                 label: SizedBox(
                   width: maxLabelWidth,
                   child: Text(
@@ -2025,6 +2417,55 @@ class _ComposeImageStrip extends StatelessWidget {
               ),
             );
           },
+        ),
+      ),
+    );
+  }
+}
+
+/// Chip 头像：有 URL 显示缩略图，否则按附件类型给图标。
+class _ComposeImageChipAvatar extends StatelessWidget {
+  const _ComposeImageChipAvatar({required this.image});
+
+  final _ComposeUploadedImage image;
+
+  static const double _size = 24;
+
+  @override
+  Widget build(BuildContext context) {
+    final scheme = Theme.of(context).colorScheme;
+    final iconColor = scheme.onSecondaryContainer;
+    if (!image.hasThumb) {
+      return Icon(
+        image.isForumAttach
+            ? Icons.attach_file
+            : (image.isAttachimg
+                ? Icons.image_not_supported_outlined
+                : Icons.image_outlined),
+        size: 18,
+        color: iconColor,
+      );
+    }
+
+    final url = platformImageUrl(image.previewUrl!.trim(), isWeb: kIsWeb);
+    return ClipOval(
+      child: CachedNetworkImage(
+        imageUrl: url,
+        cacheManager: s1ImageCacheManager,
+        width: _size,
+        height: _size,
+        fit: BoxFit.cover,
+        fadeInDuration: Duration.zero,
+        fadeOutDuration: Duration.zero,
+        placeholder: (_, __) => Icon(
+          Icons.image_outlined,
+          size: 18,
+          color: iconColor,
+        ),
+        errorWidget: (_, __, ___) => Icon(
+          Icons.broken_image_outlined,
+          size: 18,
+          color: iconColor,
         ),
       ),
     );

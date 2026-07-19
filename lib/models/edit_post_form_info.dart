@@ -9,6 +9,7 @@ class EditPostFormInfo {
     this.formhash,
     this.isFirst = false,
     this.special = 0,
+    this.attachImageUrls = const {},
     this.error,
   });
 
@@ -21,6 +22,9 @@ class EditPostFormInfo {
   final String? formhash;
   final bool isFirst;
   final int special;
+
+  /// 编辑页 / 读帖 HTML 解析出的 `aid → 图片 URL`（预览 `[attachimg]` 用）。
+  final Map<String, String> attachImageUrls;
   final String? error;
 
   bool get canEdit =>

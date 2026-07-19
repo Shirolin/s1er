@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 
 import '../theme/s1_haptics.dart';
 
-/// MD3 确认弹窗：低强调 [TextButton]「取消」+ [FilledButton] 确认。
+/// MD3 确认弹窗：低强调 [TextButton] 取消 + [FilledButton] 确认。
 ///
 /// [destructive] 为 true 时确认按钮使用 [ColorScheme.error] / [ColorScheme.onError]。
 Future<bool> showS1ConfirmDialog(
@@ -10,6 +10,7 @@ Future<bool> showS1ConfirmDialog(
   required String title,
   required String content,
   required String confirmLabel,
+  String cancelLabel = '取消',
   bool destructive = false,
 }) async {
   final scheme = Theme.of(context).colorScheme;
@@ -21,7 +22,7 @@ Future<bool> showS1ConfirmDialog(
       actions: [
         TextButton(
           onPressed: () => Navigator.of(ctx).pop(false),
-          child: const Text('取消'),
+          child: Text(cancelLabel),
         ),
         FilledButton(
           onPressed: () {

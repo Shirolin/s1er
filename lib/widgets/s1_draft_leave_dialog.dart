@@ -1,0 +1,51 @@
+import 'package:flutter/material.dart';
+
+import '../theme/s1_haptics.dart';
+
+/// 脏状态下离开 Compose：取消 / 保留并返回 / 放弃草稿。
+enum S1DraftLeaveChoice {
+  stay,
+  keepAndLeave,
+  discardAndLeave,
+}
+
+/// MD3 三选一离开框。关闭对话框（点 scrim）视为 [S1DraftLeaveChoice.stay]。
+Future<S1DraftLeaveChoice> showS1DraftLeaveDialog(
+  BuildContext context, {
+  required String title,
+  required String content,
+}) async {
+  final scheme = Theme.of(context).colorScheme;
+  final choice = await showDialog<S1DraftLeaveChoice>(
+    context: context,
+    builder: (ctx) => AlertDialog(
+      title: Text(title),
+      content: Text(content),
+      actions: [
+        TextButton(
+          onPressed: () => Navigator.of(ctx).pop(S1DraftLeaveChoice.stay),
+          child: const Text('取消'),
+        ),
+        TextButton(
+          onPressed: () {
+            S1Haptics.medium();
+            Navigator.of(ctx).pop(S1DraftLeaveChoice.keepAndLeave);
+          },
+          child: const Text('保留并返回'),
+        ),
+        FilledButton(
+          onPressed: () {
+            S1Haptics.heavy();
+            Navigator.of(ctx).pop(S1DraftLeaveChoice.discardAndLeave);
+          },
+          style: FilledButton.styleFrom(
+            backgroundColor: scheme.error,
+            foregroundColor: scheme.onError,
+          ),
+          child: const Text('放弃草稿'),
+        ),
+      ],
+    ),
+  );
+  return choice ?? S1DraftLeaveChoice.stay;
+}

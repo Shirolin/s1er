@@ -25,6 +25,7 @@ import '../models/rate_form.dart';
 import '../models/report_form.dart';
 import '../models/search_result.dart';
 import '../models/app_exceptions.dart';
+import '../utils/compose_img_tags.dart';
 import '../utils/error_handler.dart';
 import '../utils/discuz_message.dart';
 import 'formhash_service.dart';
@@ -332,6 +333,7 @@ class ApiService {
         formhash: formhash,
         isFirst: isFirst,
         special: special,
+        attachImageUrls: extractAttachImageUrls(html),
       );
     } catch (e) {
       return EditPostFormInfo(error: '编辑表单解析失败：$e');

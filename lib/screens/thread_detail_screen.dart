@@ -35,6 +35,7 @@ import '../widgets/s1_swipe_pagination.dart';
 import '../widgets/scroll_pointer_gate.dart';
 import '../widgets/s1_desktop_scaffold.dart';
 import '../widgets/s1_content_width.dart';
+import '../models/reading_record.dart';
 import '../models/open_scroll_target.dart';
 import '../models/thread_destination.dart';
 import '../models/thread_open_intent.dart';
@@ -67,6 +68,23 @@ bool shouldWriteReadingProgressUpdate({
   if (!hasRecordedInitialVisit) return true;
   if (lastRecordedPage != currentPage) return true;
   return lastRecordedFloorInPage != currentFloorInPage;
+}
+
+/// 阅读进度写回用的页内楼层（1-based）。
+///
+/// 平常取视口锚线上方最后一楼；已滚到页底时取本页末楼，避免短帖读完后仍停在较早楼层。
+/// [minFloorInPage] 用于同页内单调递增，防止从页底回滑时进度回退。
+int resolveFloorInPageForProgress({
+  required int leadingIndex,
+  required int postCount,
+  required bool atPageBottom,
+  int minFloorInPage = 1,
+}) {
+  if (postCount <= 0) return 1;
+  final raw = atPageBottom
+      ? postCount
+      : leadingIndex.clamp(0, postCount - 1) + 1;
+  return raw < minFloorInPage ? minFloorInPage : raw;
 }
 
 /// 滚动 FAB 显隐状态（用 [ValueNotifier] 更新，避免重建列表）。
@@ -149,7 +167,29 @@ class _ThreadDetailScreenState extends ConsumerState<ThreadDetailScreen> {
     }
     // Prefer the caller-provided / last visible floor. Never fall back to
     // `posts.length` (that permanently wrote "page end" as fake progress).
-    final resolvedFloor = floorInPage ?? _lastRecordedFloorInPage ?? 1;
+    var resolvedFloor = floorInPage ?? _lastRecordedFloorInPage ?? 1;
+    final ppp =
+        state.perPage > 0 ? state.perPage : S1Constants.postsPerPageFallback;
+    var absoluteFloor = (state.currentPage - 1) * ppp + resolvedFloor;
+
+    final persisted =
+        ref.read(readingHistoryServiceProvider).getRecord(widget.tid);
+    if (persisted != null) {
+      absoluteFloor = absoluteFloor > persisted.lastReadFloor
+          ? absoluteFloor
+          : persisted.lastReadFloor;
+    }
+    if (_lastRecordedPage == state.currentPage &&
+        _lastRecordedFloorInPage != null) {
+      final sessionAbsolute =
+          (state.currentPage - 1) * ppp + _lastRecordedFloorInPage!;
+      if (sessionAbsolute > absoluteFloor) {
+        absoluteFloor = sessionAbsolute;
+      }
+    }
+
+    resolvedFloor = (absoluteFloor - (state.currentPage - 1) * ppp)
+        .clamp(1, state.posts.isEmpty ? 1 : state.posts.length);
     if (!shouldWriteReadingProgressUpdate(
       hasRecordedInitialVisit: _hasRecordedInitialVisit,
       lastRecordedPage: _lastRecordedPage,
@@ -181,19 +221,66 @@ class _ThreadDetailScreenState extends ConsumerState<ThreadDetailScreen> {
     }
   }
 
-  void _maybeRecordVisibleFloor(PostListState state) {
-    final now = DateTime.now();
-    if (_lastFloorProgressAt != null &&
-        now.difference(_lastFloorProgressAt!) <
-            const Duration(milliseconds: 400)) {
-      return;
+  void _maybeRecordVisibleFloor(PostListState state, {bool force = false}) {
+    final atBottom = _scrollFabVisibility.value.atPageBottom;
+    if (!force && !atBottom) {
+      final now = DateTime.now();
+      if (_lastFloorProgressAt != null &&
+          now.difference(_lastFloorProgressAt!) <
+              const Duration(milliseconds: 400)) {
+        return;
+      }
+      _lastFloorProgressAt = now;
     }
-    final index = ScrollFloorNavigator.findLeadingVisiblePostIndex(
+    final floorInPage = _resolveVisibleFloorInPage(state);
+    if (floorInPage == null) return;
+    if (!force) {
+      _lastFloorProgressAt = DateTime.now();
+    }
+    _recordProgress(state, floorInPage: floorInPage);
+  }
+
+  void _flushProgressBeforeLeave() {
+    final state = ref.read(postProvider(widget.tid)).asData?.value;
+    if (state == null) return;
+    _maybeRecordVisibleFloor(state, force: true);
+  }
+
+  int? _resolveVisibleFloorInPage(PostListState state) {
+    if (state.posts.isEmpty) return null;
+    final leading = ScrollFloorNavigator.findLeadingVisiblePostIndex(
       postKeys: _postKeys,
     );
-    if (index == null) return;
-    _lastFloorProgressAt = now;
-    _recordProgress(state, floorInPage: index + 1);
+    final atBottom = _scrollFabVisibility.value.atPageBottom;
+    if (leading == null && !atBottom) return null;
+
+    var minFloor = 1;
+    if (_lastRecordedPage == state.currentPage &&
+        _lastRecordedFloorInPage != null) {
+      minFloor = _lastRecordedFloorInPage!;
+    }
+    final persisted =
+        ref.read(readingHistoryServiceProvider).getRecord(widget.tid);
+    if (persisted != null) {
+      final ppp =
+          state.perPage > 0 ? state.perPage : S1Constants.postsPerPageFallback;
+      final persistedPage =
+          pageForFloor(persisted.lastReadFloor, perPage: ppp);
+      if (persistedPage == state.currentPage) {
+        final persistedInPage =
+            persisted.lastReadFloor - (state.currentPage - 1) * ppp;
+        if (persistedInPage > minFloor) {
+          minFloor = persistedInPage;
+        }
+      }
+    }
+
+    return resolveFloorInPageForProgress(
+      leadingIndex: leading ?? 0,
+      postCount: state.posts.length,
+      atPageBottom: atBottom,
+      minFloorInPage: minFloor,
+    );
   }
 
   Future<void> _consumeOpenScrollTarget(PostListState state) async {
@@ -683,6 +770,7 @@ class _ThreadDetailScreenState extends ConsumerState<ThreadDetailScreen> {
       await _restoreInThreadJump();
       return true;
     }
+    _flushProgressBeforeLeave();
     return false;
   }
 
@@ -750,10 +838,12 @@ class _ThreadDetailScreenState extends ConsumerState<ThreadDetailScreen> {
                         return;
                       }
                       if (widget.onClose != null) {
+                        _flushProgressBeforeLeave();
                         widget.onClose!();
                         return;
                       }
                       if (context.canPop()) {
+                        _flushProgressBeforeLeave();
                         context.pop();
                       }
                     },

@@ -254,6 +254,46 @@ void main() {
     expect(after.lastReadPage, 1);
   });
 
+  testWidgets('short single-page thread records last floor at page bottom',
+      (tester) async {
+    tester.view.physicalSize = const Size(800, 1200);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.resetPhysicalSize);
+
+    adapter.postsPerPage = 5;
+    adapter.totalReplies = 4;
+
+    await pumpThread(
+      tester: tester,
+      location: '/thread/100',
+    );
+
+    expect(find.textContaining('MARK-FLOOR-1'), findsOneWidget);
+
+    final listFinder = find.descendant(
+      of: find.byType(ThreadDetailScreen),
+      matching: find.byType(ListView),
+    );
+    final controller = tester.widget<ListView>(listFinder).controller!;
+    expect(controller.position.maxScrollExtent, greaterThan(0));
+
+    await tester.runAsync(
+      () => Future<void>.delayed(const Duration(milliseconds: 450)),
+    );
+    controller.jumpTo(controller.position.maxScrollExtent);
+    await _pumpFrames(tester, 15);
+    await tester.runAsync(
+      () => Future<void>.delayed(const Duration(milliseconds: 450)),
+    );
+    controller.jumpTo(controller.position.maxScrollExtent);
+    await _pumpFrames(tester, 15);
+
+    final record =
+        rootContainer!.read(readingHistoryServiceProvider).getRecord('100')!;
+    expect(record.lastReadFloor, 5);
+    expect(record.lastReadPage, 1);
+  });
+
   testWidgets('forced page=1 ignores resume floor and stays at page top',
       (tester) async {
     tester.view.physicalSize = const Size(800, 1200);

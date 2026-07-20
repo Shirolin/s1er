@@ -42,6 +42,7 @@ void main() {
         talker.handle(details.exception, details.stack, 'FlutterError');
         prevOnError?.call(details);
       }
+
       FlutterError.onError = flutterHandler;
 
       final error = Exception('test crash');
@@ -69,6 +70,7 @@ void main() {
         capturedDetails = details;
         stashed?.call(details);
       }
+
       FlutterError.onError = middleHandler;
 
       final prevOnError = FlutterError.onError;
@@ -102,6 +104,7 @@ void main() {
         talker.handle(error, stack, 'PlatformDispatcher');
         return prevPlatformError?.call(error, stack) ?? true;
       }
+
       PlatformDispatcher.instance.onError = platformHandler;
 
       final err = StateError('platform crash');
@@ -129,6 +132,7 @@ void main() {
         previousResult = stashed?.call(error, stack) ?? true;
         return true;
       }
+
       PlatformDispatcher.instance.onError = middleHandler;
 
       final prevPlatformError = PlatformDispatcher.instance.onError;

@@ -11,7 +11,7 @@
     <meta name="keywords" content="Stage1st, S1, S1er, 论坛客户端, Flutter, Material Design 3, 动漫论坛, 游戏论坛, 泥潭" />
     <meta name="theme-color" content="#08090d" />
     <meta name="color-scheme" content="dark" />
-    <link rel="canonical" href="https://shirolin.github.io/s1er/" />
+    <link rel="canonical" href="https://shirolin.github.io/s1er/" id="canonical" />
     <link rel="icon" href="assets/branding/s1er_mark.png" type="image/png" />
     <link rel="preconnect" href="https://raw.githubusercontent.com" />
     <link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin />
@@ -27,13 +27,29 @@
       property="og:description"
       content="Material Design 3 · 开源 Beta。已验证 Web、Android APK 与 Windows zip；其它平台工程已就绪。"
     />
-    <meta property="og:image" content="https://shirolin.github.io/s1er/assets/branding/s1er_logo_transparent.png" />
-    <meta property="og:url" content="https://shirolin.github.io/s1er/" />
+    <meta property="og:image" content="https://shirolin.github.io/s1er/assets/branding/s1er_logo_transparent.png" id="og-image" />
+    <meta property="og:url" content="https://shirolin.github.io/s1er/" id="og-url" />
     <meta property="og:type" content="website" />
     <meta name="twitter:card" content="summary_large_image" />
     <meta name="twitter:title" content="S1er — Stage1st 第三方客户端" />
     <meta name="twitter:description" content="Material Design 3 · 开源 Beta。已验证 Web、Android APK 与 Windows zip；其它平台工程已就绪。" />
-    <meta name="twitter:image" content="https://shirolin.github.io/s1er/assets/branding/s1er_logo_transparent.png" />
+    <meta name="twitter:image" content="https://shirolin.github.io/s1er/assets/branding/s1er_logo_transparent.png" id="twitter-image" />
+    <script>
+      (function() {
+        var base = location.protocol + '//' + location.hostname;
+        if (location.port) base += ':' + location.port;
+        var path = location.pathname.startsWith('/s1er/') ? '/s1er/' : '/';
+        var full = base + path;
+        function setMeta(id, content) {
+          var el = document.getElementById(id);
+          if (el) el.setAttribute('content', content);
+        }
+        setMeta('canonical', full);
+        setMeta('og-url', full);
+        setMeta('og-image', full + 'assets/branding/s1er_logo_transparent.png');
+        setMeta('twitter-image', full + 'assets/branding/s1er_logo_transparent.png');
+      })();
+    </script>
   </head>
   <body>
     <a class="skip-link" href="#main">跳到主要内容</a>

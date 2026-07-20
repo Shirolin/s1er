@@ -14,7 +14,17 @@
       href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Noto+Sans+SC:wght@400;500;600;700&display=swap"
       rel="stylesheet"
     />
+    <link rel="canonical" href="https://shirolin.github.io/s1er/privacy.html" id="canonical" />
     <link rel="stylesheet" href="css/styles.css" />
+    <script>
+      (function() {
+        var base = location.protocol + '//' + location.hostname;
+        if (location.port) base += ':' + location.port;
+        var path = location.pathname.startsWith('/s1er/') ? '/s1er/' : '/';
+        var el = document.getElementById('canonical');
+        if (el) el.setAttribute('href', base + path + 'privacy.html');
+      })();
+    </script>
   </head>
   <body class="privacy-page">
     <a class="skip-link" href="#main">跳到主要内容</a>

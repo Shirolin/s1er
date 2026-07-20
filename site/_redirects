@@ -1,0 +1,6 @@
+# Cloudflare Pages redirects
+# Root -> index.html (CF Pages default, explicit for clarity)
+/  /index.html  200
+
+# Redirect old GitHub Pages subpath /s1er/ to root (for direct CF access)
+/s1er/*  /:splat  301

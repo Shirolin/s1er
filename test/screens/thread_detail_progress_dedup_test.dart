@@ -98,5 +98,17 @@ void main() {
         1,
       );
     });
+
+    test('does not regress below minFloorInPage', () {
+      expect(
+        resolveFloorInPageForProgress(
+          leadingIndex: 1,
+          postCount: 5,
+          atPageBottom: false,
+          minFloorInPage: 5,
+        ),
+        5,
+      );
+    });
   });
 }

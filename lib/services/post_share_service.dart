@@ -4,7 +4,7 @@ import 'dart:async';
 import 'dart:typed_data';
 import 'dart:ui' as ui;
 
-import 'package:flutter/foundation.dart' show kIsWeb;
+import 'package:flutter/foundation.dart' show kIsWeb, visibleForTesting;
 import 'package:flutter/material.dart';
 import 'package:flutter/rendering.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -22,6 +22,7 @@ import '../utils/share_native_image_encoder.dart';
 import '../utils/share_rgba_flatten.dart';
 import '../theme/app_theme.dart';
 import '../theme/s1_haptics.dart';
+import '../utils/s1_snack_bar.dart';
 import '../widgets/share_card.dart';
 import '../widgets/s1_click_region.dart';
 import '../widgets/web_image_stub.dart'
@@ -46,13 +47,23 @@ class _EncodedShareImage {
 class PostShareService {
   PostShareService._();
 
+  /// Toast after system share completes; null when the user cancelled.
+  @visibleForTesting
+  static String? toastMessageForShareResult(ShareResultStatus status) {
+    return switch (status) {
+      ShareResultStatus.success => '分享成功',
+      ShareResultStatus.unavailable => '已打开分享',
+      ShareResultStatus.dismissed => null,
+    };
+  }
+
   static Future<void> share({
     required BuildContext context,
     required Post post,
     int? displayFloor,
     String? threadSubject,
   }) async {
-    await showModalBottomSheet<void>(
+    final message = await showModalBottomSheet<String>(
       context: context,
       isScrollControlled: true,
       showDragHandle: true,
@@ -66,6 +77,9 @@ class PostShareService {
         );
       },
     );
+    if (!context.mounted || message == null || message.isEmpty) return;
+    ScaffoldMessenger.of(context).clearSnackBars();
+    S1SnackBar.show(context, message: message);
   }
 }
 
@@ -127,17 +141,23 @@ class _SharePreviewSheetState extends ConsumerState<_SharePreviewSheet> {
     try {
       if (kIsWeb) {
         await downloadImageWeb(encoded.bytes, _fileNameFor(encoded.format));
+        if (!mounted) return;
+        _finishWithMessage('下载已开始');
+        return;
+      }
+
+      final result = await _shareViaSystem(encoded);
+      if (!mounted) return;
+      final toast = PostShareService.toastMessageForShareResult(result.status);
+      if (toast == null) {
+        _finishQuietly();
       } else {
-        await _shareViaSystem(encoded);
+        _finishWithMessage(toast);
       }
     } catch (e) {
       if (!mounted) return;
       _showStatus('分享失败: $e', isError: true);
-      return;
     }
-
-    if (!mounted) return;
-    _autoClose();
   }
 
   Future<void> _captureAndSave() async {
@@ -168,7 +188,8 @@ class _SharePreviewSheetState extends ConsumerState<_SharePreviewSheet> {
       return;
     }
 
-    _autoClose();
+    if (!mounted) return;
+    _finishWithMessage(kIsWeb ? '下载已开始' : '已保存到相册');
   }
 
   /// Shows an error inline at the footer, replacing the buttons.
@@ -181,9 +202,14 @@ class _SharePreviewSheetState extends ConsumerState<_SharePreviewSheet> {
     });
   }
 
-  /// Close the sheet without showing anything (success case: share/save
-  /// are handled by the platform).
-  void _autoClose() {
+  /// Close sheet and let [PostShareService.share] show [message] on the
+  /// parent scaffold (sheet context is gone after pop).
+  void _finishWithMessage(String message) {
+    if (mounted) Navigator.pop(context, message);
+  }
+
+  /// Close without a toast (user dismissed the system share sheet).
+  void _finishQuietly() {
     if (mounted) Navigator.pop(context);
   }
 
@@ -374,7 +400,7 @@ class _SharePreviewSheetState extends ConsumerState<_SharePreviewSheet> {
     return (bytes: opaque, width: width, height: height);
   }
 
-  Future<void> _shareViaSystem(_EncodedShareImage encoded) async {
+  Future<ShareResult> _shareViaSystem(_EncodedShareImage encoded) async {
     final fileName = _fileNameFor(encoded.format);
     final dir = await getTemporaryDirectory();
     final path = p.join(dir.path, fileName);
@@ -384,7 +410,7 @@ class _SharePreviewSheetState extends ConsumerState<_SharePreviewSheet> {
       name: fileName,
     );
     await staged.saveTo(path);
-    await SharePlus.instance.share(
+    return SharePlus.instance.share(
       ShareParams(
         files: [XFile(path, mimeType: encoded.mimeType, name: fileName)],
         subject: fileName,

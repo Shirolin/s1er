@@ -81,9 +81,8 @@ int resolveFloorInPageForProgress({
   int minFloorInPage = 1,
 }) {
   if (postCount <= 0) return 1;
-  final raw = atPageBottom
-      ? postCount
-      : leadingIndex.clamp(0, postCount - 1) + 1;
+  final raw =
+      atPageBottom ? postCount : leadingIndex.clamp(0, postCount - 1) + 1;
   return raw < minFloorInPage ? minFloorInPage : raw;
 }
 
@@ -264,8 +263,7 @@ class _ThreadDetailScreenState extends ConsumerState<ThreadDetailScreen> {
     if (persisted != null) {
       final ppp =
           state.perPage > 0 ? state.perPage : S1Constants.postsPerPageFallback;
-      final persistedPage =
-          pageForFloor(persisted.lastReadFloor, perPage: ppp);
+      final persistedPage = pageForFloor(persisted.lastReadFloor, perPage: ppp);
       if (persistedPage == state.currentPage) {
         final persistedInPage =
             persisted.lastReadFloor - (state.currentPage - 1) * ppp;

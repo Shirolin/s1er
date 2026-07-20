@@ -4,7 +4,7 @@ publish_to: 'none'
 homepage: https://shirolin.github.io/s1er/
 repository: https://github.com/Shirolin/s1er
 issue_tracker: https://github.com/Shirolin/s1er/issues
-version: 0.1.1+1
+version: 0.1.2+1
 
 environment:
   sdk: '>=3.4.0 <4.0.0'

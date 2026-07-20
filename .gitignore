@@ -119,6 +119,9 @@ app.*.map.json
 proxy_server.log
 
 
+# Cloudflare Wrangler 本地缓存
+.wrangler/
+
 # ── 项目特有 ──────────────────────────────────────────
 # 临时脚本（对话中自动生成的提取/调试工具，非项目正式代码）
 scripts/fix-repos.js

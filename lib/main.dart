@@ -16,6 +16,7 @@ import 'services/app_local_data.dart';
 import 'utils/desktop_window.dart';
 import 'services/http_client.dart';
 import 'services/sentry_bootstrap.dart';
+import 'services/sentry_event_filter.dart';
 import 'services/talker.dart';
 import 'utils/web_reload.dart'
     if (dart.library.js_interop) 'utils/web_reload_web.dart';
@@ -41,6 +42,42 @@ Future<void> _loadEmoticonCatalog() async {
   }
 }
 
+/// Route [FlutterError] / [PlatformDispatcher] errors to Talker and Sentry.
+///
+/// Must be called after [initSentryIfEnabled] so that the previous Sentry
+/// handler is chained rather than replaced.  Known Web engine noise is
+/// skipped for Sentry and for [FlutterError.presentError].
+void _setupErrorHub() {
+  final prevOnError = FlutterError.onError;
+  final prevPlatformError = PlatformDispatcher.instance.onError;
+
+  FlutterError.onError = (details) {
+    talker.handle(details.exception, details.stack, 'FlutterError');
+
+    // Skip Sentry + presentError for known engine noise (e.g. ViewInsets).
+    if (isIgnorableSentryNoise(details.exception)) {
+      return;
+    }
+
+    unawaited(
+      captureSentryException(
+        details.exception,
+        details.stack ?? StackTrace.current,
+      ),
+    );
+    prevOnError?.call(details);
+  };
+
+  PlatformDispatcher.instance.onError = (error, stack) {
+    talker.handle(error, stack, 'PlatformDispatcher');
+    if (!isIgnorableSentryNoise(error)) {
+      unawaited(captureSentryException(error, stack));
+    }
+    persistInitError('$error');
+    return prevPlatformError?.call(error, stack) ?? true;
+  };
+}
+
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
 
@@ -58,12 +95,9 @@ void main() async {
 
   await initSentryIfEnabled();
 
-  // ── Web: console + localStorage, while still forwarding to Sentry ─
-  if (kIsWeb) {
-    installWebSentryAwareErrorHandlers(persistInitError: persistInitError);
-  }
-
   // ── Init chain: persist to localStorage on failure ───────────────
+  //     Error hub is set up after successful init so that Talker and
+  //     Sentry both receive framework / platform errors from here on.
   try {
     final db = AppDatabase();
     final localData = AppLocalData(db);
@@ -100,6 +134,8 @@ void main() async {
     unawaited(
       container.read(settingsProvider.notifier).syncAppIconWithNative(),
     );
+
+    _setupErrorHub();
 
     runApp(
       UncontrolledProviderScope(

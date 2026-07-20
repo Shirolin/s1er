@@ -17,6 +17,26 @@ void main() {
       expect(isIgnorableSentryNoise(StateError('boom')), isFalse);
       expect(isIgnorableSentryNoise(null), isFalse);
     });
+
+    test('matches SelectionArea debugNeedsLayout assertion', () {
+      expect(
+        isIgnorableSentryNoise(
+          AssertionError('!debugNeedsLayout is not true'),
+        ),
+        isTrue,
+      );
+    });
+
+    test('matches RawTooltip SingleTickerProvider error', () {
+      expect(
+        isIgnorableSentryNoise(
+          StateError(
+            'RawTooltipState is a SingleTickerProviderStateMixin but multiple tickers were created.',
+          ),
+        ),
+        isTrue,
+      );
+    });
   });
 
   group('shouldDropSentryEvent', () {
@@ -50,12 +70,28 @@ void main() {
       );
     });
 
-    test('drops ViewInsets and image_viewer markers', () {
+    test('drops ViewInsets, debugNeedsLayout, tooltip ticker, and image_viewer markers', () {
       expect(
         shouldDropSentryEvent(
           environment: 'production',
           debugUploadAllowed: false,
           haystack: 'AssertionError: $kSentryViewInsetsNoise',
+        ),
+        isTrue,
+      );
+      expect(
+        shouldDropSentryEvent(
+          environment: 'production',
+          debugUploadAllowed: false,
+          haystack: kSentryDebugNeedsLayout,
+        ),
+        isTrue,
+      );
+      expect(
+        shouldDropSentryEvent(
+          environment: 'production',
+          debugUploadAllowed: false,
+          haystack: kSentryTooltipTicker,
         ),
         isTrue,
       );

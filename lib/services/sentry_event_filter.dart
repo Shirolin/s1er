@@ -3,13 +3,22 @@ import 'package:sentry_flutter/sentry_flutter.dart';
 /// Known Flutter Web engine noise that must never become a Sentry issue.
 const kSentryViewInsetsNoise = 'ViewInsets cannot be negative';
 
+/// Known SelectableRegion post-frame race (Flutter #125065).
+const kSentryDebugNeedsLayout = '!debugNeedsLayout';
+
+/// Known RawTooltip SingleTickerProvider race (rapid pointer events).
+const kSentryTooltipTicker = 'SingleTickerProviderStateMixin but multiple tickers were created';
+
 /// Marker left by legacy / mistaken [FlutterError.reportError] paths.
 const kSentryImageViewerLibrary = 'image_viewer_screen';
 
 /// Whether [error] is a known-harmless Web layout quirk.
 bool isIgnorableSentryNoise(Object? error) {
   if (error == null) return false;
-  return error.toString().contains(kSentryViewInsetsNoise);
+  final msg = error.toString();
+  return msg.contains(kSentryViewInsetsNoise) ||
+      msg.contains(kSentryDebugNeedsLayout) ||
+      msg.contains(kSentryTooltipTicker);
 }
 
 /// Pure drop policy for unit tests and [filterSentryEvent].
@@ -24,6 +33,12 @@ bool shouldDropSentryEvent({
     return true;
   }
   if (haystack.contains(kSentryViewInsetsNoise)) {
+    return true;
+  }
+  if (haystack.contains(kSentryDebugNeedsLayout)) {
+    return true;
+  }
+  if (haystack.contains(kSentryTooltipTicker)) {
     return true;
   }
   if (haystack.contains(kSentryImageViewerLibrary)) {

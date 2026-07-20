@@ -1,5 +1,6 @@
 import 'dart:async';
 import 'dart:typed_data';
+import 'dart:ui' show PointerDeviceKind;
 
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:file_selector/file_selector.dart';
@@ -2536,7 +2537,7 @@ class _ComposeMediaPreviewHint extends StatelessWidget {
   }
 }
 
-class _ComposeImageStrip extends StatelessWidget {
+class _ComposeImageStrip extends StatefulWidget {
   const _ComposeImageStrip({
     required this.images,
     required this.onRemove,
@@ -2544,6 +2545,19 @@ class _ComposeImageStrip extends StatelessWidget {
 
   final List<_ComposeUploadedImage> images;
   final ValueChanged<_ComposeUploadedImage> onRemove;
+
+  @override
+  State<_ComposeImageStrip> createState() => _ComposeImageStripState();
+}
+
+class _ComposeImageStripState extends State<_ComposeImageStrip> {
+  final ScrollController _scrollController = ScrollController();
+
+  @override
+  void dispose() {
+    _scrollController.dispose();
+    super.dispose();
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -2555,42 +2569,56 @@ class _ComposeImageStrip extends StatelessWidget {
     return Material(
       color: scheme.surfaceContainer,
       child: SizedBox(
-        height: 56,
-        child: ListView.separated(
-          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-          scrollDirection: Axis.horizontal,
-          itemCount: images.length,
-          separatorBuilder: (_, __) => const SizedBox(width: 8),
-          itemBuilder: (context, index) {
-            final image = images[index];
-            return Tooltip(
-              message: image.label,
-              child: InputChip(
-                avatar: _ComposeImageChipAvatar(image: image),
-                label: SizedBox(
-                  width: maxLabelWidth,
-                  child: Text(
-                    displayLabelForIndex(
-                      (image.slot != null && image.slot! > 0)
-                          ? image.slot! - 1
-                          : index,
+        height: 64,
+        child: ScrollConfiguration(
+          behavior: ScrollConfiguration.of(context).copyWith(
+            dragDevices: {
+              PointerDeviceKind.touch,
+              PointerDeviceKind.mouse,
+              PointerDeviceKind.trackpad,
+            },
+          ),
+          child: Scrollbar(
+            controller: _scrollController,
+            thumbVisibility: true,
+            child: ListView.separated(
+              controller: _scrollController,
+              padding: const EdgeInsets.fromLTRB(12, 8, 12, 12),
+              scrollDirection: Axis.horizontal,
+              itemCount: widget.images.length,
+              separatorBuilder: (_, __) => const SizedBox(width: 8),
+              itemBuilder: (context, index) {
+                final image = widget.images[index];
+                return Tooltip(
+                  message: image.label,
+                  child: InputChip(
+                    avatar: _ComposeImageChipAvatar(image: image),
+                    label: SizedBox(
+                      width: maxLabelWidth,
+                      child: Text(
+                        displayLabelForIndex(
+                          (image.slot != null && image.slot! > 0)
+                              ? image.slot! - 1
+                              : index,
+                        ),
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: textTheme.labelMedium,
+                      ),
                     ),
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                    style: textTheme.labelMedium,
+                    onDeleted: () => widget.onRemove(image),
+                    deleteIcon: Icon(
+                      Icons.close,
+                      size: 18,
+                      color: scheme.onSecondaryContainer,
+                    ),
+                    backgroundColor: scheme.secondaryContainer,
+                    side: BorderSide.none,
                   ),
-                ),
-                onDeleted: () => onRemove(image),
-                deleteIcon: Icon(
-                  Icons.close,
-                  size: 18,
-                  color: scheme.onSecondaryContainer,
-                ),
-                backgroundColor: scheme.secondaryContainer,
-                side: BorderSide.none,
-              ),
-            );
-          },
+                );
+              },
+            ),
+          ),
         ),
       ),
     );

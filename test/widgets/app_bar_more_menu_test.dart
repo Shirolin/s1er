@@ -5,6 +5,8 @@ import 'package:s1er/widgets/app_bar_more_menu.dart';
 import 'package:url_launcher/url_launcher.dart';
 
 void main() {
+  const browserUrl = 'https://stage1st.com/2b/thread-1-2-1.html';
+
   Future<void> pumpMenu(
     WidgetTester tester, {
     required BrowserUrlLauncher launcher,
@@ -17,7 +19,7 @@ void main() {
             elevation: 0,
             actions: [
               AppBarMoreMenu(
-                browserUrl: 'https://stage1st.com/2b/thread-1-2-1.html',
+                browserUrl: browserUrl,
                 launcher: launcher,
               ),
             ],
@@ -27,12 +29,28 @@ void main() {
     );
   }
 
-  Future<void> openBrowserMenu(WidgetTester tester) async {
+  Future<void> openMoreMenu(WidgetTester tester) async {
     await tester.tap(find.byTooltip('更多操作'));
     await tester.pumpAndSettle();
+  }
+
+  Future<void> openBrowserMenu(WidgetTester tester) async {
+    await openMoreMenu(tester);
     await tester.tap(find.text('通过浏览器打开'));
     await tester.pumpAndSettle();
   }
+
+  testWidgets('shows copy link menu item', (tester) async {
+    await pumpMenu(
+      tester,
+      launcher: (url, {mode = LaunchMode.platformDefault}) async => true,
+    );
+
+    await openMoreMenu(tester);
+
+    // Menu item is visible.
+    expect(find.text('复制链接'), findsOneWidget);
+  });
 
   testWidgets('opens the URL in an external application', (tester) async {
     Uri? receivedUrl;
@@ -48,10 +66,7 @@ void main() {
 
     await openBrowserMenu(tester);
 
-    expect(
-      receivedUrl?.toString(),
-      'https://stage1st.com/2b/thread-1-2-1.html',
-    );
+    expect(receivedUrl?.toString(), browserUrl);
     expect(receivedMode, LaunchMode.externalApplication);
     expect(find.text('无法打开浏览器'), findsNothing);
   });

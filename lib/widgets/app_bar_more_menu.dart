@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:url_launcher/url_launcher.dart';
 
 import '../theme/s1_haptics.dart';
@@ -21,6 +22,17 @@ class AppBarMoreMenu extends StatelessWidget {
   final VoidCallback? onRefresh;
   final String browserUrl;
   final BrowserUrlLauncher launcher;
+
+  Future<void> _copyPageLink(BuildContext context) async {
+    try {
+      await Clipboard.setData(ClipboardData(text: browserUrl));
+    } catch (_) {
+      // Clipboard may not be available in all environments.
+    }
+    if (!context.mounted) return;
+    S1Haptics.light();
+    S1SnackBar.show(context, message: '已复制');
+  }
 
   Future<void> _openBrowser(BuildContext context) async {
     try {
@@ -51,6 +63,13 @@ class AppBarMoreMenu extends StatelessWidget {
             icon: Icons.refresh,
             label: '刷新',
           ),
+        s1MenuItem(
+          onPressed: () {
+            _copyPageLink(context);
+          },
+          icon: Icons.link,
+          label: '复制链接',
+        ),
         s1MenuItem(
           onPressed: () {
             S1Haptics.selection();

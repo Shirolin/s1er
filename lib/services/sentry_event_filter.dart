@@ -7,7 +7,8 @@ const kSentryViewInsetsNoise = 'ViewInsets cannot be negative';
 const kSentryDebugNeedsLayout = '!debugNeedsLayout';
 
 /// Known RawTooltip SingleTickerProvider race (rapid pointer events).
-const kSentryTooltipTicker = 'SingleTickerProviderStateMixin but multiple tickers were created';
+const kSentryTooltipTicker =
+    'SingleTickerProviderStateMixin but multiple tickers were created';
 
 /// Marker left by legacy / mistaken [FlutterError.reportError] paths.
 const kSentryImageViewerLibrary = 'image_viewer_screen';

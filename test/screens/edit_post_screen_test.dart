@@ -12,7 +12,7 @@ import 'package:s1er/screens/compose_screen.dart';
 import 'package:s1er/services/app_database.dart';
 import 'package:s1er/services/app_local_data.dart';
 import 'package:s1er/theme/app_theme.dart';
-import 'package:s1er/widgets/quote_block.dart';
+import 'package:s1er/widgets/bbcode_renderer.dart';
 
 import '../helpers/test_local_data.dart';
 
@@ -147,7 +147,7 @@ void main() {
     // 与回复页一致：引用条纯文本，不是 QuoteBlock 渲染 BBCode。
     expect(find.text('引用 · 二十二颗牛油果'), findsOneWidget);
     expect(find.text('现在实体版有好价吗'), findsOneWidget);
-    expect(find.byType(QuoteBlock), findsNothing);
+    expect(find.byType(BbcodeRenderer), findsNothing);
     expect(find.textContaining('[quote]'), findsNothing);
     expect(find.textContaining('[/size]'), findsNothing);
     expect(find.textContaining('S1er 客户端'), findsNothing);

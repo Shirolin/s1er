@@ -1,5 +1,5 @@
 import 'dart:async';
-
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_html/flutter_html.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -20,9 +20,10 @@ import '../utils/quote_jump.dart';
 import 'emoticon_widget.dart';
 import 'force_show_images.dart';
 import 'html_clickable_anchor_extension.dart';
-import 'quote_block.dart';
 import 'image_viewer.dart';
 import 'scroll_pointer_gate.dart';
+import '../models/thread_destination.dart';
+import '../utils/thread_navigation.dart';
 
 final _anchorTag = RegExp(r'<a\s', caseSensitive: false);
 
@@ -166,48 +167,35 @@ class BbcodeRenderer extends ConsumerWidget {
     bool effectiveImagesExpanded = false,
   }) {
     final widgets = <Widget>[];
-    final segments = BbcodeQuoteSplitter.split(text);
 
-    for (final segment in segments) {
-      if (segment.isQuote) {
-        widgets.add(
-          QuoteBlock(
-            content: segment.text,
-            depth: quoteDepth,
-            currentTid: currentTid,
-            imageIndexCounter: imageIndexCounter,
-            imagesExpanded: effectiveImagesExpanded,
-            onExpandImages: onExpandImages,
-          ),
-        );
-      } else if (segment.text.trim().isNotEmpty) {
-        var cleanedText = segment.text.replaceFirst(
+    final cleanedText = text
+        .replaceFirst(
           RegExp(r'^(?:\s*|<br\s*/?>)+', caseSensitive: false),
           '',
-        );
-        cleanedText = cleanedText.replaceFirst(
+        )
+        .replaceFirst(
           RegExp(r'(?:\s*|<br\s*/?>)+$', caseSensitive: false),
           '',
         );
-        if (cleanedText.trim().isNotEmpty) {
-          final html = _parseSegmentHtml(
-            cleanedText,
-            showImages: showImages,
-            maxImagesPerPost: maxImagesPerPost,
-          );
-          widgets.add(
-            _MemoizedHtmlBlock(
-              html: html,
-              showImages: showImages,
-              maxImagesPerPost: maxImagesPerPost,
-              imagesExpanded: effectiveImagesExpanded,
-              imageIndexCounter: imageIndexCounter,
-              onExpandImages: onExpandImages,
-              deferImages: deferImages,
-            ),
-          );
-        }
-      }
+
+    if (cleanedText.trim().isNotEmpty) {
+      final html = _parseSegmentHtml(
+        cleanedText,
+        showImages: showImages,
+        maxImagesPerPost: maxImagesPerPost,
+      );
+      widgets.add(
+        _MemoizedHtmlBlock(
+          html: html,
+          showImages: showImages,
+          maxImagesPerPost: maxImagesPerPost,
+          imagesExpanded: effectiveImagesExpanded,
+          imageIndexCounter: imageIndexCounter,
+          onExpandImages: onExpandImages,
+          deferImages: deferImages,
+          currentTid: currentTid,
+        ),
+      );
     }
 
     return widgets;
@@ -259,6 +247,7 @@ class _MemoizedHtmlBlock extends StatefulWidget {
     required this.imageIndexCounter,
     this.onExpandImages,
     this.deferImages = true,
+    this.currentTid,
   });
 
   final String html;
@@ -268,6 +257,7 @@ class _MemoizedHtmlBlock extends StatefulWidget {
   final PostImageIndexCounter imageIndexCounter;
   final VoidCallback? onExpandImages;
   final bool deferImages;
+  final String? currentTid;
 
   @override
   State<_MemoizedHtmlBlock> createState() => _MemoizedHtmlBlockState();
@@ -280,10 +270,12 @@ class _MemoizedHtmlBlockState extends State<_MemoizedHtmlBlock> {
   late bool _cachedImagesExpanded;
   int? _cachedThemeToken;
   Widget? _cachedWidget;
+  late final Key _htmlKey;
 
   @override
   void initState() {
     super.initState();
+    _htmlKey = UniqueKey();
     _cachedHtml = widget.html;
     _cachedShowImages = widget.showImages;
     _cachedMaxImages = widget.maxImagesPerPost;
@@ -378,7 +370,24 @@ class _MemoizedHtmlBlockState extends State<_MemoizedHtmlBlock> {
         color: Colors.transparent,
         backgroundColor: scheme.outlineVariant,
       ),
-      'blockquote': Style(display: Display.none),
+      'blockquote': Style(
+        margin: Margins.symmetric(vertical: 8),
+        padding: HtmlPaddings.only(left: 12, top: 4, right: 12, bottom: 8),
+        display: Display.block,
+      ),
+      '.quote-depth-1': Style(
+        backgroundColor: scheme.surfaceContainer,
+        border:
+            Border(left: BorderSide(color: scheme.outlineVariant, width: 3)),
+      ),
+      '.quote-depth-2': Style(
+        backgroundColor: scheme.surfaceContainerHigh,
+        border: Border(left: BorderSide(color: scheme.primary, width: 3)),
+      ),
+      '.quote-depth-3': Style(
+        backgroundColor: scheme.surfaceContainerHighest,
+        border: Border(left: BorderSide(color: scheme.tertiary, width: 3)),
+      ),
       'hr': Style(
         border: Border(
           bottom: BorderSide(color: scheme.outlineVariant, width: 0.8),
@@ -480,6 +489,194 @@ class _MemoizedHtmlBlockState extends State<_MemoizedHtmlBlock> {
           );
         },
       ),
+      TagExtension(
+        tagsToExtend: {'quote-header'},
+        builder: (context) {
+          final author = _unescapeHtml(context.attributes['author'] ?? '引用');
+          final link = context.attributes['href'];
+
+          final parsedLink = link != null && link.isNotEmpty
+              ? QuoteJumpParser.parsePostLink(link,
+                  fallbackTid: widget.currentTid,)
+              : null;
+
+          return Material(
+            color: Colors.transparent,
+            child: Semantics(
+              button: parsedLink != null,
+              label: parsedLink != null ? '跳转到引用帖子' : null,
+              child: InkWell(
+                borderRadius: S1Shape.small,
+                onTap: parsedLink != null
+                    ? () {
+                        final destination = parsedLink.pid != null
+                            ? ThreadPost(parsedLink.tid, parsedLink.pid!)
+                            : ResumeThread(parsedLink.tid);
+                        openInternalLocation(
+                          context.buildContext!,
+                          ThreadRouteCodec.encodePath(destination),
+                        );
+                      }
+                    : null,
+                child: Padding(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 12,
+                    vertical: 8,
+                  ),
+                  child: Row(
+                    children: [
+                      Icon(
+                        Icons.format_quote,
+                        size: 15,
+                        color: scheme.primary,
+                      ),
+                      const SizedBox(width: 4),
+                      Expanded(
+                        child: Text(
+                          author,
+                          style: textTheme.bodySmall?.copyWith(
+                            fontWeight: FontWeight.w600,
+                            color: scheme.primary,
+                          ),
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                      ),
+                      if (parsedLink != null)
+                        Icon(
+                          Icons.open_in_new,
+                          size: 13,
+                          color: scheme.onSurfaceVariant,
+                        ),
+                    ],
+                  ),
+                ),
+              ),
+            ),
+          );
+        },
+      ),
+      if (kIsWeb) ...[
+        TagExtension(
+          tagsToExtend: {
+            'iframe',
+            'video',
+            'audio',
+            'embed',
+            'object',
+            'input',
+            'button',
+            'select',
+            'textarea',
+            'form',
+            'option',
+          },
+          builder: (context) {
+            final tag = context.elementName;
+            final src =
+                context.attributes['src'] ?? context.attributes['data'] ?? '';
+
+            // 媒体类：显示跳转卡片
+            if (const {'iframe', 'video', 'audio', 'embed', 'object'}
+                .contains(tag)) {
+              final isAudio = tag == 'audio';
+              final label = isAudio ? '音频' : '视频/嵌入内容';
+              final icon = isAudio ? Icons.audiotrack : Icons.video_library;
+
+              return Card(
+                margin: const EdgeInsets.symmetric(vertical: 8),
+                elevation: 0,
+                shape: RoundedRectangleBorder(
+                  side: BorderSide(color: scheme.outlineVariant, width: 0.8),
+                  borderRadius: S1Shape.small,
+                ),
+                child: ListTile(
+                  leading: Icon(icon),
+                  title: Text('$label（点击跳转播放/查看）'),
+                  subtitle: src.isNotEmpty
+                      ? Text(src, maxLines: 1, overflow: TextOverflow.ellipsis)
+                      : null,
+                  onTap: src.isNotEmpty
+                      ? () => launchUrl(Uri.parse(src),
+                          mode: LaunchMode.externalApplication,)
+                      : null,
+                ),
+              );
+            }
+
+            // 表单输入框与按钮：用 Flutter 原生纯 Widget 模拟，绝对不使用 PlatformView (HtmlElementView)
+            if (tag == 'input') {
+              final type = context.attributes['type']?.toLowerCase() ?? 'text';
+              if (type == 'checkbox' || type == 'radio') {
+                return Icon(
+                  type == 'checkbox'
+                      ? Icons.check_box_outline_blank
+                      : Icons.radio_button_off,
+                  size: 18,
+                  color: scheme.onSurfaceVariant,
+                );
+              }
+              final value = context.attributes['value'] ?? '';
+              final placeholder = context.attributes['placeholder'] ?? '';
+              return Container(
+                margin: const EdgeInsets.symmetric(vertical: 4),
+                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
+                decoration: BoxDecoration(
+                  border: Border.all(color: scheme.outlineVariant),
+                  borderRadius: S1Shape.small,
+                ),
+                child: Text(
+                  value.isNotEmpty ? value : placeholder,
+                  style: textTheme.bodyMedium?.copyWith(
+                    color: value.isNotEmpty
+                        ? scheme.onSurface
+                        : scheme.onSurfaceVariant
+                            .withValues(alpha: S1Alpha.half),
+                  ),
+                ),
+              );
+            }
+
+            if (tag == 'button') {
+              final text = context.innerHtml.replaceAll(RegExp(r'<[^>]*>'), '');
+              return Padding(
+                padding: const EdgeInsets.symmetric(vertical: 4),
+                child: OutlinedButton(
+                  onPressed: null, // 只读展示，不提供交互
+                  style: OutlinedButton.styleFrom(
+                    visualDensity: VisualDensity.compact,
+                  ),
+                  child: Text(text.isNotEmpty ? text : '按钮'),
+                ),
+              );
+            }
+
+            if (tag == 'textarea') {
+              final value =
+                  context.innerHtml.replaceAll(RegExp(r'<[^>]*>'), '');
+              return Container(
+                margin: const EdgeInsets.symmetric(vertical: 4),
+                padding: const EdgeInsets.all(8),
+                constraints: const BoxConstraints(minHeight: 60),
+                decoration: BoxDecoration(
+                  border: Border.all(color: scheme.outlineVariant),
+                  borderRadius: S1Shape.small,
+                ),
+                child: Text(
+                  value,
+                  style: textTheme.bodyMedium,
+                ),
+              );
+            }
+
+            // 其他表单容器/选项标签：只透传内部文本，避免任何外部 platform 干扰
+            return Text(
+              context.innerHtml.replaceAll(RegExp(r'<[^>]*>'), ''),
+              style: textTheme.bodyMedium,
+            );
+          },
+        ),
+      ],
     ];
 
     void onLinkTap(String? url, _, __) {
@@ -504,6 +701,7 @@ class _MemoizedHtmlBlockState extends State<_MemoizedHtmlBlock> {
       return _HtmlSubtreeProbe(
         detail: profileDetail,
         child: Html.fromElement(
+          key: _htmlKey,
           documentElement: documentElement,
           style: style,
           onLinkTap: onLinkTap,
@@ -513,6 +711,7 @@ class _MemoizedHtmlBlockState extends State<_MemoizedHtmlBlock> {
     }
 
     return Html(
+      key: _htmlKey,
       data: html,
       style: style,
       onLinkTap: onLinkTap,

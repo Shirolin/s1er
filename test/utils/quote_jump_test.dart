@@ -7,7 +7,6 @@ import 'package:s1er/theme/app_theme.dart';
 import 'package:s1er/utils/post_image_index_counter.dart';
 import 'package:s1er/utils/quote_jump.dart';
 import 'package:s1er/widgets/bbcode_renderer.dart';
-import 'package:s1er/widgets/quote_block.dart';
 
 void main() {
   group('QuoteJumpParser', () {
@@ -49,23 +48,6 @@ void main() {
     });
   });
 
-  group('BbcodeQuoteSplitter', () {
-    test('splits [post] like [quote]', () {
-      final segs = BbcodeQuoteSplitter.split(
-        'before [post]inner[/post] after [quote]q[/quote]',
-      );
-      expect(segs.where((s) => s.isQuote).length, 2);
-      expect(segs.where((s) => s.isQuote).first.text, 'inner');
-    });
-
-    test('splits reply_wrap', () {
-      final segs = BbcodeQuoteSplitter.split(
-        '<div class="reply_wrap">body</div>tail',
-      );
-      expect(segs.where((s) => s.isQuote).single.text, 'body');
-    });
-  });
-
   group('QuoteBlock jump navigation', () {
     testWidgets('tapping header pushes thread with pid', (tester) async {
       String? pushed;
@@ -75,10 +57,10 @@ void main() {
           GoRoute(
             path: '/',
             builder: (context, state) => Scaffold(
-              body: QuoteBlock(
-                content:
-                    '<a href="forum.php?mod=redirect&amp;goto=findpost&amp;pid=42&amp;ptid=100">'
-                    'alice 发表于 2024-01-01 12:00</a><br/>quote body',
+              body: BbcodeRenderer(
+                bbcode:
+                    '[quote]<a href="forum.php?mod=redirect&amp;goto=findpost&amp;pid=42&amp;ptid=100">'
+                    'alice 发表于 2024-01-01 12:00</a><br/>quote body[/quote]',
                 imageIndexCounter: PostImageIndexCounter(),
                 currentTid: '100',
               ),
@@ -108,6 +90,7 @@ void main() {
           ),
         ),
       );
+      await tester.pump();
 
       await tester.tap(find.byIcon(Icons.open_in_new));
       await tester.pumpAndSettle();
@@ -115,7 +98,7 @@ void main() {
       expect(pushed, '/thread/100?pid=42');
     });
 
-    testWidgets('[post] segment renders QuoteBlock', (tester) async {
+    testWidgets('[post] segment renders BbcodeRenderer', (tester) async {
       await tester.pumpWidget(
         ProviderScope(
           overrides: [
@@ -138,7 +121,7 @@ void main() {
         ),
       );
 
-      expect(find.byType(QuoteBlock), findsOneWidget);
+      expect(find.byType(BbcodeRenderer), findsOneWidget);
     });
   });
 }

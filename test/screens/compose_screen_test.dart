@@ -19,7 +19,7 @@ import 'package:s1er/theme/app_theme.dart';
 import 'package:s1er/utils/quote_snapshot_store.dart';
 import 'package:s1er/utils/compose_message_draft.dart';
 import 'package:s1er/utils/window_size.dart';
-import 'package:s1er/widgets/quote_block.dart';
+import 'package:s1er/widgets/bbcode_renderer.dart';
 
 import '../helpers/test_local_data.dart';
 
@@ -198,7 +198,7 @@ void main() {
     // 回复预览不再叠「回复」角标（与副文案重复）。
     expect(find.text('回复'), findsNothing);
     expect(find.text('关闭'), findsNothing); // 默认测试视口为紧凑屏
-    expect(find.byType(QuoteBlock), findsAtLeastNWidgets(1));
+    expect(find.byType(BbcodeRenderer), findsAtLeastNWidgets(1));
     expect(find.text('我的回复正文'), findsWidgets);
   });
 

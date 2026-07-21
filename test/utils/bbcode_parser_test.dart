@@ -101,5 +101,32 @@ void main() {
       final okColor = BbcodeParser.parse('[color=#ff0000]red[/color]');
       expect(okColor, contains('color:#ff0000'));
     });
+
+    test('strips ratelog h3.psth and div[id^="ratelog_"]', () {
+      const input = '正常内容<h3 class="psth xs1">评分</h3>'
+          '<div id="ratelog_69941195"><ul class="post_box cl"><li>black -2</li></ul></div>'
+          '尾部正常内容';
+      final parsed = BbcodeParser.parse(input);
+      expect(parsed, contains('正常内容'));
+      expect(parsed, contains('尾部正常内容'));
+      expect(parsed, isNot(contains('评分')));
+      expect(parsed, isNot(contains('ratelog_69941195')));
+      expect(parsed, isNot(contains('black -2')));
+    });
+
+    test('extracts quote headers and tags depth class', () {
+      const input = '<blockquote>'
+          '<font size="2"><a href="forum.php?mod=redirect&amp;goto=findpost&amp;pid=123&amp;ptid=456"><font color="#999999">Author 发表于 2026-7-20 12:00</font></a></font><br/>'
+          '<blockquote>Nested quote</blockquote>'
+          'Outer quote'
+          '</blockquote>';
+      final parsed = BbcodeParser.parse(input);
+      expect(parsed, contains('class="quote-depth-1"'));
+      expect(parsed, contains('class="quote-depth-2"'));
+      expect(
+          parsed,
+          contains(
+              '<quote-header author="Author 发表于 2026-7-20 12:00" href="forum.php?mod=redirect&amp;goto=findpost&amp;pid=123&amp;ptid=456"></quote-header>',),);
+    });
   });
 }

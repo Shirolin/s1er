@@ -7,7 +7,6 @@ import 'package:s1er/theme/app_theme.dart';
 import 'package:s1er/utils/bbcode_parser.dart';
 import 'package:s1er/utils/post_image_index_counter.dart';
 import 'package:s1er/widgets/emoticon_widget.dart';
-import 'package:s1er/widgets/quote_block.dart';
 import 'package:s1er/widgets/bbcode_renderer.dart';
 
 Widget _wrapBbcode(
@@ -146,82 +145,6 @@ void main() {
     });
   });
 
-  group('QuoteBlock', () {
-    final counter = PostImageIndexCounter();
-
-    testWidgets('renders with left border decoration', (tester) async {
-      await tester.pumpWidget(
-        _wrapBbcode(
-          QuoteBlock(
-            content: 'quoted text',
-            imageIndexCounter: counter,
-          ),
-        ),
-      );
-
-      final container = tester.widget<Container>(find.byType(Container).first);
-      final decoration = container.decoration as BoxDecoration;
-      expect(decoration.border, isNotNull);
-      expect(find.byType(QuoteBlock), findsOneWidget);
-    });
-
-    testWidgets('displays quoted content via BbcodeRenderer', (tester) async {
-      await tester.pumpWidget(
-        _wrapBbcode(
-          QuoteBlock(
-            content: 'quoted text',
-            imageIndexCounter: counter,
-          ),
-        ),
-      );
-      expect(find.byType(BbcodeRenderer), findsOneWidget);
-    });
-
-    testWidgets('strips Discuz BBCode quote header without leftover [/size]',
-        (tester) async {
-      await tester.pumpWidget(
-        _wrapBbcode(
-          QuoteBlock(
-            content:
-                '[size=2][url=forum.php?mod=redirect&goto=findpost&pid=1&ptid=100]'
-                '二十二颗牛油果[/url] 发表于 07-19 14:32[/size]\n'
-                '现在实体版有好价吗',
-            imageIndexCounter: counter,
-          ),
-        ),
-      );
-      await tester.pumpAndSettle();
-      expect(find.text('二十二颗牛油果'), findsOneWidget);
-      expect(find.textContaining('现在实体版有好价吗'), findsOneWidget);
-      expect(find.textContaining('[/size]'), findsNothing);
-      expect(find.textContaining('[size='), findsNothing);
-    });
-
-    testWidgets('handles empty content', (tester) async {
-      await tester.pumpWidget(
-        _wrapBbcode(
-          QuoteBlock(
-            content: '',
-            imageIndexCounter: counter,
-          ),
-        ),
-      );
-      expect(find.byType(QuoteBlock), findsOneWidget);
-    });
-
-    testWidgets('handles complex quoted content', (tester) async {
-      await tester.pumpWidget(
-        _wrapBbcode(
-          QuoteBlock(
-            content: '[b]bold quote[/b]',
-            imageIndexCounter: counter,
-          ),
-        ),
-      );
-      expect(find.byType(BbcodeRenderer), findsOneWidget);
-    });
-  });
-
   group('BbcodeRenderer', () {
     testWidgets('renders empty string as SizedBox', (tester) async {
       await tester.pumpWidget(
@@ -256,8 +179,8 @@ void main() {
           ),
         ),
       );
-      expect(find.byType(QuoteBlock), findsOneWidget);
-      expect(find.byType(BbcodeRenderer), findsWidgets);
+      await tester.pump();
+      expect(find.textContaining('quoted'), findsOneWidget);
     });
 
     testWidgets('handles multiple quote blocks', (tester) async {
@@ -269,7 +192,9 @@ void main() {
           ),
         ),
       );
-      expect(find.byType(QuoteBlock), findsNWidgets(2));
+      await tester.pump();
+      expect(find.textContaining('first'), findsOneWidget);
+      expect(find.textContaining('second'), findsOneWidget);
     });
 
     testWidgets('handles content without quotes', (tester) async {
@@ -281,7 +206,7 @@ void main() {
           ),
         ),
       );
-      expect(find.byType(QuoteBlock), findsNothing);
+      await tester.pump();
       expect(find.byType(BbcodeRenderer), findsOneWidget);
     });
 
@@ -367,10 +292,6 @@ void main() {
           ),
         ),
       );
-      // Outer BbcodeRenderer + QuoteBlock's nested BbcodeRenderer → only one
-      // SelectionArea at depth 0.
-      expect(find.byType(BbcodeRenderer), findsWidgets);
-      expect(find.byType(QuoteBlock), findsOneWidget);
       expect(find.byType(SelectionArea), findsOneWidget);
     });
 

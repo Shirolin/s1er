@@ -70,7 +70,9 @@ void main() {
       );
     });
 
-    test('drops ViewInsets, debugNeedsLayout, tooltip ticker, and image_viewer markers', () {
+    test(
+        'drops ViewInsets, debugNeedsLayout, tooltip ticker, and image_viewer markers',
+        () {
       expect(
         shouldDropSentryEvent(
           environment: 'production',

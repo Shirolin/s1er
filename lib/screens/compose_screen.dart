@@ -37,7 +37,6 @@ import '../utils/s1_snack_bar.dart';
 import '../utils/window_size.dart';
 import '../widgets/bbcode_renderer.dart';
 import '../widgets/compose_emoticon_panel.dart';
-import '../widgets/quote_block.dart';
 import '../widgets/s1_confirm_dialog.dart';
 import '../widgets/s1_draft_leave_dialog.dart';
 import '../widgets/s1_adaptive_sheet.dart';
@@ -1857,14 +1856,14 @@ class _ComposePreviewSheet extends StatelessWidget {
             ),
             Divider(height: 16, color: scheme.outlineVariant),
             if (quoteInfo != null)
-              QuoteBlock(
-                content: EditPostMessageParts(
+              BbcodeRenderer(
+                bbcode: '[quote]${EditPostMessageParts(
                       leadingQuote: quoteInfo!.noticeTrimStr,
                       body: '',
-                    ).quoteInner ??
-                    quoteInfo!.noticeTrimStr,
+                    ).quoteInner ?? quoteInfo!.noticeTrimStr}[/quote]',
                 imageIndexCounter: imageIndexCounter,
                 currentTid: tid,
+                selectable: false,
               ),
             BbcodeRenderer(
               bbcode: previewBbcode.isEmpty ? '（无内容）' : previewBbcode,

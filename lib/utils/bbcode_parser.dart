@@ -157,6 +157,13 @@ class BbcodeParser {
 
     final fragment = parseFragment(output);
 
+    // Strip RateLog HTML blocks to prevent performance degradation and crashes
+    fragment.querySelectorAll('h3.psth').forEach((e) => e.remove());
+    fragment.querySelectorAll('div[id^="ratelog_"]').forEach((e) => e.remove());
+
+    // Process blockquotes to attach depth classes and extract quote headers
+    _processBlockquotes(fragment);
+
     fragment.querySelectorAll('div.img').forEach((div) {
       final replacement = _replacementForImageBlock(
         div,
@@ -284,5 +291,77 @@ class BbcodeParser {
         .replaceAll("'", '&#39;')
         .replaceAll('<', '&lt;')
         .replaceAll('>', '&gt;');
+  }
+
+  static int _countBlockquoteAncestors(Element e) {
+    var count = 0;
+    var parent = e.parent;
+    while (parent != null) {
+      if (parent.localName == 'blockquote') {
+        count++;
+      }
+      parent = parent.parent;
+    }
+    return count;
+  }
+
+  static void _processBlockquotes(DocumentFragment fragment) {
+    fragment.querySelectorAll('blockquote').forEach((bq) {
+      final ancestors = _countBlockquoteAncestors(bq);
+      bq.classes.add('quote-depth-${ancestors + 1}');
+
+      Element? headerElement;
+      String? authorText;
+      String? href;
+
+      final anchor = bq.querySelector('a');
+      if (anchor != null &&
+          (anchor.text.contains('发表于') ||
+              (anchor.attributes['href']?.contains('mod=redirect') ?? false))) {
+        headerElement = anchor;
+        authorText = anchor.text.trim();
+        href = anchor.attributes['href'];
+      }
+
+      if (headerElement == null) {
+        final font = bq.querySelector('font');
+        if (font != null && font.text.contains('发表于')) {
+          headerElement = font;
+          authorText = font.text.trim();
+        }
+      }
+
+      if (headerElement != null) {
+        var top = headerElement;
+        while (top.parent != bq && top.parent != null) {
+          top = top.parent!;
+        }
+
+        final header = Element.tag('quote-header')
+          ..attributes['author'] = authorText ?? '引用'
+          ..attributes['href'] = href ?? '';
+
+        top.replaceWith(header);
+
+        final parent = header.parent;
+        if (parent != null) {
+          final index = parent.nodes.indexOf(header);
+          if (index != -1) {
+            var nextIdx = index + 1;
+            while (nextIdx < parent.nodes.length) {
+              final nextNode = parent.nodes[nextIdx];
+              if (nextNode is Text && nextNode.text.trim().isEmpty) {
+                nextIdx++;
+                continue;
+              }
+              if (nextNode is Element && nextNode.localName == 'br') {
+                nextNode.remove();
+              }
+              break;
+            }
+          }
+        }
+      }
+    });
   }
 }

@@ -139,9 +139,11 @@ void main() {
       final parsed = BbcodeParser.parse(input);
       expect(parsed, contains('<blockquote class="reply_wrap quote-depth-1">'));
       expect(
-          parsed,
-          contains(
-              '<quote-header author="User 发表于 2026-7-21 11:00" href=""></quote-header>',),);
+        parsed,
+        contains(
+          '<quote-header author="User 发表于 2026-7-21 11:00" href=""></quote-header>',
+        ),
+      );
       expect(parsed, contains('Quote content'));
     });
   });

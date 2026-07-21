@@ -1007,8 +1007,8 @@ class _ThreadDetailScreenState extends ConsumerState<ThreadDetailScreen> {
                               : SelectionArea(
                                   child: ListView.builder(
                                     controller: scrollController,
-                                    scrollCacheExtent:
-                                        S1FabLayout.threadDetailScrollCacheExtent,
+                                    scrollCacheExtent: S1FabLayout
+                                        .threadDetailScrollCacheExtent,
                                     padding: S1FabLayout
                                         .threadDetailScrollBottomPadding,
                                     itemCount: _detailItemCount(state),

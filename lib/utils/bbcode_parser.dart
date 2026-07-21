@@ -3,6 +3,7 @@ import 'package:html/parser.dart' show parseFragment;
 import '../config/constants.dart';
 import '../models/emoticon_catalog.dart';
 import 'author_color_adapter.dart';
+import 'html_optimizer.dart';
 import 'post_image_index_counter.dart';
 import 'post_image_urls.dart';
 
@@ -217,6 +218,10 @@ class BbcodeParser {
         div.replaceWith(replacement);
       }
     });
+
+    // 扁平化合并连续相同属性的 HTML 标签，减少 DOM 节点数量
+    HtmlOptimizer.flatten(fragment);
+
     output = fragment.outerHtml;
 
     output = output.replaceAll('<br>', '<br/>');

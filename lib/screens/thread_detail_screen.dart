@@ -1005,20 +1005,18 @@ class _ThreadDetailScreenState extends ConsumerState<ThreadDetailScreen> {
                           controller: scrollController,
                           child: state.posts.isEmpty
                               ? const Center(child: Text('暂无回复'))
-                              : SelectionArea(
-                                  child: ListView.builder(
-                                    controller: scrollController,
-                                    scrollCacheExtent: S1FabLayout
-                                        .threadDetailScrollCacheExtent,
-                                    padding: S1FabLayout
-                                        .threadDetailScrollBottomPadding,
-                                    itemCount: _detailItemCount(state),
-                                    itemBuilder: (context, index) =>
-                                        _buildDetailItem(
-                                      context,
-                                      state,
-                                      index,
-                                    ),
+                              : ListView.builder(
+                                  controller: scrollController,
+                                  scrollCacheExtent: S1FabLayout
+                                      .threadDetailScrollCacheExtent,
+                                  padding: S1FabLayout
+                                      .threadDetailScrollBottomPadding,
+                                  itemCount: _detailItemCount(state),
+                                  itemBuilder: (context, index) =>
+                                      _buildDetailItem(
+                                    context,
+                                    state,
+                                    index,
                                   ),
                                 ),
                         ),

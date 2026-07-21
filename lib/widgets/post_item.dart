@@ -144,7 +144,6 @@ class _PostItemState extends ConsumerState<PostItem>
               currentTid: widget.tid,
               imagesExpanded: _imagesExpanded,
               onExpandImages: _expandImages,
-              selectable: false,
             ),
             if (widget.tid != null)
               _PostRateLogSection(

@@ -109,6 +109,7 @@ class _ComposeEmoticonPanelState extends State<ComposeEmoticonPanel>
                         onTap: () => _pick(item.entity),
                         borderRadius: S1Shape.small,
                         child: Tooltip(
+                          key: ValueKey('recent-tooltip-${item.entity}'),
                           message: item.entity,
                           child: Padding(
                             padding: const EdgeInsets.all(6),
@@ -192,6 +193,7 @@ class _EmoticonGrid extends StatelessWidget {
             onTap: () => onSelect(item.entity),
             borderRadius: S1Shape.small,
             child: Tooltip(
+              key: ValueKey('grid-tooltip-${item.entity}'),
               message: item.entity,
               child: Center(
                 child: _DeferredEmoticonImage(item: item, size: 40),

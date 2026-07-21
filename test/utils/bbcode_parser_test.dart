@@ -165,8 +165,7 @@ void main() {
     });
 
     test('removes media embed tags entirely', () {
-      const input =
-          '<iframe src="https://example.com/embed"></iframe>'
+      const input = '<iframe src="https://example.com/embed"></iframe>'
           '<video src="foo.mp4"></video>'
           '<audio src="bar.mp3"></audio>';
       final parsed = BbcodeParser.parse(input);

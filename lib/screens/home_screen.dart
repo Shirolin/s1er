@@ -149,6 +149,7 @@ class _HomeScreenBodyState extends ConsumerState<_HomeScreenBody> {
                         onRefresh: () =>
                             ref.read(forumListProvider.notifier).refresh(),
                         browserUrl: ApiConfig.baseUrl,
+                        showOpenLink: true,
                       )
                     else
                       Padding(

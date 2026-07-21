@@ -147,4 +147,47 @@ void main() {
       expect(parsed, contains('Quote content'));
     });
   });
+
+  group('form and media tag stripping', () {
+    test('removes empty input/button/select and replaces textarea with text',
+        () {
+      const input = '<input type="text" placeholder="搜索" />'
+          '<button>确定</button>'
+          '<select><option>A</option></select>'
+          '<textarea>内容</textarea>';
+      final parsed = BbcodeParser.parse(input);
+      expect(parsed, isNot(contains('<input')));
+      expect(parsed, isNot(contains('<button')));
+      expect(parsed, isNot(contains('<select')));
+      expect(parsed, isNot(contains('<textarea')));
+      expect(parsed, contains('确定'));
+      expect(parsed, contains('内容'));
+    });
+
+    test('removes media embed tags entirely', () {
+      const input =
+          '<iframe src="https://example.com/embed"></iframe>'
+          '<video src="foo.mp4"></video>'
+          '<audio src="bar.mp3"></audio>';
+      final parsed = BbcodeParser.parse(input);
+      expect(parsed, isNot(contains('<iframe')));
+      expect(parsed, isNot(contains('<video')));
+      expect(parsed, isNot(contains('<audio')));
+    });
+
+    test('strips form tags from real-world "moyu" post content', () {
+      // Simulate the taxiom post that caused native crashes.
+      const input = '摸鱼模式<br/>'
+          '<input type="text" placeholder="Stage1st 用户 ID" />'
+          '<button>获取画像</button>'
+          '<textarea>结果会显示在这里。</textarea>'
+          '<select><option>deepseek-v4-pro</option></select>';
+      final parsed = BbcodeParser.parse(input);
+      expect(parsed, contains('摸鱼模式'));
+      expect(parsed, isNot(contains('<input')));
+      expect(parsed, isNot(contains('<button')));
+      expect(parsed, isNot(contains('<textarea')));
+      expect(parsed, isNot(contains('<select')));
+    });
+  });
 }

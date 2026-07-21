@@ -171,6 +171,40 @@ class BbcodeParser {
     fragment.querySelectorAll('h3.psth').forEach((e) => e.remove());
     fragment.querySelectorAll('div[id^="ratelog_"]').forEach((e) => e.remove());
 
+    // Strip or flatten interactive/platform-view-triggering tags on ALL platforms.
+    // flutter_html renders <input>/<button>/<textarea>/<select> etc. via PlatformView
+    // on native, which causes lifecycle assertion crashes during fast list scrolling.
+    // Media embeds (iframe/video/audio) are similarly unsafe in native list views.
+    // Strategy: replace with their visible text content (if any), or remove entirely.
+    const formTags = {
+      'input',
+      'button',
+      'textarea',
+      'select',
+      'option',
+      'optgroup',
+      'form',
+    };
+    const mediaEmbedTags = {
+      'iframe',
+      'video',
+      'audio',
+      'embed',
+      'object',
+      'source',
+      'track',
+    };
+    for (final tag in {...formTags, ...mediaEmbedTags}) {
+      fragment.querySelectorAll(tag).forEach((el) {
+        final visibleText = el.text.trim();
+        if (visibleText.isNotEmpty) {
+          el.replaceWith(Text(visibleText));
+        } else {
+          el.remove();
+        }
+      });
+    }
+
     // Process blockquotes to attach depth classes and extract quote headers
     _processBlockquotes(fragment);
 

@@ -63,6 +63,43 @@ void main() {
     // Offscreen but keep-alive: still in tree (not disposed/rebuilt from scratch).
     expect(find.text('heavy body', skipOffstage: false), findsOneWidget);
   });
+
+  testWidgets('PostItem opens text selection sheet from menu',
+      (tester) async {
+    await tester.pumpWidget(
+      ProviderScope(
+        child: wrapWithAppTheme(
+          MaterialApp(
+            home: Scaffold(
+              body: PostItem(
+                post: Post.fromJson({
+                  'pid': 'select-1',
+                  'message': 'Selectable content text',
+                  'author': 'author',
+                  'authorid': '1',
+                  'dbdateline': '1700001000',
+                  'number': '1',
+                }),
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+    await tester.pump();
+
+    await tester.tap(find.byIcon(Icons.more_vert));
+    await tester.pumpAndSettle();
+
+    expect(find.text('选择文字'), findsOneWidget);
+
+    await tester.tap(find.text('选择文字'));
+    await tester.pumpAndSettle();
+
+    // Sheet header and content are displayed
+    expect(find.text('选择文字'), findsWidgets);
+    expect(find.text('Selectable content text'), findsWidgets);
+  });
 }
 
 class _NarrowPostHarness extends StatelessWidget {

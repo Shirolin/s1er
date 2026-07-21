@@ -17,6 +17,7 @@ import 'post_action_menu.dart';
 import 'rate_log_card.dart';
 import 'user_profile_sheet.dart';
 import 'web_avatar.dart';
+import 's1_adaptive_sheet.dart';
 import 's1_click_region.dart';
 
 class PostItem extends ConsumerStatefulWidget {
@@ -144,6 +145,7 @@ class _PostItemState extends ConsumerState<PostItem>
               currentTid: widget.tid,
               imagesExpanded: _imagesExpanded,
               onExpandImages: _expandImages,
+              selectable: false,
             ),
             if (widget.tid != null)
               _PostRateLogSection(
@@ -164,12 +166,58 @@ class _PostItemState extends ConsumerState<PostItem>
     S1SnackBar.show(context, message: '已复制');
   }
 
+  void _showSelectTextSheet(BuildContext context) {
+    showS1AdaptiveSheet(
+      context: context,
+      builder: (context) {
+        final textTheme = Theme.of(context).textTheme;
+        return Padding(
+          padding: const EdgeInsets.all(16),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  Text(
+                    '选择文字',
+                    style: textTheme.titleMedium?.copyWith(
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                  IconButton(
+                    icon: const Icon(Icons.close),
+                    onPressed: () => Navigator.of(context).pop(),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 8),
+              Flexible(
+                child: SingleChildScrollView(
+                  child: BbcodeRenderer(
+                    bbcode: widget.post.message,
+                    imageIndexCounter: PostImageIndexCounter(),
+                    currentTid: widget.tid,
+                    imagesExpanded: true,
+                    selectable: true,
+                  ),
+                ),
+              ),
+            ],
+          ),
+        );
+      },
+    );
+  }
+
   Widget _buildAuthorHeader(BuildContext context, String timeStr, int floor) {
     final canCopy = widget.post.message.trim().isNotEmpty;
     final menu = PostActionMenu(
       onFilterByAuthor: widget.onFilterByAuthor,
       onReply: widget.onReply,
       onShare: widget.onShare,
+      onSelectText: canCopy ? () => _showSelectTextSheet(context) : null,
       onCopyText: canCopy ? () => _copyPostText(context) : null,
       onEdit: widget.onEdit,
       onRate: widget.onRate,

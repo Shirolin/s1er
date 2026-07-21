@@ -30,11 +30,12 @@ void main() {
     expect(find.text('编辑'), findsOneWidget);
     expect(find.text('评分'), findsOneWidget);
     expect(find.text('分享'), findsOneWidget);
+    expect(find.text('选择文字'), findsOneWidget);
     expect(find.text('复制全文'), findsOneWidget);
     expect(find.text('加入黑名单'), findsOneWidget);
     expect(find.text('举报'), findsOneWidget);
     expect(find.byType(S1MenuDivider), findsOneWidget);
-    expect(find.byType(MenuItemButton), findsNWidgets(8));
+    expect(find.byType(MenuItemButton), findsNWidgets(9));
 
     await tester.tap(find.text('只看该作者'));
     await tester.pumpAndSettle();
@@ -136,6 +137,28 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(reportTapped, isTrue);
+  });
+
+  testWidgets('PostActionMenu invokes select text callback', (tester) async {
+    var selectTapped = false;
+
+    await tester.pumpWidget(
+      MaterialApp(
+        theme: AppTheme.lightTheme('purple'),
+        home: Scaffold(
+          body: PostActionMenu(
+            onSelectText: () => selectTapped = true,
+          ),
+        ),
+      ),
+    );
+
+    await tester.tap(find.byIcon(Icons.more_vert));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('选择文字'));
+    await tester.pumpAndSettle();
+
+    expect(selectTapped, isTrue);
   });
 
   testWidgets('PostActionMenu invokes copy text callback', (tester) async {

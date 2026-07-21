@@ -14,6 +14,7 @@ class PostActionMenu extends StatelessWidget {
     this.onReport,
     this.onShare,
     this.onCopyText,
+    this.onSelectText,
   });
 
   final VoidCallback? onFilterByAuthor;
@@ -24,6 +25,7 @@ class PostActionMenu extends StatelessWidget {
   final VoidCallback? onReport;
   final VoidCallback? onShare;
   final VoidCallback? onCopyText;
+  final VoidCallback? onSelectText;
 
   @override
   Widget build(BuildContext context) {
@@ -43,6 +45,11 @@ class PostActionMenu extends StatelessWidget {
           onPressed: onShare,
           icon: Icons.share_outlined,
           label: '分享',
+        ),
+        s1MenuItem(
+          onPressed: onSelectText,
+          icon: Icons.text_format_outlined,
+          label: '选择文字',
         ),
         s1MenuItem(
           onPressed: onCopyText,

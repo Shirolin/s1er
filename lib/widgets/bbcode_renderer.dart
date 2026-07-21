@@ -170,11 +170,11 @@ class BbcodeRenderer extends ConsumerWidget {
 
     final cleanedText = text
         .replaceFirst(
-          RegExp(r'^(?:\s*|<br\s*/?>)+', caseSensitive: false),
+          RegExp(r'^(\s|<br\s*/?>)+', caseSensitive: false),
           '',
         )
         .replaceFirst(
-          RegExp(r'(?:\s*|<br\s*/?>)+$', caseSensitive: false),
+          RegExp(r'(\s|<br\s*/?>)+$', caseSensitive: false),
           '',
         );
 

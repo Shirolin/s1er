@@ -204,6 +204,15 @@ class _ImageViewerState extends ConsumerState<ImageViewer> {
     // Web 上所有图片都通过统一代理取 bytes，再由 Flutter Image 渲染。
     // 避免 HtmlElementView 在 ListView 回收期间触发 detached RenderObject
     // 的 PlatformView post-frame 断言。
+    //
+    // 同步设置 loading 态，防止首帧构建时回退到 CachedNetworkImageProvider
+    // （浏览器 <img> 元素在 CORS 错误时会 taint canvas → toImage() 失败）。
+    if (_resourceType == ResourceType.publicAsset && kIsWeb) {
+      setState(() {
+        _loading = true;
+      });
+    }
+
     await _loadAuthOrProxied(url);
   }
 
@@ -400,6 +409,14 @@ class _ImageViewerState extends ConsumerState<ImageViewer> {
     }
 
     if (_resourceType == ResourceType.publicAsset) {
+      // On Web, CachedNetworkImageProvider renders via browser <img> elements.
+      // Cross-origin images taint Flutter's <canvas>, which breaks
+      // RenderRepaintBoundary.toImage() during share-card capture.
+      // In share-card context, stick to the proxy-backed byte path above;
+      // if bytes aren't available, show the broken-image placeholder.
+      if (kIsWeb && ForceShowImages.read(context)) {
+        return _wrapDeferred(_wrapBlockImage(_buildError()));
+      }
       return _wrapDeferred(
         _wrapBlockImage(_buildImage(_publicNetworkProvider(_displayUrl))),
       );

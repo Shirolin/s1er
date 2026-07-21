@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:convert';
 import 'package:dio/dio.dart';
 import 'package:dio_cookie_manager/dio_cookie_manager.dart';
 import 'package:cookie_jar/cookie_jar.dart';
@@ -13,6 +14,7 @@ import '../config/resource_domains.dart';
 import 'formhash_service.dart';
 import 'encrypted_cookie_storage.dart';
 import 'talker.dart';
+import '../providers/unread_count_provider.dart';
 
 class S1HttpClient {
   S1HttpClient(this._ref)
@@ -166,6 +168,7 @@ class S1HttpClient {
           if (formhash != null) {
             _read(formhashProvider.notifier).update(formhash);
           }
+          _extractAndUpdateNotice(response.data);
           handler.next(response);
         },
         onError: (error, handler) {
@@ -350,6 +353,31 @@ class S1HttpClient {
     if (formhash != null) {
       _read(formhashProvider.notifier).update(formhash);
     }
+  }
+
+  void _extractAndUpdateNotice(dynamic data) {
+    try {
+      Map<String, dynamic>? jsonMap;
+      if (data is Map) {
+        jsonMap = Map<String, dynamic>.from(data);
+      } else if (data is String) {
+        final trimmed = data.trimLeft();
+        if (trimmed.startsWith('{')) {
+          jsonMap = jsonDecode(data) as Map<String, dynamic>?;
+        }
+      }
+
+      if (jsonMap != null) {
+        final variables = jsonMap['Variables'];
+        if (variables is Map && variables.containsKey('notice')) {
+          final noticeMap = variables['notice'];
+          if (noticeMap is Map) {
+            _read(unreadCountProvider.notifier)
+                .updateFromNotice(Map<String, dynamic>.from(noticeMap));
+          }
+        }
+      }
+    } catch (_) {}
   }
 
   T _read<T>(ProviderListenable<T> provider) {

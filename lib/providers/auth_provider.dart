@@ -8,6 +8,8 @@ import '../services/http_client.dart';
 import 'forum_list_provider.dart';
 import 'settings_provider.dart';
 
+import 'unread_count_provider.dart';
+
 final authServiceProvider = Provider<AuthService>((ref) {
   return AuthService(httpClient: ref.watch(httpClientProvider));
 });
@@ -109,6 +111,7 @@ class AuthNotifier extends Notifier<AuthState> {
     await ref.read(localDataProvider).flushPendingWrites();
     await _authService.logout();
     ref.read(formhashProvider.notifier).clear();
+    ref.read(unreadCountProvider.notifier).clear();
     state = AuthState();
     ref.invalidate(forumListProvider);
   }

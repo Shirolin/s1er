@@ -8,6 +8,7 @@ import '../providers/pm_list_provider.dart';
 import '../providers/notice_list_provider.dart';
 import '../providers/messages_segment_provider.dart';
 import '../providers/settings_provider.dart';
+import '../providers/unread_count_provider.dart';
 import '../models/forum_category.dart';
 import '../models/notice_item.dart';
 import '../theme/app_theme.dart';
@@ -103,6 +104,13 @@ class _HomeScreenBodyState extends ConsumerState<_HomeScreenBody> {
                 }),
               );
 
+    final unreadTotal = isLoggedIn
+        ? ref.watch(unreadCountProvider.select((c) => c.total))
+        : 0;
+    final unreadDisplay = isLoggedIn
+        ? ref.watch(unreadCountProvider.select((c) => c.displayBadge))
+        : '';
+
     return Scaffold(
       appBar: AppBar(
         elevation: 0,
@@ -187,20 +195,24 @@ class _HomeScreenBodyState extends ConsumerState<_HomeScreenBody> {
                 context.go(tab == 'forum' ? '/' : '/?tab=$tab');
               },
               destinations: isLoggedIn
-                  ? const [
-                      NavigationDestination(
+                  ? [
+                      const NavigationDestination(
                         icon: Icon(Icons.forum),
                         label: '论坛',
                       ),
-                      NavigationDestination(
+                      const NavigationDestination(
                         icon: Icon(Icons.search),
                         label: '搜索',
                       ),
                       NavigationDestination(
-                        icon: Icon(Icons.message),
+                        icon: Badge(
+                          label: Text(unreadDisplay),
+                          isLabelVisible: unreadTotal > 0,
+                          child: const Icon(Icons.message),
+                        ),
                         label: '消息',
                       ),
-                      NavigationDestination(
+                      const NavigationDestination(
                         icon: Icon(Icons.person),
                         label: '我的',
                       ),

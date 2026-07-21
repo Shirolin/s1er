@@ -3,6 +3,7 @@ import 'package:flutter/services.dart';
 import 'package:go_router/go_router.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../providers/auth_provider.dart';
+import '../providers/unread_count_provider.dart';
 import '../theme/s1_haptics.dart';
 import '../utils/window_size.dart';
 
@@ -40,6 +41,12 @@ class S1DesktopScaffold extends ConsumerWidget {
     final isLoggedIn = ref.watch(
       authStateProvider.select((auth) => auth.isLoggedIn),
     );
+    final unreadTotal = isLoggedIn
+        ? ref.watch(unreadCountProvider.select((c) => c.total))
+        : 0;
+    final unreadDisplay = isLoggedIn
+        ? ref.watch(unreadCountProvider.select((c) => c.displayBadge))
+        : '';
 
     void selectDestination(int index) {
       S1Haptics.selection();
@@ -108,23 +115,31 @@ class S1DesktopScaffold extends ConsumerWidget {
                 ),
               ),
               destinations: isLoggedIn
-                  ? const [
-                      NavigationRailDestination(
+                  ? [
+                      const NavigationRailDestination(
                         icon: Icon(Icons.forum),
                         selectedIcon: Icon(Icons.forum),
                         label: Text('论坛'),
                       ),
-                      NavigationRailDestination(
+                      const NavigationRailDestination(
                         icon: Icon(Icons.search),
                         selectedIcon: Icon(Icons.search),
                         label: Text('搜索'),
                       ),
                       NavigationRailDestination(
-                        icon: Icon(Icons.message),
-                        selectedIcon: Icon(Icons.message),
-                        label: Text('消息'),
+                        icon: Badge(
+                          label: Text(unreadDisplay),
+                          isLabelVisible: unreadTotal > 0,
+                          child: const Icon(Icons.message),
+                        ),
+                        selectedIcon: Badge(
+                          label: Text(unreadDisplay),
+                          isLabelVisible: unreadTotal > 0,
+                          child: const Icon(Icons.message),
+                        ),
+                        label: const Text('消息'),
                       ),
-                      NavigationRailDestination(
+                      const NavigationRailDestination(
                         icon: Icon(Icons.person),
                         selectedIcon: Icon(Icons.person),
                         label: Text('我的'),

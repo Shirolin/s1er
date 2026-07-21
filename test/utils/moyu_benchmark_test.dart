@@ -6,8 +6,7 @@ import 'package:s1er/utils/post_image_index_counter.dart';
 import 'package:s1er/widgets/bbcode_renderer.dart';
 
 void main() {
-  testWidgets(
-      'BbcodeRenderer renders moyu post with spaces without ReDoS lag',
+  testWidgets('BbcodeRenderer renders moyu post with spaces without ReDoS lag',
       (tester) async {
     const moyuMessage = '''
 &nbsp;            &nbsp;X&nbsp;     &nbsp; Business_Report_2025.xlsx - Excel&nbsp;    &nbsp;<br />
@@ -55,7 +54,8 @@ void main() {
     expect(
       stopwatchRender.elapsedMilliseconds,
       lessThan(1000),
-      reason: 'BbcodeRenderer pump should take under 1s (was 17.5s before ReDoS fix)',
+      reason:
+          'BbcodeRenderer pump should take under 1s (was 17.5s before ReDoS fix)',
     );
   });
 }

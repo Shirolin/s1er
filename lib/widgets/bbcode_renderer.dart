@@ -496,8 +496,10 @@ class _MemoizedHtmlBlockState extends State<_MemoizedHtmlBlock> {
           final link = context.attributes['href'];
 
           final parsedLink = link != null && link.isNotEmpty
-              ? QuoteJumpParser.parsePostLink(link,
-                  fallbackTid: widget.currentTid,)
+              ? QuoteJumpParser.parsePostLink(
+                  link,
+                  fallbackTid: widget.currentTid,
+                )
               : null;
 
           return Material(
@@ -597,8 +599,10 @@ class _MemoizedHtmlBlockState extends State<_MemoizedHtmlBlock> {
                       ? Text(src, maxLines: 1, overflow: TextOverflow.ellipsis)
                       : null,
                   onTap: src.isNotEmpty
-                      ? () => launchUrl(Uri.parse(src),
-                          mode: LaunchMode.externalApplication,)
+                      ? () => launchUrl(
+                            Uri.parse(src),
+                            mode: LaunchMode.externalApplication,
+                          )
                       : null,
                 ),
               );

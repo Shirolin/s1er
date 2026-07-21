@@ -124,9 +124,11 @@ void main() {
       expect(parsed, contains('class="quote-depth-1"'));
       expect(parsed, contains('class="quote-depth-2"'));
       expect(
-          parsed,
-          contains(
-              '<quote-header author="Author 发表于 2026-7-20 12:00" href="forum.php?mod=redirect&amp;goto=findpost&amp;pid=123&amp;ptid=456"></quote-header>',),);
+        parsed,
+        contains(
+          '<quote-header author="Author 发表于 2026-7-20 12:00" href="forum.php?mod=redirect&amp;goto=findpost&amp;pid=123&amp;ptid=456"></quote-header>',
+        ),
+      );
     });
   });
 }

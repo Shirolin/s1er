@@ -263,7 +263,7 @@ void main() {
       expect((target as ScrollToFloor).absoluteFloor, 45);
     });
 
-    test('B3 new replies → ScrollToPageTop on first unread page', () {
+    test('B3 new replies → ScrollToFloor(firstUnreadFloor)', () {
       final target = resolveResumeScrollTarget(
         record: _record(
           lastReadPage: 5,
@@ -274,7 +274,8 @@ void main() {
         loadedPage: 6,
         liveTotalReplies: 279,
       );
-      expect(target, isA<ScrollToPageTop>());
+      expect(target, isA<ScrollToFloor>());
+      expect((target as ScrollToFloor).absoluteFloor, 201);
     });
 
     test('no record → ScrollToPageTop', () {

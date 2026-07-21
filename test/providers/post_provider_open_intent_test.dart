@@ -194,7 +194,11 @@ void main() {
       final state = await container.read(postProvider('100').future);
 
       expect(state.currentPage, 3);
-      expect(state.openScrollTarget, isA<ScrollToPageTop>());
+      expect(state.openScrollTarget, isA<ScrollToFloor>());
+      expect(
+        (state.openScrollTarget as ScrollToFloor).absoluteFloor,
+        81,
+      );
       expect(adapter.requestedPages, contains(3));
     });
 

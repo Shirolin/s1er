@@ -157,7 +157,6 @@ class PostNotifier extends AsyncNotifier<PostListState> {
           (listLive == null || listLive < loaded.totalReplies);
       if (needsCorrection) {
         loaded = await _loadPage(targetPage);
-        return loaded.copyWith(openScrollTarget: const ScrollToPageTop());
       }
     }
 

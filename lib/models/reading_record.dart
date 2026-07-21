@@ -118,7 +118,9 @@ class ReadingRecord {
 
     if (hasNewReplies(liveTotalReplies)) {
       // 首个未读楼 = 缓存 totalPosts + 1
-      return pageForFloor(totalPosts + 1, perPage: ppp).clamp(1, livePages);
+      final unreadFloor =
+          (lastReadFloor > totalPosts ? lastReadFloor : totalPosts) + 1;
+      return pageForFloor(unreadFloor, perPage: ppp).clamp(1, livePages);
     }
 
     return livePages;

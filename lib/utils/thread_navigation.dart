@@ -54,7 +54,7 @@ int resolveThreadInitialPage({
   return 1;
 }
 
-/// resume 打开落点：B3 新回复首楼所在页 → 页顶；否则 → 滚到 [ReadingRecord.lastReadFloor]。
+/// resume 打开落点：B3 新回复首楼所在楼层；否则 → 滚到 [ReadingRecord.lastReadFloor]。
 OpenScrollTarget resolveResumeScrollTarget({
   required ReadingRecord? record,
   required int loadedPage,
@@ -70,10 +70,13 @@ OpenScrollTarget resolveResumeScrollTarget({
   final livePages = calcThreadTotalPages(liveTotalReplies, perPage: ppp);
 
   if (record.isFinished && record.hasNewReplies(liveTotalReplies)) {
-    final b3Page =
-        pageForFloor(record.totalPosts + 1, perPage: ppp).clamp(1, livePages);
+    final unreadFloor = (record.lastReadFloor > record.totalPosts
+            ? record.lastReadFloor
+            : record.totalPosts) +
+        1;
+    final b3Page = pageForFloor(unreadFloor, perPage: ppp).clamp(1, livePages);
     if (loadedPage == b3Page) {
-      return const ScrollToPageTop();
+      return ScrollToFloor(unreadFloor);
     }
   }
 

@@ -102,7 +102,11 @@ class S1SwipePaginationState extends State<S1SwipePagination> {
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (!mounted) return;
       if (_scrollController.hasClients) {
-        _scrollController.jumpTo(0);
+        for (final position in _scrollController.positions) {
+          if (position.hasContentDimensions) {
+            position.jumpTo(0);
+          }
+        }
       }
       _notifyScrollMetrics();
       if (_pageController.hasClients &&
@@ -113,7 +117,8 @@ class S1SwipePaginationState extends State<S1SwipePagination> {
   }
 
   void _notifyScrollMetrics() {
-    if (!_scrollController.hasClients) {
+    if (!_scrollController.hasClients ||
+        !_scrollController.position.hasContentDimensions) {
       widget.onScrollMetricsChanged?.call(
         const S1ScrollMetrics(
           offset: 0,
@@ -138,8 +143,11 @@ class S1SwipePaginationState extends State<S1SwipePagination> {
   /// 将当前页滚动回顶部（供 FAB 等外部调用）。
   Future<void> scrollToTop() async {
     if (!_scrollController.hasClients) return;
-    final position = _scrollController.position;
-    await S1ScrollMotion.animateTo(position, position.minScrollExtent);
+    for (final position in _scrollController.positions) {
+      if (position.hasContentDimensions) {
+        await S1ScrollMotion.animateTo(position, position.minScrollExtent);
+      }
+    }
   }
 
   /// 将当前页滚动到底部。
@@ -148,7 +156,11 @@ class S1SwipePaginationState extends State<S1SwipePagination> {
   /// 动画过程中增长；单次 [animateTo] 会停在过期的 extent，故循环校正。
   Future<void> scrollToBottom() async {
     if (!_scrollController.hasClients) return;
-    await S1ScrollMotion.animateToMaxExtent(_scrollController.position);
+    for (final position in _scrollController.positions) {
+      if (position.hasContentDimensions) {
+        await S1ScrollMotion.animateToMaxExtent(position);
+      }
+    }
   }
 
   bool get _canSwipeToPrevious => widget.currentPage > 1;

@@ -4,12 +4,11 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:go_router/go_router.dart';
 import 'package:s1er/providers/messages_segment_provider.dart';
 import 'package:s1er/screens/messages_screen.dart';
-import 'package:s1er/widgets/pagination_bar.dart';
 import '../helpers/messages_test_helpers.dart';
 import '../helpers/test_theme.dart';
 
 void main() {
-  testWidgets('MessagesScreen shows pm list by default', (tester) async {
+  testWidgets('MessagesScreen shows notice list by default', (tester) async {
     await tester.pumpWidget(
       ProviderScope(
         overrides: messagesProviderOverrides(),
@@ -20,12 +19,11 @@ void main() {
 
     expect(find.text('我的消息'), findsOneWidget);
     expect(find.text('我的提醒'), findsOneWidget);
-    expect(find.text('我对 Kiyohara_Yasuke 说'), findsOneWidget);
-    expect(find.text('那就好'), findsOneWidget);
-    expect(find.text('JOJOROY'), findsNothing);
+    expect(find.text('JOJOROY'), findsOneWidget);
+    expect(find.text('我对 Kiyohara_Yasuke 说'), findsNothing);
   });
 
-  testWidgets('MessagesScreen switches to notice list segment', (tester) async {
+  testWidgets('MessagesScreen switches to pm list segment', (tester) async {
     await tester.pumpWidget(
       ProviderScope(
         overrides: messagesProviderOverrides(),
@@ -34,12 +32,11 @@ void main() {
     );
     await tester.pumpAndSettle();
 
-    await tester.tap(find.text('我的提醒'));
+    await tester.tap(find.text('我的消息'));
     await tester.pumpAndSettle();
 
-    expect(find.text('JOJOROY'), findsOneWidget);
-    expect(find.text('我对 Kiyohara_Yasuke 说'), findsNothing);
-    expect(find.byType(PaginationBar), findsOneWidget);
+    expect(find.text('我对 Kiyohara_Yasuke 说'), findsOneWidget);
+    expect(find.text('JOJOROY'), findsNothing);
   });
 
   testWidgets('MessagesScreen updates messagesSegmentProvider', (tester) async {
@@ -61,7 +58,7 @@ void main() {
 
     expect(segment, 0);
 
-    await tester.tap(find.text('我的提醒'));
+    await tester.tap(find.text('我的消息'));
     await tester.pumpAndSettle();
 
     expect(segment, 1);
@@ -99,8 +96,6 @@ void main() {
     );
     await tester.pumpAndSettle();
 
-    await tester.tap(find.text('我的提醒'));
-    await tester.pumpAndSettle();
     await tester.tap(find.text('JOJOROY'));
     await tester.pumpAndSettle();
 
@@ -137,6 +132,8 @@ void main() {
     );
     await tester.pumpAndSettle();
 
+    await tester.tap(find.text('我的消息'));
+    await tester.pumpAndSettle();
     await tester.tap(find.text('我对 Kiyohara_Yasuke 说'));
     await tester.pumpAndSettle();
 

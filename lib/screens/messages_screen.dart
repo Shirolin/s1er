@@ -38,13 +38,13 @@ class _MessagesScreenState extends ConsumerState<MessagesScreen> {
             segments: const [
               ButtonSegment(
                 value: 0,
-                label: Text('我的消息'),
-                icon: Icon(Icons.mail_outline),
+                label: Text('我的提醒'),
+                icon: Icon(Icons.notifications_outlined),
               ),
               ButtonSegment(
                 value: 1,
-                label: Text('我的提醒'),
-                icon: Icon(Icons.notifications_outlined),
+                label: Text('我的消息'),
+                icon: Icon(Icons.mail_outline),
               ),
             ],
             selected: {_segment},
@@ -59,8 +59,8 @@ class _MessagesScreenState extends ConsumerState<MessagesScreen> {
         ),
         Expanded(
           child: _segment == 0
-              ? _PmListBody()
-              : _NoticeListBody(swipeKey: _noticeSwipeKey),
+              ? _NoticeListBody(swipeKey: _noticeSwipeKey)
+              : _PmListBody(),
         ),
       ],
     );

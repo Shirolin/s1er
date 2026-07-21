@@ -192,13 +192,13 @@ void main() {
     await tester.pumpAndSettle();
     expect(find.text('消息'), findsNWidgets(2));
     expect(find.text('Messages'), findsNothing);
-    expect(find.text('我的消息'), findsOneWidget);
-    expect(find.text('我对 Kiyohara_Yasuke 说'), findsOneWidget);
-
-    await tester.tap(find.text('我的提醒'));
-    await tester.pumpAndSettle();
+    expect(find.text('我的提醒'), findsOneWidget);
     expect(find.text('JOJOROY'), findsOneWidget);
-    expect(messagesBrowserUrl(1), contains('do=notice'));
+
+    await tester.tap(find.text('我的消息'));
+    await tester.pumpAndSettle();
+    expect(find.text('我对 Kiyohara_Yasuke 说'), findsOneWidget);
+    expect(messagesBrowserUrl(1), contains('do=pm'));
   });
 
   testWidgets('guest profile tab then login resets to forum tab without error',

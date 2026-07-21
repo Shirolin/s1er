@@ -93,20 +93,19 @@ class _HomeScreenBodyState extends ConsumerState<_HomeScreenBody> {
         ? 1
         : messagesSegment == 0
             ? ref.watch(
-                pmListProvider.select(
-                  (async) => async.asData?.value.currentPage ?? 1,
-                ),
-              )
-            : ref.watch(
                 noticeListProvider.select((async) {
                   final state = async.asData?.value;
                   return state?.feed == noticeFeed ? state!.currentPage : 1;
                 }),
+              )
+            : ref.watch(
+                pmListProvider.select(
+                  (async) => async.asData?.value.currentPage ?? 1,
+                ),
               );
 
-    final unreadTotal = isLoggedIn
-        ? ref.watch(unreadCountProvider.select((c) => c.total))
-        : 0;
+    final unreadTotal =
+        isLoggedIn ? ref.watch(unreadCountProvider.select((c) => c.total)) : 0;
     final unreadDisplay = isLoggedIn
         ? ref.watch(unreadCountProvider.select((c) => c.displayBadge))
         : '';

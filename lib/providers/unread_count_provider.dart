@@ -23,7 +23,6 @@ class UnreadCountNotifier extends Notifier<UnreadCount> {
   }
 }
 
-final unreadCountProvider =
-    NotifierProvider<UnreadCountNotifier, UnreadCount>(
+final unreadCountProvider = NotifierProvider<UnreadCountNotifier, UnreadCount>(
   UnreadCountNotifier.new,
 );

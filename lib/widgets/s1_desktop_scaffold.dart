@@ -41,9 +41,8 @@ class S1DesktopScaffold extends ConsumerWidget {
     final isLoggedIn = ref.watch(
       authStateProvider.select((auth) => auth.isLoggedIn),
     );
-    final unreadTotal = isLoggedIn
-        ? ref.watch(unreadCountProvider.select((c) => c.total))
-        : 0;
+    final unreadTotal =
+        isLoggedIn ? ref.watch(unreadCountProvider.select((c) => c.total)) : 0;
     final unreadDisplay = isLoggedIn
         ? ref.watch(unreadCountProvider.select((c) => c.displayBadge))
         : '';

@@ -2,7 +2,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../config/api_config.dart';
 import '../models/notice_item.dart';
 
-/// 消息页当前分段：0 = 我的消息，1 = 我的提醒。
+/// 消息页当前分段：0 = 我的提醒，1 = 我的消息。
 class MessagesSegment extends Notifier<int> {
   @override
   int build() => 0;
@@ -31,7 +31,7 @@ String messagesBrowserUrl(
   int page = 1,
 }) {
   return ApiConfig.messagesBrowserUrl(
-    isNotice: segment == 1,
+    isNotice: segment == 0,
     noticeFeed: noticeFeed.name,
     page: page,
   );

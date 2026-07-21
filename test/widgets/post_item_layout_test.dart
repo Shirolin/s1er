@@ -64,8 +64,7 @@ void main() {
     expect(find.text('heavy body', skipOffstage: false), findsOneWidget);
   });
 
-  testWidgets('PostItem opens text selection sheet from menu',
-      (tester) async {
+  testWidgets('PostItem opens text selection sheet from menu', (tester) async {
     await tester.pumpWidget(
       ProviderScope(
         child: wrapWithAppTheme(

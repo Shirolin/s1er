@@ -2,10 +2,12 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../config/constants.dart';
+import '../models/poll.dart';
 import '../models/post.dart';
 import '../providers/image_bytes_provider.dart';
 import '../theme/app_theme.dart';
 import '../utils/format_utils.dart';
+import '../utils/poll_bar_color.dart';
 import '../utils/post_image_index_counter.dart';
 import 'avatar_fallback.dart';
 import 'bbcode_renderer.dart';
@@ -25,6 +27,7 @@ class ShareCard extends StatelessWidget {
     required this.post,
     this.displayFloor,
     this.threadSubject,
+    this.poll,
     GlobalKey? captureKey,
   }) : _captureKey = captureKey ?? GlobalKey();
 
@@ -35,6 +38,7 @@ class ShareCard extends StatelessWidget {
   final Post post;
   final int? displayFloor;
   final String? threadSubject;
+  final ThreadPoll? poll;
 
   /// Logical layout width for the share card.
   ///
@@ -113,6 +117,7 @@ class ShareCard extends StatelessWidget {
                             imagesExpanded: true,
                           ),
                         ),
+                        if (poll != null) _SharePollView(poll: poll!),
                         const SizedBox(height: 24),
                         Divider(
                           height: 1,
@@ -302,6 +307,166 @@ class _ShareCaptureAvatar extends ConsumerWidget {
       error: (_, __) => AvatarFallbackLetter(
         radius: radius,
         letter: fallbackLetter,
+      ),
+    );
+  }
+}
+
+class _SharePollView extends StatelessWidget {
+  const _SharePollView({required this.poll});
+
+  final ThreadPoll poll;
+
+  @override
+  Widget build(BuildContext context) {
+    final scheme = Theme.of(context).colorScheme;
+    final textTheme = Theme.of(context).textTheme;
+
+    return Container(
+      margin: const EdgeInsets.only(top: 16),
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: scheme.surfaceContainerHighest.withValues(alpha: S1Alpha.light),
+        borderRadius: S1Shape.medium,
+        border: Border.all(color: scheme.outlineVariant),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Icon(Icons.poll_outlined, size: 18, color: scheme.primary),
+              const SizedBox(width: 6),
+              Text(
+                '投票',
+                style: textTheme.titleSmall?.copyWith(
+                  color: scheme.primary,
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
+              const Spacer(),
+              Text(
+                poll.voteModeLabel,
+                style: textTheme.labelSmall?.copyWith(
+                  color: scheme.onSurfaceVariant,
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 12),
+          ...poll.options.map((option) => _buildOption(context, option)),
+          const SizedBox(height: 8),
+          Center(
+            child: Text(
+              '共 ${formatCount(poll.votersCount)} 人参与 · ${poll.remainTimeLabel}',
+              style: textTheme.labelSmall?.copyWith(
+                color: scheme.onSurfaceVariant,
+              ),
+              textAlign: TextAlign.center,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildOption(BuildContext context, PollOption option) {
+    final scheme = Theme.of(context).colorScheme;
+    final textTheme = Theme.of(context).textTheme;
+    final showResults = poll.showResults;
+    final barColor = pollBarColor(option.colorHex, scheme);
+    final highlight = option.isUserVote;
+
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 8),
+      child: Container(
+        padding: const EdgeInsets.all(8),
+        decoration: BoxDecoration(
+          color: highlight
+              ? scheme.primaryContainer.withValues(alpha: S1Alpha.light)
+              : Colors.transparent,
+          borderRadius: S1Shape.small,
+          border: highlight
+              ? Border.all(color: scheme.primary, width: 1.5)
+              : Border.all(color: Colors.transparent),
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                if (highlight)
+                  Padding(
+                    padding: const EdgeInsets.only(right: 6, top: 2),
+                    child: Icon(
+                      Icons.how_to_vote,
+                      size: 18,
+                      color: scheme.primary,
+                    ),
+                  ),
+                Expanded(
+                  child: Text(
+                    option.text,
+                    style: textTheme.bodyMedium?.copyWith(
+                      fontWeight: highlight ? FontWeight.w600 : null,
+                    ),
+                  ),
+                ),
+                if (highlight)
+                  Padding(
+                    padding: const EdgeInsets.only(left: 8, top: 2),
+                    child: Badge(
+                      label: Text(
+                        '我的投票',
+                        style: textTheme.labelSmall?.copyWith(
+                          color: scheme.onPrimaryContainer,
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
+                      backgroundColor: scheme.primaryContainer,
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 4,
+                        vertical: 2,
+                      ),
+                    ),
+                  ),
+                if (showResults) ...[
+                  const SizedBox(width: 8),
+                  Text(
+                    '${option.percent.toStringAsFixed(option.percent == option.percent.roundToDouble() ? 0 : 1)}%',
+                    style: textTheme.labelSmall?.copyWith(
+                      color: scheme.onSurfaceVariant,
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
+                ],
+              ],
+            ),
+            if (showResults) ...[
+              const SizedBox(height: 8),
+              ClipRRect(
+                borderRadius: S1Shape.extraSmall,
+                child: LinearProgressIndicator(
+                  value: (option.percent / 100).clamp(0.0, 1.0),
+                  minHeight: 6,
+                  backgroundColor: scheme.surfaceContainerHighest,
+                  valueColor: AlwaysStoppedAnimation<Color>(barColor),
+                ),
+              ),
+              const SizedBox(height: 4),
+              Align(
+                alignment: Alignment.centerRight,
+                child: Text(
+                  '${formatCount(option.votes)} 票',
+                  style: textTheme.labelSmall?.copyWith(
+                    color: scheme.onSurfaceVariant,
+                  ),
+                ),
+              ),
+            ],
+          ],
+        ),
       ),
     );
   }

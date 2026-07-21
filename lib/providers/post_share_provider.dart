@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../models/poll.dart';
 import '../models/post.dart';
 import '../services/post_share_service.dart';
 
@@ -20,12 +21,14 @@ class PostShareNotifier extends Notifier<void> {
     required Post post,
     int? displayFloor,
     String? threadSubject,
+    ThreadPoll? poll,
   }) async {
     await PostShareService.share(
       context: context,
       post: post,
       displayFloor: displayFloor,
       threadSubject: threadSubject,
+      poll: poll,
     );
   }
 }

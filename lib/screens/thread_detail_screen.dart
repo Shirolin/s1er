@@ -641,6 +641,7 @@ class _ThreadDetailScreenState extends ConsumerState<ThreadDetailScreen> {
             post: post,
             displayFloor: displayFloor,
             threadSubject: state.threadSubject,
+            poll: displayFloor == 1 ? state.poll : null,
           ),
       onEdit: () => _openEdit(state, post),
       onRate: () => _openRateDialog(post),

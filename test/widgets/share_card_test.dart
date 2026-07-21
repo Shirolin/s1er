@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:s1er/config/constants.dart';
+import 'package:s1er/models/poll.dart';
 import 'package:s1er/models/post.dart';
 import 'package:s1er/widgets/share_card.dart';
 
@@ -81,5 +82,50 @@ void main() {
     await tester.pump(const Duration(milliseconds: 100));
 
     expect(find.text('NoPoster'), findsOneWidget);
+  });
+
+  testWidgets('renders poll when poll is provided', (tester) async {
+    final post = Post.fromJson({
+      'pid': '101',
+      'message': '带投票的主楼正文',
+      'author': 'PollUser',
+      'authorid': '10',
+      'dbdateline': '1720000000',
+      'number': '1',
+    });
+
+    final poll = ThreadPoll.fromJson({
+      'polloptions': {
+        '1': {
+          'polloptionid': '1',
+          'polloption': '选项A',
+          'votes': '10',
+          'percent': '60.0',
+        },
+        '2': {
+          'polloptionid': '2',
+          'polloption': '选项B',
+          'votes': '5',
+          'percent': '30.0',
+        },
+      },
+      'expirations': '0',
+      'multiple': '0',
+      'maxchoices': '1',
+      'voterscount': '15',
+      'visiblepoll': '1',
+      'allowvote': '1',
+      'remaintime': ['1', '2', '3', '4'],
+    });
+
+    await tester.pumpWidget(wrap(ShareCard(post: post, poll: poll)));
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 100));
+
+    expect(find.text('投票'), findsOneWidget);
+    expect(find.text('单选'), findsOneWidget);
+    expect(find.text('选项A'), findsOneWidget);
+    expect(find.text('选项B'), findsOneWidget);
+    expect(find.textContaining('共 15 人参与'), findsOneWidget);
   });
 }

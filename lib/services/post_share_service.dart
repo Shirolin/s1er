@@ -12,6 +12,7 @@ import 'package:path/path.dart' as p;
 import 'package:path_provider/path_provider.dart';
 import 'package:share_plus/share_plus.dart';
 
+import '../models/poll.dart';
 import '../models/post.dart';
 import '../models/share_image_format.dart';
 import '../providers/image_bytes_provider.dart';
@@ -62,6 +63,7 @@ class PostShareService {
     required Post post,
     int? displayFloor,
     String? threadSubject,
+    ThreadPoll? poll,
   }) async {
     final message = await showModalBottomSheet<String>(
       context: context,
@@ -74,6 +76,7 @@ class PostShareService {
           post: post,
           displayFloor: displayFloor,
           threadSubject: threadSubject,
+          poll: poll,
         );
       },
     );
@@ -88,11 +91,13 @@ class _SharePreviewSheet extends ConsumerStatefulWidget {
     required this.post,
     this.displayFloor,
     this.threadSubject,
+    this.poll,
   });
 
   final Post post;
   final int? displayFloor;
   final String? threadSubject;
+  final ThreadPoll? poll;
 
   @override
   ConsumerState<_SharePreviewSheet> createState() => _SharePreviewSheetState();
@@ -458,6 +463,7 @@ class _SharePreviewSheetState extends ConsumerState<_SharePreviewSheet> {
                       post: widget.post,
                       displayFloor: widget.displayFloor,
                       threadSubject: widget.threadSubject,
+                      poll: widget.poll,
                     ),
                   ),
                 ),

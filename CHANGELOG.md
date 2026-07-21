@@ -7,6 +7,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.2.0] - 2026-07-19
+
+### Changed
+
+- **BBCode 重构**：parser 与 renderer 重写，新增 HTML optimizer；移除 quote_block widget
+- **未读计数**：新增 unread_count 模型与 provider，首页显示未读数
+- **分享卡**：新增 share_card widget，支持导出分享图
+- **桌面菜单**：app_bar_more_menu 增强，支持更多操作
+- **错误监控**：Sentry bootstrap 精简，error_hub 统一错误处理
+- **性能优化**：图片查看器懒加载、HTML 解析缓存、moyu benchmark
+
 ## [0.1.3] - 2026-07-19
 
 ### Changed

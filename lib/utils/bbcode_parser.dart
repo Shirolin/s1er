@@ -157,6 +157,16 @@ class BbcodeParser {
 
     final fragment = parseFragment(output);
 
+    // Convert div.reply_wrap to blockquote to ensure style, depth classes and quote headers are applied
+    fragment.querySelectorAll('div.reply_wrap').forEach((div) {
+      final bq = Element.tag('blockquote');
+      bq.attributes.addAll(div.attributes);
+      while (div.nodes.isNotEmpty) {
+        bq.append(div.nodes.first);
+      }
+      div.replaceWith(bq);
+    });
+
     // Strip RateLog HTML blocks to prevent performance degradation and crashes
     fragment.querySelectorAll('h3.psth').forEach((e) => e.remove());
     fragment.querySelectorAll('div[id^="ratelog_"]').forEach((e) => e.remove());

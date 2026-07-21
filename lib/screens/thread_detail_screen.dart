@@ -883,6 +883,8 @@ class _ThreadDetailScreenState extends ConsumerState<ThreadDetailScreen> {
       // Reading width applies to the post column only; AppBar / PaginationBar
       // stay full-bleed in the detail pane (chrome vs. content).
       body: postsAsync.when(
+        skipLoadingOnReload: true,
+        skipLoadingOnRefresh: true,
         loading: () => S1ContentWidth(
           mode: S1ContentWidthMode.reading,
           child: _buildLoadingBody(),
@@ -904,6 +906,11 @@ class _ThreadDetailScreenState extends ConsumerState<ThreadDetailScreen> {
 
           return Column(
             children: [
+              if (postsAsync.isLoading)
+                const SizedBox(
+                  height: 2,
+                  child: LinearProgressIndicator(),
+                ),
               if (state.isFiltering)
                 Container(
                   width: double.infinity,

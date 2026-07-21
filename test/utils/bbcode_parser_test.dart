@@ -130,5 +130,19 @@ void main() {
         ),
       );
     });
+
+    test('converts div.reply_wrap to blockquote and parses correctly', () {
+      const input = '<div class="reply_wrap">'
+          '<font color="#999999">User 发表于 2026-7-21 11:00</font><br/>'
+          'Quote content'
+          '</div>';
+      final parsed = BbcodeParser.parse(input);
+      expect(parsed, contains('<blockquote class="reply_wrap quote-depth-1">'));
+      expect(
+          parsed,
+          contains(
+              '<quote-header author="User 发表于 2026-7-21 11:00" href=""></quote-header>',),);
+      expect(parsed, contains('Quote content'));
+    });
   });
 }

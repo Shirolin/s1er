@@ -268,7 +268,8 @@ class PostNotifier extends AsyncNotifier<PostListState> {
   }
 
   Future<void> locatePid(String pid) async {
-    state = const AsyncValue.loading();
+    // ignore: invalid_use_of_internal_member
+    state = const AsyncLoading<PostListState>().copyWithPrevious(state);
     state = await AsyncValue.guard(() => _openByPid(pid));
   }
 
@@ -341,7 +342,8 @@ class PostNotifier extends AsyncNotifier<PostListState> {
 
   Future<void> refresh() async {
     final current = state.asData?.value.currentPage ?? 1;
-    state = const AsyncValue.loading();
+    // ignore: invalid_use_of_internal_member
+    state = const AsyncLoading<PostListState>().copyWithPrevious(state);
     state = await AsyncValue.guard(() => _loadPage(current));
   }
 }

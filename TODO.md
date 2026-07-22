@@ -3,19 +3,17 @@
 ## 待实现功能 (Features to Implement)
 
 ### 1. 多楼层分享功能 (Multi-Floor Share)
-*状态: 规划中 (Planned)*
+*状态: 已实现 (Done — 2026-07-22)*
 
-**功能描述:**
-支持在帖子详情页选择多个楼层，生成长截图进行分享。
-
-**实现计划 (MVP 阶段):**
-- **UI/UX 改动**: 在 `ThreadDetailScreen` 引入“多选模式”。点击楼层切换选中状态，底部显示已选楼层数量及“生成分享图”按钮。
-- **性能与 OOM 控制**: 为了避免低端机生成过长图片导致内存溢出 (OOM)，**限制最多同时选择 5 个楼层**。
-- **渲染方案**: 沿用当前的 `RepaintBoundary` 技术进行渲染。
-- **数据结构**: 重构 `ShareCard` 和 `PostShareService`，使其支持接收 `List<Post>`，并处理楼层间的分割线与上下留白。
+**定案:**
+- 跨页可选：点选拷贝 `{Post, displayFloor}` 快照，翻页保留；退出多选 / 离开帖子清空
+- 入口：楼层菜单「多选分享」预选当前楼；AppBar「取消」；底栏「生成分享图」
+- 捕获：统一 `List<ShareFloorData>`；矮卡单次 `toImage`；多选或超阈值按楼分块 → Isolate 无损拼接 → 只 encode 一次
+- 上限：层数软顶 10 + 捕获像素硬顶（见 `S1Constants`）；失败提示少选或降清晰度
+- 排序：按 `displayFloor` 升序；含 `#1` 时附带 poll
 
 **长期优化 (视用户反馈):**
-- 如果用户需要分享超过 5 个楼层，探索使用 `image` 库在隔离线程 (Isolate) 中进行分块渲染和拼接的技术方案，绕过 GPU 的最大纹理限制。
+- 单楼仍超 GPU 纹理时，探索楼内按高度再切块
 
 ### 2. 富文本编辑功能完善 (Rich Text Editor Enhancements)
 *状态: 规划中 (Planned)*

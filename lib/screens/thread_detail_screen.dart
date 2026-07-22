@@ -45,6 +45,8 @@ import '../widgets/s1_click_region.dart';
 import '../utils/s1_snack_bar.dart';
 import '../utils/thread_navigation.dart';
 import '../providers/post_share_provider.dart';
+import '../models/share_floor_data.dart';
+import '../utils/share_floor_selection.dart';
 import '../theme/app_theme.dart';
 
 bool shouldRecordReadingProgress(AppSettings settings, AuthState auth) {
@@ -146,6 +148,55 @@ class _ThreadDetailScreenState extends ConsumerState<ThreadDetailScreen> {
 
   /// 正在从跳转栈恢复，避免 intent 监听再次入栈或重复定位。
   bool _restoringJump = false;
+
+  /// 多楼层分享：多选模式与跨页已选快照。
+  bool _shareSelectMode = false;
+  List<ShareFloorData> _shareSelectedFloors = [];
+
+  void _enterShareSelectMode(Post post, int displayFloor) {
+    setState(() {
+      _shareSelectMode = true;
+      _shareSelectedFloors = [
+        ShareFloorData(post: post, displayFloor: displayFloor),
+      ];
+    });
+  }
+
+  void _exitShareSelectMode() {
+    setState(() {
+      _shareSelectMode = false;
+      _shareSelectedFloors = [];
+    });
+  }
+
+  void _toggleShareFloor(Post post, int displayFloor) {
+    final next = ShareFloorSelection.toggle(
+      current: _shareSelectedFloors,
+      post: post,
+      displayFloor: displayFloor,
+    );
+    if (next == null) {
+      S1SnackBar.show(
+        context,
+        message: '最多选择 ${S1Constants.shareMaxSelectedFloors} 个楼层',
+      );
+      return;
+    }
+    setState(() => _shareSelectedFloors = next);
+  }
+
+  Future<void> _generateMultiShare(PostListState state) async {
+    if (_shareSelectedFloors.isEmpty) return;
+    final floors = ShareFloorSelection.sortedForExport(_shareSelectedFloors);
+    final includePoll = floors.any((f) => f.displayFloor == 1);
+    await ref.read(postShareProvider.notifier).sharePosts(
+          context: context,
+          floors: floors,
+          threadSubject: state.threadSubject,
+          poll: includePoll ? state.poll : null,
+          tid: widget.tid,
+        );
+  }
 
   @override
   void dispose() {
@@ -642,6 +693,9 @@ class _ThreadDetailScreenState extends ConsumerState<ThreadDetailScreen> {
       displayFloor: displayFloor,
       isHighlighted: highlightPid != null && post.pid == highlightPid,
       isExpandedBlocked: _expandedBlockedPids.contains(post.pid),
+      shareSelectMode: _shareSelectMode,
+      isShareSelected:
+          ShareFloorSelection.containsPid(_shareSelectedFloors, post.pid),
       onExpandBlocked: () {
         setState(() => _expandedBlockedPids.add(post.pid));
       },
@@ -665,7 +719,10 @@ class _ThreadDetailScreenState extends ConsumerState<ThreadDetailScreen> {
             displayFloor: displayFloor,
             threadSubject: state.threadSubject,
             poll: displayFloor == 1 ? state.poll : null,
+            tid: widget.tid,
           ),
+      onMultiShare: () => _enterShareSelectMode(post, displayFloor),
+      onShareSelectToggle: () => _toggleShareFloor(post, displayFloor),
       onEdit: () => _openEdit(state, post),
       onRate: () => _openRateDialog(post),
       onAddToBlacklist: () => _confirmAddToBlacklist(post),
@@ -786,8 +843,12 @@ class _ThreadDetailScreenState extends ConsumerState<ThreadDetailScreen> {
     }
   }
 
-  /// 系统返回：有跳转栈则恢复，否则交由路由弹出。
+  /// 系统返回：多选分享优先退出；有跳转栈则恢复，否则交由路由弹出。
   Future<bool> _onSystemBack() async {
+    if (_shareSelectMode) {
+      _exitShareSelectMode();
+      return true;
+    }
     if (ref.read(inThreadJumpStackProvider(widget.tid)).isNotEmpty) {
       await _restoreInThreadJump();
       return true;
@@ -848,8 +909,15 @@ class _ThreadDetailScreenState extends ConsumerState<ThreadDetailScreen> {
     final scaffold = Scaffold(
       appBar: AppBar(
         elevation: 0,
-        leading:
-            (jumpStack.isNotEmpty || widget.onClose != null || context.canPop())
+        leading: _shareSelectMode
+            ? IconButton(
+                tooltip: '取消',
+                onPressed: _exitShareSelectMode,
+                icon: const Icon(Icons.close),
+              )
+            : (jumpStack.isNotEmpty ||
+                    widget.onClose != null ||
+                    context.canPop())
                 ? IconButton(
                     tooltip: jumpStack.isNotEmpty
                         ? '返回上一位置'
@@ -872,34 +940,46 @@ class _ThreadDetailScreenState extends ConsumerState<ThreadDetailScreen> {
                     icon: const Icon(Icons.arrow_back),
                   )
                 : null,
-        title: postsAsync.whenOrNull(
-              data: (s) => s.threadSubject != null
-                  ? S1ClickRegion(
-                      onTap: () => _showFullTitle(context, s.threadSubject!),
-                      child: Text(
-                        s.threadSubject!,
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                      ),
-                    )
-                  : null,
-            ) ??
-            const Text('加载中…'),
-        actions: [
-          FavoriteBookmarkButton(
-            type: FavoriteType.thread,
-            id: widget.tid,
-          ),
-          AppBarMoreMenu(
-            onRefresh: () =>
-                ref.read(postProvider(widget.tid).notifier).refresh(),
-            onGoToLatest: _goToLatest,
-            browserUrl: ApiConfig.threadBrowserUrl(
-              tid: widget.tid,
-              page: postsAsync.asData?.value.currentPage ?? 1,
-            ),
-          ),
-        ],
+        title: _shareSelectMode
+            ? Text(
+                '已选 ${_shareSelectedFloors.length}/${S1Constants.shareMaxSelectedFloors}',
+              )
+            : postsAsync.whenOrNull(
+                  data: (s) => s.threadSubject != null
+                      ? S1ClickRegion(
+                          onTap: () =>
+                              _showFullTitle(context, s.threadSubject!),
+                          child: Text(
+                            s.threadSubject!,
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                        )
+                      : null,
+                ) ??
+                const Text('加载中…'),
+        actions: _shareSelectMode
+            ? [
+                TextButton(
+                  onPressed: _exitShareSelectMode,
+                  child: const Text('取消'),
+                ),
+              ]
+            : [
+                FavoriteBookmarkButton(
+                  type: FavoriteType.thread,
+                  id: widget.tid,
+                ),
+                AppBarMoreMenu(
+                  onRefresh: () =>
+                      ref.read(postProvider(widget.tid).notifier).refresh(),
+                  onGoToLatest: _goToLatest,
+                  browserUrl: ApiConfig.threadBrowserUrl(
+                    tid: widget.tid,
+                    page: postsAsync.asData?.value.currentPage ?? 1,
+                  ),
+                ),
+              ],
       ),
       // Keep the post list mounted while consuming OpenScrollTarget so
       // index-based scroll (pid / floor) can run against live GlobalKeys.
@@ -986,37 +1066,40 @@ class _ThreadDetailScreenState extends ConsumerState<ThreadDetailScreen> {
                 child: S1ContentWidth(
                   mode: S1ContentWidthMode.reading,
                   child: S1ContentFabOverlay(
-                    fab: ValueListenableBuilder<_ScrollFabVisibility>(
-                      valueListenable: _scrollFabVisibility,
-                      builder: (context, fab, _) {
-                        final showScrollAdvance = fab.showScrollDown ||
-                            (fab.atPageBottom && hasNextPage);
-                        final advanceMode = fab.atPageBottom && hasNextPage
-                            ? ScrollNavAdvanceMode.nextPage
-                            : ScrollNavAdvanceMode.nextFloor;
-                        return S1FabStack(
-                          scrollNav: S1ScrollNavConfig(
-                            showScrollToTop: fab.showScrollToTop,
-                            showScrollAdvance: showScrollAdvance,
-                            advanceMode: advanceMode,
-                            onScrollToTop: _scrollToTop,
-                            onScrollToNextFloor: _scrollToNextFloor,
-                            onScrollToBottom: _scrollToBottom,
-                            onGoToNextPage: hasNextPage
-                                ? () => _goToPage(state.currentPage + 1)
-                                : null,
+                    fab: _shareSelectMode
+                        ? const SizedBox.shrink()
+                        : ValueListenableBuilder<_ScrollFabVisibility>(
+                            valueListenable: _scrollFabVisibility,
+                            builder: (context, fab, _) {
+                              final showScrollAdvance = fab.showScrollDown ||
+                                  (fab.atPageBottom && hasNextPage);
+                              final advanceMode =
+                                  fab.atPageBottom && hasNextPage
+                                      ? ScrollNavAdvanceMode.nextPage
+                                      : ScrollNavAdvanceMode.nextFloor;
+                              return S1FabStack(
+                                scrollNav: S1ScrollNavConfig(
+                                  showScrollToTop: fab.showScrollToTop,
+                                  showScrollAdvance: showScrollAdvance,
+                                  advanceMode: advanceMode,
+                                  onScrollToTop: _scrollToTop,
+                                  onScrollToNextFloor: _scrollToNextFloor,
+                                  onScrollToBottom: _scrollToBottom,
+                                  onGoToNextPage: hasNextPage
+                                      ? () => _goToPage(state.currentPage + 1)
+                                      : null,
+                                ),
+                                primary: showPrimary
+                                    ? S1FabItem(
+                                        heroTag: 'replyDetail',
+                                        icon: Icons.edit_outlined,
+                                        tooltip: '回复',
+                                        onPressed: () => _openCompose(state),
+                                      )
+                                    : null,
+                              );
+                            },
                           ),
-                          primary: showPrimary
-                              ? S1FabItem(
-                                  heroTag: 'replyDetail',
-                                  icon: Icons.edit_outlined,
-                                  tooltip: '回复',
-                                  onPressed: () => _openCompose(state),
-                                )
-                              : null,
-                        );
-                      },
-                    ),
                     child: S1SwipePagination(
                       key: _swipeKey,
                       currentPage: state.currentPage,
@@ -1049,17 +1132,26 @@ class _ThreadDetailScreenState extends ConsumerState<ThreadDetailScreen> {
                   ),
                 ),
               ),
-              PaginationBar(
-                currentPage: state.currentPage,
-                totalPages: state.totalPages,
-                sheetSubtitle: state.threadSubject,
-                pageItemLabelBuilder: (page) {
-                  final start = (page - 1) * state.perPage + 1;
-                  final end = page * state.perPage;
-                  return '第 $start - $end 楼';
-                },
-                onPageChanged: _goToPage,
-              ),
+              if (_shareSelectMode)
+                _ShareSelectBottomBar(
+                  selectedCount: _shareSelectedFloors.length,
+                  maxCount: S1Constants.shareMaxSelectedFloors,
+                  onGenerate: _shareSelectedFloors.isEmpty
+                      ? null
+                      : () => unawaited(_generateMultiShare(state)),
+                )
+              else
+                PaginationBar(
+                  currentPage: state.currentPage,
+                  totalPages: state.totalPages,
+                  sheetSubtitle: state.threadSubject,
+                  pageItemLabelBuilder: (page) {
+                    final start = (page - 1) * state.perPage + 1;
+                    final end = page * state.perPage;
+                    return '第 $start - $end 楼';
+                  },
+                  onPageChanged: _goToPage,
+                ),
             ],
           );
         },
@@ -1071,9 +1163,13 @@ class _ThreadDetailScreenState extends ConsumerState<ThreadDetailScreen> {
       child: BackButtonListener(
         onBackButtonPressed: _onSystemBack,
         child: PopScope(
-          canPop: jumpStack.isEmpty,
+          canPop: !_shareSelectMode && jumpStack.isEmpty,
           onPopInvokedWithResult: (didPop, result) {
             if (didPop) return;
+            if (_shareSelectMode) {
+              _exitShareSelectMode();
+              return;
+            }
             if (ref.read(inThreadJumpStackProvider(widget.tid)).isNotEmpty) {
               unawaited(_restoreInThreadJump());
             }
@@ -1100,10 +1196,14 @@ class _ThreadDetailPostTile extends ConsumerWidget {
     required this.displayFloor,
     required this.isHighlighted,
     required this.isExpandedBlocked,
+    required this.shareSelectMode,
+    required this.isShareSelected,
     required this.onExpandBlocked,
     required this.onFilterByAuthor,
     required this.onReply,
     required this.onShare,
+    required this.onMultiShare,
+    required this.onShareSelectToggle,
     required this.onEdit,
     required this.onRate,
     required this.onAddToBlacklist,
@@ -1117,10 +1217,14 @@ class _ThreadDetailPostTile extends ConsumerWidget {
   final int displayFloor;
   final bool isHighlighted;
   final bool isExpandedBlocked;
+  final bool shareSelectMode;
+  final bool isShareSelected;
   final VoidCallback onExpandBlocked;
   final VoidCallback onFilterByAuthor;
   final VoidCallback? onReply;
   final VoidCallback onShare;
+  final VoidCallback onMultiShare;
+  final VoidCallback onShareSelectToggle;
   final VoidCallback onEdit;
   final VoidCallback onRate;
   final VoidCallback onAddToBlacklist;
@@ -1178,9 +1282,13 @@ class _ThreadDetailPostTile extends ConsumerWidget {
         tid: tid,
         currentPage: state.currentPage,
         isHighlighted: isHighlighted,
+        shareSelectMode: shareSelectMode,
+        isShareSelected: isShareSelected,
         onFilterByAuthor: onFilterByAuthor,
         onReply: onReply,
         onShare: onShare,
+        onMultiShare: onMultiShare,
+        onShareSelectToggle: onShareSelectToggle,
         onEdit: canEdit ? onEdit : null,
         onRate: canRate ? onRate : null,
         onAddToBlacklist: canAddToBlacklist ? onAddToBlacklist : null,
@@ -1231,6 +1339,53 @@ class _BlockedPostPlaceholder extends StatelessWidget {
                     color: scheme.onSurfaceVariant,
                   ),
                 ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+/// 多选分享底栏：已选计数 + 生成分享图。
+class _ShareSelectBottomBar extends StatelessWidget {
+  const _ShareSelectBottomBar({
+    required this.selectedCount,
+    required this.maxCount,
+    required this.onGenerate,
+  });
+
+  final int selectedCount;
+  final int maxCount;
+  final VoidCallback? onGenerate;
+
+  @override
+  Widget build(BuildContext context) {
+    final scheme = Theme.of(context).colorScheme;
+    final textTheme = Theme.of(context).textTheme;
+
+    return Material(
+      elevation: 0,
+      color: S1Surface.chrome(scheme),
+      child: SafeArea(
+        top: false,
+        child: Padding(
+          padding: const EdgeInsets.fromLTRB(16, 10, 16, 10),
+          child: Row(
+            children: [
+              Expanded(
+                child: Text(
+                  '已选 $selectedCount / $maxCount',
+                  style: textTheme.bodyMedium?.copyWith(
+                    color: scheme.onSurface,
+                  ),
+                ),
+              ),
+              FilledButton.icon(
+                onPressed: onGenerate,
+                icon: const Icon(Icons.image_outlined),
+                label: const Text('生成分享图'),
               ),
             ],
           ),

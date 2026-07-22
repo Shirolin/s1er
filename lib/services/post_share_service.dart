@@ -13,12 +13,14 @@ import 'package:path_provider/path_provider.dart';
 import 'package:share_plus/share_plus.dart';
 
 import '../models/poll.dart';
-import '../models/post.dart';
+import '../models/share_floor_data.dart';
 import '../models/share_image_format.dart';
 import '../providers/image_bytes_provider.dart';
 import '../providers/settings_provider.dart';
 import '../utils/bbcode_parser.dart';
 import '../utils/gallery_image_saver.dart';
+import '../utils/share_capture_policy.dart';
+import '../utils/share_image_stitch.dart';
 import '../utils/share_native_image_encoder.dart';
 import '../utils/share_rgba_flatten.dart';
 import '../theme/app_theme.dart';
@@ -44,7 +46,7 @@ class _EncodedShareImage {
   String get mimeType => format.mimeType;
 }
 
-/// Captures a post as a designed card image and shares or saves it.
+/// Captures post floor(s) as a designed card image and shares or saves it.
 class PostShareService {
   PostShareService._();
 
@@ -58,25 +60,40 @@ class PostShareService {
     };
   }
 
+  @visibleForTesting
+  static String fileNameFor({
+    required List<ShareFloorData> floors,
+    required ShareImageFormat format,
+    String? tid,
+  }) {
+    assert(floors.isNotEmpty);
+    if (floors.length == 1) {
+      return 's1_${floors.first.post.pid}${format.extension}';
+    }
+    final id = (tid != null && tid.isNotEmpty) ? tid : 't';
+    return 's1_${id}_${floors.first.post.pid}_x${floors.length}'
+        '${format.extension}';
+  }
+
   static Future<void> share({
     required BuildContext context,
-    required Post post,
-    int? displayFloor,
+    required List<ShareFloorData> floors,
     String? threadSubject,
     ThreadPoll? poll,
+    String? tid,
   }) async {
+    if (floors.isEmpty) return;
     final message = await showModalBottomSheet<String>(
       context: context,
       isScrollControlled: true,
       showDragHandle: true,
       shape: S1Shape.bottomSheetShape,
-      // Standard-height sheet: dismiss via drag / scrim / back — no close chrome.
       builder: (_) {
         return _SharePreviewSheet(
-          post: post,
-          displayFloor: displayFloor,
+          floors: floors,
           threadSubject: threadSubject,
           poll: poll,
+          tid: tid,
         );
       },
     );
@@ -88,30 +105,26 @@ class PostShareService {
 
 class _SharePreviewSheet extends ConsumerStatefulWidget {
   const _SharePreviewSheet({
-    required this.post,
-    this.displayFloor,
+    required this.floors,
     this.threadSubject,
     this.poll,
+    this.tid,
   });
 
-  final Post post;
-  final int? displayFloor;
+  final List<ShareFloorData> floors;
   final String? threadSubject;
   final ThreadPoll? poll;
+  final String? tid;
 
   @override
   ConsumerState<_SharePreviewSheet> createState() => _SharePreviewSheetState();
 }
 
-/// Footer visual states.
-///
-/// [idle]     — action buttons visible.
-/// [capturing] — spinner shown.
-/// [error]    — error shown in red, user can retry or dismiss.
 enum _FooterState { idle, capturing, error }
 
 class _SharePreviewSheetState extends ConsumerState<_SharePreviewSheet> {
-  final GlobalKey _captureKey = GlobalKey();
+  late final ShareCaptureKeys _captureKeys =
+      ShareCaptureKeys(floorCount: widget.floors.length);
   _FooterState _state = _FooterState.idle;
   String _statusMessage = '';
 
@@ -121,14 +134,16 @@ class _SharePreviewSheetState extends ConsumerState<_SharePreviewSheet> {
   @override
   void initState() {
     super.initState();
-    // Capture current settings values.
     final settings = ref.read(settingsProvider);
     _shareImageFormat = settings.shareImageFormat;
     _sharePixelRatio = settings.sharePixelRatio;
   }
 
-  String _fileNameFor(ShareImageFormat format) =>
-      's1_${widget.post.pid}${format.extension}';
+  String _fileNameFor(ShareImageFormat format) => PostShareService.fileNameFor(
+        floors: widget.floors,
+        format: format,
+        tid: widget.tid,
+      );
 
   Future<void> _captureAndShare() async {
     if (_state != _FooterState.idle) return;
@@ -139,7 +154,9 @@ class _SharePreviewSheetState extends ConsumerState<_SharePreviewSheet> {
     if (!mounted) return;
 
     if (encoded == null) {
-      _showStatus('生成图片失败，请稍后重试', isError: true);
+      if (_state != _FooterState.error) {
+        _showStatus('生成图片失败，请稍后重试', isError: true);
+      }
       return;
     }
 
@@ -174,7 +191,9 @@ class _SharePreviewSheetState extends ConsumerState<_SharePreviewSheet> {
     if (!mounted) return;
 
     if (encoded == null) {
-      _showStatus('生成图片失败，请稍后重试', isError: true);
+      if (_state != _FooterState.error) {
+        _showStatus('生成图片失败，请稍后重试', isError: true);
+      }
       return;
     }
 
@@ -197,8 +216,6 @@ class _SharePreviewSheetState extends ConsumerState<_SharePreviewSheet> {
     _finishWithMessage(kIsWeb ? '下载已开始' : '已保存到相册');
   }
 
-  /// Shows an error inline at the footer, replacing the buttons.
-  /// The user can tap to dismiss and retry.
   void _showStatus(String message, {required bool isError}) {
     if (!mounted) return;
     setState(() {
@@ -207,32 +224,29 @@ class _SharePreviewSheetState extends ConsumerState<_SharePreviewSheet> {
     });
   }
 
-  /// Close sheet and let [PostShareService.share] show [message] on the
-  /// parent scaffold (sheet context is gone after pop).
   void _finishWithMessage(String message) {
     if (mounted) Navigator.pop(context, message);
   }
 
-  /// Close without a toast (user dismissed the system share sheet).
   void _finishQuietly() {
     if (mounted) Navigator.pop(context);
   }
 
-  /// Retry after error — go back to idle buttons.
   void _dismissError() {
     setState(() => _state = _FooterState.idle);
   }
 
-  /// Wait for images referenced in the post to become available before
-  /// capturing, so the screenshot is less likely to show loading placeholders.
   Future<void> _waitUntilReady() async {
-    final html = BbcodeParser.parse(widget.post.message);
-    final urls = BbcodeParser.extractImages(html).toSet();
-    if (widget.post.avatar != null && widget.post.avatar!.isNotEmpty) {
-      urls.add(widget.post.avatar!);
+    final urls = <String>{};
+    for (final floor in widget.floors) {
+      final html = BbcodeParser.parse(floor.post.message);
+      urls.addAll(BbcodeParser.extractImages(html));
+      final avatar = floor.post.avatar;
+      if (avatar != null && avatar.isNotEmpty) {
+        urls.add(avatar);
+      }
     }
     if (urls.isEmpty) return;
-
     await Future.wait(urls.map(_fetchImageBytes));
   }
 
@@ -249,7 +263,6 @@ class _SharePreviewSheetState extends ConsumerState<_SharePreviewSheet> {
   Future<_EncodedShareImage?> _captureBytes() async {
     await _waitUntilReady();
     if (!mounted) return null;
-    // Let ShareCard rebuild with MemoryImage / letter fallback after prefetch.
     setState(() {});
     await WidgetsBinding.instance.endOfFrame;
     await WidgetsBinding.instance.endOfFrame;
@@ -257,12 +270,133 @@ class _SharePreviewSheetState extends ConsumerState<_SharePreviewSheet> {
       await Future<void>.delayed(const Duration(milliseconds: 100));
     }
 
-    final renderObject = _captureKey.currentContext?.findRenderObject()
+    final fullBoundary = _captureKeys.full.currentContext?.findRenderObject()
         as RenderRepaintBoundary?;
-    if (renderObject == null) return null;
-    final pixelRatio = _sharePixelRatio;
+    if (fullBoundary == null) return null;
 
-    return _captureFromRepaint(renderObject, pixelRatio);
+    final logicalSize = fullBoundary.size;
+    final estimated = estimateShareCapturePixels(
+      logicalWidth: logicalSize.width,
+      logicalHeight: logicalSize.height,
+      pixelRatio: _sharePixelRatio,
+    );
+
+    if (exceedsShareCaptureHardCap(estimatedCapturePixels: estimated)) {
+      _showStatus(
+        '内容过高无法生成，请少选几层或降低分享清晰度',
+        isError: true,
+      );
+      return null;
+    }
+
+    final useChunks = shouldUseChunkedShareCapture(
+      floorCount: widget.floors.length,
+      estimatedCapturePixels: estimated,
+    );
+
+    if (!useChunks) {
+      return _captureFromRepaint(fullBoundary, _sharePixelRatio);
+    }
+
+    return _captureChunkedAndEncode();
+  }
+
+  Future<_EncodedShareImage?> _captureChunkedAndEncode() async {
+    final keys = <GlobalKey>[
+      _captureKeys.header,
+      ..._captureKeys.floors,
+      _captureKeys.footer,
+    ];
+    final strips = <ShareRgbaStrip>[];
+
+    try {
+      for (final key in keys) {
+        final boundary =
+            key.currentContext?.findRenderObject() as RenderRepaintBoundary?;
+        if (boundary == null) return null;
+        final strip = await _rgbaStripFromBoundary(boundary, _sharePixelRatio);
+        if (strip == null) return null;
+        strips.add(strip);
+      }
+
+      final stitched = await stitchRgbaVerticallyAsync(strips);
+      if (exceedsShareCaptureHardCap(
+        estimatedCapturePixels: stitched.width * stitched.height,
+      )) {
+        _showStatus(
+          '内容过高无法生成，请少选几层或降低分享清晰度',
+          isError: true,
+        );
+        return null;
+      }
+
+      final image = await _imageFromRgba(stitched);
+      try {
+        return await _encode(image);
+      } finally {
+        image.dispose();
+      }
+    } on Object {
+      return null;
+    }
+  }
+
+  Future<ShareRgbaStrip?> _rgbaStripFromBoundary(
+    RenderRepaintBoundary boundary,
+    double pixelRatio,
+  ) async {
+    ui.Image? image;
+    try {
+      image = await boundary.toImage(pixelRatio: pixelRatio);
+      final byteData =
+          await image.toByteData(format: ui.ImageByteFormat.rawRgba);
+      if (byteData == null) return null;
+      final bytes = byteData.buffer.asUint8List(
+        byteData.offsetInBytes,
+        byteData.lengthInBytes,
+      );
+      // Copy so we can dispose the GPU image immediately.
+      return ShareRgbaStrip(
+        bytes: Uint8List.fromList(bytes),
+        width: image.width,
+        height: image.height,
+      );
+    } on Object {
+      await WidgetsBinding.instance.endOfFrame;
+      image?.dispose();
+      image = null;
+      try {
+        image = await boundary.toImage(pixelRatio: pixelRatio);
+        final byteData =
+            await image.toByteData(format: ui.ImageByteFormat.rawRgba);
+        if (byteData == null) return null;
+        final bytes = byteData.buffer.asUint8List(
+          byteData.offsetInBytes,
+          byteData.lengthInBytes,
+        );
+        return ShareRgbaStrip(
+          bytes: Uint8List.fromList(bytes),
+          width: image.width,
+          height: image.height,
+        );
+      } on Object {
+        return null;
+      }
+    } finally {
+      image?.dispose();
+    }
+  }
+
+  Future<ui.Image> _imageFromRgba(ShareRgbaStrip strip) {
+    final completer = Completer<ui.Image>();
+    ui.decodeImageFromPixels(
+      strip.bytes,
+      strip.width,
+      strip.height,
+      ui.PixelFormat.rgba8888,
+      completer.complete,
+    );
+    return completer.future;
   }
 
   Future<_EncodedShareImage?> _captureFromRepaint(
@@ -274,7 +408,6 @@ class _SharePreviewSheetState extends ConsumerState<_SharePreviewSheet> {
       image = await renderObject.toImage(pixelRatio: pixelRatio);
       return await _encode(image);
     } on Object {
-      // First attempt failed — retry once after an extra frame
       await WidgetsBinding.instance.endOfFrame;
       image?.dispose();
       image = null;
@@ -300,7 +433,6 @@ class _SharePreviewSheetState extends ConsumerState<_SharePreviewSheet> {
     }
   }
 
-  /// PNG: Skia capture, then Native oxipng via ironpress when available.
   Future<_EncodedShareImage> _encodePng(ui.Image image) async {
     final skiaPng = await _encodePngSkia(image);
     if (kIsWeb) {
@@ -364,14 +496,12 @@ class _SharePreviewSheetState extends ConsumerState<_SharePreviewSheet> {
       );
     }
 
-    // ironpress accepts encoded buffers; Skia PNG is a fast intermediate.
     final skiaPng = await _encodePngSkia(image);
     final webp = await encodeShareWebpFromPng(skiaPng);
     if (webp != null) {
       return _EncodedShareImage(webp, ShareImageFormat.webp);
     }
 
-    // Native encode failed — fall back to (possibly oxipng) PNG.
     final optimized = await encodeSharePngOptimized(skiaPng);
     return _EncodedShareImage(optimized ?? skiaPng, ShareImageFormat.png);
   }
@@ -423,13 +553,14 @@ class _SharePreviewSheetState extends ConsumerState<_SharePreviewSheet> {
     );
   }
 
-  // ---- UI ----
-
   @override
   Widget build(BuildContext context) {
     final scheme = Theme.of(context).colorScheme;
     final textTheme = Theme.of(context).textTheme;
     final maxHeight = MediaQuery.of(context).size.height * 0.7;
+    final title = widget.floors.length > 1
+        ? '分享 ${widget.floors.length} 个楼层'
+        : '分享帖子';
 
     return SafeArea(
       child: ConstrainedBox(
@@ -437,19 +568,16 @@ class _SharePreviewSheetState extends ConsumerState<_SharePreviewSheet> {
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            // Title only — dismiss via drag handle / scrim / back (no close chrome)
             Padding(
               padding: const EdgeInsets.fromLTRB(16, 8, 16, 8),
               child: Text(
-                '分享帖子',
+                title,
                 textAlign: TextAlign.center,
                 style: textTheme.titleMedium?.copyWith(
                   fontWeight: FontWeight.bold,
                 ),
               ),
             ),
-
-            // Card preview
             Flexible(
               child: SingleChildScrollView(
                 padding: const EdgeInsets.symmetric(horizontal: 12),
@@ -459,9 +587,8 @@ class _SharePreviewSheetState extends ConsumerState<_SharePreviewSheet> {
                     fit: BoxFit.fitWidth,
                     clipBehavior: Clip.hardEdge,
                     child: ShareCard(
-                      captureKey: _captureKey,
-                      post: widget.post,
-                      displayFloor: widget.displayFloor,
+                      captureKeys: _captureKeys,
+                      floors: widget.floors,
                       threadSubject: widget.threadSubject,
                       poll: widget.poll,
                     ),
@@ -469,8 +596,6 @@ class _SharePreviewSheetState extends ConsumerState<_SharePreviewSheet> {
                 ),
               ),
             ),
-
-            // Footer
             AnimatedSwitcher(
               duration: S1Motion.short,
               child: _buildFooter(scheme, textTheme),
@@ -510,10 +635,6 @@ class _SharePreviewSheetState extends ConsumerState<_SharePreviewSheet> {
       );
     }
 
-    // Equal width + single-line labels so long Chinese text does not wrap
-    // when download/save and share appear side by side.
-    // Do not override label TextStyle colors — Filled/Outlined inherit
-    // onPrimary / primary from the button theme (MD3 contrast contract).
     return Row(
       children: [
         Expanded(
@@ -586,9 +707,11 @@ class _SharePreviewSheetState extends ConsumerState<_SharePreviewSheet> {
           children: [
             Icon(Icons.error_outline, size: 20, color: scheme.error),
             const SizedBox(width: 8),
-            Text(
-              _statusMessage,
-              style: textTheme.bodyMedium?.copyWith(color: scheme.error),
+            Flexible(
+              child: Text(
+                _statusMessage,
+                style: textTheme.bodyMedium?.copyWith(color: scheme.error),
+              ),
             ),
             const SizedBox(width: 8),
             Text(

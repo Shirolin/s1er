@@ -37,7 +37,11 @@ class PostItem extends ConsumerStatefulWidget {
     this.onAddToBlacklist,
     this.onReport,
     this.onShare,
+    this.onMultiShare,
     this.isHighlighted = false,
+    this.isShareSelected = false,
+    this.shareSelectMode = false,
+    this.onShareSelectToggle,
     this.currentPage,
   });
 
@@ -53,7 +57,11 @@ class PostItem extends ConsumerStatefulWidget {
   final VoidCallback? onAddToBlacklist;
   final VoidCallback? onReport;
   final VoidCallback? onShare;
+  final VoidCallback? onMultiShare;
   final bool isHighlighted;
+  final bool isShareSelected;
+  final bool shareSelectMode;
+  final VoidCallback? onShareSelectToggle;
   final int? currentPage;
 
   @override
@@ -136,13 +144,21 @@ class _PostItemState extends ConsumerState<PostItem>
     final floor = widget.displayFloor ?? widget.post.floor;
     final isBanned = BannedPostDetector.isBanned(widget.post.message);
 
-    return Card(
+    final selected = widget.shareSelectMode && widget.isShareSelected;
+    final card = Card(
       margin: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
       elevation: 0,
-      color: widget.isHighlighted
-          ? scheme.primaryContainer.withValues(alpha: S1Alpha.half)
-          : S1Surface.card(scheme),
-      shape: S1Shape.cardShape,
+      color: selected
+          ? scheme.secondaryContainer.withValues(alpha: S1Alpha.half)
+          : widget.isHighlighted
+              ? scheme.primaryContainer.withValues(alpha: S1Alpha.half)
+              : S1Surface.card(scheme),
+      shape: selected
+          ? RoundedRectangleBorder(
+              borderRadius: S1Shape.medium,
+              side: BorderSide(color: scheme.secondary, width: 1.5),
+            )
+          : S1Shape.cardShape,
       child: Padding(
         padding: const EdgeInsets.all(12),
         child: Column(
@@ -168,6 +184,20 @@ class _PostItemState extends ConsumerState<PostItem>
               ),
           ],
         ),
+      ),
+    );
+
+    if (!widget.shareSelectMode || widget.onShareSelectToggle == null) {
+      return card;
+    }
+
+    return Semantics(
+      selected: widget.isShareSelected,
+      button: true,
+      label: widget.isShareSelected ? '取消选中楼层' : '选中楼层',
+      child: S1ClickRegion(
+        onTap: widget.onShareSelectToggle,
+        child: card,
       ),
     );
   }
@@ -409,10 +439,42 @@ class _PostItemState extends ConsumerState<PostItem>
 
   Widget _buildAuthorHeader(BuildContext context, String timeStr, int floor) {
     final canCopy = widget.post.message.trim().isNotEmpty;
+    final scheme = Theme.of(context).colorScheme;
+
+    if (widget.shareSelectMode) {
+      return Row(
+        children: [
+          Icon(
+            widget.isShareSelected
+                ? Icons.check_box
+                : Icons.check_box_outline_blank,
+            color: widget.isShareSelected
+                ? scheme.secondary
+                : scheme.onSurfaceVariant,
+          ),
+          const SizedBox(width: 8),
+          Expanded(child: _authorDetailsColumn(context, timeStr)),
+          const SizedBox(width: 8),
+          Badge(
+            label: Text(
+              '#$floor',
+              style: Theme.of(context).textTheme.labelSmall?.copyWith(
+                    color: scheme.onSecondaryContainer,
+                    fontWeight: FontWeight.w500,
+                  ),
+            ),
+            backgroundColor: scheme.secondaryContainer,
+            padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+          ),
+        ],
+      );
+    }
+
     final menu = PostActionMenu(
       onFilterByAuthor: widget.onFilterByAuthor,
       onReply: widget.onReply,
       onShare: widget.onShare,
+      onMultiShare: widget.onMultiShare,
       onSelectText: canCopy ? () => _showSelectTextSheet(context) : null,
       onCopyText: canCopy ? () => _copyPostText(context) : null,
       onEdit: widget.onEdit,
@@ -434,29 +496,7 @@ class _PostItemState extends ConsumerState<PostItem>
         ),
       ),
     );
-    final authorDetails = Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Text(
-          widget.post.author,
-          maxLines: 1,
-          overflow: TextOverflow.ellipsis,
-          style: Theme.of(context)
-              .textTheme
-              .bodyMedium
-              ?.copyWith(fontWeight: FontWeight.bold),
-        ),
-        if (timeStr.isNotEmpty)
-          Text(
-            timeStr,
-            maxLines: 1,
-            overflow: TextOverflow.ellipsis,
-            style: Theme.of(context).textTheme.labelSmall?.copyWith(
-                  color: Theme.of(context).colorScheme.onSurfaceVariant,
-                ),
-          ),
-      ],
-    );
+    final authorDetails = _authorDetailsColumn(context, timeStr);
     final actions = Wrap(
       spacing: 2,
       runSpacing: 2,
@@ -491,6 +531,32 @@ class _PostItemState extends ConsumerState<PostItem>
           ],
         );
       },
+    );
+  }
+
+  Widget _authorDetailsColumn(BuildContext context, String timeStr) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          widget.post.author,
+          maxLines: 1,
+          overflow: TextOverflow.ellipsis,
+          style: Theme.of(context)
+              .textTheme
+              .bodyMedium
+              ?.copyWith(fontWeight: FontWeight.bold),
+        ),
+        if (timeStr.isNotEmpty)
+          Text(
+            timeStr,
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+            style: Theme.of(context).textTheme.labelSmall?.copyWith(
+                  color: Theme.of(context).colorScheme.onSurfaceVariant,
+                ),
+          ),
+      ],
     );
   }
 }

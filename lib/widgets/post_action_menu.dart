@@ -13,6 +13,7 @@ class PostActionMenu extends StatelessWidget {
     this.onAddToBlacklist,
     this.onReport,
     this.onShare,
+    this.onMultiShare,
     this.onCopyText,
     this.onSelectText,
   });
@@ -24,6 +25,7 @@ class PostActionMenu extends StatelessWidget {
   final VoidCallback? onAddToBlacklist;
   final VoidCallback? onReport;
   final VoidCallback? onShare;
+  final VoidCallback? onMultiShare;
   final VoidCallback? onCopyText;
   final VoidCallback? onSelectText;
 
@@ -45,6 +47,11 @@ class PostActionMenu extends StatelessWidget {
           onPressed: onShare,
           icon: Icons.share_outlined,
           label: '分享',
+        ),
+        s1MenuItem(
+          onPressed: onMultiShare,
+          icon: Icons.library_add_check_outlined,
+          label: '多选分享',
         ),
         s1MenuItem(
           onPressed: onSelectText,

@@ -42,6 +42,16 @@ class S1Constants {
   static const int inlineImageDecodeMinPx = 200;
   static const int inlineImageDecodeMaxPx = 1600;
 
+  /// 多楼层分享：层数软顶（UX 刹车；真正 OOM 靠像素硬顶）。
+  static const int shareMaxSelectedFloors = 10;
+
+  /// 分享卡导出像素硬顶（宽×高）。约等于常见 GPU 纹理高 8192 × 导出宽 1800（3×）。
+  static const int shareCaptureMaxPixels = 8192 * 1800;
+
+  /// 低于此像素且仅 1 楼时走单次 [RepaintBoundary.toImage]；否则按楼分块拼接。
+  /// 取常见 4096 纹理高 × 默认导出宽 900（1.5×）。
+  static const int shareCaptureChunkThresholdPixels = 4096 * 900;
+
   /// 识别表情包路径的特征
   static bool isEmoticon(String url) {
     final lowerUrl = url.toLowerCase();

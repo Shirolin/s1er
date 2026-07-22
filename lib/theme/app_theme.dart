@@ -266,7 +266,10 @@ class AppTheme {
     return themeSeeds.containsKey(key) ? key! : defaultThemeColorKey;
   }
 
-  static ThemeData lightTheme(String themeColorKey, {String? customFontFamily}) {
+  static ThemeData lightTheme(
+    String themeColorKey, {
+    String? customFontFamily,
+  }) {
     final seedColor = themeSeeds[normalizeThemeColorKey(themeColorKey)]!;
     return fromColorScheme(
       ColorScheme.fromSeed(seedColor: seedColor, brightness: Brightness.light),
@@ -274,7 +277,10 @@ class AppTheme {
     );
   }
 
-  static ThemeData darkTheme(String themeColorKey, {String? customFontFamily}) {
+  static ThemeData darkTheme(
+    String themeColorKey, {
+    String? customFontFamily,
+  }) {
     final seedColor = themeSeeds[normalizeThemeColorKey(themeColorKey)]!;
     return fromColorScheme(
       ColorScheme.fromSeed(seedColor: seedColor, brightness: Brightness.dark),

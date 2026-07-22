@@ -14,7 +14,6 @@ abstract final class FontImportService {
   static const kFontFamily = 'S1CustomFont';
 
   static Future<File?> get _fontFile async {
-    if (ServicesBinding.instance == null) return null;
     try {
       final supportDir = await getApplicationSupportDirectory();
       final fontDir = Directory(p.join(supportDir.path, _kFontDir));
@@ -52,7 +51,6 @@ abstract final class FontImportService {
   /// 冷启动时恢复注册已保存的字体。
   static Future<bool> tryRestoreFont() async {
     if (kIsWeb) return false;
-    if (ServicesBinding.instance == null) return false;
     try {
       final file = await _fontFile;
       if (file == null || !await file.exists()) return false;
@@ -69,7 +67,6 @@ abstract final class FontImportService {
   /// 删除本地保存的自定义字体文件。
   static Future<void> removeCustomFont() async {
     if (kIsWeb) return;
-    if (ServicesBinding.instance == null) return;
     try {
       final file = await _fontFile;
       if (file != null && await file.exists()) {

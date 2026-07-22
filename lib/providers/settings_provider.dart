@@ -1,5 +1,6 @@
 import 'dart:async';
 
+import 'package:file_selector/file_selector.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../config/app_icon_catalog.dart';
@@ -169,6 +170,10 @@ final appIconServiceProvider = Provider<AppIconService>((ref) {
   return AppIconService.instance;
 });
 
+final fontImportServiceProvider = Provider<Type>((ref) {
+  return FontImportService;
+});
+
 class SettingsNotifier extends Notifier<AppSettings> {
   SettingsNotifier({this.initial, this.store, this.appIconService});
 
@@ -322,6 +327,13 @@ class SettingsNotifier extends Notifier<AppSettings> {
           '',
       customFontFileName: settingsStore.get<String>('customFontFileName'),
     );
+  }
+
+  Future<String> importCustomFont(XFile file) async {
+    final fileName = await FontImportService.importFont(file);
+    _commit(state.copyWith(customFontFileName: fileName));
+    _persist('customFontFileName', fileName);
+    return fileName;
   }
 
   void setCustomFont(String fileName) {

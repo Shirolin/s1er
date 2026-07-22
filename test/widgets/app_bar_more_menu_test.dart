@@ -42,7 +42,8 @@ void main() {
     await tester.pumpAndSettle();
   }
 
-  testWidgets('shows copy link and open link menu items by default', (tester) async {
+  testWidgets('shows copy link and open link menu items by default',
+      (tester) async {
     await pumpMenu(
       tester,
       launcher: (url, {mode = LaunchMode.platformDefault}) async => true,

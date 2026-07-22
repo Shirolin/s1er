@@ -4,7 +4,6 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../providers/settings_provider.dart';
-import '../../services/font_import_service.dart';
 import '../../theme/s1_haptics.dart';
 import '../../utils/s1_snack_bar.dart';
 import 'settings_section_header.dart';
@@ -32,8 +31,8 @@ class _FontSettingsSectionState extends ConsumerState<FontSettingsSection> {
 
       setState(() => _isImporting = true);
 
-      final fileName = await FontImportService.importFont(file);
-      ref.read(settingsProvider.notifier).setCustomFont(fileName);
+      final fileName =
+          await ref.read(settingsProvider.notifier).importCustomFont(file);
 
       if (mounted) {
         S1SnackBar.success(context, message: '已成功导入字体：$fileName');

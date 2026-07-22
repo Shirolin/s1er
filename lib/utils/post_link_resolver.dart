@@ -37,6 +37,10 @@ abstract final class PostLinkResolver {
     r'(?:^|/)forum-(\d+)-(\d+)(?:-\d+)?\.html$',
     caseSensitive: false,
   );
+  static final _legacyReadHtmPath = RegExp(
+    r'(?:^|/)read-htm-tid-(\d+)(?:-(?:page-)?(\d+))?\.html$',
+    caseSensitive: false,
+  );
 
   /// Discuz 锚点：`#pid123` 或旧站纯数字 `#16352875`。
   static final _fragmentPid = RegExp(r'^(?:pid)?(\d+)$', caseSensitive: false);
@@ -137,6 +141,15 @@ abstract final class PostLinkResolver {
         threadMatch.group(1)!,
         uri,
         fallbackPage: threadMatch.group(2),
+      );
+    }
+
+    final readHtmMatch = _legacyReadHtmPath.firstMatch(uri.path);
+    if (readHtmMatch != null) {
+      return _threadLocation(
+        readHtmMatch.group(1)!,
+        uri,
+        fallbackPage: readHtmMatch.group(2),
       );
     }
 

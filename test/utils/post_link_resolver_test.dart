@@ -20,10 +20,22 @@ void main() {
       }
     });
 
-    test('maps legacy read.php / viewthread.php tid links', () {
+    test('maps legacy read.php / viewthread.php / read-htm-tid tid links', () {
       expect(
         _location('http://bbs.saraba1st.com/2b/read.php?tid=842562'),
         '/thread/842562',
+      );
+      expect(
+        _location(
+          'http://bbs.saraba1st.com/2b/read-htm-tid-742087.html',
+        ),
+        '/thread/742087',
+      );
+      expect(
+        _location(
+          'http://bbs.saraba1st.com/2b/read-htm-tid-742087-page-2.html',
+        ),
+        '/thread/742087?page=2',
       );
       expect(
         _location(

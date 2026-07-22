@@ -87,12 +87,16 @@ void main() {
         'pm_message_drafts': {'y': 2},
         'new_thread_drafts': {'z': 3},
         'edit_post_drafts': {'w': 4},
+        'whats_new_seen_version': '0.2.0',
+        'update_ignored_version': '0.1.0',
       });
       expect(backup['theme_mode'], 'dark');
       expect(backup.containsKey('compose_message_drafts'), isFalse);
       expect(backup.containsKey('pm_message_drafts'), isFalse);
       expect(backup.containsKey('new_thread_drafts'), isFalse);
       expect(backup.containsKey('edit_post_drafts'), isFalse);
+      expect(backup.containsKey('whats_new_seen_version'), isFalse);
+      expect(backup.containsKey('update_ignored_version'), isFalse);
     });
 
     test('settings mapper round-trips snake_case', () {

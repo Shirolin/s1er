@@ -45,8 +45,9 @@ version: 0.1.0+1
    - `publishedAt`：发布日（`YYYY-MM-DD`）
    - `channels.*`：有直链则填，否则 `null`（客户端回退 `github`）
    - Android 国内备选：`androidNetdisk`（分享链接）+ `netdiskHint`（提取码等说明，可空）
-3. 需要踢掉过旧安装包时，抬高 `minSupported`（低于该版本每次冷启动强提醒，可关但下次仍弹）。仅抬 build、name 不变时一般不用动。
-4. 打 GitHub Release（附各平台安装包，如有）；tag 建议与 name 对齐（如 `v0.1.0`）。
+3. 同步在 [`assets/changelog/whats_new.json`](../../assets/changelog/whats_new.json) **顶部追加**该 name 的用户向要点（约 3–8 条；应用内「新功能」弹窗与设置「更新日志」读此文件，**不是**根目录 `CHANGELOG.md`）。
+4. 需要踢掉过旧安装包时，抬高 `minSupported`（低于该版本每次冷启动强提醒，可关但下次仍弹）。仅抬 build、name 不变时一般不用动。
+5. 打 GitHub Release（附各平台安装包，如有）；tag 建议与 name 对齐（如 `v0.1.0`）。
    - **Android 文件名规范**（`s1er-<name>+<build>-android-<variant>.apk`）：
 
      | 文件后缀 | 含义 |
@@ -58,7 +59,7 @@ version: 0.1.0+1
 
    - Release 正文由 `release.ps1 create` 自动写入「下哪个包」选型表。
    - **Windows**：`s1er-…-windows-x64.zip`。
-5. 将 `pubspec.yaml` + `latest.json` 等改动提交到 `main`（raw URL 指向 main）。
+6. 将 `pubspec.yaml` + `latest.json` + `whats_new.json` 等改动提交到 `main`（raw URL 指向 main）。
 
 ## 半自动分步脚本（推荐）
 
@@ -71,7 +72,7 @@ version: 0.1.0+1
 .\scripts\release.ps1 create          # 建空 Release + 打开网页
 # 在网页上把 dist\ 里的 apk / zip 拖上去
 .\scripts\release.ps1 manifest        # 写 latest.json 直链
-# 自行 commit / push pubspec.yaml + docs/release/latest.json
+# 自行 commit / push pubspec.yaml + docs/release/latest.json + assets/changelog/whats_new.json
 ```
 
 升产品版本（应用内会提示更新）：

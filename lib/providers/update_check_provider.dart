@@ -147,6 +147,7 @@ class UpdateCheckState {
     this.isChecking = false,
     this.pendingPrompt,
     this.autoCheckStarted = false,
+    this.startupSettled = false,
   });
 
   final bool isChecking;
@@ -157,17 +158,22 @@ class UpdateCheckState {
   /// 本 session 是否已触发过冷启动检查。
   final bool autoCheckStarted;
 
+  /// 冷启动检查已结束（成功或失败）；供 What's New 等待，避免抢弹窗。
+  final bool startupSettled;
+
   UpdateCheckState copyWith({
     bool? isChecking,
     UpdateEvaluation? pendingPrompt,
     bool clearPendingPrompt = false,
     bool? autoCheckStarted,
+    bool? startupSettled,
   }) {
     return UpdateCheckState(
       isChecking: isChecking ?? this.isChecking,
       pendingPrompt:
           clearPendingPrompt ? null : (pendingPrompt ?? this.pendingPrompt),
       autoCheckStarted: autoCheckStarted ?? this.autoCheckStarted,
+      startupSettled: startupSettled ?? this.startupSettled,
     );
   }
 }
@@ -214,6 +220,10 @@ class UpdateCheckNotifier extends Notifier<UpdateCheckState> {
       talker.warning('Startup update check skipped: ${e.message}');
     } on Object catch (e, st) {
       talker.handle(e, st, 'Startup update check failed');
+    } finally {
+      if (ref.mounted) {
+        state = state.copyWith(startupSettled: true);
+      }
     }
   }
 
@@ -279,6 +289,16 @@ class UpdateCheckNotifier extends Notifier<UpdateCheckState> {
 
   void clearPendingPrompt() {
     state = state.copyWith(clearPendingPrompt: true);
+  }
+
+  /// 测试用：模拟启动已结算且（可选）有待展示升级 Dialog。
+  @visibleForTesting
+  void debugSetStartupPrompt({UpdateEvaluation? pendingPrompt}) {
+    state = UpdateCheckState(
+      autoCheckStarted: true,
+      startupSettled: true,
+      pendingPrompt: pendingPrompt,
+    );
   }
 
   /// Dialog 已展示或关闭（含稍后）：写入冷却时间戳。

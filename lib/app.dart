@@ -11,6 +11,7 @@ import 'models/edit_post_route_extra.dart';
 import 'providers/reading_history_coordinator.dart';
 import 'providers/settings_provider.dart';
 import 'providers/update_check_provider.dart';
+import 'providers/whats_new_provider.dart';
 import 'screens/home_screen.dart';
 import 'screens/login_screen.dart';
 import 'screens/forum_list_screen.dart';
@@ -32,6 +33,7 @@ import 'utils/thread_navigation.dart';
 import 'widgets/s1_desktop_window_frame.dart';
 import 'widgets/thread_open_intent_scope.dart';
 import 'widgets/update_prompt_host.dart';
+import 'widgets/whats_new_prompt_host.dart';
 
 ImageViewerScreen? _parseImageViewerRoute(GoRouterState state) {
   Map<String, dynamic>? args;
@@ -240,6 +242,7 @@ class _S1AppState extends ConsumerState<S1App> with WidgetsBindingObserver {
   Widget build(BuildContext context) {
     ref.watch(readingHistoryCoordinatorProvider);
     ref.watch(updateCheckCoordinatorProvider);
+    ref.watch(whatsNewCoordinatorProvider);
 
     final themeModeStr = ref.watch(settingsProvider.select((s) => s.themeMode));
     final themeColor = ref.watch(settingsProvider.select((s) => s.themeColor));
@@ -264,11 +267,13 @@ class _S1AppState extends ConsumerState<S1App> with WidgetsBindingObserver {
         routerConfig: _router,
         builder: (context, child) {
           return UpdatePromptHost(
-            child: MediaQuery(
-              data: MediaQuery.of(
-                context,
-              ).copyWith(textScaler: TextScaler.linear(textScaleFactor)),
-              child: S1DesktopWindowFrame(child: child!),
+            child: WhatsNewPromptHost(
+              child: MediaQuery(
+                data: MediaQuery.of(
+                  context,
+                ).copyWith(textScaler: TextScaler.linear(textScaleFactor)),
+                child: S1DesktopWindowFrame(child: child!),
+              ),
             ),
           );
         },

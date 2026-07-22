@@ -5,6 +5,7 @@ import 'package:talker_flutter/talker_flutter.dart';
 import '../../models/app_exceptions.dart';
 import '../../providers/talker_provider.dart';
 import '../../providers/update_check_provider.dart';
+import '../../screens/whats_new_screen.dart';
 import '../../theme/app_theme.dart';
 import '../../utils/s1_snack_bar.dart';
 import '../app_update_dialog.dart';
@@ -25,6 +26,7 @@ class AboutSettingsSection extends StatelessWidget {
             SettingsSectionHeader(title: '关于'),
             SizedBox(height: 8),
             _VersionTile(),
+            _ChangelogTile(),
             _CheckUpdateTile(),
           ],
         ),
@@ -100,6 +102,38 @@ class _VersionTileState extends ConsumerState<_VersionTile> {
         contentPadding: const EdgeInsets.symmetric(horizontal: 8),
         shape: itemShape,
       ),
+    );
+  }
+}
+
+class _ChangelogTile extends StatelessWidget {
+  const _ChangelogTile();
+
+  @override
+  Widget build(BuildContext context) {
+    final scheme = Theme.of(context).colorScheme;
+    const itemShape = RoundedRectangleBorder(
+      borderRadius: S1Shape.small,
+    );
+
+    return ListTile(
+      leading: Icon(Icons.newspaper_outlined, color: scheme.onSurfaceVariant),
+      title: const Text('更新日志'),
+      subtitle: Text(
+        '查看各版本更新说明',
+        style: Theme.of(context).textTheme.bodySmall?.copyWith(
+              color: scheme.onSurfaceVariant,
+            ),
+      ),
+      onTap: () {
+        Navigator.of(context).push(
+          MaterialPageRoute<void>(
+            builder: (_) => const WhatsNewScreen(),
+          ),
+        );
+      },
+      contentPadding: const EdgeInsets.symmetric(horizontal: 8),
+      shape: itemShape,
     );
   }
 }

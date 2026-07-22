@@ -164,7 +164,7 @@ function Step-BumpName {
     }
     $name = "$major.$minor.$patch"
     Set-PubspecVersion -Name $name -Build 1
-    Write-Host "Remember: name changed -> update latest.json (use 'manifest') and commit." -ForegroundColor Yellow
+    Write-Host "Remember: name changed -> update latest.json (use 'manifest'), append assets/changelog/whats_new.json, and commit." -ForegroundColor Yellow
     Step-Status
 }
 

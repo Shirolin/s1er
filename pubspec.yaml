@@ -70,6 +70,7 @@ flutter:
     - assets/branding/s1er_logo_black.png
     - assets/branding/s1er_logo_white.png
     - assets/branding/s1er_logo_xb2.png
+    - assets/changelog/whats_new.json
     - assets/emoticons/
     - assets/emoticons/face2017/
     - assets/emoticons/carton2017/

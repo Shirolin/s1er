@@ -446,7 +446,7 @@ class _ThreadDetailScreenState extends ConsumerState<ThreadDetailScreen> {
     );
   }
 
-  Future<void> _goToPage(int page) async {
+  Future<void> _goToPage(int page, {bool scrollToBottom = false}) async {
     _scrollFabVisibility.value = const _ScrollFabVisibility();
     setState(() {
       _manualPageChange = true;
@@ -464,8 +464,31 @@ class _ThreadDetailScreenState extends ConsumerState<ThreadDetailScreen> {
     }
     final loaded = ref.read(postProvider(widget.tid)).asData?.value;
     if (loaded != null) {
-      // Page changes land at top; keys rebuild after the next frame.
-      _recordProgress(loaded, floorInPage: 1);
+      // Page changes land at top unless scrollToBottom is true; keys rebuild after next frame.
+      _recordProgress(
+        loaded,
+        floorInPage: scrollToBottom ? loaded.posts.length : 1,
+      );
+    }
+    if (scrollToBottom) {
+      await WidgetsBinding.instance.endOfFrame;
+      if (!mounted) return;
+      await _scrollToBottomImpl();
+    }
+  }
+
+  Future<void> _goToLatest() async {
+    final state = ref.read(postProvider(widget.tid)).asData?.value;
+    if (state == null) return;
+    _captureInThreadJump();
+    if (state.currentPage != state.totalPages) {
+      await _goToPage(state.totalPages, scrollToBottom: true);
+    } else {
+      await ref.read(postProvider(widget.tid).notifier).refresh();
+      if (!mounted) return;
+      await WidgetsBinding.instance.endOfFrame;
+      if (!mounted) return;
+      await _scrollToBottomImpl();
     }
   }
 
@@ -870,6 +893,7 @@ class _ThreadDetailScreenState extends ConsumerState<ThreadDetailScreen> {
           AppBarMoreMenu(
             onRefresh: () =>
                 ref.read(postProvider(widget.tid).notifier).refresh(),
+            onGoToLatest: _goToLatest,
             browserUrl: ApiConfig.threadBrowserUrl(
               tid: widget.tid,
               page: postsAsync.asData?.value.currentPage ?? 1,

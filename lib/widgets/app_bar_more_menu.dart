@@ -17,12 +17,14 @@ class AppBarMoreMenu extends StatelessWidget {
   const AppBarMoreMenu({
     super.key,
     this.onRefresh,
+    this.onGoToLatest,
     required this.browserUrl,
     this.launcher = launchUrl,
     this.showOpenLink = false,
   });
 
   final VoidCallback? onRefresh;
+  final VoidCallback? onGoToLatest;
   final String browserUrl;
   final BrowserUrlLauncher launcher;
   final bool showOpenLink;
@@ -143,6 +145,15 @@ class AppBarMoreMenu extends StatelessWidget {
             },
             icon: Icons.refresh,
             label: '刷新',
+          ),
+        if (onGoToLatest != null)
+          s1MenuItem(
+            onPressed: () {
+              S1Haptics.light();
+              onGoToLatest!();
+            },
+            icon: Icons.last_page,
+            label: '跳转到最新',
           ),
         s1MenuItem(
           onPressed: () {

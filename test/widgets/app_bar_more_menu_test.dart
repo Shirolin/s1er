@@ -10,6 +10,7 @@ void main() {
   Future<void> pumpMenu(
     WidgetTester tester, {
     required BrowserUrlLauncher launcher,
+    VoidCallback? onGoToLatest,
   }) {
     return tester.pumpWidget(
       MaterialApp(
@@ -21,6 +22,7 @@ void main() {
               AppBarMoreMenu(
                 browserUrl: browserUrl,
                 launcher: launcher,
+                onGoToLatest: onGoToLatest,
               ),
             ],
           ),
@@ -50,6 +52,24 @@ void main() {
 
     // Menu item is visible.
     expect(find.text('复制链接'), findsOneWidget);
+  });
+
+  testWidgets('shows and triggers go to latest menu item when provided',
+      (tester) async {
+    var goToLatestCalled = false;
+    await pumpMenu(
+      tester,
+      launcher: (url, {mode = LaunchMode.platformDefault}) async => true,
+      onGoToLatest: () => goToLatestCalled = true,
+    );
+
+    await openMoreMenu(tester);
+
+    expect(find.text('跳转到最新'), findsOneWidget);
+    await tester.tap(find.text('跳转到最新'));
+    await tester.pumpAndSettle();
+
+    expect(goToLatestCalled, isTrue);
   });
 
   testWidgets('opens the URL in an external application', (tester) async {

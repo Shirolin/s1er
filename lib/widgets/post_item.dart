@@ -7,10 +7,12 @@ import '../providers/thread_rate_logs_provider.dart';
 import '../providers/user_profile_provider.dart';
 import '../theme/app_theme.dart';
 import '../theme/s1_haptics.dart';
+import '../utils/banned_post_detector.dart';
 import '../utils/compact_label.dart';
 import '../utils/format_utils.dart';
 import '../utils/post_image_index_counter.dart';
 import '../utils/post_plain_text.dart';
+import '../utils/quote_recovery_helper.dart';
 import '../utils/s1_snack_bar.dart';
 import 'bbcode_renderer.dart';
 import 'post_action_menu.dart';
@@ -24,6 +26,8 @@ class PostItem extends ConsumerStatefulWidget {
   const PostItem({
     super.key,
     required this.post,
+    this.allPosts,
+    this.onRequestSearchAllPages,
     this.displayFloor,
     this.tid,
     this.onFilterByAuthor,
@@ -38,6 +42,8 @@ class PostItem extends ConsumerStatefulWidget {
   });
 
   final Post post;
+  final List<Post>? allPosts;
+  final Future<List<Post>> Function()? onRequestSearchAllPages;
   final int? displayFloor;
   final String? tid;
   final VoidCallback? onFilterByAuthor;
@@ -118,12 +124,17 @@ class _PostItemState extends ConsumerState<PostItem>
     });
   }
 
+  bool _recoveredQuoteExpanded = false;
+  bool _isSearchingCrossPage = false;
+  QuoteRecoveryResult? _crossPageResult;
+
   @override
   Widget build(BuildContext context) {
     super.build(context);
     final scheme = Theme.of(context).colorScheme;
     final timeStr = formatDateTime(widget.post.dateline);
     final floor = widget.displayFloor ?? widget.post.floor;
+    final isBanned = BannedPostDetector.isBanned(widget.post.message);
 
     return Card(
       margin: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
@@ -139,14 +150,17 @@ class _PostItemState extends ConsumerState<PostItem>
           children: [
             _buildAuthorHeader(context, timeStr, floor),
             Divider(height: 16, color: scheme.outlineVariant),
-            BbcodeRenderer(
-              bbcode: widget.post.message,
-              imageIndexCounter: _imageIndexCounter,
-              currentTid: widget.tid,
-              imagesExpanded: _imagesExpanded,
-              onExpandImages: _expandImages,
-              selectable: false,
-            ),
+            if (isBanned)
+              _buildBannedPostSection(context, scheme)
+            else
+              BbcodeRenderer(
+                bbcode: widget.post.message,
+                imageIndexCounter: _imageIndexCounter,
+                currentTid: widget.tid,
+                imagesExpanded: _imagesExpanded,
+                onExpandImages: _expandImages,
+                selectable: false,
+              ),
             if (widget.tid != null)
               _PostRateLogSection(
                 tid: widget.tid!,
@@ -154,6 +168,188 @@ class _PostItemState extends ConsumerState<PostItem>
               ),
           ],
         ),
+      ),
+    );
+  }
+
+  Future<void> _searchCrossPageQuotes() async {
+    if (widget.onRequestSearchAllPages == null || _isSearchingCrossPage) return;
+    setState(() => _isSearchingCrossPage = true);
+
+    try {
+      final allPosts = await widget.onRequestSearchAllPages!();
+      final res = QuoteRecoveryHelper.findQuotesForPost(
+        targetPost: widget.post,
+        allPosts: allPosts,
+      );
+      if (!mounted) return;
+      setState(() {
+        _crossPageResult = res;
+        if (res.hasQuotes) {
+          _recoveredQuoteExpanded = true;
+        } else {
+          S1SnackBar.show(context, message: '全帖未搜索到其它用户的引用留痕');
+        }
+      });
+    } catch (e) {
+      if (mounted) {
+        S1SnackBar.show(context, message: '跨页搜索引用失败');
+      }
+    } finally {
+      if (mounted) {
+        setState(() => _isSearchingCrossPage = false);
+      }
+    }
+  }
+
+  Widget _buildBannedPostSection(BuildContext context, ColorScheme scheme) {
+    final textTheme = Theme.of(context).textTheme;
+
+    final localResult = QuoteRecoveryHelper.findQuotesForPost(
+      targetPost: widget.post,
+      allPosts: widget.allPosts ?? const [],
+    );
+
+    final effectiveResult = _crossPageResult ?? localResult;
+    final hasQuote = effectiveResult.hasQuotes;
+    final firstQuote = effectiveResult.firstQuote;
+
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        color: scheme.surfaceContainerHighest.withValues(alpha: S1Alpha.half),
+        borderRadius: S1Shape.medium,
+        border: Border.all(color: scheme.outlineVariant),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Icon(
+                hasQuote ? Icons.history_edu_outlined : Icons.block_outlined,
+                size: 20,
+                color: scheme.error,
+              ),
+              const SizedBox(width: 8),
+              Expanded(
+                child: Text(
+                  '作者已被论坛封禁或删除',
+                  style: textTheme.bodyMedium?.copyWith(
+                    fontWeight: FontWeight.bold,
+                    color: scheme.onSurfaceVariant,
+                  ),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 4),
+          Text(
+            hasQuote ? '（从回复中提取到历史发言引用）' : '（服务端已自动屏蔽原始正文）',
+            style: textTheme.bodySmall?.copyWith(
+              color: scheme.outline,
+            ),
+          ),
+          if (hasQuote && firstQuote != null) ...[
+            const SizedBox(height: 10),
+            if (!_recoveredQuoteExpanded)
+              OutlinedButton.icon(
+                onPressed: () {
+                  setState(() => _recoveredQuoteExpanded = true);
+                },
+                icon: const Icon(Icons.format_quote, size: 18),
+                label: Text('查看从 #${firstQuote.sourceFloor} 楼提取的引用发言'),
+                style: OutlinedButton.styleFrom(
+                  visualDensity: VisualDensity.compact,
+                ),
+              )
+            else ...[
+              Container(
+                width: double.infinity,
+                padding: const EdgeInsets.all(12),
+                decoration: BoxDecoration(
+                  color: scheme.surfaceContainerLow,
+                  borderRadius: S1Shape.small,
+                  border: Border.all(
+                    color: scheme.primary.withValues(alpha: S1Alpha.medium),
+                  ),
+                ),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      firstQuote.recoveredText,
+                      style: textTheme.bodyMedium?.copyWith(
+                        color: scheme.onSurface,
+                        height: 1.5,
+                      ),
+                    ),
+                    const SizedBox(height: 8),
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        Flexible(
+                          child: Text(
+                            '提示：以上内容提取自 #${firstQuote.sourceFloor} 楼 @${firstQuote.sourceAuthor} 的引用',
+                            style: textTheme.labelSmall?.copyWith(
+                              color: scheme.primary,
+                              fontStyle: FontStyle.italic,
+                            ),
+                          ),
+                        ),
+                        const SizedBox(width: 8),
+                        InkWell(
+                          onTap: () =>
+                              setState(() => _recoveredQuoteExpanded = false),
+                          child: Text(
+                            '收起',
+                            style: textTheme.labelSmall?.copyWith(
+                              color: scheme.outline,
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ],
+                ),
+              ),
+              if (effectiveResult.totalCount > 1) ...[
+                const SizedBox(height: 4),
+                Text(
+                  '另有 ${effectiveResult.totalCount - 1} 条回复也引用了此发言',
+                  style: textTheme.labelSmall?.copyWith(color: scheme.outline),
+                ),
+              ],
+            ],
+          ] else if (widget.onRequestSearchAllPages != null) ...[
+            const SizedBox(height: 8),
+            if (_isSearchingCrossPage)
+              Row(
+                children: [
+                  const SizedBox(
+                    width: 14,
+                    height: 14,
+                    child: CircularProgressIndicator(strokeWidth: 2),
+                  ),
+                  const SizedBox(width: 8),
+                  Text(
+                    '正在跨页搜索全帖引用…',
+                    style: textTheme.bodySmall?.copyWith(color: scheme.outline),
+                  ),
+                ],
+              )
+            else
+              TextButton.icon(
+                onPressed: _searchCrossPageQuotes,
+                icon: const Icon(Icons.search, size: 16),
+                label: const Text('跨页搜索全帖引用'),
+                style: TextButton.styleFrom(
+                  visualDensity: VisualDensity.compact,
+                ),
+              ),
+          ],
+        ],
       ),
     );
   }

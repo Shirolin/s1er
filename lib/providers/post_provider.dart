@@ -345,6 +345,28 @@ class PostNotifier extends AsyncNotifier<PostListState> {
     state = const AsyncLoading<PostListState>().copyWithPrevious(state);
     state = await AsyncValue.guard(() => _loadPage(current));
   }
+
+  /// 异步抓取整帖所有页面的帖子列表（供跨页引用搜索使用，不更改当前 UI 显示状态）
+  Future<List<Post>> fetchAllPagesPosts() async {
+    final currentState = state.value;
+    if (currentState == null) return const [];
+    final totalPages = currentState.totalPages;
+    final allPosts = <Post>[...currentState.posts];
+
+    // 最多搜索前 10 页避免极长主题风控
+    final maxSearchPages = totalPages > 10 ? 10 : totalPages;
+
+    for (var p = 1; p <= maxSearchPages; p++) {
+      if (p == currentState.currentPage) continue;
+      try {
+        final pageState = await _loadPage(p);
+        allPosts.addAll(pageState.posts);
+      } catch (e, st) {
+        talker.warning('Failed to load page $p for quote search', e, st);
+      }
+    }
+    return allPosts;
+  }
 }
 
 final postProvider = AsyncNotifierProvider.autoDispose

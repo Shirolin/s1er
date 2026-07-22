@@ -1146,6 +1146,10 @@ class _ThreadDetailPostTile extends ConsumerWidget {
       child: PostItem(
         key: postKey,
         post: post,
+        allPosts: state.posts,
+        onRequestSearchAllPages: state.totalPages > 1
+            ? () => ref.read(postProvider(tid).notifier).fetchAllPagesPosts()
+            : null,
         displayFloor: displayFloor,
         tid: tid,
         currentPage: state.currentPage,

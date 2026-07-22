@@ -28,7 +28,7 @@
 | 设备机型标签 | device_info_plus（小尾巴细机型；失败回退平台名） | ^13.2.0 |
 | 桌面窗口管理 | window_manager（自绘标题栏；仅 Windows / macOS / Linux） | ^0.5.1 |
 | 备份（L1 ZIP） | archive / file_selector / share_plus | ^4.0.9 / ^1.1.0 / ^13.2.0 |
-| 回复插图 | file_selector + p.sda1.dev 外链图床 | 已有 file_selector；不做 Discuz attach |
+| 回复插图 | file_selector + pasteboard + p.sda1.dev 外链图床 | 已有 file_selector；`pasteboard` 原生剪贴板读图（Web 降级）；不做 Discuz attach |
 | 麻将脸表情 | `assets/emoticons/` + packs/list/ATTRIBUTION | 自 s1emoticon Release；无 LICENSE 已声明 |
 | WebView | webview_flutter | ^4.7.0 |
 | HTML 渲染 | flutter_html | ^3.0.0 |

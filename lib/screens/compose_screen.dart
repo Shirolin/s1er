@@ -25,7 +25,9 @@ import '../theme/app_theme.dart';
 import '../theme/s1_haptics.dart';
 import '../utils/compact_label.dart';
 import '../utils/compose_bbcode_wrap.dart';
+import '../utils/compose_clipboard_image.dart';
 import '../utils/compose_img_tags.dart';
+import '../utils/compose_message_char_count.dart';
 import '../utils/compose_message_draft.dart';
 import '../utils/new_thread_draft.dart';
 import '../utils/edit_post_draft.dart';
@@ -36,6 +38,7 @@ import '../utils/quote_builder.dart';
 import '../utils/quote_snapshot_store.dart';
 import '../utils/s1_snack_bar.dart';
 import '../utils/window_size.dart';
+import '../services/external_image_upload_service.dart';
 import '../widgets/bbcode_renderer.dart';
 import '../widgets/compose_bbcode_toolbar.dart';
 import '../widgets/compose_emoticon_panel.dart';
@@ -46,6 +49,7 @@ import '../widgets/s1_content_width.dart';
 import '../widgets/web_avatar.dart';
 
 const _recentEmoticonsKey = 'compose_recent_emoticons';
+const _maxBatchImages = 20;
 
 class ComposeScreen extends ConsumerStatefulWidget {
   const ComposeScreen({
@@ -146,6 +150,10 @@ class _ComposeScreenState extends ConsumerState<ComposeScreen> {
   bool _includeEditQuote = false;
   Map<String, String> _attachImageUrls = const {};
   ({Uint8List bytes, String filename})? _pendingUpload;
+  final List<({Uint8List bytes, String filename})> _uploadQueue = [];
+  int _uploadBatchTotal = 0;
+  int _uploadBatchSuccess = 0;
+  bool _uploadBatchActive = false;
 
   bool get _hasValidTid => widget.tid != null && widget.tid!.isNotEmpty;
   bool get _isNewThread => widget.newThread;
@@ -1184,104 +1192,257 @@ class _ComposeScreenState extends ConsumerState<ComposeScreen> {
   }
 
   Future<void> _pickAndUploadImage() async {
-    if (_isUploadingImage || _isSubmitting) return;
+    if (_isSubmitting) return;
 
     const typeGroup = XTypeGroup(
       label: 'images',
       extensions: <String>['jpg', 'jpeg', 'png', 'gif', 'webp'],
     );
-    final file = await openFile(acceptedTypeGroups: [typeGroup]);
-    if (file == null) return;
+    final files = await openFiles(acceptedTypeGroups: [typeGroup]);
+    if (files.isEmpty) return;
 
-    final bytes = await file.readAsBytes();
+    final items = <({Uint8List bytes, String filename})>[];
+    for (final file in files) {
+      final bytes = await file.readAsBytes();
+      items.add((bytes: bytes, filename: file.name));
+    }
     if (!mounted) return;
-    setState(() {
-      _pendingUpload = (bytes: bytes, filename: file.name);
-    });
-    await _uploadPendingImage();
+    _enqueueImages(items);
   }
 
-  Future<void> _uploadPendingImage() async {
-    final pending = _pendingUpload;
-    if (pending == null || _isUploadingImage || _isSubmitting) return;
+  int get _inflightImageCount =>
+      _uploadQueue.length + (_pendingUpload != null ? 1 : 0);
 
-    setState(() => _isUploadingImage = true);
-    try {
-      final url = await ref.read(composeControllerProvider).uploadImage(
-            bytes: pending.bytes,
-            filename: pending.filename,
-          );
-      if (!mounted) return;
-      final label = pending.filename.trim().isEmpty ? '图片' : pending.filename;
-      _imageLabelsByUrl[url] = label;
-      if (_editMediaDetached) {
-        final slot = _nextEditMediaSlot();
-        final selection = _messageController.selection;
-        final start = selection.isValid
-            ? selection.start
-            : _messageController.text.length;
-        final end =
-            selection.isValid ? selection.end : _messageController.text.length;
-        final inserted = insertComposeMediaPlaceholderAt(
-          text: _messageController.text,
-          start: start,
-          end: end,
-          slot: slot,
+  void _enqueueImages(List<({Uint8List bytes, String filename})> items) {
+    if (_isSubmitting || items.isEmpty) return;
+
+    final oversize = <String>[];
+    final accepted = <({Uint8List bytes, String filename})>[];
+    var truncated = false;
+
+    for (final item in items) {
+      if (item.bytes.isEmpty) continue;
+      if (item.bytes.length > ExternalImageUploadService.maxBytes) {
+        oversize.add(
+          item.filename.trim().isEmpty ? '图片' : item.filename.trim(),
         );
-        _suppressMediaSync = true;
-        _messageController.value = TextEditingValue(
-          text: inserted.text,
-          selection: TextSelection.collapsed(offset: inserted.cursor),
-        );
+        continue;
+      }
+      if (_inflightImageCount + accepted.length >= _maxBatchImages) {
+        truncated = true;
+        break;
+      }
+      accepted.add(item);
+    }
+
+    if (oversize.isNotEmpty && mounted) {
+      S1SnackBar.show(
+        context,
+        message: oversize.length == 1
+            ? '${oversize.first} 超过 5MB，已跳过'
+            : '${oversize.length} 张图片超过 5MB，已跳过',
+        bottomClearance: 72,
+      );
+    }
+    if (truncated && mounted) {
+      S1SnackBar.show(
+        context,
+        message: '一次最多 $_maxBatchImages 张图片',
+        bottomClearance: 72,
+      );
+    }
+    if (accepted.isEmpty) return;
+
+    setState(() {
+      if (!_uploadBatchActive) {
+        _uploadBatchActive = true;
+        _uploadBatchTotal = accepted.length;
+        _uploadBatchSuccess = 0;
+      } else {
+        _uploadBatchTotal += accepted.length;
+      }
+      _uploadQueue.addAll(accepted);
+    });
+    unawaited(_drainUploadQueue());
+  }
+
+  void _cancelRemainingUploads() {
+    setState(() {
+      _pendingUpload = null;
+      _uploadQueue.clear();
+      _uploadBatchActive = false;
+      _uploadBatchTotal = 0;
+      _uploadBatchSuccess = 0;
+      _isUploadingImage = false;
+    });
+  }
+
+  Future<void> _drainUploadQueue() async {
+    if (_isUploadingImage || _isSubmitting) return;
+
+    while (mounted && !_isSubmitting) {
+      if (_pendingUpload == null) {
+        if (_uploadQueue.isEmpty) break;
+        setState(() => _pendingUpload = _uploadQueue.removeAt(0));
+      }
+
+      final pending = _pendingUpload;
+      if (pending == null) break;
+
+      setState(() => _isUploadingImage = true);
+      var failed = false;
+      try {
+        final url = await ref.read(composeControllerProvider).uploadImage(
+              bytes: pending.bytes,
+              filename: pending.filename,
+            );
+        if (!mounted) return;
+        _insertUploadedImage(url: url, filename: pending.filename);
         setState(() {
-          _uploadedImages.add(
-            _ComposeUploadedImage(
-              tag: '[img]$url[/img]',
-              label: label,
-              previewUrl: url,
-              slot: slot,
+          _pendingUpload = null;
+          _uploadBatchSuccess += 1;
+        });
+      } catch (e) {
+        failed = true;
+        if (mounted) {
+          setState(() => _isUploadingImage = false);
+          final messenger = ScaffoldMessenger.of(context);
+          messenger.hideCurrentSnackBar();
+          final controller = messenger.showSnackBar(
+            SnackBar(
+              content: Text(e.toString()),
+              behavior: SnackBarBehavior.floating,
+              margin: EdgeInsets.fromLTRB(
+                16,
+                0,
+                16,
+                MediaQuery.paddingOf(context).bottom + 72,
+              ),
+              duration: const Duration(seconds: 8),
+              action: SnackBarAction(
+                label: '重试',
+                onPressed: () {
+                  if (mounted) unawaited(_drainUploadQueue());
+                },
+              ),
             ),
           );
-          _pendingUpload = null;
-        });
-        _suppressMediaSync = false;
-        _persistEditDraft();
-        S1SnackBar.show(context, message: '图片已添加', bottomClearance: 72);
-      } else {
-        final selection = _messageController.selection;
-        final start = selection.isValid
-            ? selection.start
-            : _messageController.text.length;
-        final end =
-            selection.isValid ? selection.end : _messageController.text.length;
-        final result = insertImgTagAt(
-          text: _messageController.text,
-          start: start,
-          end: end,
-          url: url,
-        );
-        _messageController.value = TextEditingValue(
-          text: result.text,
-          selection: TextSelection.collapsed(offset: result.cursor),
-        );
-        setState(() => _pendingUpload = null);
-        S1SnackBar.show(context, message: '图片已插入', bottomClearance: 72);
+          unawaited(
+            controller.closed.then((reason) {
+              if (!mounted) return;
+              if (reason != SnackBarClosedReason.action &&
+                  _pendingUpload != null) {
+                // 关闭 SnackBar（非点重试）视为取消剩余队列。
+                _cancelRemainingUploads();
+              }
+            }),
+          );
+        }
+        break;
+      } finally {
+        if (mounted && !failed) {
+          setState(() => _isUploadingImage = false);
+        }
       }
-    } catch (e) {
-      if (mounted) {
+    }
+
+    if (!mounted) return;
+    if (_pendingUpload != null) return;
+
+    if (_uploadBatchActive && _uploadQueue.isEmpty && !_isUploadingImage) {
+      final n = _uploadBatchSuccess;
+      setState(() {
+        _uploadBatchActive = false;
+        _uploadBatchTotal = 0;
+        _uploadBatchSuccess = 0;
+      });
+      if (n > 0) {
         S1SnackBar.show(
           context,
-          message: e.toString(),
+          message: n == 1 ? '图片已添加' : '已添加 $n 张图片',
           bottomClearance: 72,
-          actionLabel: '重试',
-          onAction: () {
-            if (mounted) unawaited(_uploadPendingImage());
-          },
         );
       }
-    } finally {
-      if (mounted) setState(() => _isUploadingImage = false);
     }
+  }
+
+  void _insertUploadedImage({
+    required String url,
+    required String filename,
+  }) {
+    final label = filename.trim().isEmpty ? '图片' : filename;
+    _imageLabelsByUrl[url] = label;
+    if (_editMediaDetached) {
+      final slot = _nextEditMediaSlot();
+      final selection = _messageController.selection;
+      final start = selection.isValid
+          ? selection.start
+          : _messageController.text.length;
+      final end =
+          selection.isValid ? selection.end : _messageController.text.length;
+      final inserted = insertComposeMediaPlaceholderAt(
+        text: _messageController.text,
+        start: start,
+        end: end,
+        slot: slot,
+      );
+      _suppressMediaSync = true;
+      _messageController.value = TextEditingValue(
+        text: inserted.text,
+        selection: TextSelection.collapsed(offset: inserted.cursor),
+      );
+      _uploadedImages.add(
+        _ComposeUploadedImage(
+          tag: '[img]$url[/img]',
+          label: label,
+          previewUrl: url,
+          slot: slot,
+        ),
+      );
+      _suppressMediaSync = false;
+      _persistEditDraft();
+    } else {
+      final selection = _messageController.selection;
+      final start = selection.isValid
+          ? selection.start
+          : _messageController.text.length;
+      final end =
+          selection.isValid ? selection.end : _messageController.text.length;
+      final result = insertImgTagAt(
+        text: _messageController.text,
+        start: start,
+        end: end,
+        url: url,
+      );
+      _messageController.value = TextEditingValue(
+        text: result.text,
+        selection: TextSelection.collapsed(offset: result.cursor),
+      );
+    }
+  }
+
+  Future<void> _pasteIntoMessage() async {
+    if (_isSubmitting) return;
+    final bytes = await readComposeClipboardImage();
+    if (bytes != null && bytes.isNotEmpty) {
+      _enqueueImages([
+        (bytes: bytes, filename: composeClipboardImageFilename()),
+      ]);
+      return;
+    }
+    final data = await Clipboard.getData(Clipboard.kTextPlain);
+    final text = data?.text;
+    if (text == null || text.isEmpty || !mounted) return;
+    final selection = _messageController.selection;
+    final start =
+        selection.isValid ? selection.start : _messageController.text.length;
+    final end =
+        selection.isValid ? selection.end : _messageController.text.length;
+    final next = _messageController.text.replaceRange(start, end, text);
+    _messageController.value = TextEditingValue(
+      text: next,
+      selection: TextSelection.collapsed(offset: start + text.length),
+    );
   }
 
   Future<void> _submit() async {
@@ -1752,17 +1913,25 @@ class _ComposeScreenState extends ConsumerState<ComposeScreen> {
             const _ComposeMediaPreviewHint(),
         ],
         Expanded(
-          child: _ComposeMessageField(
-            controller: _messageController,
-            focusNode: _messageFocusNode,
-            hintText: _isNewThread
-                ? '输入主题内容…'
-                : (_isEditing ? '输入编辑后的内容…' : '输入回复内容…'),
-            onTap: () {
-              if (_showEmoticonPanel) {
-                setState(() => _showEmoticonPanel = false);
-              }
+          child: CallbackShortcuts(
+            bindings: {
+              const SingleActivator(LogicalKeyboardKey.keyV, control: true):
+                  () => unawaited(_pasteIntoMessage()),
+              const SingleActivator(LogicalKeyboardKey.keyV, meta: true): () =>
+                  unawaited(_pasteIntoMessage()),
             },
+            child: _ComposeMessageField(
+              controller: _messageController,
+              focusNode: _messageFocusNode,
+              hintText: _isNewThread
+                  ? '输入主题内容…'
+                  : (_isEditing ? '输入编辑后的内容…' : '输入回复内容…'),
+              onTap: () {
+                if (_showEmoticonPanel) {
+                  setState(() => _showEmoticonPanel = false);
+                }
+              },
+            ),
           ),
         ),
         ClipRect(
@@ -1783,6 +1952,15 @@ class _ComposeScreenState extends ConsumerState<ComposeScreen> {
           canPreview: _canPreview,
           isSubmitting: _isSubmitting,
           isUploadingImage: _isUploadingImage,
+          uploadProgressLabel: _isUploadingImage
+              ? (_uploadBatchTotal > 1
+                  ? '上传中 ${_uploadBatchSuccess + 1}/$_uploadBatchTotal'
+                  : '上传中')
+              : null,
+          characterCount: composeMessageCharCount(
+            _messageController.text,
+            stripMediaPlaceholders: _editMediaDetached,
+          ),
           emoticonPanelOpen: showPanel,
           onPickImage: _pickAndUploadImage,
           onToggleEmoticon: _toggleEmoticonPanel,
@@ -2820,6 +2998,7 @@ class _ComposeBottomBar extends StatelessWidget {
     required this.canPreview,
     required this.isSubmitting,
     required this.isUploadingImage,
+    required this.characterCount,
     required this.emoticonPanelOpen,
     required this.onPickImage,
     required this.onToggleEmoticon,
@@ -2827,6 +3006,7 @@ class _ComposeBottomBar extends StatelessWidget {
     required this.onSubmit,
     required this.onBbcodeWrap,
     required this.onInsertUrl,
+    this.uploadProgressLabel,
     this.submitLabel = '发送',
   });
 
@@ -2835,6 +3015,8 @@ class _ComposeBottomBar extends StatelessWidget {
   final bool canPreview;
   final bool isSubmitting;
   final bool isUploadingImage;
+  final int characterCount;
+  final String? uploadProgressLabel;
   final bool emoticonPanelOpen;
   final VoidCallback onPickImage;
   final VoidCallback onToggleEmoticon;
@@ -2850,6 +3032,7 @@ class _ComposeBottomBar extends StatelessWidget {
     final textTheme = Theme.of(context).textTheme;
     final bottomInset = MediaQuery.viewInsetsOf(context).bottom;
     final desktop = context.isExpandedOrAbove;
+    final imageLabel = uploadProgressLabel ?? (isUploadingImage ? '上传中' : '图片');
 
     return Material(
       color: desktop ? Colors.transparent : S1BottomBarStyle.background(scheme),
@@ -2898,9 +3081,16 @@ class _ComposeBottomBar extends StatelessWidget {
                               ),
                             )
                           : const Icon(Icons.image_outlined),
-                      label: Text(isUploadingImage ? '上传中' : '图片'),
+                      label: Text(imageLabel),
                     ),
                     const Spacer(),
+                    Text(
+                      '$characterCount 字',
+                      style: textTheme.labelSmall?.copyWith(
+                        color: scheme.onSurfaceVariant,
+                      ),
+                    ),
+                    const SizedBox(width: 8),
                     IconButton(
                       tooltip: '预览',
                       onPressed: canPreview && !busy ? onPreview : null,

@@ -42,7 +42,7 @@ void main() {
     await tester.pumpAndSettle();
   }
 
-  testWidgets('shows copy link menu item', (tester) async {
+  testWidgets('shows copy link and open link menu items by default', (tester) async {
     await pumpMenu(
       tester,
       launcher: (url, {mode = LaunchMode.platformDefault}) async => true,
@@ -50,8 +50,9 @@ void main() {
 
     await openMoreMenu(tester);
 
-    // Menu item is visible.
+    // Menu items are visible by default.
     expect(find.text('复制链接'), findsOneWidget);
+    expect(find.text('输入链接'), findsOneWidget);
   });
 
   testWidgets('shows and triggers go to latest menu item when provided',

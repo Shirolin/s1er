@@ -20,7 +20,7 @@ class AppBarMoreMenu extends StatelessWidget {
     this.onGoToLatest,
     required this.browserUrl,
     this.launcher = launchUrl,
-    this.showOpenLink = false,
+    this.showOpenLink = true,
   });
 
   final VoidCallback? onRefresh;

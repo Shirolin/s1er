@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../config/app_icon_catalog.dart';
@@ -7,6 +9,7 @@ import '../models/share_pixel_ratio.dart';
 import '../config/constants.dart';
 import '../services/app_icon_service.dart';
 import '../services/app_local_data.dart';
+import '../services/font_import_service.dart';
 import '../services/s1_image_cache.dart';
 import '../services/settings_store.dart';
 import '../services/talker.dart';
@@ -32,6 +35,7 @@ class AppSettings {
     this.postSignatureEnabled = true,
     this.postSignatureShowDevice = true,
     this.postSignatureCustom = '',
+    this.customFontFileName,
   });
 
   final String themeMode;
@@ -51,6 +55,7 @@ class AppSettings {
   final bool postSignatureEnabled;
   final bool postSignatureShowDevice;
   final String postSignatureCustom;
+  final String? customFontFileName;
 
   double get textScaleFactor => fontSize / S1Typography.defaultBodySize;
 
@@ -72,6 +77,7 @@ class AppSettings {
     bool? postSignatureEnabled,
     bool? postSignatureShowDevice,
     String? postSignatureCustom,
+    Object? customFontFileName = _Sentinel.value,
   }) {
     return AppSettings(
       themeMode: themeMode ?? this.themeMode,
@@ -92,6 +98,9 @@ class AppSettings {
       postSignatureShowDevice:
           postSignatureShowDevice ?? this.postSignatureShowDevice,
       postSignatureCustom: postSignatureCustom ?? this.postSignatureCustom,
+      customFontFileName: customFontFileName == _Sentinel.value
+          ? this.customFontFileName
+          : customFontFileName as String?,
     );
   }
 
@@ -114,7 +123,8 @@ class AppSettings {
         other.sharePixelRatio == sharePixelRatio &&
         other.postSignatureEnabled == postSignatureEnabled &&
         other.postSignatureShowDevice == postSignatureShowDevice &&
-        other.postSignatureCustom == postSignatureCustom;
+        other.postSignatureCustom == postSignatureCustom &&
+        other.customFontFileName == customFontFileName;
   }
 
   static bool _setEquals(Set<String> a, Set<String> b) =>
@@ -138,8 +148,13 @@ class AppSettings {
         sharePixelRatio,
         postSignatureEnabled,
         postSignatureShowDevice,
-        postSignatureCustom,
+        Object.hash(postSignatureCustom, customFontFileName),
       );
+}
+
+class _Sentinel {
+  const _Sentinel();
+  static const value = _Sentinel();
 }
 
 final localDataProvider = Provider<AppLocalData>((ref) {
@@ -166,11 +181,17 @@ class SettingsNotifier extends Notifier<AppSettings> {
     if (initial != null) {
       _applyImageCacheLimit(initial!.imageCacheLimitMb);
       _syncHaptics(initial!.hapticsEnabled);
+      if (initial!.customFontFileName != null) {
+        unawaited(FontImportService.tryRestoreFont());
+      }
       return initial!;
     }
     final settings = _loadSettings();
     _applyImageCacheLimit(settings.imageCacheLimitMb);
     _syncHaptics(settings.hapticsEnabled);
+    if (settings.customFontFileName != null) {
+      unawaited(FontImportService.tryRestoreFont());
+    }
     return settings;
   }
 
@@ -299,7 +320,19 @@ class SettingsNotifier extends Notifier<AppSettings> {
             defaultValue: '',
           ) ??
           '',
+      customFontFileName: settingsStore.get<String>('customFontFileName'),
     );
+  }
+
+  void setCustomFont(String fileName) {
+    _commit(state.copyWith(customFontFileName: fileName));
+    _persist('customFontFileName', fileName);
+  }
+
+  void removeCustomFont() {
+    unawaited(FontImportService.removeCustomFont());
+    _commit(state.copyWith(customFontFileName: null));
+    _persist('customFontFileName', null);
   }
 
   void setThemeMode(String value) {
@@ -443,8 +476,10 @@ class SettingsNotifier extends Notifier<AppSettings> {
       fontSize: defaults.fontSize,
       shareImageFormat: defaults.shareImageFormat,
       sharePixelRatio: defaults.sharePixelRatio,
+      customFontFileName: null,
     );
     _commit(next);
+    unawaited(FontImportService.removeCustomFont());
     _persist('themeMode', defaults.themeMode);
     _persist('themeColor', defaults.themeColor);
     _persist('appIcon', defaults.appIcon);
@@ -459,6 +494,7 @@ class SettingsNotifier extends Notifier<AppSettings> {
     _persist('fontSize', defaults.fontSize);
     _persist('shareImageFormat', defaults.shareImageFormat.storageKey);
     _persist('sharePixelRatio', defaults.sharePixelRatio);
+    _persist('customFontFileName', null);
     // Best-effort native align; failures are logged inside sync.
     // ignore: discarded_futures
     syncAppIconWithNative();

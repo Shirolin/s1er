@@ -27,6 +27,7 @@ import 'screens/dark_room_screen.dart';
 import 'screens/image_viewer_screen.dart';
 import 'screens/user_space_screen.dart';
 import 'screens/pm_conversation_screen.dart';
+import 'services/font_import_service.dart';
 import 'services/talker.dart';
 import 'theme/app_theme.dart';
 import 'utils/thread_navigation.dart';
@@ -246,9 +247,15 @@ class _S1AppState extends ConsumerState<S1App> with WidgetsBindingObserver {
 
     final themeModeStr = ref.watch(settingsProvider.select((s) => s.themeMode));
     final themeColor = ref.watch(settingsProvider.select((s) => s.themeColor));
+    final customFontFileName = ref.watch(
+      settingsProvider.select((s) => s.customFontFileName),
+    );
     final textScaleFactor = ref.watch(
       settingsProvider.select((s) => s.textScaleFactor),
     );
+
+    final customFontFamily =
+        customFontFileName != null ? FontImportService.kFontFamily : null;
 
     final themeMode = switch (themeModeStr) {
       'light' => ThemeMode.light,
@@ -261,8 +268,14 @@ class _S1AppState extends ConsumerState<S1App> with WidgetsBindingObserver {
       options: const TalkerWrapperOptions(enableErrorAlerts: true),
       child: MaterialApp.router(
         title: S1Constants.appName,
-        theme: AppTheme.lightTheme(themeColor),
-        darkTheme: AppTheme.darkTheme(themeColor),
+        theme: AppTheme.lightTheme(
+          themeColor,
+          customFontFamily: customFontFamily,
+        ),
+        darkTheme: AppTheme.darkTheme(
+          themeColor,
+          customFontFamily: customFontFamily,
+        ),
         themeMode: themeMode,
         routerConfig: _router,
         builder: (context, child) {

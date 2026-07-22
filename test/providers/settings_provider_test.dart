@@ -12,6 +12,8 @@ import 'package:s1er/theme/s1_haptics.dart';
 import '../helpers/test_local_data.dart';
 
 void main() {
+  TestWidgetsFlutterBinding.ensureInitialized();
+
   late SettingsStore store;
   late dynamic db;
 

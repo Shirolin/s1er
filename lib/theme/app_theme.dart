@@ -194,6 +194,22 @@ abstract final class S1Fonts {
       fontFamilyFallback: fallback,
     );
   }
+
+  /// 包含运行时自定义字体族时的 TextTheme 应用逻辑。
+  static TextTheme applyCustomOrDefault(TextTheme base, String? customFamily) {
+    if (customFamily != null && customFamily.isNotEmpty) {
+      final family = fontFamily;
+      final fallback = fontFamilyFallback;
+      return base.apply(
+        fontFamily: customFamily,
+        fontFamilyFallback: [
+          if (family != null) family,
+          ...fallback,
+        ],
+      );
+    }
+    return applyTo(base);
+  }
 }
 
 /// M3 动效时长 / 曲线（短过渡与面板进出共用）。
@@ -250,32 +266,46 @@ class AppTheme {
     return themeSeeds.containsKey(key) ? key! : defaultThemeColorKey;
   }
 
-  static ThemeData lightTheme(String themeColorKey) {
+  static ThemeData lightTheme(String themeColorKey, {String? customFontFamily}) {
     final seedColor = themeSeeds[normalizeThemeColorKey(themeColorKey)]!;
     return fromColorScheme(
       ColorScheme.fromSeed(seedColor: seedColor, brightness: Brightness.light),
+      customFontFamily: customFontFamily,
     );
   }
 
-  static ThemeData darkTheme(String themeColorKey) {
+  static ThemeData darkTheme(String themeColorKey, {String? customFontFamily}) {
     final seedColor = themeSeeds[normalizeThemeColorKey(themeColorKey)]!;
     return fromColorScheme(
       ColorScheme.fromSeed(seedColor: seedColor, brightness: Brightness.dark),
+      customFontFamily: customFontFamily,
     );
   }
 
-  static ThemeData fromColorScheme(ColorScheme colorScheme) {
-    final textTheme = S1Fonts.applyTo(
+  static ThemeData fromColorScheme(
+    ColorScheme colorScheme, {
+    String? customFontFamily,
+  }) {
+    final textTheme = S1Fonts.applyCustomOrDefault(
       ThemeData(useMaterial3: true, colorScheme: colorScheme).textTheme,
+      customFontFamily,
     );
+
+    final effectiveFontFamily = customFontFamily ?? S1Fonts.fontFamily;
+    final effectiveFallback = customFontFamily != null
+        ? [
+            if (S1Fonts.fontFamily != null) S1Fonts.fontFamily!,
+            ...S1Fonts.fontFamilyFallback,
+          ]
+        : (S1Fonts.fontFamilyFallback.isEmpty
+            ? null
+            : S1Fonts.fontFamilyFallback);
 
     return ThemeData(
       useMaterial3: true,
       colorScheme: colorScheme,
-      fontFamily: S1Fonts.fontFamily,
-      fontFamilyFallback: S1Fonts.fontFamilyFallback.isEmpty
-          ? null
-          : S1Fonts.fontFamilyFallback,
+      fontFamily: effectiveFontFamily,
+      fontFamilyFallback: effectiveFallback,
       textTheme: textTheme,
       primaryTextTheme: textTheme,
       scaffoldBackgroundColor: S1Surface.page(colorScheme),

@@ -1,11 +1,11 @@
 import 'dart:async';
-import 'dart:typed_data';
 import 'dart:ui' show PointerDeviceKind;
 
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:file_selector/file_selector.dart';
 import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import '../models/post.dart';
@@ -24,6 +24,7 @@ import '../providers/thread_list_provider.dart';
 import '../theme/app_theme.dart';
 import '../theme/s1_haptics.dart';
 import '../utils/compact_label.dart';
+import '../utils/compose_bbcode_wrap.dart';
 import '../utils/compose_img_tags.dart';
 import '../utils/compose_message_draft.dart';
 import '../utils/new_thread_draft.dart';
@@ -36,6 +37,7 @@ import '../utils/quote_snapshot_store.dart';
 import '../utils/s1_snack_bar.dart';
 import '../utils/window_size.dart';
 import '../widgets/bbcode_renderer.dart';
+import '../widgets/compose_bbcode_toolbar.dart';
 import '../widgets/compose_emoticon_panel.dart';
 import '../widgets/s1_confirm_dialog.dart';
 import '../widgets/s1_draft_leave_dialog.dart';
@@ -955,6 +957,112 @@ class _ComposeScreenState extends ConsumerState<ComposeScreen> {
     }
   }
 
+  bool get _composeBusy =>
+      _isSubmitting ||
+      _isUploadingImage ||
+      _quotePrefetching ||
+      _newThreadLoading ||
+      _editLoading ||
+      _editUncertain ||
+      _editConflict;
+
+  void _applyBbcodeWrap(String openTag, String closeTag) {
+    if (_composeBusy) return;
+    final selection = _messageController.selection;
+    final start =
+        selection.isValid ? selection.start : _messageController.text.length;
+    final end =
+        selection.isValid ? selection.end : _messageController.text.length;
+    final result = wrapBbcodeSelection(
+      text: _messageController.text,
+      start: start,
+      end: end,
+      openTag: openTag,
+      closeTag: closeTag,
+    );
+    _messageController.value = TextEditingValue(
+      text: result.text,
+      selection: TextSelection.collapsed(offset: result.cursor),
+    );
+    _messageFocusNode.requestFocus();
+  }
+
+  Future<void> _insertUrlBbcode() async {
+    if (_composeBusy || !mounted) return;
+    if (_showEmoticonPanel) {
+      setState(() => _showEmoticonPanel = false);
+    }
+    _messageFocusNode.unfocus();
+
+    final selection = _messageController.selection;
+    final start =
+        selection.isValid ? selection.start : _messageController.text.length;
+    final end =
+        selection.isValid ? selection.end : _messageController.text.length;
+
+    final urlController = TextEditingController();
+    final url = await showDialog<String>(
+      context: context,
+      builder: (ctx) {
+        return AlertDialog(
+          title: const Text('插入链接'),
+          content: TextField(
+            controller: urlController,
+            autofocus: true,
+            keyboardType: TextInputType.url,
+            decoration: const InputDecoration(
+              labelText: 'URL',
+              hintText: 'https://',
+            ),
+            onSubmitted: (value) {
+              final trimmed = value.trim();
+              if (trimmed.isEmpty) return;
+              Navigator.of(ctx).pop(trimmed);
+            },
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.of(ctx).pop(),
+              child: const Text('取消'),
+            ),
+            FilledButton(
+              onPressed: () {
+                final trimmed = urlController.text.trim();
+                if (trimmed.isEmpty) return;
+                Navigator.of(ctx).pop(trimmed);
+              },
+              child: const Text('插入'),
+            ),
+          ],
+        );
+      },
+    );
+    urlController.dispose();
+    if (!mounted || url == null || url.isEmpty) {
+      _messageFocusNode.requestFocus();
+      return;
+    }
+
+    final result = wrapBbcodeSelection(
+      text: _messageController.text,
+      start: start,
+      end: end,
+      openTag: '[url=$url]',
+      closeTag: '[/url]',
+    );
+    _messageController.value = TextEditingValue(
+      text: result.text,
+      selection: TextSelection.collapsed(offset: result.cursor),
+    );
+    _messageFocusNode.requestFocus();
+  }
+
+  void _dismissEmoticonPanelForShortcut() {
+    if (!_showEmoticonPanel) return;
+    setState(() => _showEmoticonPanel = false);
+    _messageFocusNode.requestFocus();
+  }
+
   Future<void> _showPreview() async {
     final message = _messageController.text;
     if (!_canPreview) return;
@@ -1680,54 +1788,86 @@ class _ComposeScreenState extends ConsumerState<ComposeScreen> {
           onToggleEmoticon: _toggleEmoticonPanel,
           onPreview: _showPreview,
           onSubmit: _submit,
+          onBbcodeWrap: _applyBbcodeWrap,
+          onInsertUrl: _insertUrlBbcode,
           submitLabel: _isEditing ? '保存编辑' : '发送',
         ),
       ],
     );
 
-    return PopScope(
-      canPop: _allowPop || !_isDirty,
-      onPopInvokedWithResult: _handlePop,
-      child: Scaffold(
-        backgroundColor: S1Surface.page(scheme),
-        appBar: AppBar(
-          elevation: 0,
-          title: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Text(_title, style: textTheme.titleLarge),
-              if (forumName != null && forumName.isNotEmpty)
-                Text(
-                  forumName,
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                  style: textTheme.labelMedium?.copyWith(
-                    color: scheme.onSurfaceVariant,
-                  ),
-                ),
-            ],
-          ),
-        ),
-        // 宽屏：写作区用 standard 限宽（840/1040）+ 一体 Card，避免「中间一条手机栏」。
-        body: S1ContentWidth(
-          mode: S1ContentWidthMode.standard,
-          child: context.isExpandedOrAbove
-              ? Padding(
-                  padding: const EdgeInsets.fromLTRB(24, 8, 24, 16),
-                  child: Card(
-                    key: const ValueKey('compose_desktop_card'),
-                    elevation: 0,
-                    color: S1Surface.card(scheme),
-                    clipBehavior: Clip.antiAlias,
-                    margin: EdgeInsets.zero,
-                    shape: const RoundedRectangleBorder(
-                      borderRadius: S1Shape.large,
-                      side: BorderSide.none,
+    return CallbackShortcuts(
+      bindings: {
+        const SingleActivator(LogicalKeyboardKey.enter, control: true): () {
+          if (_canSubmit) _submit();
+        },
+        const SingleActivator(LogicalKeyboardKey.enter, meta: true): () {
+          if (_canSubmit) _submit();
+        },
+        const SingleActivator(LogicalKeyboardKey.keyB, control: true): () {
+          _applyBbcodeWrap('[b]', '[/b]');
+        },
+        const SingleActivator(LogicalKeyboardKey.keyB, meta: true): () {
+          _applyBbcodeWrap('[b]', '[/b]');
+        },
+        const SingleActivator(LogicalKeyboardKey.keyI, control: true): () {
+          _applyBbcodeWrap('[i]', '[/i]');
+        },
+        const SingleActivator(LogicalKeyboardKey.keyI, meta: true): () {
+          _applyBbcodeWrap('[i]', '[/i]');
+        },
+        const SingleActivator(LogicalKeyboardKey.keyK, control: true): () {
+          _insertUrlBbcode();
+        },
+        const SingleActivator(LogicalKeyboardKey.keyK, meta: true): () {
+          _insertUrlBbcode();
+        },
+        const SingleActivator(LogicalKeyboardKey.escape):
+            _dismissEmoticonPanelForShortcut,
+      },
+      child: PopScope(
+        canPop: _allowPop || !_isDirty,
+        onPopInvokedWithResult: _handlePop,
+        child: Scaffold(
+          backgroundColor: S1Surface.page(scheme),
+          appBar: AppBar(
+            elevation: 0,
+            title: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Text(_title, style: textTheme.titleLarge),
+                if (forumName != null && forumName.isNotEmpty)
+                  Text(
+                    forumName,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: textTheme.labelMedium?.copyWith(
+                      color: scheme.onSurfaceVariant,
                     ),
-                    child: formColumn,
                   ),
-                )
-              : formColumn,
+              ],
+            ),
+          ),
+          // 宽屏：写作区用 standard 限宽（840/1040）+ 一体 Card，避免「中间一条手机栏」。
+          body: S1ContentWidth(
+            mode: S1ContentWidthMode.standard,
+            child: context.isExpandedOrAbove
+                ? Padding(
+                    padding: const EdgeInsets.fromLTRB(24, 8, 24, 16),
+                    child: Card(
+                      key: const ValueKey('compose_desktop_card'),
+                      elevation: 0,
+                      color: S1Surface.card(scheme),
+                      clipBehavior: Clip.antiAlias,
+                      margin: EdgeInsets.zero,
+                      shape: const RoundedRectangleBorder(
+                        borderRadius: S1Shape.large,
+                        side: BorderSide.none,
+                      ),
+                      child: formColumn,
+                    ),
+                  )
+                : formColumn,
+          ),
         ),
       ),
     );
@@ -2685,6 +2825,8 @@ class _ComposeBottomBar extends StatelessWidget {
     required this.onToggleEmoticon,
     required this.onPreview,
     required this.onSubmit,
+    required this.onBbcodeWrap,
+    required this.onInsertUrl,
     this.submitLabel = '发送',
   });
 
@@ -2698,6 +2840,8 @@ class _ComposeBottomBar extends StatelessWidget {
   final VoidCallback onToggleEmoticon;
   final VoidCallback onPreview;
   final VoidCallback onSubmit;
+  final void Function(String openTag, String closeTag) onBbcodeWrap;
+  final VoidCallback onInsertUrl;
   final String submitLabel;
 
   @override
@@ -2719,6 +2863,11 @@ class _ComposeBottomBar extends StatelessWidget {
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
+              ComposeBbcodeToolbar(
+                busy: busy,
+                onWrap: onBbcodeWrap,
+                onInsertUrl: onInsertUrl,
+              ),
               Divider(
                 height: 1,
                 thickness: 1,

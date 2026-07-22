@@ -16,10 +16,14 @@ class ComposeEmoticonPanel extends StatefulWidget {
     super.key,
     required this.onSelect,
     this.recent = const [],
+    this.preferredHeight,
   });
 
   final ValueChanged<String> onSelect;
   final List<String> recent;
+
+  /// 对齐最近一次软键盘高度；为 null 时用默认 260–320。
+  final double? preferredHeight;
 
   @override
   State<ComposeEmoticonPanel> createState() => _ComposeEmoticonPanelState();
@@ -45,6 +49,10 @@ class _ComposeEmoticonPanelState extends State<ComposeEmoticonPanel>
   }
 
   double _panelHeight(BuildContext context) {
+    final preferred = widget.preferredHeight;
+    if (preferred != null && preferred > 0) {
+      return preferred.clamp(240.0, 360.0);
+    }
     final h = MediaQuery.sizeOf(context).height;
     return (h * 0.4).clamp(260.0, 320.0);
   }

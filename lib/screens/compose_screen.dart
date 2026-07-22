@@ -121,6 +121,7 @@ class _ComposeScreenState extends ConsumerState<ComposeScreen> {
   bool _redirectedToLogin = false;
   bool _allowPop = false;
   bool _showEmoticonPanel = false;
+  double? _lastKeyboardHeight;
   QuoteSnapshot? _draft;
   bool _includeQuote = false;
   QuoteInfo? _quoteInfo;
@@ -1113,7 +1114,7 @@ class _ComposeScreenState extends ConsumerState<ComposeScreen> {
         ) ??
         PrivateMessageItem.avatarUrlForUid(auth.user?.uid ?? '');
 
-    await showS1AdaptiveSheet<void>(
+    final confirmed = await showS1AdaptiveSheet<bool>(
       context: context,
       isScrollControlled: true,
       desktopMaxWidth: S1Breakpoints.contentWidthReading,
@@ -1127,8 +1128,13 @@ class _ComposeScreenState extends ConsumerState<ComposeScreen> {
         authorName: authorName,
         authorAvatar: authorAvatar,
         attachPreviewLimited: hasUnresolvedAttachimg(previewBbcode),
+        canSubmit: _canSubmit,
+        submitLabel: _isEditing ? '确认保存' : '确认发送',
       ),
     );
+    if (confirmed == true && mounted) {
+      await _submit(fromPreview: true);
+    }
   }
 
   @override
@@ -1445,7 +1451,7 @@ class _ComposeScreenState extends ConsumerState<ComposeScreen> {
     );
   }
 
-  Future<void> _submit() async {
+  Future<void> _submit({bool fromPreview = false}) async {
     if ((!_isNewThread && !_hasValidTid) ||
         widget.fid == null ||
         widget.fid!.isEmpty) {
@@ -1487,13 +1493,15 @@ class _ComposeScreenState extends ConsumerState<ComposeScreen> {
         S1SnackBar.show(context, message: '请选择主题分类', bottomClearance: 72);
         return;
       }
-      final confirmed = await showS1ConfirmDialog(
-        context,
-        title: '确认发布主题？',
-        content: '版块 ID：${widget.fid}\n标题：$subject\n发布后将对其他用户可见。',
-        confirmLabel: '发布',
-      );
-      if (!mounted || !confirmed) return;
+      if (!fromPreview) {
+        final confirmed = await showS1ConfirmDialog(
+          context,
+          title: '确认发布主题？',
+          content: '版块 ID：${widget.fid}\n标题：$subject\n发布后将对其他用户可见。',
+          confirmLabel: '发布',
+        );
+        if (!mounted || !confirmed) return;
+      }
       S1Haptics.medium();
       setState(() => _isSubmitting = true);
       try {
@@ -1544,15 +1552,17 @@ class _ComposeScreenState extends ConsumerState<ComposeScreen> {
         S1SnackBar.show(context, message: '请输入正文', bottomClearance: 72);
         return;
       }
-      final confirmed = await showS1ConfirmDialog(
-        context,
-        title: '确认覆盖帖子内容？',
-        content: widget.editIsFirst
-            ? '标题：${_subjectController.text.trim()}\n提交后将覆盖服务器上的主题内容。'
-            : '提交后将覆盖服务器上的回复内容。',
-        confirmLabel: '确认编辑',
-      );
-      if (!mounted || !confirmed) return;
+      if (!fromPreview) {
+        final confirmed = await showS1ConfirmDialog(
+          context,
+          title: '确认覆盖帖子内容？',
+          content: widget.editIsFirst
+              ? '标题：${_subjectController.text.trim()}\n提交后将覆盖服务器上的主题内容。'
+              : '提交后将覆盖服务器上的回复内容。',
+          confirmLabel: '确认编辑',
+        );
+        if (!mounted || !confirmed) return;
+      }
       S1Haptics.medium();
       setState(() => _isSubmitting = true);
       try {
@@ -1806,6 +1816,9 @@ class _ComposeScreenState extends ConsumerState<ComposeScreen> {
     // 回复编辑与回复页一致展示主题；一楼编辑已有可改标题控件，不再叠一行。
     final subject = (_isEditing && widget.editIsFirst) ? null : _subjectLabel;
     final keyboardInset = MediaQuery.viewInsetsOf(context).bottom;
+    if (keyboardInset > 0) {
+      _lastKeyboardHeight = keyboardInset;
+    }
     final showPanel = _showEmoticonPanel && keyboardInset <= 0;
     final fid = widget.fid;
     final forumName = fid == null || fid.isEmpty
@@ -1943,6 +1956,7 @@ class _ComposeScreenState extends ConsumerState<ComposeScreen> {
             child: ComposeEmoticonPanel(
               onSelect: _insertEmoticon,
               recent: _recentEmoticons,
+              preferredHeight: _lastKeyboardHeight,
             ),
           ),
         ),
@@ -2065,6 +2079,8 @@ class _ComposePreviewSheet extends StatelessWidget {
     required this.authorName,
     this.authorAvatar,
     this.attachPreviewLimited = false,
+    required this.canSubmit,
+    required this.submitLabel,
   });
 
   final String? subject;
@@ -2078,6 +2094,8 @@ class _ComposePreviewSheet extends StatelessWidget {
 
   /// 仍有未解析的 `[attachimg]`，预览里可能显示附件码。
   final bool attachPreviewLimited;
+  final bool canSubmit;
+  final String submitLabel;
 
   String get _floorLabel {
     if (isEditing) return '编辑';
@@ -2248,24 +2266,43 @@ class _ComposePreviewSheet extends StatelessWidget {
       ],
     );
 
+    final actions = Padding(
+      padding: const EdgeInsets.fromLTRB(16, 8, 16, 16),
+      child: FilledButton(
+        onPressed: canSubmit
+            ? () => Navigator.of(context).pop(true)
+            : null,
+        child: Text(submitLabel),
+      ),
+    );
+
     return SafeArea(
       child: desktop
           ? ConstrainedBox(
               constraints: BoxConstraints(maxHeight: maxHeight),
-              child: SingleChildScrollView(
-                padding: const EdgeInsets.fromLTRB(16, 8, 8, 16),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.stretch,
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    header,
-                    const SizedBox(height: 12),
-                    Padding(
-                      padding: const EdgeInsets.only(right: 8),
-                      child: postCard,
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Flexible(
+                    child: SingleChildScrollView(
+                      padding: const EdgeInsets.fromLTRB(16, 8, 8, 8),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.stretch,
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          header,
+                          const SizedBox(height: 12),
+                          Padding(
+                            padding: const EdgeInsets.only(right: 8),
+                            child: postCard,
+                          ),
+                        ],
+                      ),
                     ),
-                  ],
-                ),
+                  ),
+                  actions,
+                ],
               ),
             )
           : SizedBox(
@@ -2280,10 +2317,11 @@ class _ComposePreviewSheet extends StatelessWidget {
                   const SizedBox(height: 12),
                   Expanded(
                     child: SingleChildScrollView(
-                      padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
+                      padding: const EdgeInsets.fromLTRB(16, 0, 16, 8),
                       child: postCard,
                     ),
                   ),
+                  actions,
                 ],
               ),
             ),
@@ -2730,7 +2768,7 @@ class _ComposeSubjectLineState extends State<_ComposeSubjectLine> {
   }
 }
 
-class _ComposeQuoteBanner extends StatelessWidget {
+class _ComposeQuoteBanner extends StatefulWidget {
   const _ComposeQuoteBanner({
     this.post,
     this.displayFloor = 0,
@@ -2752,17 +2790,34 @@ class _ComposeQuoteBanner extends StatelessWidget {
   final String? error;
 
   @override
+  State<_ComposeQuoteBanner> createState() => _ComposeQuoteBannerState();
+}
+
+class _ComposeQuoteBannerState extends State<_ComposeQuoteBanner> {
+  bool _expanded = false;
+  bool _initialized = false;
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    if (!_initialized) {
+      _expanded = context.isExpandedOrAbove;
+      _initialized = true;
+    }
+  }
+
+  @override
   Widget build(BuildContext context) {
     final scheme = Theme.of(context).colorScheme;
     final textTheme = Theme.of(context).textTheme;
-    final post = this.post;
-    final resolvedPreview =
-        preview ?? (post == null ? '' : QuoteBuilder.previewText(post.message));
-    final resolvedTitle = title ??
+    final post = widget.post;
+    final resolvedPreview = widget.preview ??
+        (post == null ? '' : QuoteBuilder.previewText(post.message));
+    final resolvedTitle = widget.title ??
         (post == null
             ? '引用楼层'
-            : displayFloor > 0
-                ? '引用 #$displayFloor 楼 · ${post.author}'
+            : widget.displayFloor > 0
+                ? '引用 #${widget.displayFloor} 楼 · ${post.author}'
                 : '引用 ${post.author}');
 
     return Material(
@@ -2770,7 +2825,7 @@ class _ComposeQuoteBanner extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          if (loading)
+          if (widget.loading)
             LinearProgressIndicator(
               minHeight: 2,
               color: scheme.primary,
@@ -2782,45 +2837,65 @@ class _ComposeQuoteBanner extends StatelessWidget {
               children: [
                 Container(width: 3, color: scheme.primary),
                 Expanded(
-                  child: Padding(
-                    padding: const EdgeInsets.fromLTRB(12, 10, 0, 10),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          resolvedTitle,
-                          style: textTheme.labelLarge?.copyWith(
-                            color: scheme.onSurface,
-                            fontWeight: FontWeight.w600,
+                  child: InkWell(
+                    onTap: () {
+                      setState(() => _expanded = !_expanded);
+                    },
+                    child: Padding(
+                      padding: const EdgeInsets.fromLTRB(12, 10, 0, 10),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Row(
+                            children: [
+                              Expanded(
+                                child: Text(
+                                  resolvedTitle,
+                                  maxLines: 1,
+                                  overflow: TextOverflow.ellipsis,
+                                  style: textTheme.labelLarge?.copyWith(
+                                    color: scheme.onSurface,
+                                    fontWeight: FontWeight.w600,
+                                  ),
+                                ),
+                              ),
+                              Icon(
+                                _expanded
+                                    ? Icons.expand_less
+                                    : Icons.expand_more,
+                                color: scheme.onSurfaceVariant,
+                              ),
+                              const SizedBox(width: 4),
+                            ],
                           ),
-                        ),
-                        if (error != null) ...[
-                          const SizedBox(height: 4),
-                          Text(
-                            error!,
-                            style: textTheme.bodySmall?.copyWith(
-                              color: scheme.error,
+                          if (_expanded && widget.error != null) ...[
+                            const SizedBox(height: 4),
+                            Text(
+                              widget.error!,
+                              style: textTheme.bodySmall?.copyWith(
+                                color: scheme.error,
+                              ),
                             ),
-                          ),
-                        ],
-                        if (resolvedPreview.isNotEmpty) ...[
-                          const SizedBox(height: 4),
-                          Text(
-                            resolvedPreview,
-                            maxLines: 3,
-                            overflow: TextOverflow.ellipsis,
-                            style: textTheme.bodySmall?.copyWith(
-                              color: scheme.onSurfaceVariant,
+                          ],
+                          if (_expanded && resolvedPreview.isNotEmpty) ...[
+                            const SizedBox(height: 4),
+                            Text(
+                              resolvedPreview,
+                              maxLines: 3,
+                              overflow: TextOverflow.ellipsis,
+                              style: textTheme.bodySmall?.copyWith(
+                                color: scheme.onSurfaceVariant,
+                              ),
                             ),
-                          ),
+                          ],
                         ],
-                      ],
+                      ),
                     ),
                   ),
                 ),
                 IconButton(
                   tooltip: '移除引用',
-                  onPressed: onRemove,
+                  onPressed: widget.onRemove,
                   icon: Icon(Icons.close, color: scheme.onSurfaceVariant),
                 ),
               ],

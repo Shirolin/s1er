@@ -84,6 +84,10 @@ void main() {
     expect(find.text('回复 #5 楼'), findsOneWidget);
     expect(find.textContaining('引用 #5 楼'), findsOneWidget);
     expect(find.textContaining('alice'), findsWidgets);
+    // 紧凑屏默认折叠引用摘要，点开后可见全文。
+    expect(find.textContaining('quoted content'), findsNothing);
+    await tester.tap(find.textContaining('引用 #5 楼'));
+    await tester.pumpAndSettle();
     expect(find.textContaining('quoted content'), findsOneWidget);
     expect(find.textContaining('主题 · 示例主题标题'), findsOneWidget);
     expect(find.text('发送'), findsOneWidget);
@@ -198,6 +202,7 @@ void main() {
     // 回复预览不再叠「回复」角标（与副文案重复）。
     expect(find.text('回复'), findsNothing);
     expect(find.text('关闭'), findsNothing); // 默认测试视口为紧凑屏
+    expect(find.text('确认发送'), findsOneWidget);
     expect(find.byType(BbcodeRenderer), findsAtLeastNWidgets(1));
     expect(find.text('我的回复正文'), findsWidgets);
   });

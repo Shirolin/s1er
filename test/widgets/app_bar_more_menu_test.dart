@@ -12,6 +12,7 @@ void main() {
     WidgetTester tester, {
     required BrowserUrlLauncher launcher,
     VoidCallback? onGoToLatest,
+    VoidCallback? onHideForum,
     ListDensity? threadListDensity,
     ValueChanged<ListDensity>? onThreadListDensityChanged,
     ListDensity? postListDensity,
@@ -28,6 +29,7 @@ void main() {
                 browserUrl: browserUrl,
                 launcher: launcher,
                 onGoToLatest: onGoToLatest,
+                onHideForum: onHideForum,
                 threadListDensity: threadListDensity,
                 onThreadListDensityChanged: onThreadListDensityChanged,
                 postListDensity: postListDensity,
@@ -80,6 +82,23 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(goToLatestCalled, isTrue);
+  });
+
+  testWidgets('shows and triggers hide forum when provided', (tester) async {
+    var hideCalled = false;
+    await pumpMenu(
+      tester,
+      launcher: (url, {mode = LaunchMode.platformDefault}) async => true,
+      onHideForum: () => hideCalled = true,
+    );
+
+    await openMoreMenu(tester);
+
+    expect(find.text('屏蔽此版块'), findsOneWidget);
+    await tester.tap(find.text('屏蔽此版块'));
+    await tester.pumpAndSettle();
+
+    expect(hideCalled, isTrue);
   });
 
   testWidgets('shows thread list density toggles when provided', (tester) async {

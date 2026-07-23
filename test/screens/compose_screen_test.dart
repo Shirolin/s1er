@@ -500,6 +500,7 @@ class _StubComposeController extends ComposeController {
   Future<ForumAttachmentUploadInfo?> prefetchAttachmentUploadInfo({
     required String fid,
     String? tid,
+    String? editPid,
     ForumAttachmentUploadInfo? seed,
   }) async {
     return null;

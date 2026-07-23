@@ -12,6 +12,7 @@ import '../providers/settings_provider.dart';
 import '../providers/thread_list_provider.dart';
 import '../widgets/app_bar_more_menu.dart';
 import '../widgets/favorite_bookmark_button.dart';
+import '../widgets/hide_forum_confirm_dialog.dart';
 import '../models/favorite_item.dart';
 import '../models/new_thread_submit_result.dart';
 import '../widgets/pagination_bar.dart';
@@ -138,6 +139,12 @@ class _ForumListScreenState extends ConsumerState<ForumListScreen> {
               onThreadListDensityChanged: (density) => ref
                   .read(settingsProvider.notifier)
                   .setThreadListDensity(density),
+              onHideForum: () async {
+                final confirmed = await confirmHideForum(context);
+                if (!confirmed || !context.mounted) return;
+                ref.read(settingsProvider.notifier).hideForum(widget.fid);
+                S1SnackBar.show(context, message: '已屏蔽此版块');
+              },
             ),
           ],
         ),

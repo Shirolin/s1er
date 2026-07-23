@@ -44,7 +44,8 @@ class ForumAttachmentUploadService {
     }
 
     final uploadUrl = _resolveUploadUrl(info);
-    final uploadId = 'WU_FILE_${DateTime.now().microsecondsSinceEpoch % 100000}';
+    // 对齐网页 / S1-Next：固定 WU_FILE_0，便于 imagelist ajaxtarget。
+    const uploadId = 'WU_FILE_0';
     final mime = _contentTypeFor(safeName);
     final fileType = _fileExtension(safeName);
 
@@ -56,7 +57,11 @@ class ForumAttachmentUploadService {
         'id': uploadId,
         'size': bytes.length.toString(),
         'filetype': fileType,
-        'Filedata': MultipartFile.fromBytes(bytes, filename: safeName),
+        'Filedata': MultipartFile.fromBytes(
+          bytes,
+          filename: safeName,
+          contentType: DioMediaType.parse(mime),
+        ),
       });
 
       final origin = Uri.parse(ApiConfig.baseUrl).origin;
@@ -70,6 +75,10 @@ class ForumAttachmentUploadService {
             'Referer': referer,
             'Accept': '*/*',
           },
+          extra: const {
+            's1DesktopUa': true,
+            's1SkipFormhash': true,
+          },
           sendTimeout: const Duration(
             seconds: EnvConfig.imageUploadTimeoutSeconds,
           ),
@@ -82,16 +91,22 @@ class ForumAttachmentUploadService {
       final body = response.data?.toString() ?? '';
       final aid = parseForumAttachmentUploadAid(body);
       if (aid == null) {
+        final brief = body.replaceAll(RegExp(r'\s+'), ' ').trim();
+        talker.warning(
+          'Forum attachment upload rejected: '
+          '${brief.length > 200 ? '${brief.substring(0, 200)}…' : brief}',
+        );
         throw ForumAttachmentUploadException(
           forumAttachmentUploadErrorMessage(body),
         );
       }
 
-      final previewUrl = await _fetchPreviewUrl(
+      var previewUrl = await _fetchPreviewUrl(
         aid: aid,
         fid: info.fid,
         ajaxTarget: uploadId,
       );
+      previewUrl ??= parseForumAttachmentUploadPreviewUrl(body);
 
       return ComposeImageUploadResult(
         insertTag: '[attachimg]$aid[/attachimg]',
@@ -115,20 +130,38 @@ class ForumAttachmentUploadService {
     required String fid,
     required String ajaxTarget,
   }) async {
-    try {
+    Future<String?> tryList(String url) async {
       final response = await _httpClient.get(
+        url,
+        options: Options(
+          responseType: ResponseType.plain,
+          headers: {'X-Requested-With': 'XMLHttpRequest'},
+          extra: const {'s1DesktopUa': true},
+        ),
+      );
+      final map = parseForumAttachmentImageList(response.data?.toString() ?? '');
+      return map[aid];
+    }
+
+    try {
+      // 对齐 S1-Next：优先 attachlist。
+      final fromAttachList = await tryList(
         ApiConfig.forumAttachmentImageListUrl(
           aids: aid,
           fid: fid,
           ajaxTarget: ajaxTarget,
         ),
-        options: Options(
-          responseType: ResponseType.plain,
-          headers: {'X-Requested-With': 'XMLHttpRequest'},
+      );
+      if (fromAttachList != null && fromAttachList.isNotEmpty) {
+        return fromAttachList;
+      }
+      return await tryList(
+        ApiConfig.forumAttachmentImageListFallbackUrl(
+          aids: aid,
+          fid: fid,
+          ajaxTarget: ajaxTarget,
         ),
       );
-      final map = parseForumAttachmentImageList(response.data?.toString() ?? '');
-      return map[aid];
     } catch (e, st) {
       talker.handle(e, st, 'Forum attachment imagelist failed');
       return null;
@@ -138,6 +171,7 @@ class ForumAttachmentUploadService {
   static String _resolveUploadUrl(ForumAttachmentUploadInfo info) {
     final raw = info.uploadUrl?.trim();
     if (raw == null || raw.isEmpty) {
+      // 无页内 URL：桌面路径；触屏凭据通常已带 uploadurl。
       return ApiConfig.forumAttachmentUploadUrl(fid: info.fid);
     }
     if (raw.startsWith('http://') || raw.startsWith('https://')) return raw;

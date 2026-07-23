@@ -36,6 +36,50 @@ var post_params = {"uid":"1","hash":"abc123hash","fid":"51"};
       expect(info.fid, '51');
     });
 
+    test('parses touch template uploadformdata and uploadurl', () {
+      const html = '''
+<?xml version="1.0" encoding="utf-8"?>
+<root><![CDATA[
+<form method="post" id="postform" action="forum.php?mod=post&action=reply&fid=4&tid=1&mobile=2">
+<input type="hidden" name="formhash" id="formhash" value="5ac91bb7" />
+<textarea id="needmessage" name="message"></textarea>
+</form>
+<script type="text/javascript">
+\$(document).on('change', '#filedata', function() {
+\$.buildfileupload({
+uploadurl:'misc.php?mod=swfupload&operation=upload&type=image&inajax=yes&infloat=yes&simple=2',
+uploadformdata:{uid:"426519", hash:"ee9699596ff7c4584b5e39c8cdf11d34"},
+uploadinputname:'Filedata',
+});
+});
+</script>
+]]></root>
+''';
+      final info = parseForumAttachmentUploadInfo(html, fallbackFid: '4');
+      expect(info, isNotNull);
+      expect(info!.hash, 'ee9699596ff7c4584b5e39c8cdf11d34');
+      expect(info.uid, '426519');
+      expect(info.fid, '4');
+      expect(info.formhash, '5ac91bb7');
+      expect(info.uploadUrl, contains('simple=2'));
+      expect(info.uploadUrl, contains('type=image'));
+    });
+
+    test('prefers post_params over uploadformdata when both exist', () {
+      const html = '''
+<script>
+var upload_url = "misc.php?mod=swfupload&action=swfupload&operation=upload&fid=4";
+var post_params = {"uid":"1","hash":"desktopHash","fid":"4"};
+uploadformdata:{uid:"9", hash:"mobileHash"};
+uploadurl:'misc.php?mod=swfupload&operation=upload&type=image&simple=2';
+</script>
+''';
+      final info = parseForumAttachmentUploadInfo(html, fallbackFid: '4');
+      expect(info, isNotNull);
+      expect(info!.hash, 'desktopHash');
+      expect(info.uploadUrl, contains('action=swfupload'));
+    });
+
     test('uses fallbackFid when form omits fid', () {
       const html = '''
 <input type="hidden" name="hash" value="onlyhash" />
@@ -53,16 +97,43 @@ var post_params = {"uid":"1","hash":"abc123hash","fid":"51"};
       expect(parseForumAttachmentUploadAid('2105474'), '2105474');
     });
 
-    test('parses DISCUZUPLOAD pipe format', () {
+    test('parses DISCUZUPLOAD desktop pipe format', () {
       expect(
         parseForumAttachmentUploadAid('DISCUZUPLOAD|0|2105474|1|0'),
         '2105474',
       );
     });
 
+    test('parses DISCUZUPLOAD mobile simple=2 success', () {
+      expect(
+        parseForumAttachmentUploadAid(
+          'DISCUZUPLOAD|1|0|2105474|1|202407/xx.jpg|jpg',
+        ),
+        '2105474',
+      );
+      expect(
+        parseForumAttachmentUploadAid(
+          'DISCUZUPLOAD|0|0|2105999|1|202407/yy.png|png',
+        ),
+        '2105999',
+      );
+    });
+
     test('rejects failure responses', () {
       expect(parseForumAttachmentUploadAid('DISCUZUPLOAD|1|ban'), isNull);
+      expect(parseForumAttachmentUploadAid('DISCUZUPLOAD|1|1|0'), isNull);
       expect(parseForumAttachmentUploadAid(''), isNull);
+    });
+  });
+
+  group('parseForumAttachmentUploadPreviewUrl', () {
+    test('builds img CDN url from simple=2 path', () {
+      expect(
+        parseForumAttachmentUploadPreviewUrl(
+          'DISCUZUPLOAD|1|0|2105474|1|202407/xx.jpg|jpg',
+        ),
+        'https://img.stage1st.com/forum/202407/xx.jpg',
+      );
     });
   });
 
@@ -75,6 +146,24 @@ var post_params = {"uid":"1","hash":"abc123hash","fid":"51"};
       expect(
         forumAttachmentUploadErrorMessage('DISCUZUPLOAD|1|perday'),
         '今日附件上传额度不足',
+      );
+    });
+
+    test('maps mobile STATUSMSG codes', () {
+      expect(
+        forumAttachmentUploadErrorMessage('DISCUZUPLOAD|1|6|0||||'),
+        '今日您已无法上传更多的附件',
+      );
+      expect(
+        forumAttachmentUploadErrorMessage('DISCUZUPLOAD|1|1|0||||ban'),
+        '附件类型被禁止',
+      );
+    });
+
+    test('maps login tip html', () {
+      expect(
+        forumAttachmentUploadErrorMessage('<root>请先登录</root>'),
+        '请先登录后再上传图片',
       );
     });
   });

@@ -21,6 +21,11 @@ void main() {
       );
     });
 
+    test('removeMediaTag strips attachimg by exact tag', () {
+      const text = '前[attachimg]12[/attachimg]后';
+      expect(removeMediaTag(text, '[attachimg]12[/attachimg]'), '前后');
+    });
+
     test('displayLabelForIndex is short', () {
       expect(displayLabelForIndex(0), '图片 1');
       expect(displayLabelForIndex(11), '图片 12');

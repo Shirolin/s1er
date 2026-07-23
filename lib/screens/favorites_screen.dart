@@ -5,8 +5,10 @@ import '../config/api_config.dart';
 import '../models/favorite_item.dart';
 import '../models/thread_destination.dart';
 import '../providers/auth_provider.dart';
+import '../providers/favorite_forum_pins_provider.dart';
 import '../providers/favorite_list_provider.dart';
 import '../providers/favorite_membership_provider.dart';
+import '../providers/settings_provider.dart';
 import '../widgets/favorite_confirm_dialog.dart';
 import '../utils/format_utils.dart';
 import '../utils/s1_snack_bar.dart';
@@ -19,7 +21,10 @@ import '../widgets/s1_swipe_pagination.dart';
 import '../widgets/s1_desktop_scaffold.dart';
 
 class FavoritesScreen extends ConsumerStatefulWidget {
-  const FavoritesScreen({super.key});
+  const FavoritesScreen({super.key, this.initialSegment});
+
+  /// Optional `all` / `thread` / `forum` (from `/favorites?segment=`).
+  final String? initialSegment;
 
   @override
   ConsumerState<FavoritesScreen> createState() => _FavoritesScreenState();
@@ -41,10 +46,27 @@ class _FavoritesScreenState extends ConsumerState<FavoritesScreen>
     FavoriteSegment.forum,
   ];
 
+  static int _indexForSegment(String? segment) {
+    switch (segment) {
+      case 'thread':
+        return 1;
+      case 'forum':
+        return 2;
+      case 'all':
+      default:
+        return 0;
+    }
+  }
+
   @override
   void initState() {
     super.initState();
-    _tabController = TabController(length: 3, vsync: this);
+    final initialIndex = _indexForSegment(widget.initialSegment);
+    _tabController = TabController(
+      length: 3,
+      vsync: this,
+      initialIndex: initialIndex,
+    );
     _visitedTabs = {_tabController.index};
     _tabController.addListener(_onTabChanged);
   }
@@ -233,6 +255,9 @@ class _FavoriteListBody extends ConsumerWidget {
     if (!context.mounted) return;
     if (ok) {
       ref.read(favoriteMembershipProvider.notifier).untrack(item);
+      if (item.type == FavoriteType.forum) {
+        ref.invalidate(favoriteForumPinsProvider);
+      }
       S1SnackBar.show(context, message: '已取消收藏');
     } else {
       S1SnackBar.show(context, message: '取消收藏失败');
@@ -240,7 +265,7 @@ class _FavoriteListBody extends ConsumerWidget {
   }
 }
 
-class _FavoriteTile extends StatelessWidget {
+class _FavoriteTile extends ConsumerWidget {
   const _FavoriteTile({
     required this.item,
     required this.onRemove,
@@ -250,9 +275,16 @@ class _FavoriteTile extends StatelessWidget {
   final VoidCallback onRemove;
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
     if (item.type == FavoriteType.forum) {
-      return _FavoriteForumTile(item: item, onRemove: onRemove);
+      final isHidden = ref.watch(
+        settingsProvider.select((s) => s.hiddenForums.contains(item.id)),
+      );
+      return _FavoriteForumTile(
+        item: item,
+        onRemove: onRemove,
+        isHidden: isHidden,
+      );
     }
     return _FavoriteThreadTile(item: item, onRemove: onRemove);
   }
@@ -328,10 +360,12 @@ class _FavoriteForumTile extends StatelessWidget {
   const _FavoriteForumTile({
     required this.item,
     required this.onRemove,
+    this.isHidden = false,
   });
 
   final FavoriteItem item;
   final VoidCallback onRemove;
+  final bool isHidden;
 
   @override
   Widget build(BuildContext context) {
@@ -363,12 +397,17 @@ class _FavoriteForumTile extends StatelessWidget {
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
                     ),
-                    if (item.dateline > 0) ...[
+                    if (isHidden || item.dateline > 0) ...[
                       const SizedBox(height: 4),
                       Text(
-                        formatTimeAgo(item.dateline),
+                        [
+                          if (isHidden) '已屏蔽',
+                          if (item.dateline > 0) formatTimeAgo(item.dateline),
+                        ].join(' · '),
                         style: textTheme.labelSmall?.copyWith(
-                          color: scheme.onSurfaceVariant,
+                          color: isHidden
+                              ? scheme.error
+                              : scheme.onSurfaceVariant,
                         ),
                       ),
                     ],

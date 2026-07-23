@@ -6,8 +6,8 @@ import '../models/forum_attachment_upload_info.dart';
 
 /// 从 Discuz 发帖/回复/编辑 HTML 解析论坛附件上传凭据。
 ///
-/// 顺序对齐 S1-Next：表单 `hash`/`uid`/`fid`/`operation=upload`，
-/// 再回退脚本里的 `post_params` / `upload_url`。
+/// 顺序：表单 `hash` → 桌面 `post_params`/`upload_url` →
+/// 触屏 `uploadformdata`/`uploadurl`（Web 手机 UA 常见）。
 ForumAttachmentUploadInfo? parseForumAttachmentUploadInfo(
   String html, {
   String? fallbackFid,
@@ -25,7 +25,11 @@ ForumAttachmentUploadInfo? parseForumAttachmentUploadInfo(
   }
 }
 
-/// 解析上传响应：纯数字 aid，或 `DISCUZUPLOAD|0|{aid}|…`。
+/// 解析上传响应 aid。
+///
+/// - 纯数字 aid
+/// - 桌面：`DISCUZUPLOAD|0|{aid}|…`
+/// - 触屏 simple=2：`DISCUZUPLOAD|{…}|0|{aid}|…`（成功看 index 2）
 String? parseForumAttachmentUploadAid(String response) {
   final result = response.trim();
   if (result.isEmpty) return null;
@@ -33,50 +37,118 @@ String? parseForumAttachmentUploadAid(String response) {
   if (numeric != null && numeric > 0) return numeric.toString();
 
   final parts = result.split('|');
-  if (parts.length >= 3 &&
-      parts[0] == 'DISCUZUPLOAD' &&
-      parts[1] == '0') {
+  if (parts.isEmpty || parts[0] != 'DISCUZUPLOAD') return null;
+
+  // 桌面 / classic：DISCUZUPLOAD|0|{aid}|…
+  if (parts.length >= 3 && parts[1] == '0') {
     final aid = int.tryParse(parts[2].trim());
     if (aid != null && aid > 0) return aid.toString();
   }
+
+  // 触屏 simple=2：DISCUZUPLOAD|{…}|0|{aid}|…
+  if (parts.length >= 4 && parts[2] == '0') {
+    final aid = int.tryParse(parts[3].trim());
+    if (aid != null && aid > 0) return aid.toString();
+  }
   return null;
+}
+
+/// 触屏 simple=2 成功响应里常带相对路径（`dataarr[5]`）。
+String? parseForumAttachmentUploadPreviewUrl(String response) {
+  final parts = response.trim().split('|');
+  if (parts.length < 6 || parts[0] != 'DISCUZUPLOAD') return null;
+  // simple=2 成功：index 2 == 0，index 5 为 forum/ 下路径
+  if (parts[2] != '0') return null;
+  final path = parts[5].trim();
+  if (path.isEmpty || path.contains('..')) return null;
+  if (path.startsWith('http://') || path.startsWith('https://')) {
+    return path;
+  }
+  if (path.startsWith('forum/')) {
+    return 'https://img.stage1st.com/$path';
+  }
+  return 'https://img.stage1st.com/forum/$path';
 }
 
 /// 把 Discuz 上传失败响应映射成可读中文。
 String forumAttachmentUploadErrorMessage(String response) {
   final result = response.trim();
   if (result.isEmpty) return '图片上传失败，请稍后重试';
-  final parts = result.split('|');
-  String reason;
-  if (parts.length >= 3 && parts[0] == 'DISCUZUPLOAD') {
-    // DISCUZUPLOAD|{status}|{reason|aid}|…
-    reason = parts[2].trim();
-  } else if (parts.length >= 2) {
-    reason = parts.skip(1).firstWhere(
-          (p) => p.isNotEmpty && p != '0',
-          orElse: () => '',
-        );
-  } else {
-    reason = result;
+  final lower = result.toLowerCase();
+  if (lower.contains('to_login') ||
+      result.contains('请先登录') ||
+      result.contains('需要登录')) {
+    return '请先登录后再上传图片';
   }
-  switch (reason) {
-    case 'ban':
-      return '附件类型被禁止';
-    case 'perday':
-      return '今日附件上传额度不足';
+  final parts = result.split('|');
+  if (parts.isNotEmpty && parts[0] == 'DISCUZUPLOAD') {
+    // 触屏 simple=2：STATUSMSG[dataarr[2]]，ban/perday 在 dataarr[7]
+    if (parts.length >= 4 &&
+        parts[2] != '0' &&
+        int.tryParse(parts[2].trim()) != null) {
+      final detail = parts.length > 7 ? parts[7].trim() : '';
+      if (detail == 'ban') return '附件类型被禁止';
+      if (detail == 'perday') return '今日附件上传额度不足';
+      return _mobileStatusMessage(parts[2].trim());
+    }
+    // 桌面：DISCUZUPLOAD|{status}|{reason}|…
+    if (parts.length >= 3) {
+      final reason = parts[2].trim();
+      switch (reason) {
+        case 'ban':
+          return '附件类型被禁止';
+        case 'perday':
+          return '今日附件上传额度不足';
+        case '-1':
+          return '内部服务器错误';
+        case '':
+          break;
+        default:
+          if (int.tryParse(reason) != null) {
+            return _mobileStatusMessage(reason);
+          }
+          final short = reason.replaceAll(RegExp(r'\s+'), ' ').trim();
+          if (short.length > 80) {
+            return '图片上传失败：${short.substring(0, 80)}';
+          }
+          return '图片上传失败：$short';
+      }
+    }
+  }
+  return '图片上传失败，请稍后重试';
+}
+
+String _mobileStatusMessage(String status) {
+  switch (status) {
     case '-1':
-      return '图片上传失败，请稍后重试';
-    case '':
-      return '图片上传失败，请稍后重试';
+      return '内部服务器错误';
+    case '1':
+    case '4':
+      return '不支持此类扩展名';
+    case '2':
+      return '服务器限制无法上传那么大的附件';
+    case '3':
+      return '用户组限制无法上传那么大的附件';
+    case '5':
+      return '文件类型限制无法上传那么大的附件';
+    case '6':
+      return '今日您已无法上传更多的附件';
+    case '7':
+      return '请选择图片文件（jpg/jpeg/gif/png）';
+    case '8':
+      return '附件文件无法保存';
+    case '9':
+      return '没有合法的文件被上传';
+    case '10':
+      return '非法操作';
+    case '11':
+      return '今日您已无法上传那么大的附件';
+    case '12':
+      return '因文件名包含敏感词而无法提交';
+    case '13':
+      return '服务器限制无法上传分辨率过高的附件';
     default:
-      if (int.tryParse(reason) != null) {
-        return '图片上传失败，请稍后重试';
-      }
-      final short = reason.replaceAll(RegExp(r'\s+'), ' ').trim();
-      if (short.length > 80) {
-        return '图片上传失败：${short.substring(0, 80)}';
-      }
-      return '图片上传失败：$short';
+      return '图片上传失败，请稍后重试';
   }
 }
 
@@ -181,22 +253,48 @@ ForumAttachmentUploadInfo? _fromScripts(
   for (final script in document.querySelectorAll('script')) {
     final content = script.text;
     if (content.isEmpty) continue;
+
+    // 桌面 SWFUpload：post_params + upload_url
     final postParams = _extractJsObjectProperty(content, 'post_params');
-    if (postParams == null) continue;
-    final hash = _jsonStringField(postParams, 'hash');
+    if (postParams != null) {
+      final hash = _jsonStringField(postParams, 'hash');
+      if (hash != null && hash.isNotEmpty) {
+        final uid = _jsonStringField(postParams, 'uid');
+        final uploadUrl = _extractJsStringProperty(content, 'upload_url');
+        final fid = _jsonStringField(postParams, 'fid') ??
+            fidFromUploadUrl(uploadUrl) ??
+            fallbackFid;
+        if (fid != null && fid.isNotEmpty) {
+          return ForumAttachmentUploadInfo(
+            hash: hash,
+            fid: fid,
+            uid: (uid != null && uid.isNotEmpty) ? uid : null,
+            uploadUrl: uploadUrl,
+            formhash: null,
+          );
+        }
+      }
+    }
+
+    // 触屏：uploadformdata:{uid,hash} + uploadurl:'misc.php?…&simple=2'
+    final uploadFormData = _extractJsObjectProperty(content, 'uploadformdata');
+    if (uploadFormData == null) continue;
+    final hash = _jsonStringField(uploadFormData, 'hash');
     if (hash == null || hash.isEmpty) continue;
-    final uid = _jsonStringField(postParams, 'uid');
-    final uploadUrl = _extractJsStringProperty(content, 'upload_url');
-    final fid = _jsonStringField(postParams, 'fid') ??
-        fidFromUploadUrl(uploadUrl) ??
-        fallbackFid;
+    final uid = _jsonStringField(uploadFormData, 'uid');
+    final uploadUrl = _extractJsStringProperty(content, 'uploadurl');
+    final fid =
+        fidFromUploadUrl(uploadUrl) ?? fallbackFid;
     if (fid == null || fid.isEmpty) continue;
     return ForumAttachmentUploadInfo(
       hash: hash,
       fid: fid,
       uid: (uid != null && uid.isNotEmpty) ? uid : null,
       uploadUrl: uploadUrl,
-      formhash: null,
+      formhash: document
+          .querySelector('input[name="formhash"]')
+          ?.attributes['value']
+          ?.trim(),
     );
   }
   return null;

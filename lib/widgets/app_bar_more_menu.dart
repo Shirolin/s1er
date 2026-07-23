@@ -19,6 +19,7 @@ class AppBarMoreMenu extends StatelessWidget {
     super.key,
     this.onRefresh,
     this.onGoToLatest,
+    this.onHideForum,
     required this.browserUrl,
     this.launcher = launchUrl,
     this.showOpenLink = true,
@@ -30,6 +31,7 @@ class AppBarMoreMenu extends StatelessWidget {
 
   final VoidCallback? onRefresh;
   final VoidCallback? onGoToLatest;
+  final VoidCallback? onHideForum;
   final String browserUrl;
   final BrowserUrlLauncher launcher;
   final bool showOpenLink;
@@ -173,6 +175,16 @@ class AppBarMoreMenu extends StatelessWidget {
             },
             icon: Icons.last_page,
             label: '跳转到最新',
+          ),
+        if (onHideForum != null)
+          s1MenuItem(
+            onPressed: () {
+              S1Haptics.selection();
+              onHideForum!();
+            },
+            icon: Icons.visibility_off_outlined,
+            label: '屏蔽此版块',
+            destructive: true,
           ),
         if (_showThreadListDensity) ...[
           const S1MenuDivider(),

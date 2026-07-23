@@ -395,6 +395,7 @@ class _ComposeScreenState extends ConsumerState<ComposeScreen> {
         await ref.read(composeControllerProvider).prefetchAttachmentUploadInfo(
               fid: fid,
               tid: widget.tid,
+              editPid: widget.editPid,
               seed: seed,
             );
     if (!mounted || info == null) return;
@@ -1298,9 +1299,13 @@ class _ComposeScreenState extends ConsumerState<ComposeScreen> {
       return;
     }
     final url = image.previewUrl;
-    if (url == null || url.isEmpty) return;
-    final next = removeImgTag(_messageController.text, url);
-    _imageLabelsByUrl.remove(url);
+    var next = _messageController.text;
+    if (image.tag.trim().isNotEmpty) {
+      next = removeMediaTag(next, image.tag);
+    } else if (url != null && url.isNotEmpty) {
+      next = removeImgTag(next, url);
+    }
+    if (url != null) _imageLabelsByUrl.remove(url);
     _messageController.value = TextEditingValue(
       text: next,
       selection: TextSelection.collapsed(
@@ -1388,17 +1393,6 @@ class _ComposeScreenState extends ConsumerState<ComposeScreen> {
     unawaited(_drainUploadQueue());
   }
 
-  void _cancelRemainingUploads() {
-    setState(() {
-      _pendingUpload = null;
-      _uploadQueue.clear();
-      _uploadBatchActive = false;
-      _uploadBatchTotal = 0;
-      _uploadBatchSuccess = 0;
-      _isUploadingImage = false;
-      _preparingUpload = false;
-    });
-  }
 
   Future<void> _drainUploadQueue() async {
     if (_isUploadingImage || _isSubmitting || _preparingUpload) return;
@@ -1437,30 +1431,18 @@ class _ComposeScreenState extends ConsumerState<ComposeScreen> {
         if (_attachmentUploadInfo == null || !_attachmentUploadInfo!.isValid) {
           setState(() => _isUploadingImage = false);
           if (mounted) {
-            final messenger = ScaffoldMessenger.of(context);
-            messenger.hideCurrentSnackBar();
-            messenger.showSnackBar(
-              SnackBar(
-                content: const Text('无法准备论坛上传，请稍后重试或改用外链'),
-                behavior: SnackBarBehavior.floating,
-                margin: EdgeInsets.fromLTRB(
-                  16,
-                  0,
-                  16,
-                  MediaQuery.paddingOf(context).bottom + 72,
-                ),
-                duration: const Duration(seconds: 8),
-                action: SnackBarAction(
-                  label: '改用外链',
-                  onPressed: () {
-                    if (!mounted) return;
-                    setState(() {
-                      _uploadSource = ComposeImageUploadSource.external;
-                    });
-                    unawaited(_drainUploadQueue());
-                  },
-                ),
-              ),
+            S1SnackBar.error(
+              context,
+              message: '无法准备论坛上传，请稍后重试或改用外链',
+              actionLabel: '改用外链',
+              onAction: () {
+                if (!mounted) return;
+                setState(() {
+                  _uploadSource = ComposeImageUploadSource.external;
+                });
+                // 保留 _pendingUpload，改用外链后继续传同一张。
+                unawaited(_drainUploadQueue());
+              },
             );
           }
           break;
@@ -1490,43 +1472,22 @@ class _ComposeScreenState extends ConsumerState<ComposeScreen> {
         failed = true;
         if (mounted) {
           setState(() => _isUploadingImage = false);
-          final messenger = ScaffoldMessenger.of(context);
-          messenger.hideCurrentSnackBar();
-          final controller = messenger.showSnackBar(
-            SnackBar(
-              content: Text(e.toString()),
-              behavior: SnackBarBehavior.floating,
-              margin: EdgeInsets.fromLTRB(
-                16,
-                0,
-                16,
-                MediaQuery.paddingOf(context).bottom + 72,
-              ),
-              duration: const Duration(seconds: 8),
-              action: SnackBarAction(
-                label: _uploadSource == ComposeImageUploadSource.forum
-                    ? '改用外链'
-                    : '重试',
-                onPressed: () {
-                  if (!mounted) return;
-                  if (_uploadSource == ComposeImageUploadSource.forum) {
-                    setState(() {
-                      _uploadSource = ComposeImageUploadSource.external;
-                    });
-                  }
-                  unawaited(_drainUploadQueue());
-                },
-              ),
-            ),
-          );
-          unawaited(
-            controller.closed.then((reason) {
+          S1SnackBar.error(
+            context,
+            message: e.toString(),
+            actionLabel: _uploadSource == ComposeImageUploadSource.forum
+                ? '改用外链'
+                : '重试',
+            onAction: () {
               if (!mounted) return;
-              if (reason != SnackBarClosedReason.action &&
-                  _pendingUpload != null) {
-                _cancelRemainingUploads();
+              if (_uploadSource == ComposeImageUploadSource.forum) {
+                setState(() {
+                  _uploadSource = ComposeImageUploadSource.external;
+                });
               }
-            }),
+              // 失败项仍在 _pendingUpload，切换/重试后继续。
+              unawaited(_drainUploadQueue());
+            },
           );
         }
         break;

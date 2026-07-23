@@ -53,19 +53,24 @@ class ComposeController {
   Future<ForumAttachmentUploadInfo?> prefetchAttachmentUploadInfo({
     required String fid,
     String? tid,
+    String? editPid,
     ForumAttachmentUploadInfo? seed,
   }) async {
     if (seed != null && seed.isValid) {
-      _cacheUploadInfo(fid: fid, tid: tid, info: seed);
+      _cacheUploadInfo(fid: fid, tid: tid, editPid: editPid, info: seed);
       return seed;
     }
-    final cached = _cachedFor(fid: fid, tid: tid);
+    final cached = _cachedFor(fid: fid, tid: tid, editPid: editPid);
     if (cached != null) return cached;
     final info = await _ref
         .read(apiServiceProvider)
-        .fetchForumAttachmentUploadInfo(fid: fid, tid: tid);
+        .fetchForumAttachmentUploadInfo(
+          fid: fid,
+          tid: tid,
+          editPid: editPid,
+        );
     if (info != null && info.isValid) {
-      _cacheUploadInfo(fid: fid, tid: tid, info: info);
+      _cacheUploadInfo(fid: fid, tid: tid, editPid: editPid, info: info);
     }
     return info;
   }
@@ -200,6 +205,7 @@ class ComposeController {
     final info = await prefetchAttachmentUploadInfo(
       fid: fid,
       tid: tid,
+      editPid: editPid,
       seed: seedUploadInfo,
     );
     if (info == null || !info.isValid) {
@@ -211,7 +217,11 @@ class ComposeController {
     final uid = info.uid?.trim().isNotEmpty == true
         ? info.uid!.trim()
         : (_ref.read(authStateProvider).user?.uid.trim() ?? '');
-    final referer = _uploadReferer(fid: fid, tid: tid, editPid: editPid);
+    final referer = ApiConfig.forumAttachmentReferer(
+      fid: fid,
+      tid: tid,
+      editPid: editPid,
+    );
 
     return _ref.read(forumAttachmentUploadServiceProvider).upload(
           bytes: compressed.bytes,
@@ -222,28 +232,12 @@ class ComposeController {
         );
   }
 
-  String _uploadReferer({
+  ForumAttachmentUploadInfo? _cachedFor({
     required String fid,
     String? tid,
     String? editPid,
   }) {
-    if (editPid != null &&
-        editPid.isNotEmpty &&
-        tid != null &&
-        tid.isNotEmpty) {
-      return ApiConfig.editPostFormUrl(fid: fid, tid: tid, pid: editPid);
-    }
-    if (tid != null && tid.isNotEmpty) {
-      return ApiConfig.forumReplyReferer(fid: fid, tid: tid);
-    }
-    return '${ApiConfig.forumPostUrl}?mod=post&action=newthread&fid=$fid';
-  }
-
-  ForumAttachmentUploadInfo? _cachedFor({
-    required String fid,
-    String? tid,
-  }) {
-    final key = _cacheKey(fid: fid, tid: tid);
+    final key = _cacheKey(fid: fid, tid: tid, editPid: editPid);
     if (_cachedUploadInfoKey == key) return _cachedUploadInfo;
     return null;
   }
@@ -251,14 +245,19 @@ class ComposeController {
   void _cacheUploadInfo({
     required String fid,
     String? tid,
+    String? editPid,
     required ForumAttachmentUploadInfo info,
   }) {
-    _cachedUploadInfoKey = _cacheKey(fid: fid, tid: tid);
+    _cachedUploadInfoKey = _cacheKey(fid: fid, tid: tid, editPid: editPid);
     _cachedUploadInfo = info;
   }
 
-  static String _cacheKey({required String fid, String? tid}) =>
-      '${fid}_${tid ?? ''}';
+  static String _cacheKey({
+    required String fid,
+    String? tid,
+    String? editPid,
+  }) =>
+      '${fid}_${tid ?? ''}_${editPid ?? ''}';
 
   /// 按当前设置追加小尾巴（预览与发帖/回复提交共用）。
   Future<String> applySignature(String message) =>

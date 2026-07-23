@@ -10,6 +10,12 @@ class S1Constants {
       'AppleWebKit/605.1.15 (KHTML, like Gecko) '
       'Version/17.0 Mobile/15E148 Safari/604.1';
 
+  /// 桌面 UA：论坛附件上传需刮桌面编辑器里的 `hash` / `post_params`，
+  /// 手机 UA 常落到触屏模板，缺少 swfupload 凭据。
+  static const String desktopUserAgent =
+      'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 '
+      '(KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36';
+
   /// API / HTML 等论坛交互请求的全局上限（保护 S1 服务器）。
   static const int maxRequestsPerSecond = 2;
 

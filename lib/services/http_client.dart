@@ -99,8 +99,15 @@ class S1HttpClient {
         onRequest: (options, handler) async {
           await _enforceRateLimit(isMedia: _isMediaRequest(options));
 
+          if (options.extra['s1DesktopUa'] == true && !_isWeb) {
+            options.headers['User-Agent'] = S1Constants.desktopUserAgent;
+          }
+
+          final skipFormhash = options.extra['s1SkipFormhash'] == true ||
+              _isForumAttachmentUpload(options);
           final currentFormhash = _read(formhashProvider);
-          if (currentFormhash.isNotEmpty &&
+          if (!skipFormhash &&
+              currentFormhash.isNotEmpty &&
               (options.method == 'POST' || options.method == 'PUT')) {
             if (!options.path.contains('formhash=')) {
               final separator = options.path.contains('?') ? '&' : '?';
@@ -120,7 +127,7 @@ class S1HttpClient {
                     ? 'formhash=$currentFormhash'
                     : '$dataStr&formhash=$currentFormhash';
               }
-            } else {
+            } else if (options.data is! FormData) {
               options.data ??= {'formhash': currentFormhash};
             }
           }
@@ -183,6 +190,14 @@ class S1HttpClient {
     if (options.responseType == ResponseType.bytes) return true;
     final flag = options.extra['s1Media'];
     return flag == true;
+  }
+
+  /// Discuz `misc.php?mod=swfupload` 不走 formhash；勿往 multipart 旁路塞字段。
+  static bool _isForumAttachmentUpload(RequestOptions options) {
+    final uri = _requestUri(options);
+    return uri.path.contains('misc.php') &&
+        uri.queryParameters['mod'] == 'swfupload' &&
+        uri.queryParameters['operation'] == 'upload';
   }
 
   Future<void> _enforceRateLimit({bool isMedia = false}) async {
@@ -395,19 +410,23 @@ class S1HttpClient {
 
     final action = uri.queryParameters['action'];
     if (!_isWeb) {
-      if (action == 'reply') {
-        final fid = uri.queryParameters['fid'] ?? '';
-        final tid = uri.queryParameters['tid'] ?? '';
-        final reppost = uri.queryParameters['reppost'] ?? '0';
-        if (fid.isNotEmpty && tid.isNotEmpty) {
-          options.headers['Referer'] = ApiConfig.forumReplyReferer(
-            fid: fid,
-            tid: tid,
-            reppost: reppost,
-          );
+      final existingReferer = options.headers['Referer'] ?? options.headers['referer'];
+      final hasReferer = existingReferer is String && existingReferer.isNotEmpty;
+      if (!hasReferer) {
+        if (action == 'reply') {
+          final fid = uri.queryParameters['fid'] ?? '';
+          final tid = uri.queryParameters['tid'] ?? '';
+          final reppost = uri.queryParameters['reppost'] ?? '0';
+          if (fid.isNotEmpty && tid.isNotEmpty) {
+            options.headers['Referer'] = ApiConfig.forumReplyReferer(
+              fid: fid,
+              tid: tid,
+              reppost: reppost,
+            );
+          }
+        } else {
+          options.headers['Referer'] = ResourceDomains.defaultReferer;
         }
-      } else {
-        options.headers['Referer'] = ResourceDomains.defaultReferer;
       }
     }
     options.headers['X-Requested-With'] = 'XMLHttpRequest';

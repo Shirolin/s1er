@@ -369,6 +369,13 @@ String removeImgTag(String text, String url) {
   return text.replaceAll(tag, '');
 }
 
+/// 移除正文中指定的完整媒体 BBCode（`[img]…[/img]` / `[attachimg]…[/attachimg]`）。
+String removeMediaTag(String text, String tag) {
+  final trimmed = tag.trim();
+  if (trimmed.isEmpty) return text;
+  return text.replaceAll(trimmed, '');
+}
+
 /// Chip 可见短标签。
 String displayLabelForIndex(int index) => '图片 ${index + 1}';
 

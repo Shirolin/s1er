@@ -282,7 +282,12 @@ class ApiService {
       final response = await _httpClient.post(
         ApiConfig.webNewThreadSubmitUrl(fid: fid),
         data: data,
-        options: Options(contentType: Headers.formUrlEncodedContentType),
+        options: Options(
+          contentType: Headers.formUrlEncodedContentType,
+          headers: {
+            'Referer': ApiConfig.forumAttachmentReferer(fid: fid),
+          },
+        ),
       );
       final body = response.data?.toString() ?? '';
       final web = _parseWebNewThreadSubmitResponse(body);
@@ -328,7 +333,10 @@ class ApiService {
     try {
       final response = await _httpClient.get(
         ApiConfig.editPostFormUrl(fid: fid, tid: tid, pid: pid),
-        options: Options(responseType: ResponseType.plain),
+        options: Options(
+          responseType: ResponseType.plain,
+          extra: const {'s1DesktopUa': true},
+        ),
       );
       final body = response.data?.toString() ?? '';
       return parseEditPostFormResponse(body, isFirst: isFirst);
@@ -990,20 +998,33 @@ class ApiService {
     }
   }
 
-  /// 预取论坛附件上传凭据（回复 / 发新帖编辑页 HTML）。
+  /// 预取论坛附件上传凭据（回复 / 发新帖 / 编辑页 HTML）。
+  ///
+  /// 对齐 S1-Next：编辑走 `action=edit`；回复走 `action=reply&inajax=yes`。
   Future<ForumAttachmentUploadInfo?> fetchForumAttachmentUploadInfo({
     required String fid,
     String? tid,
+    String? editPid,
   }) async {
-    final url = (tid != null && tid.isNotEmpty)
-        ? ApiConfig.replyEditorUrl(tid: tid)
-        : ApiConfig.newThreadEditorUrl(fid: fid);
+    final String url;
+    if (editPid != null &&
+        editPid.isNotEmpty &&
+        tid != null &&
+        tid.isNotEmpty) {
+      url = '${ApiConfig.editPostFormUrl(fid: fid, tid: tid, pid: editPid)}'
+          '&inajax=yes&mobile=no';
+    } else if (tid != null && tid.isNotEmpty) {
+      url = ApiConfig.replyEditorUrl(tid: tid, fid: fid);
+    } else {
+      url = ApiConfig.newThreadEditorUrl(fid: fid);
+    }
     try {
       final response = await _httpClient.get(
         url,
         options: Options(
           responseType: ResponseType.plain,
           headers: {'X-Requested-With': 'XMLHttpRequest'},
+          extra: const {'s1DesktopUa': true},
         ),
       );
       return parseForumAttachmentUploadInfo(
@@ -1121,7 +1142,12 @@ class ApiService {
       final response = await _httpClient.post(
         ApiConfig.webReplySubmitUrl(fid: fid, tid: tid),
         data: data,
-        options: Options(contentType: Headers.formUrlEncodedContentType),
+        options: Options(
+          contentType: Headers.formUrlEncodedContentType,
+          headers: {
+            'Referer': ApiConfig.forumAttachmentReferer(fid: fid, tid: tid),
+          },
+        ),
       );
       final responseData = response.data;
       if (responseData is String) {

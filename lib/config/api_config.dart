@@ -58,22 +58,60 @@ class ApiConfig {
       '&wysiwyg=1&delete=0';
 
   /// 回复编辑页（刮取论坛附件上传 hash/uid）。
-  static String replyEditorUrl({required String tid}) =>
-      '$forumPostUrl?mod=post&action=reply&inajax=yes'
-      '&tid=${Uri.encodeQueryComponent(tid)}';
+  ///
+  /// `mobile=no`：尽量要 PC 模板（含 SWFUpload）；Web 手机 UA 仍可能落到触屏，
+  /// 解析器会回退 `uploadformdata`。
+  static String replyEditorUrl({
+    required String tid,
+    required String fid,
+  }) =>
+      '$forumPostUrl?mod=post&action=reply'
+      '&fid=${Uri.encodeQueryComponent(fid)}'
+      '&tid=${Uri.encodeQueryComponent(tid)}'
+      '&inajax=yes&mobile=no';
 
   /// 发新帖编辑页（刮取论坛附件上传 hash/uid）。
   static String newThreadEditorUrl({required String fid}) =>
       '$forumPostUrl?mod=post&action=newthread&fid=${Uri.encodeQueryComponent(fid)}'
-      '&inajax=yes';
+      '&inajax=yes&mobile=no';
 
-  /// Discuz swfupload 图片附件上传。
+  /// swfupload / imagelist 用的编辑页 Referer。
+  static String forumAttachmentReferer({
+    required String fid,
+    String? tid,
+    String? editPid,
+  }) {
+    if (editPid != null &&
+        editPid.isNotEmpty &&
+        tid != null &&
+        tid.isNotEmpty) {
+      return '${editPostFormUrl(fid: fid, tid: tid, pid: editPid)}'
+          '&inajax=yes&mobile=no';
+    }
+    if (tid != null && tid.isNotEmpty) {
+      return replyEditorUrl(tid: tid, fid: fid);
+    }
+    return newThreadEditorUrl(fid: fid);
+  }
+
+  /// Discuz swfupload 图片附件上传（桌面默认；触屏页会解析出带 simple=2 的 URL）。
   static String forumAttachmentUploadUrl({required String fid}) =>
       '$baseUrl/misc.php?mod=swfupload&action=swfupload&operation=upload'
       '&fid=${Uri.encodeQueryComponent(fid)}';
 
-  /// 上传后拉取缩略图（单图 imagelist）。
+  /// 上传后拉取缩略图（对齐 S1-Next：`action=attachlist`）。
   static String forumAttachmentImageListUrl({
+    required String aids,
+    required String fid,
+    String ajaxTarget = 'WU_FILE_0',
+  }) =>
+      '$forumPostUrl?mod=ajax&action=attachlist&inajax=1'
+      '&aids=${Uri.encodeQueryComponent(aids)}'
+      '&fid=${Uri.encodeQueryComponent(fid)}'
+      '&ajaxtarget=${Uri.encodeQueryComponent(ajaxTarget)}';
+
+  /// 网页编辑器 imagelist（触屏成功后的备选预览）。
+  static String forumAttachmentImageListFallbackUrl({
     required String aids,
     required String fid,
     String ajaxTarget = 'WU_FILE_0',

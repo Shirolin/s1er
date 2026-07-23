@@ -21,6 +21,7 @@ import 'screens/profile_screen.dart';
 import 'screens/settings_screen.dart';
 import 'screens/reading_history_screen.dart';
 import 'screens/blacklist_screen.dart';
+import 'screens/hidden_forums_screen.dart';
 import 'screens/favorites_screen.dart';
 import 'screens/friends_screen.dart';
 import 'screens/dark_room_screen.dart';
@@ -165,8 +166,14 @@ final _router = GoRouter(
       builder: (context, state) => const BlacklistScreen(),
     ),
     GoRoute(
+      path: '/hidden-forums',
+      builder: (context, state) => const HiddenForumsScreen(),
+    ),
+    GoRoute(
       path: '/favorites',
-      builder: (context, state) => const FavoritesScreen(),
+      builder: (context, state) => FavoritesScreen(
+        initialSegment: state.uri.queryParameters['segment'],
+      ),
     ),
     GoRoute(
       path: '/friends',

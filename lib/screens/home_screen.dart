@@ -3,20 +3,28 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import '../config/api_config.dart';
 import '../providers/auth_provider.dart';
+import '../providers/favorite_forum_pins_provider.dart';
+import '../providers/favorite_membership_provider.dart';
 import '../providers/forum_list_provider.dart';
 import '../providers/pm_list_provider.dart';
 import '../providers/notice_list_provider.dart';
 import '../providers/messages_segment_provider.dart';
 import '../providers/settings_provider.dart';
 import '../providers/unread_count_provider.dart';
+import '../models/favorite_item.dart';
 import '../models/forum_category.dart';
 import '../models/notice_item.dart';
 import '../theme/app_theme.dart';
 import '../theme/s1_haptics.dart';
+import '../utils/forum_index_view.dart';
+import '../utils/s1_snack_bar.dart';
 import '../widgets/app_bar_more_menu.dart';
+import '../widgets/favorite_confirm_dialog.dart';
+import '../widgets/hide_forum_confirm_dialog.dart';
 import '../widgets/s1_error_view.dart';
 import '../widgets/s1_content_width.dart';
 import '../widgets/s1_desktop_scaffold.dart';
+import '../widgets/s1_menu.dart';
 import '../utils/compact_label.dart';
 import '../utils/format_utils.dart';
 import '../utils/window_size.dart';
@@ -231,12 +239,41 @@ class _HomeScreenBodyState extends ConsumerState<_HomeScreenBody> {
   }
 }
 
-class _ForumTab extends ConsumerWidget {
+class _ForumTab extends ConsumerStatefulWidget {
   const _ForumTab();
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  ConsumerState<_ForumTab> createState() => _ForumTabState();
+}
+
+class _ForumTabState extends ConsumerState<_ForumTab> {
+  bool _membershipEnsured = false;
+
+  void _ensureMembershipSynced() {
+    if (_membershipEnsured) return;
+    if (!ref.read(authStateProvider).isLoggedIn) return;
+    _membershipEnsured = true;
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) return;
+      ref.read(favoriteMembershipProvider.notifier).ensureSynced();
+    });
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    _ensureMembershipSynced();
     final forumsAsync = ref.watch(forumListProvider);
+    final isLoggedIn = ref.watch(
+      authStateProvider.select((auth) => auth.isLoggedIn),
+    );
+    if (!isLoggedIn) {
+      _membershipEnsured = false;
+    }
+    final hiddenForums = ref.watch(
+      settingsProvider.select((s) => s.hiddenForums),
+    );
+    final pinItems =
+        ref.watch(favoriteForumPinsProvider).asData?.value ?? const [];
 
     return forumsAsync.when(
       loading: () => const Column(
@@ -253,9 +290,24 @@ class _ForumTab extends ConsumerWidget {
         onLogin: () => context.push('/login'),
       ),
       data: (categories) {
-        Future<void> refresh() => S1Haptics.wrapRefresh(
-              () => ref.read(forumListProvider.notifier).refresh(),
-            );
+        Future<void> refresh() => S1Haptics.wrapRefresh(() async {
+              await ref.read(forumListProvider.notifier).refresh();
+              if (isLoggedIn) {
+                await ref.read(favoriteForumPinsProvider.notifier).refresh();
+              }
+            });
+
+        final pinTitles = {
+          for (final item in pinItems) item.id: item.title,
+        };
+        final view = buildForumIndexView(
+          categories: categories,
+          favoriteFidsOrdered: [
+            for (final item in pinItems) item.id,
+          ],
+          favoriteTitleFor: (fid) => pinTitles[fid] ?? fid,
+          hiddenForums: hiddenForums,
+        );
 
         if (categories.isEmpty) {
           final scheme = Theme.of(context).colorScheme;
@@ -312,13 +364,16 @@ class _ForumTab extends ConsumerWidget {
           child: RefreshIndicator(
             onRefresh: refresh,
             child: context.isLargeOrAbove
-                ? _ForumCategoryGrid(categories: categories)
-                : ListView.builder(
+                ? _ForumCategoryGrid(view: view)
+                : ListView(
                     primary: true,
                     padding: const EdgeInsets.only(bottom: 16),
-                    itemCount: categories.length,
-                    itemBuilder: (context, index) =>
-                        _ForumCategoryTile(category: categories[index]),
+                    children: [
+                      if (view.pinned.isNotEmpty)
+                        _FavoriteForumsSection(forums: view.pinned),
+                      for (final category in view.categories)
+                        _ForumCategoryTile(category: category),
+                    ],
                   ),
           ),
         );
@@ -327,18 +382,85 @@ class _ForumTab extends ConsumerWidget {
   }
 }
 
-class _ForumCategoryGrid extends StatelessWidget {
-  const _ForumCategoryGrid({required this.categories});
+class _FavoriteForumsSection extends StatelessWidget {
+  const _FavoriteForumsSection({
+    required this.forums,
+    this.margin = const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+  });
 
-  final List<ForumCategory> categories;
+  final List<ForumCategory> forums;
+  final EdgeInsetsGeometry margin;
 
   @override
   Widget build(BuildContext context) {
-    if (categories.length == 1) {
+    final scheme = Theme.of(context).colorScheme;
+    final textTheme = Theme.of(context).textTheme;
+
+    return Card(
+      elevation: 0,
+      shadowColor: Colors.transparent,
+      surfaceTintColor: Colors.transparent,
+      margin: margin,
+      clipBehavior: Clip.antiAlias,
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Padding(
+            padding: const EdgeInsets.fromLTRB(16, 12, 8, 4),
+            child: Row(
+              children: [
+                Icon(
+                  Icons.bookmark_outlined,
+                  size: 18,
+                  color: scheme.primary,
+                ),
+                const SizedBox(width: 8),
+                Expanded(
+                  child: Text(
+                    '已收藏',
+                    style: textTheme.titleSmall?.copyWith(
+                      color: scheme.primary,
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
+                ),
+                TextButton(
+                  onPressed: () => context.push('/favorites?segment=forum'),
+                  child: const Text('管理'),
+                ),
+              ],
+            ),
+          ),
+          for (final forum in forums)
+            _ForumTile(forum: forum, compact: true),
+        ],
+      ),
+    );
+  }
+}
+
+class _ForumCategoryGrid extends StatelessWidget {
+  const _ForumCategoryGrid({required this.view});
+
+  final ForumIndexView view;
+
+  @override
+  Widget build(BuildContext context) {
+    final categories = view.categories;
+    if (categories.isEmpty && view.pinned.isEmpty) {
+      return ListView(primary: true, children: const []);
+    }
+
+    if (categories.length <= 1) {
       return ListView(
         primary: true,
         padding: const EdgeInsets.only(bottom: 16),
-        children: [_ForumCategoryTile(category: categories.single)],
+        children: [
+          if (view.pinned.isNotEmpty)
+            _FavoriteForumsSection(forums: view.pinned),
+          if (categories.length == 1)
+            _ForumCategoryTile(category: categories.single),
+        ],
       );
     }
 
@@ -352,6 +474,11 @@ class _ForumCategoryGrid extends StatelessWidget {
       primary: true,
       padding: const EdgeInsets.fromLTRB(16, 8, 16, 16),
       children: [
+        if (view.pinned.isNotEmpty)
+          _FavoriteForumsSection(
+            forums: view.pinned,
+            margin: const EdgeInsets.only(bottom: 16),
+          ),
         Row(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
@@ -519,84 +646,185 @@ class _StatChip extends StatelessWidget {
   }
 }
 
-class _ForumTile extends StatelessWidget {
-  const _ForumTile({required this.forum});
+class _ForumTile extends ConsumerWidget {
+  const _ForumTile({
+    required this.forum,
+    this.compact = false,
+  });
+
   final ForumCategory forum;
+  final bool compact;
+
+  Future<void> _hide(BuildContext context, WidgetRef ref) async {
+    final confirmed = await confirmHideForum(context);
+    if (!confirmed || !context.mounted) return;
+    ref.read(settingsProvider.notifier).hideForum(forum.fid);
+    S1SnackBar.show(context, message: '已屏蔽此版块');
+  }
+
+  Future<void> _toggleFavorite(BuildContext context, WidgetRef ref) async {
+    final isLoggedIn = ref.read(authStateProvider).isLoggedIn;
+    if (!isLoggedIn) {
+      if (context.mounted) {
+        S1SnackBar.show(context, message: '请先登录');
+      }
+      return;
+    }
+
+    final membership = ref.read(favoriteMembershipProvider);
+    final wasFavorited =
+        membership.isFavorited(FavoriteType.forum, forum.fid);
+    if (wasFavorited) {
+      final confirmed = await confirmUnfavorite(context);
+      if (!confirmed || !context.mounted) return;
+    }
+
+    final error = await ref
+        .read(favoriteMembershipProvider.notifier)
+        .toggleForum(forum.fid);
+    if (!context.mounted) return;
+    if (error != null) {
+      S1SnackBar.error(context, message: error);
+      return;
+    }
+    S1SnackBar.show(
+      context,
+      message: wasFavorited ? '已取消收藏' : '已收藏',
+    );
+  }
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
     final scheme = Theme.of(context).colorScheme;
     final textTheme = Theme.of(context).textTheme;
-    final hasDesc = forum.description.isNotEmpty;
+    final hasDesc = !compact && forum.description.isNotEmpty;
+    final isLoggedIn = ref.watch(
+      authStateProvider.select((auth) => auth.isLoggedIn),
+    );
+    final isFavorited = isLoggedIn &&
+        ref.watch(
+          favoriteMembershipProvider.select(
+            (s) => s.isFavorited(FavoriteType.forum, forum.fid),
+          ),
+        );
 
-    return InkWell(
-      onTap: () => context.push('/forum/${forum.fid}'),
-      child: Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-        child: Row(
-          children: [
-            // 版块图标
-            Container(
-              width: 36,
-              height: 36,
-              decoration: BoxDecoration(
-                color: scheme.secondaryContainer,
-                borderRadius: S1Shape.small,
-              ),
-              child: Icon(
-                Icons.forum_outlined,
-                size: 20,
-                color: scheme.secondary,
-              ),
+    return MenuAnchor(
+      menuChildren: [
+        if (isLoggedIn)
+          s1MenuItem(
+            onPressed: () => _toggleFavorite(context, ref),
+            icon: isFavorited
+                ? Icons.bookmark_remove_outlined
+                : Icons.bookmark_add_outlined,
+            label: isFavorited ? '取消收藏' : '收藏此版块',
+            destructive: isFavorited,
+          ),
+        s1MenuItem(
+          onPressed: () => _hide(context, ref),
+          icon: Icons.visibility_off_outlined,
+          label: '屏蔽此版块',
+          destructive: true,
+        ),
+      ],
+      builder: (context, controller, child) {
+        return InkWell(
+          onTap: () => context.push('/forum/${forum.fid}'),
+          onLongPress: () {
+            S1Haptics.selection();
+            if (controller.isOpen) {
+              controller.close();
+            } else {
+              controller.open();
+            }
+          },
+          child: Padding(
+            padding: EdgeInsets.symmetric(
+              horizontal: 16,
+              vertical: compact ? 10 : 12,
             ),
-            const SizedBox(width: 12),
-            // 版块信息
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    forum.name,
-                    style: textTheme.bodyMedium?.copyWith(
-                      fontWeight: FontWeight.w500,
-                    ),
+            child: Row(
+              children: [
+                Container(
+                  width: compact ? 32 : 36,
+                  height: compact ? 32 : 36,
+                  decoration: BoxDecoration(
+                    color: scheme.secondaryContainer,
+                    borderRadius: S1Shape.small,
                   ),
-                  if (hasDesc) ...[
-                    const SizedBox(height: 2),
-                    Text(
-                      forum.description,
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                      style: textTheme.bodySmall
-                          ?.copyWith(color: scheme.onSurfaceVariant),
-                    ),
-                  ],
-                ],
-              ),
-            ),
-            // 今日新帖数 / 帖子数
-            if (forum.todayPosts > 0)
-              Badge(
-                label: CompactLabel.text(
-                  '${forum.todayPosts}',
-                  style: CompactLabel.style(
-                    context,
-                    color: scheme.onPrimary,
+                  child: Icon(
+                    Icons.forum_outlined,
+                    size: compact ? 18 : 20,
+                    color: scheme.secondary,
                   ),
                 ),
-                backgroundColor: scheme.primary,
-              )
-            else
-              Text(
-                formatCount(forum.threads),
-                style: textTheme.bodySmall
-                    ?.copyWith(color: scheme.onSurfaceVariant),
-              ),
-            const SizedBox(width: 4),
-            Icon(Icons.chevron_right, size: 18, color: scheme.onSurfaceVariant),
-          ],
-        ),
-      ),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Row(
+                        children: [
+                          Flexible(
+                            child: Text(
+                              forum.name,
+                              style: textTheme.bodyMedium?.copyWith(
+                                fontWeight: FontWeight.w500,
+                              ),
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                            ),
+                          ),
+                          if (isFavorited) ...[
+                            const SizedBox(width: 4),
+                            Icon(
+                              Icons.star,
+                              size: 14,
+                              color: scheme.tertiary,
+                            ),
+                          ],
+                        ],
+                      ),
+                      if (hasDesc) ...[
+                        const SizedBox(height: 2),
+                        Text(
+                          forum.description,
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: textTheme.bodySmall
+                              ?.copyWith(color: scheme.onSurfaceVariant),
+                        ),
+                      ],
+                    ],
+                  ),
+                ),
+                if (forum.todayPosts > 0)
+                  Badge(
+                    label: CompactLabel.text(
+                      '${forum.todayPosts}',
+                      style: CompactLabel.style(
+                        context,
+                        color: scheme.onPrimary,
+                      ),
+                    ),
+                    backgroundColor: scheme.primary,
+                  )
+                else if (!compact)
+                  Text(
+                    formatCount(forum.threads),
+                    style: textTheme.bodySmall
+                        ?.copyWith(color: scheme.onSurfaceVariant),
+                  ),
+                const SizedBox(width: 4),
+                Icon(
+                  Icons.chevron_right,
+                  size: 18,
+                  color: scheme.onSurfaceVariant,
+                ),
+              ],
+            ),
+          ),
+        );
+      },
     );
   }
 }

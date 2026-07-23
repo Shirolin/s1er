@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
 
 import '../../models/list_density.dart';
 import '../../providers/settings_provider.dart';
@@ -23,6 +24,9 @@ class BrowsingSettingsSection extends ConsumerWidget {
     );
     final postListDensity = ref.watch(
       settingsProvider.select((settings) => settings.postListDensity),
+    );
+    final hiddenCount = ref.watch(
+      settingsProvider.select((settings) => settings.hiddenForums.length),
     );
     final notifier = ref.read(settingsProvider.notifier);
     final scheme = Theme.of(context).colorScheme;
@@ -82,6 +86,26 @@ class BrowsingSettingsSection extends ConsumerWidget {
               shape: const RoundedRectangleBorder(
                 borderRadius: S1Shape.small,
               ),
+            ),
+            ListTile(
+              leading: Icon(
+                Icons.visibility_off_outlined,
+                color: scheme.onSurfaceVariant,
+              ),
+              title: const Text('已屏蔽版块'),
+              subtitle: Text(
+                hiddenCount == 0
+                    ? '从首页隐藏不感兴趣的版块'
+                    : '已屏蔽 $hiddenCount 个版块',
+                style: subtitleStyle,
+              ),
+              trailing: Icon(
+                Icons.chevron_right,
+                color: scheme.onSurfaceVariant,
+              ),
+              contentPadding: const EdgeInsets.symmetric(horizontal: 8),
+              shape: const RoundedRectangleBorder(borderRadius: S1Shape.small),
+              onTap: () => context.push('/hidden-forums'),
             ),
             const SizedBox(height: 8),
             Padding(

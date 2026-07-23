@@ -34,6 +34,7 @@ class AppSettings {
     this.postListDensity = ListDensity.standard,
     this.fontSize = S1Typography.defaultBodySize,
     this.collapsedForums = const {},
+    this.hiddenForums = const {},
     this.shareImageFormat = ShareImageFormat.webp,
     this.sharePixelRatio = SharePixelRatio.defaultValue,
     this.postSignatureEnabled = true,
@@ -56,6 +57,7 @@ class AppSettings {
   final ListDensity postListDensity;
   final int fontSize;
   final Set<String> collapsedForums;
+  final Set<String> hiddenForums;
   final ShareImageFormat shareImageFormat;
   final double sharePixelRatio;
   final bool postSignatureEnabled;
@@ -80,6 +82,7 @@ class AppSettings {
     ListDensity? postListDensity,
     int? fontSize,
     Set<String>? collapsedForums,
+    Set<String>? hiddenForums,
     ShareImageFormat? shareImageFormat,
     double? sharePixelRatio,
     bool? postSignatureEnabled,
@@ -102,6 +105,7 @@ class AppSettings {
       postListDensity: postListDensity ?? this.postListDensity,
       fontSize: fontSize ?? this.fontSize,
       collapsedForums: collapsedForums ?? this.collapsedForums,
+      hiddenForums: hiddenForums ?? this.hiddenForums,
       shareImageFormat: shareImageFormat ?? this.shareImageFormat,
       sharePixelRatio: sharePixelRatio ?? this.sharePixelRatio,
       postSignatureEnabled: postSignatureEnabled ?? this.postSignatureEnabled,
@@ -131,6 +135,7 @@ class AppSettings {
         other.postListDensity == postListDensity &&
         other.fontSize == fontSize &&
         _setEquals(other.collapsedForums, collapsedForums) &&
+        _setEquals(other.hiddenForums, hiddenForums) &&
         other.shareImageFormat == shareImageFormat &&
         other.sharePixelRatio == sharePixelRatio &&
         other.postSignatureEnabled == postSignatureEnabled &&
@@ -158,6 +163,7 @@ class AppSettings {
         postListDensity,
         fontSize,
         Object.hashAllUnordered(collapsedForums),
+        Object.hashAllUnordered(hiddenForums),
         shareImageFormat,
         sharePixelRatio,
         Object.hash(
@@ -332,6 +338,10 @@ class SettingsNotifier extends Notifier<AppSettings> {
         (settingsStore.get<List<dynamic>>('collapsedForums'))?.cast<String>() ??
             [],
       ),
+      hiddenForums: Set<String>.from(
+        (settingsStore.get<List<dynamic>>('hiddenForums'))?.cast<String>() ??
+            [],
+      ),
       postSignatureEnabled: settingsStore.get<bool>(
             'postSignatureEnabled',
             defaultValue: true,
@@ -502,6 +512,26 @@ class SettingsNotifier extends Notifier<AppSettings> {
     }
     _commit(state.copyWith(collapsedForums: collapsed));
     _persist('collapsedForums', collapsed.toList());
+  }
+
+  void hideForum(String fid) {
+    if (fid.isEmpty || state.hiddenForums.contains(fid)) return;
+    final hidden = Set<String>.from(state.hiddenForums)..add(fid);
+    _commit(state.copyWith(hiddenForums: hidden));
+    _persist('hiddenForums', hidden.toList());
+  }
+
+  void unhideForum(String fid) {
+    if (fid.isEmpty || !state.hiddenForums.contains(fid)) return;
+    final hidden = Set<String>.from(state.hiddenForums)..remove(fid);
+    _commit(state.copyWith(hiddenForums: hidden));
+    _persist('hiddenForums', hidden.toList());
+  }
+
+  void clearHiddenForums() {
+    if (state.hiddenForums.isEmpty) return;
+    _commit(state.copyWith(hiddenForums: const {}));
+    _persist('hiddenForums', <String>[]);
   }
 
   void resetAppearanceSettings() {

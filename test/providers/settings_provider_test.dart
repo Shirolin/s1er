@@ -43,6 +43,7 @@ void main() {
               recordReadingHistory: false,
               fontSize: 18,
               collapsedForums: {'42'},
+              hiddenForums: {'7'},
             ),
           ),
         ),
@@ -64,6 +65,7 @@ void main() {
     expect(state.recordReadingHistory, isTrue);
     expect(state.fontSize, S1Typography.defaultBodySize);
     expect(state.collapsedForums, const {'42'});
+    expect(state.hiddenForums, const {'7'});
     expect(state.shareImageFormat, ShareImageFormat.webp);
     expect(state.sharePixelRatio, 1.5);
     expect(state.threadListDensity, ListDensity.standard);
@@ -85,6 +87,34 @@ void main() {
     expect(container.read(settingsProvider).recordReadingHistory, isFalse);
     await Future<void>.delayed(const Duration(milliseconds: 50));
     expect(store.get<bool>('recordReadingHistory'), isFalse);
+  });
+
+  test('hideForum and unhideForum persist to settings store', () async {
+    final container = ProviderContainer(
+      overrides: [
+        settingsProvider.overrideWith(
+          () => SettingsNotifier(store: store, initial: const AppSettings()),
+        ),
+      ],
+    );
+    addTearDown(container.dispose);
+
+    final notifier = container.read(settingsProvider.notifier);
+    notifier.hideForum('75');
+    expect(container.read(settingsProvider).hiddenForums, const {'75'});
+    await Future<void>.delayed(const Duration(milliseconds: 50));
+    expect(store.get<List>('hiddenForums'), ['75']);
+
+    notifier.hideForum('6');
+    notifier.unhideForum('75');
+    expect(container.read(settingsProvider).hiddenForums, const {'6'});
+    await Future<void>.delayed(const Duration(milliseconds: 50));
+    expect(store.get<List>('hiddenForums'), ['6']);
+
+    notifier.clearHiddenForums();
+    expect(container.read(settingsProvider).hiddenForums, isEmpty);
+    await Future<void>.delayed(const Duration(milliseconds: 50));
+    expect(store.get<List>('hiddenForums'), isEmpty);
   });
 
   test('setHapticsEnabled persists and syncs S1Haptics.enabled', () async {

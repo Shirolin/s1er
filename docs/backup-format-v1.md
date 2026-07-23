@@ -99,6 +99,7 @@ v1 **不使用** JSONL；列表一律为 JSON 数组。
 | `post_list_density` | string | `standard` / `compact`；帖子详情楼层卡片外壳密度（默认 `standard`） |
 | `font_size` | int | |
 | `collapsed_forums` | string[] | 版块 id |
+| `hidden_forums` | string[] | 本机屏蔽的版块 id（仅影响首页版块列表；不影响收藏与深链） |
 | `share_image_format` | string | `webp` / `jpeg` / `png`；分享卡片导出图片格式（默认 `webp`） |
 | `share_pixel_ratio` | number | `1.5` / `2` / `3`；分享卡片截图清晰度（默认 `1.5`） |
 | `post_signature_enabled` | bool | 发帖/回复是否追加小尾巴（默认 `true`） |

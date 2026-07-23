@@ -1,9 +1,9 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../models/favorite_item.dart';
 import '../providers/auth_provider.dart';
-import '../providers/favorite_list_provider.dart';
 import '../services/api_service.dart';
 import 'api_service_provider.dart';
+import 'favorite_forum_pins_provider.dart';
 
 class FavoriteMembershipState {
   const FavoriteMembershipState({
@@ -77,24 +77,22 @@ class FavoriteMembershipNotifier extends Notifier<FavoriteMembershipState> {
 
     state = state.copyWith(isLoading: true);
     try {
-      final results = await Future.wait([
-        _apiService.getFavoriteList(
-          uid: uid,
-          type: 'thread',
-          page: 1,
-        ),
-        _apiService.getFavoriteList(
-          uid: uid,
-          type: 'forum',
-          page: 1,
-        ),
-      ]);
-      final threadResult = results[0];
-      final forumResult = results[1];
+      final threadFuture = _apiService.getFavoriteList(
+        uid: uid,
+        type: 'thread',
+        page: 1,
+      );
+      final forumFuture = fetchAllFavoriteForums(
+        api: _apiService,
+        uid: uid,
+      );
+      final results = await Future.wait([threadFuture, forumFuture]);
+      final threadResult = results[0] as FavoriteListResult;
+      final forumItems = results[1] as List<FavoriteItem>;
 
       final keys = <String>{};
       final favids = <String, String>{};
-      for (final item in [...threadResult.items, ...forumResult.items]) {
+      for (final item in [...threadResult.items, ...forumItems]) {
         keys.add(item.membershipKey);
         if (item.favid.isNotEmpty) {
           favids[item.membershipKey] = item.favid;
@@ -158,9 +156,7 @@ class FavoriteMembershipNotifier extends Notifier<FavoriteMembershipState> {
   }
 
   void _invalidateFavoriteLists() {
-    ref.invalidate(favoriteListProvider(FavoriteSegment.all));
-    ref.invalidate(favoriteListProvider(FavoriteSegment.thread));
-    ref.invalidate(favoriteListProvider(FavoriteSegment.forum));
+    invalidateFavoriteForumCaches(ref);
   }
 
   void untrack(FavoriteItem item) {

@@ -35,6 +35,7 @@ void main() {
     expect(find.text('主题设置'), findsOneWidget);
     expect(find.text('文字大小'), findsOneWidget);
     expect(find.text('浏览行为'), findsOneWidget);
+    expect(find.text('已屏蔽版块'), findsOneWidget);
     expect(find.text('数据管理'), findsOneWidget);
     expect(find.text('清除图片缓存'), findsOneWidget);
     expect(find.text('导出备份'), findsOneWidget);

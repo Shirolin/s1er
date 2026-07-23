@@ -103,6 +103,7 @@ void main() {
       final backup = S1BackupSettingsMapper.toBackup({
         'themeMode': 'dark',
         'collapsedForums': {'4', '6'},
+        'hiddenForums': {'75', '6'},
         'fontSize': 16,
         'imageLoadPolicy': 'wifiOnly',
         'avatarLoadPolicy': 'manual',
@@ -115,6 +116,7 @@ void main() {
       });
       expect(backup['theme_mode'], 'dark');
       expect(backup['collapsed_forums'], isA<List>());
+      expect(backup['hidden_forums'], unorderedEquals(['75', '6']));
       expect(backup['font_size'], 16);
       expect(backup['image_load_policy'], 'wifi_only');
       expect(backup['avatar_load_policy'], 'manual');
@@ -141,6 +143,7 @@ void main() {
       expect(app['imageCacheLimitMb'], 512);
       expect(app['shareImageFormat'], 'webp');
       expect(app['sharePixelRatio'], 2);
+      expect(app['hiddenForums'], ['75', '6']);
       expect(app.containsKey('useDynamicColor'), isFalse);
       expect(app.containsKey('simulateDynamic'), isFalse);
       expect(app.containsKey('unknown_field'), isFalse);

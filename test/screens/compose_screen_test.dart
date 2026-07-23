@@ -7,6 +7,7 @@ import 'package:s1er/models/post.dart';
 import 'package:s1er/models/quote_info.dart';
 import 'package:s1er/models/reply_submit_result.dart';
 import 'package:s1er/models/new_thread_form_info.dart';
+import 'package:s1er/models/forum_attachment_upload_info.dart';
 import 'package:s1er/providers/auth_provider.dart';
 import 'package:s1er/providers/compose_provider.dart';
 import 'package:s1er/providers/forum_name_provider.dart';
@@ -493,6 +494,15 @@ class _StubComposeController extends ComposeController {
           '[quote][url=forum.php?mod=redirect&goto=findpost&pid=42&ptid=100]'
           'alice 发表于 2024[/url]\nquoted body[/quote]',
     );
+  }
+
+  @override
+  Future<ForumAttachmentUploadInfo?> prefetchAttachmentUploadInfo({
+    required String fid,
+    String? tid,
+    ForumAttachmentUploadInfo? seed,
+  }) async {
+    return null;
   }
 
   @override

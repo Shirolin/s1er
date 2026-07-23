@@ -39,6 +39,9 @@ import '../utils/quote_snapshot_store.dart';
 import '../utils/s1_snack_bar.dart';
 import '../utils/window_size.dart';
 import '../services/external_image_upload_service.dart';
+import '../services/forum_attachment_upload_service.dart';
+import '../models/forum_attachment_upload_info.dart';
+import '../models/compose_image_upload_result.dart';
 import '../widgets/bbcode_renderer.dart';
 import '../widgets/compose_bbcode_toolbar.dart';
 import '../widgets/compose_emoticon_panel.dart';
@@ -155,6 +158,11 @@ class _ComposeScreenState extends ConsumerState<ComposeScreen> {
   int _uploadBatchTotal = 0;
   int _uploadBatchSuccess = 0;
   bool _uploadBatchActive = false;
+  ComposeImageUploadSource _uploadSource = ComposeImageUploadSource.forum;
+  bool _useOriginalResolution = false;
+  bool _uploadOptionsExpanded = false;
+  bool _preparingUpload = false;
+  ForumAttachmentUploadInfo? _attachmentUploadInfo;
 
   bool get _hasValidTid => widget.tid != null && widget.tid!.isNotEmpty;
   bool get _isNewThread => widget.newThread;
@@ -201,6 +209,7 @@ class _ComposeScreenState extends ConsumerState<ComposeScreen> {
   bool get _canSubmit {
     final busy = _isSubmitting ||
         _isUploadingImage ||
+        _preparingUpload ||
         _quotePrefetching ||
         _newThreadLoading ||
         _editLoading ||
@@ -372,7 +381,23 @@ class _ComposeScreenState extends ConsumerState<ComposeScreen> {
       } else {
         _prefetchOfficialQuote();
       }
+      unawaited(_prefetchAttachmentUploadInfo());
     });
+  }
+
+  Future<void> _prefetchAttachmentUploadInfo({
+    ForumAttachmentUploadInfo? seed,
+  }) async {
+    final fid = widget.fid;
+    if (fid == null || fid.isEmpty) return;
+    final info =
+        await ref.read(composeControllerProvider).prefetchAttachmentUploadInfo(
+              fid: fid,
+              tid: widget.tid,
+              seed: seed,
+            );
+    if (!mounted || info == null) return;
+    setState(() => _attachmentUploadInfo = info);
   }
 
   Future<void> _loadNewThreadForm() async {
@@ -454,6 +479,9 @@ class _ComposeScreenState extends ConsumerState<ComposeScreen> {
       _applyEditMedia(mediaSplit.media);
     });
     _suppressMediaSync = false;
+    unawaited(
+      _prefetchAttachmentUploadInfo(seed: form.attachmentUploadInfo),
+    );
     if (saved != null && _editDraftDiffers(saved, form)) {
       final restore = await showS1ConfirmDialog(
         context,
@@ -846,13 +874,18 @@ class _ComposeScreenState extends ConsumerState<ComposeScreen> {
   void _onMessageChanged() {
     if (!mounted) return;
     if (!_suppressMediaSync && !_editMediaDetached) {
-      final urls = extractImgUrls(_messageController.text);
+      final split = splitComposeMedia(
+        _messageController.text,
+        attachImageUrls: _attachImageUrls,
+      );
       final next = <_ComposeUploadedImage>[
-        for (final url in urls)
+        for (final m in split.media)
           _ComposeUploadedImage(
-            tag: '[img]$url[/img]',
-            label: _imageLabelsByUrl[url] ?? filenameFromUrl(url),
-            previewUrl: url,
+            tag: m.tag,
+            label: m.isAttachimg
+                ? m.label
+                : (_imageLabelsByUrl[m.previewUrl ?? ''] ?? m.label),
+            previewUrl: m.previewUrl,
           ),
       ];
       setState(() {
@@ -1222,13 +1255,16 @@ class _ComposeScreenState extends ConsumerState<ComposeScreen> {
   void _enqueueImages(List<({Uint8List bytes, String filename})> items) {
     if (_isSubmitting || items.isEmpty) return;
 
+    final maxBytes = _uploadSource == ComposeImageUploadSource.external
+        ? ExternalImageUploadService.maxBytes
+        : ForumAttachmentUploadService.maxBytes;
     final oversize = <String>[];
     final accepted = <({Uint8List bytes, String filename})>[];
     var truncated = false;
 
     for (final item in items) {
       if (item.bytes.isEmpty) continue;
-      if (item.bytes.length > ExternalImageUploadService.maxBytes) {
+      if (item.bytes.length > maxBytes) {
         oversize.add(
           item.filename.trim().isEmpty ? '图片' : item.filename.trim(),
         );
@@ -1242,11 +1278,12 @@ class _ComposeScreenState extends ConsumerState<ComposeScreen> {
     }
 
     if (oversize.isNotEmpty && mounted) {
+      final mb = maxBytes ~/ (1024 * 1024);
       S1SnackBar.show(
         context,
         message: oversize.length == 1
-            ? '${oversize.first} 超过 5MB，已跳过'
-            : '${oversize.length} 张图片超过 5MB，已跳过',
+            ? '${oversize.first} 超过 ${mb}MB，已跳过'
+            : '${oversize.length} 张图片超过 ${mb}MB，已跳过',
         bottomClearance: 72,
       );
     }
@@ -1280,11 +1317,12 @@ class _ComposeScreenState extends ConsumerState<ComposeScreen> {
       _uploadBatchTotal = 0;
       _uploadBatchSuccess = 0;
       _isUploadingImage = false;
+      _preparingUpload = false;
     });
   }
 
   Future<void> _drainUploadQueue() async {
-    if (_isUploadingImage || _isSubmitting) return;
+    if (_isUploadingImage || _isSubmitting || _preparingUpload) return;
 
     while (mounted && !_isSubmitting) {
       if (_pendingUpload == null) {
@@ -1295,15 +1333,76 @@ class _ComposeScreenState extends ConsumerState<ComposeScreen> {
       final pending = _pendingUpload;
       if (pending == null) break;
 
+      final fid = widget.fid;
+      if (fid == null || fid.isEmpty) {
+        setState(() {
+          _pendingUpload = null;
+          _isUploadingImage = false;
+        });
+        if (mounted) {
+          S1SnackBar.show(
+            context,
+            message: '缺少版块信息，无法上传图片',
+            bottomClearance: 72,
+          );
+        }
+        break;
+      }
+
+      if (_uploadSource == ComposeImageUploadSource.forum &&
+          (_attachmentUploadInfo == null || !_attachmentUploadInfo!.isValid)) {
+        setState(() => _preparingUpload = true);
+        await _prefetchAttachmentUploadInfo();
+        if (!mounted) return;
+        setState(() => _preparingUpload = false);
+        if (_attachmentUploadInfo == null || !_attachmentUploadInfo!.isValid) {
+          setState(() => _isUploadingImage = false);
+          if (mounted) {
+            final messenger = ScaffoldMessenger.of(context);
+            messenger.hideCurrentSnackBar();
+            messenger.showSnackBar(
+              SnackBar(
+                content: const Text('无法准备论坛上传，请稍后重试或改用外链'),
+                behavior: SnackBarBehavior.floating,
+                margin: EdgeInsets.fromLTRB(
+                  16,
+                  0,
+                  16,
+                  MediaQuery.paddingOf(context).bottom + 72,
+                ),
+                duration: const Duration(seconds: 8),
+                action: SnackBarAction(
+                  label: '改用外链',
+                  onPressed: () {
+                    if (!mounted) return;
+                    setState(() {
+                      _uploadSource = ComposeImageUploadSource.external;
+                    });
+                    unawaited(_drainUploadQueue());
+                  },
+                ),
+              ),
+            );
+          }
+          break;
+        }
+      }
+
       setState(() => _isUploadingImage = true);
       var failed = false;
       try {
-        final url = await ref.read(composeControllerProvider).uploadImage(
+        final result = await ref.read(composeControllerProvider).uploadImage(
               bytes: pending.bytes,
               filename: pending.filename,
+              fid: fid,
+              tid: widget.tid,
+              editPid: widget.editPid,
+              source: _uploadSource,
+              useOriginalResolution: _useOriginalResolution,
+              seedUploadInfo: _attachmentUploadInfo,
             );
         if (!mounted) return;
-        _insertUploadedImage(url: url, filename: pending.filename);
+        _insertUploadedImage(result: result);
         setState(() {
           _pendingUpload = null;
           _uploadBatchSuccess += 1;
@@ -1326,9 +1425,17 @@ class _ComposeScreenState extends ConsumerState<ComposeScreen> {
               ),
               duration: const Duration(seconds: 8),
               action: SnackBarAction(
-                label: '重试',
+                label: _uploadSource == ComposeImageUploadSource.forum
+                    ? '改用外链'
+                    : '重试',
                 onPressed: () {
-                  if (mounted) unawaited(_drainUploadQueue());
+                  if (!mounted) return;
+                  if (_uploadSource == ComposeImageUploadSource.forum) {
+                    setState(() {
+                      _uploadSource = ComposeImageUploadSource.external;
+                    });
+                  }
+                  unawaited(_drainUploadQueue());
                 },
               ),
             ),
@@ -1338,7 +1445,6 @@ class _ComposeScreenState extends ConsumerState<ComposeScreen> {
               if (!mounted) return;
               if (reason != SnackBarClosedReason.action &&
                   _pendingUpload != null) {
-                // 关闭 SnackBar（非点重试）视为取消剩余队列。
                 _cancelRemainingUploads();
               }
             }),
@@ -1373,11 +1479,20 @@ class _ComposeScreenState extends ConsumerState<ComposeScreen> {
   }
 
   void _insertUploadedImage({
-    required String url,
-    required String filename,
+    required ComposeImageUploadResult result,
   }) {
-    final label = filename.trim().isEmpty ? '图片' : filename;
-    _imageLabelsByUrl[url] = label;
+    final label = result.label.trim().isEmpty ? '图片' : result.label.trim();
+    final preview = result.previewUrl?.trim();
+    if (preview != null && preview.isNotEmpty) {
+      _imageLabelsByUrl[preview] = label;
+    }
+    if (result.aid != null &&
+        result.aid!.isNotEmpty &&
+        preview != null &&
+        preview.isNotEmpty) {
+      _mergeAttachImageUrls({result.aid!: preview});
+    }
+
     if (_editMediaDetached) {
       final slot = _nextEditMediaSlot();
       final selection = _messageController.selection;
@@ -1399,9 +1514,9 @@ class _ComposeScreenState extends ConsumerState<ComposeScreen> {
       );
       _uploadedImages.add(
         _ComposeUploadedImage(
-          tag: '[img]$url[/img]',
+          tag: result.insertTag,
           label: label,
-          previewUrl: url,
+          previewUrl: preview,
           slot: slot,
         ),
       );
@@ -1414,19 +1529,18 @@ class _ComposeScreenState extends ConsumerState<ComposeScreen> {
           : _messageController.text.length;
       final end =
           selection.isValid ? selection.end : _messageController.text.length;
-      final result = insertImgTagAt(
+      final inserted = insertMediaTagAt(
         text: _messageController.text,
         start: start,
         end: end,
-        url: url,
+        tag: result.insertTag,
       );
       _messageController.value = TextEditingValue(
-        text: result.text,
-        selection: TextSelection.collapsed(offset: result.cursor),
+        text: inserted.text,
+        selection: TextSelection.collapsed(offset: inserted.cursor),
       );
     }
   }
-
   Future<void> _pasteIntoMessage() async {
     if (_isSubmitting) return;
     final bytes = await readComposeClipboardImage();
@@ -1808,6 +1922,7 @@ class _ComposeScreenState extends ConsumerState<ComposeScreen> {
     final textTheme = Theme.of(context).textTheme;
     final busy = _isSubmitting ||
         _isUploadingImage ||
+        _preparingUpload ||
         _quotePrefetching ||
         _newThreadLoading ||
         _editLoading ||
@@ -1960,17 +2075,28 @@ class _ComposeScreenState extends ConsumerState<ComposeScreen> {
             ),
           ),
         ),
+        _ComposeImageUploadOptions(
+          expanded: _uploadOptionsExpanded,
+          source: _uploadSource,
+          useOriginal: _useOriginalResolution,
+          enabled: !_isSubmitting && !_isUploadingImage && !_preparingUpload,
+          onExpandedChanged: (v) => setState(() => _uploadOptionsExpanded = v),
+          onSourceChanged: (v) => setState(() => _uploadSource = v),
+          onOriginalChanged: (v) => setState(() => _useOriginalResolution = v),
+        ),
         _ComposeBottomBar(
           busy: busy,
           canSubmit: _canSubmit,
           canPreview: _canPreview,
           isSubmitting: _isSubmitting,
-          isUploadingImage: _isUploadingImage,
-          uploadProgressLabel: _isUploadingImage
-              ? (_uploadBatchTotal > 1
-                  ? '上传中 ${_uploadBatchSuccess + 1}/$_uploadBatchTotal'
-                  : '上传中')
-              : null,
+          isUploadingImage: _isUploadingImage || _preparingUpload,
+          uploadProgressLabel: _preparingUpload
+              ? '准备上传…'
+              : (_isUploadingImage
+                  ? (_uploadBatchTotal > 1
+                      ? '上传中 ${_uploadBatchSuccess + 1}/$_uploadBatchTotal'
+                      : '上传中')
+                  : null),
           characterCount: composeMessageCharCount(
             _messageController.text,
             stripMediaPlaceholders: _editMediaDetached,
@@ -3061,6 +3187,123 @@ class _ComposeImageChipAvatar extends StatelessWidget {
           size: 18,
           color: iconColor,
         ),
+      ),
+    );
+  }
+}
+
+class _ComposeImageUploadOptions extends StatelessWidget {
+  const _ComposeImageUploadOptions({
+    required this.expanded,
+    required this.source,
+    required this.useOriginal,
+    required this.enabled,
+    required this.onExpandedChanged,
+    required this.onSourceChanged,
+    required this.onOriginalChanged,
+  });
+
+  final bool expanded;
+  final ComposeImageUploadSource source;
+  final bool useOriginal;
+  final bool enabled;
+  final ValueChanged<bool> onExpandedChanged;
+  final ValueChanged<ComposeImageUploadSource> onSourceChanged;
+  final ValueChanged<bool> onOriginalChanged;
+
+  @override
+  Widget build(BuildContext context) {
+    final scheme = Theme.of(context).colorScheme;
+    final textTheme = Theme.of(context).textTheme;
+    final sourceLabel =
+        source == ComposeImageUploadSource.forum ? '论坛' : '外链';
+    final qualityLabel = useOriginal ? '原图' : '压缩';
+    final summary = '图片：$sourceLabel · $qualityLabel';
+
+    return Material(
+      color: Colors.transparent,
+      elevation: 0,
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          InkWell(
+            onTap: enabled ? () => onExpandedChanged(!expanded) : null,
+            child: Padding(
+              padding: const EdgeInsets.fromLTRB(16, 4, 8, 4),
+              child: Row(
+                children: [
+                  Expanded(
+                    child: Text(
+                      summary,
+                      style: textTheme.labelMedium?.copyWith(
+                        color: scheme.onSurfaceVariant,
+                      ),
+                    ),
+                  ),
+                  Icon(
+                    Icons.tune,
+                    size: 18,
+                    color: scheme.onSurfaceVariant,
+                  ),
+                ],
+              ),
+            ),
+          ),
+          AnimatedCrossFade(
+            firstChild: const SizedBox(width: double.infinity),
+            secondChild: Padding(
+              padding: const EdgeInsets.fromLTRB(16, 0, 16, 8),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  Text(
+                    '论坛更稳；外链不占论坛附件额度',
+                    style: textTheme.bodySmall?.copyWith(
+                      color: scheme.onSurfaceVariant,
+                    ),
+                  ),
+                  const SizedBox(height: 8),
+                  SegmentedButton<ComposeImageUploadSource>(
+                    segments: const [
+                      ButtonSegment(
+                        value: ComposeImageUploadSource.forum,
+                        label: Text('论坛'),
+                      ),
+                      ButtonSegment(
+                        value: ComposeImageUploadSource.external,
+                        label: Text('外链'),
+                      ),
+                    ],
+                    selected: {source},
+                    onSelectionChanged: enabled
+                        ? (next) {
+                            if (next.isEmpty) return;
+                            onSourceChanged(next.first);
+                          }
+                        : null,
+                    showSelectedIcon: false,
+                  ),
+                  SwitchListTile(
+                    contentPadding: EdgeInsets.zero,
+                    title: Text('原图上传', style: textTheme.bodyMedium),
+                    subtitle: Text(
+                      '关闭时最长边约 2000px',
+                      style: textTheme.bodySmall?.copyWith(
+                        color: scheme.onSurfaceVariant,
+                      ),
+                    ),
+                    value: useOriginal,
+                    onChanged: enabled ? onOriginalChanged : null,
+                  ),
+                ],
+              ),
+            ),
+            crossFadeState: expanded
+                ? CrossFadeState.showSecond
+                : CrossFadeState.showFirst,
+            duration: S1Motion.medium,
+          ),
+        ],
       ),
     );
   }

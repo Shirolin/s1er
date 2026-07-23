@@ -2,6 +2,9 @@ import 'dart:typed_data';
 
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../config/api_config.dart';
+import '../models/compose_image_upload_result.dart';
+import '../models/forum_attachment_upload_info.dart';
 import '../models/post.dart';
 import '../models/quote_info.dart';
 import '../models/reply_submit_result.dart';
@@ -11,17 +14,33 @@ import '../models/edit_post_form_info.dart';
 import '../models/edit_post_submit_result.dart';
 import '../services/device_model_label.dart';
 import '../services/external_image_upload_service.dart';
+import '../services/forum_attachment_upload_service.dart';
+import '../utils/compose_image_compress.dart';
 import '../utils/post_signature.dart';
 import '../utils/quote_builder.dart';
 import 'api_service_provider.dart';
+import 'auth_provider.dart';
 import 'device_model_label_provider.dart';
 import 'settings_provider.dart';
+import '../services/http_client.dart';
+
+/// 插图上传来源。
+enum ComposeImageUploadSource {
+  /// Discuz 论坛附件（默认）。
+  forum,
+
+  /// p.sda1.dev 外链图床。
+  external,
+}
 
 /// 回复编排：预取官方引用字段 + 提交 `module=sendreply`。
 class ComposeController {
   ComposeController(this._ref);
 
   final Ref _ref;
+
+  ForumAttachmentUploadInfo? _cachedUploadInfo;
+  String? _cachedUploadInfoKey;
 
   Future<QuoteInfo?> prefetchQuote({
     required String tid,
@@ -30,12 +49,28 @@ class ComposeController {
     return _ref.read(apiServiceProvider).fetchQuoteInfo(tid: tid, pid: pid);
   }
 
-  /// [message] 只含用户正文（可含 `[img]`），不含客户端拼的 `[quote]`。
-  ///
-  /// 有 [quotedPost] 时，用网页同款完整 `[quote][url=findpost]…` 作为
-  /// `noticetrimstr`（保留官方 `noticeauthor`），替代 helper 缩略 `[post]`。
-  ///
-  /// 提交前按设置追加小尾巴；[noticeAuthorMsg] 仍用原始用户正文。
+  /// 后台预取论坛附件上传凭据；失败不抛，选图时再试。
+  Future<ForumAttachmentUploadInfo?> prefetchAttachmentUploadInfo({
+    required String fid,
+    String? tid,
+    ForumAttachmentUploadInfo? seed,
+  }) async {
+    if (seed != null && seed.isValid) {
+      _cacheUploadInfo(fid: fid, tid: tid, info: seed);
+      return seed;
+    }
+    final cached = _cachedFor(fid: fid, tid: tid);
+    if (cached != null) return cached;
+    final info = await _ref
+        .read(apiServiceProvider)
+        .fetchForumAttachmentUploadInfo(fid: fid, tid: tid);
+    if (info != null && info.isValid) {
+      _cacheUploadInfo(fid: fid, tid: tid, info: info);
+    }
+    return info;
+  }
+
+  /// [message] 只含用户正文（可含 `[img]` / `[attachimg]`），不含客户端拼的 `[quote]`。
   Future<ReplySubmitResult> submitReply({
     required String tid,
     required String fid,
@@ -133,15 +168,97 @@ class ComposeController {
         );
   }
 
-  Future<String> uploadImage({
+  /// 按来源上传：默认论坛附件；外链走 p.sda1.dev。
+  Future<ComposeImageUploadResult> uploadImage({
     required List<int> bytes,
     required String filename,
-  }) {
-    return _ref.read(externalImageUploadServiceProvider).upload(
-          bytes: Uint8List.fromList(bytes),
-          filename: filename,
+    required String fid,
+    String? tid,
+    String? editPid,
+    ComposeImageUploadSource source = ComposeImageUploadSource.forum,
+    bool useOriginalResolution = false,
+    ForumAttachmentUploadInfo? seedUploadInfo,
+  }) async {
+    final compressed = await ComposeImageCompress.maybeCompress(
+      bytes: Uint8List.fromList(bytes),
+      filename: filename,
+      useOriginal: useOriginalResolution,
+    );
+
+    if (source == ComposeImageUploadSource.external) {
+      final url = await _ref.read(externalImageUploadServiceProvider).upload(
+            bytes: compressed.bytes,
+            filename: compressed.filename,
+          );
+      return ComposeImageUploadResult(
+        insertTag: '[img]$url[/img]',
+        label: compressed.filename,
+        previewUrl: url,
+      );
+    }
+
+    final info = await prefetchAttachmentUploadInfo(
+      fid: fid,
+      tid: tid,
+      seed: seedUploadInfo,
+    );
+    if (info == null || !info.isValid) {
+      throw const ForumAttachmentUploadException(
+        '无法获取论坛上传参数，请稍后重试',
+      );
+    }
+
+    final uid = info.uid?.trim().isNotEmpty == true
+        ? info.uid!.trim()
+        : (_ref.read(authStateProvider).user?.uid.trim() ?? '');
+    final referer = _uploadReferer(fid: fid, tid: tid, editPid: editPid);
+
+    return _ref.read(forumAttachmentUploadServiceProvider).upload(
+          bytes: compressed.bytes,
+          filename: compressed.filename,
+          info: info,
+          uid: uid,
+          referer: referer,
         );
   }
+
+  String _uploadReferer({
+    required String fid,
+    String? tid,
+    String? editPid,
+  }) {
+    if (editPid != null &&
+        editPid.isNotEmpty &&
+        tid != null &&
+        tid.isNotEmpty) {
+      return ApiConfig.editPostFormUrl(fid: fid, tid: tid, pid: editPid);
+    }
+    if (tid != null && tid.isNotEmpty) {
+      return ApiConfig.forumReplyReferer(fid: fid, tid: tid);
+    }
+    return '${ApiConfig.forumPostUrl}?mod=post&action=newthread&fid=$fid';
+  }
+
+  ForumAttachmentUploadInfo? _cachedFor({
+    required String fid,
+    String? tid,
+  }) {
+    final key = _cacheKey(fid: fid, tid: tid);
+    if (_cachedUploadInfoKey == key) return _cachedUploadInfo;
+    return null;
+  }
+
+  void _cacheUploadInfo({
+    required String fid,
+    String? tid,
+    required ForumAttachmentUploadInfo info,
+  }) {
+    _cachedUploadInfoKey = _cacheKey(fid: fid, tid: tid);
+    _cachedUploadInfo = info;
+  }
+
+  static String _cacheKey({required String fid, String? tid}) =>
+      '${fid}_${tid ?? ''}';
 
   /// 按当前设置追加小尾巴（预览与发帖/回复提交共用）。
   Future<String> applySignature(String message) =>
@@ -184,4 +301,9 @@ final composeControllerProvider = Provider<ComposeController>((ref) {
 final externalImageUploadServiceProvider =
     Provider<ExternalImageUploadService>((ref) {
   return ExternalImageUploadService();
+});
+
+final forumAttachmentUploadServiceProvider =
+    Provider<ForumAttachmentUploadService>((ref) {
+  return ForumAttachmentUploadService(ref.watch(httpClientProvider));
 });

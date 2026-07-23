@@ -28,6 +28,9 @@ import '../models/app_exceptions.dart';
 import '../utils/compose_img_tags.dart';
 import '../utils/error_handler.dart';
 import '../utils/discuz_message.dart';
+import '../utils/forum_attachment_submit.dart';
+import '../utils/forum_attachment_upload_info_parser.dart';
+import '../models/forum_attachment_upload_info.dart';
 import 'formhash_service.dart';
 import 'http_client.dart';
 import 'talker.dart';
@@ -202,6 +205,8 @@ class ApiService {
   }
 
   /// 提交一个新主题。提交前必须再次通过只读权限预检。
+  ///
+  /// 正文含 `[attachimg]` 时改走网页发帖并附带 `attachnew`。
   Future<NewThreadSubmitResult> submitNewThread({
     required String fid,
     required String subject,
@@ -215,6 +220,20 @@ class ApiService {
     if (form.typeRequired && (typeId == null || typeId.trim().isEmpty)) {
       return const NewThreadSubmitResult(error: '请选择主题分类');
     }
+
+    final normalized = normalizeForumAttachmentMessage(message);
+    final aids = collectForumAttachmentIds(normalized);
+    if (aids.isNotEmpty) {
+      return _submitNewThreadViaWeb(
+        fid: fid,
+        subject: subject,
+        message: normalized,
+        typeId: typeId,
+        formhash: form.formhash!,
+        attachmentIds: aids,
+      );
+    }
+
     final url = buildApiUrl(
       module: ApiConfig.moduleNewThread,
       params: {'fid': fid, 'extra': '', 'topicsubmit': 'yes'},
@@ -224,7 +243,7 @@ class ApiService {
       'posttime': (DateTime.now().millisecondsSinceEpoch ~/ 1000).toString(),
       if (typeId != null && typeId.trim().isNotEmpty) 'typeid': typeId.trim(),
       'subject': subject.trim(),
-      'message': message.trim(),
+      'message': normalized.trim(),
       'allownoticeauthor': '1',
       'usesig': '1',
     };
@@ -238,6 +257,65 @@ class ApiService {
     } catch (e, st) {
       return NewThreadSubmitResult(error: friendlyError(e, '发帖', st));
     }
+  }
+
+  Future<NewThreadSubmitResult> _submitNewThreadViaWeb({
+    required String fid,
+    required String subject,
+    required String message,
+    String? typeId,
+    required String formhash,
+    required Set<String> attachmentIds,
+  }) async {
+    final data = <String, String>{
+      'formhash': formhash,
+      'posttime': (DateTime.now().millisecondsSinceEpoch ~/ 1000).toString(),
+      if (typeId != null && typeId.trim().isNotEmpty) 'typeid': typeId.trim(),
+      'subject': subject.trim(),
+      'message': message.trim(),
+      'allownoticeauthor': '1',
+      'usesig': '1',
+      'topicsubmit': 'yes',
+    };
+    appendAttachNewFields(data, attachmentIds);
+    try {
+      final response = await _httpClient.post(
+        ApiConfig.webNewThreadSubmitUrl(fid: fid),
+        data: data,
+        options: Options(contentType: Headers.formUrlEncodedContentType),
+      );
+      final body = response.data?.toString() ?? '';
+      final web = _parseWebNewThreadSubmitResponse(body);
+      if (web != null) return web;
+      return parseNewThreadSubmitResponse(response.data);
+    } catch (e, st) {
+      return NewThreadSubmitResult(error: friendlyError(e, '发帖', st));
+    }
+  }
+
+  /// 网页发帖成功：`succeedhandle_*` 里带 tid。
+  static NewThreadSubmitResult? _parseWebNewThreadSubmitResponse(String xml) {
+    final successMatch = RegExp(
+      r"succeedhandle_[^(]*\('([^']*)',\s*'([^']*)',\s*\{([^}]*)\}\)",
+    ).firstMatch(xml);
+    if (successMatch != null) {
+      final meta = successMatch.group(3) ?? '';
+      final tid = _extractReplyField(meta, 'tid');
+      final pid = _extractReplyField(meta, 'pid');
+      if (tid != null && tid.isNotEmpty) {
+        return NewThreadSubmitResult(tid: tid, pid: pid);
+      }
+    }
+    final errorMatch = RegExp(
+      r"errorhandle_[^(]*\('([^']*)'",
+    ).firstMatch(xml);
+    if (errorMatch != null) {
+      final msg = errorMatch.group(1)?.trim();
+      if (msg != null && msg.isNotEmpty) {
+        return NewThreadSubmitResult(error: msg);
+      }
+    }
+    return null;
   }
 
   /// 只读获取 Discuz Web 编辑页；不触发任何写入。
@@ -334,6 +412,7 @@ class ApiService {
         isFirst: isFirst,
         special: special,
         attachImageUrls: extractAttachImageUrls(html),
+        attachmentUploadInfo: parseForumAttachmentUploadInfo(html),
       );
     } catch (e) {
       return EditPostFormInfo(error: '编辑表单解析失败：$e');
@@ -395,7 +474,7 @@ class ApiService {
       'formhash': latest.formhash!,
       'posttime': (DateTime.now().millisecondsSinceEpoch ~/ 1000).toString(),
       'subject': isFirst ? subject.trim() : latest.subject,
-      'message': message.trim(),
+      'message': normalizeForumAttachmentMessage(message).trim(),
       'allownoticeauthor': '1',
       'usesig': '1',
     };
@@ -403,6 +482,10 @@ class ApiService {
     if (readPerm != null && readPerm.trim().isNotEmpty) {
       data['readperm'] = readPerm;
     }
+    appendAttachNewFields(
+      data,
+      collectForumAttachmentIds(data['message']),
+    );
     try {
       final response = await _httpClient.post(
         ApiConfig.editPostSubmitUrl(),
@@ -907,10 +990,38 @@ class ApiService {
     }
   }
 
+  /// 预取论坛附件上传凭据（回复 / 发新帖编辑页 HTML）。
+  Future<ForumAttachmentUploadInfo?> fetchForumAttachmentUploadInfo({
+    required String fid,
+    String? tid,
+  }) async {
+    final url = (tid != null && tid.isNotEmpty)
+        ? ApiConfig.replyEditorUrl(tid: tid)
+        : ApiConfig.newThreadEditorUrl(fid: fid);
+    try {
+      final response = await _httpClient.get(
+        url,
+        options: Options(
+          responseType: ResponseType.plain,
+          headers: {'X-Requested-With': 'XMLHttpRequest'},
+        ),
+      );
+      return parseForumAttachmentUploadInfo(
+        response.data?.toString() ?? '',
+        fallbackFid: fid,
+      );
+    } catch (e, st) {
+      talker.handle(e, st, 'fetchForumAttachmentUploadInfo failed');
+      return null;
+    }
+  }
+
   /// Mobile API 发回复（`module=sendreply`）。
   ///
   /// [message] 仅为用户正文；引用时传入 [quoteInfo]，并由调用方决定
   /// [noticeAuthorMsg]（通常为用户正文缩写，上限 100）。
+  ///
+  /// 正文含 `[attachimg]` 时改走网页回复并附带 `attachnew`。
   Future<ReplySubmitResult> sendReply({
     required String tid,
     required String fid,
@@ -918,6 +1029,19 @@ class ApiService {
     QuoteInfo? quoteInfo,
     String? noticeAuthorMsg,
   }) async {
+    final normalized = normalizeForumAttachmentMessage(message);
+    final aids = collectForumAttachmentIds(normalized);
+    if (aids.isNotEmpty) {
+      return _sendReplyViaWeb(
+        tid: tid,
+        fid: fid,
+        message: normalized,
+        quoteInfo: quoteInfo,
+        noticeAuthorMsg: noticeAuthorMsg,
+        attachmentIds: aids,
+      );
+    }
+
     final hasFormhash = await _httpClient.ensureFormhash(
       tid: tid,
       fid: fid,
@@ -936,7 +1060,7 @@ class ApiService {
 
     final data = <String, String>{
       'tid': tid,
-      'message': message,
+      'message': normalized,
     };
     if (quoteInfo != null) {
       data['noticeauthor'] = quoteInfo.noticeAuthor;
@@ -953,6 +1077,57 @@ class ApiService {
         options: Options(contentType: Headers.formUrlEncodedContentType),
       );
       return parseSendReplyResponse(response.data);
+    } catch (e, st) {
+      return ReplySubmitResult(error: friendlyError(e, '回复', st));
+    }
+  }
+
+  Future<ReplySubmitResult> _sendReplyViaWeb({
+    required String tid,
+    required String fid,
+    required String message,
+    QuoteInfo? quoteInfo,
+    String? noticeAuthorMsg,
+    required Set<String> attachmentIds,
+  }) async {
+    final hasFormhash = await _httpClient.ensureFormhash(
+      tid: tid,
+      fid: fid,
+      force: true,
+    );
+    if (!hasFormhash) {
+      return const ReplySubmitResult(
+        error: '无法获取表单验证串，请刷新主题页后重试',
+      );
+    }
+
+    final data = <String, String>{
+      'posttime': (DateTime.now().millisecondsSinceEpoch ~/ 1000).toString(),
+      'usesig': '1',
+      'subject': '',
+      'message': message,
+      'replysubmit': 'yes',
+    };
+    if (quoteInfo != null) {
+      data['noticeauthor'] = quoteInfo.noticeAuthor;
+      data['noticetrimstr'] = quoteInfo.submitNoticeTrimStr;
+      final abbr = (noticeAuthorMsg ?? message).trim();
+      data['noticeauthormsg'] =
+          abbr.length <= 100 ? abbr : '${abbr.substring(0, 100)}…';
+    }
+    appendAttachNewFields(data, attachmentIds);
+
+    try {
+      final response = await _httpClient.post(
+        ApiConfig.webReplySubmitUrl(fid: fid, tid: tid),
+        data: data,
+        options: Options(contentType: Headers.formUrlEncodedContentType),
+      );
+      final responseData = response.data;
+      if (responseData is String) {
+        return parseReplyResponse(responseData);
+      }
+      return parseSendReplyResponse(responseData);
     } catch (e, st) {
       return ReplySubmitResult(error: friendlyError(e, '回复', st));
     }

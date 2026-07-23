@@ -177,7 +177,24 @@ Future<void> _handleRequest(HttpRequest req) async {
     final ct = req.headers.contentType;
     if (ct != null) upReq.headers.set('Content-Type', ct.toString());
     upReq.headers.set('User-Agent', mobileUserAgent);
-    upReq.headers.set('Referer', _resolveReferer(target));
+    final isForumAttachUpload = target.path.contains('misc.php') &&
+        target.queryParameters['operation'] == 'upload';
+    if (isForumAttachUpload) {
+      final clientReferer = req.headers.value('referer');
+      final clientOrigin = req.headers.value('origin');
+      upReq.headers.set(
+        'Referer',
+        (clientReferer != null && clientReferer.isNotEmpty)
+            ? clientReferer
+            : _resolveReferer(target),
+      );
+      if (clientOrigin != null && clientOrigin.isNotEmpty) {
+        upReq.headers.set('Origin', clientOrigin);
+      }
+      upReq.headers.set('Accept', '*/*');
+    } else {
+      upReq.headers.set('Referer', _resolveReferer(target));
+    }
     if (target.path.contains('forum.php') &&
         target.queryParameters['inajax'] == '1') {
       upReq.headers.set('X-Requested-With', 'XMLHttpRequest');
@@ -192,8 +209,10 @@ Future<void> _handleRequest(HttpRequest req) async {
     upReq.add(body);
   }
 
-  // 图床上传需更长超时：Web 先收齐字节再转发，大图 + Cloudflare 易超过 API 默认 30s。
-  final upstreamTimeoutSeconds = isExtUpload
+  // 图床 / 论坛附件上传需更长超时：Web 先收齐字节再转发，大图易超过 API 默认 30s。
+  final isForumAttachUpload = target.path.contains('misc.php') &&
+      target.queryParameters['operation'] == 'upload';
+  final upstreamTimeoutSeconds = (isExtUpload || isForumAttachUpload)
       ? EnvConfig.imageUploadTimeoutSeconds
       : EnvConfig.receiveTimeoutSeconds;
 

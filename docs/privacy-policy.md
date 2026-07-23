@@ -38,7 +38,8 @@ S1er（以下简称"本应用"）是第三方开发的 Stage1st（S1）论坛非
 
 - **Stage1st 论坛 API** (`stage1st.com`)：获取论坛数据、发帖、登录等核心功能
 - **Stage1st 头像 CDN** (`avatar.stage1st.com`)：加载用户头像
-- **外链图床** (`p.sda1.dev`)：上传帖子插图（用户主动操作时）
+- **论坛附件**（默认）：上传至 Stage1st（`misc.php` swfupload），用户主动插图时
+- **外链图床** (`p.sda1.dev`)：可选备选上传源（用户主动切换时）
 - **Sentry**（可选）：仅在用户通过 `--dart-define` 注入 DSN 时启用，用于崩溃报告
 
 ---

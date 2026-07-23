@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- **论坛附件插图**：发帖/回复/编辑默认走 Discuz `swfupload`（`[attachimg]` + 网页提交 `attachnew`）；可切换外链 `p.sda1.dev`；默认压缩最长边约 2000px；失败可「改用外链」重试
+
 ## [0.2.0] - 2026-07-19
 
 ### Changed

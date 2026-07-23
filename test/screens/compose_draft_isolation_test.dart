@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:s1er/models/edit_post_form_info.dart';
 import 'package:s1er/models/edit_post_submit_result.dart';
+import 'package:s1er/models/forum_attachment_upload_info.dart';
 import 'package:s1er/providers/auth_provider.dart';
 import 'package:s1er/providers/compose_provider.dart';
 import 'package:s1er/providers/settings_provider.dart';
@@ -278,6 +279,15 @@ void main() {
 
 class _EditComposeController extends ComposeController {
   _EditComposeController(super.ref);
+
+  @override
+  Future<ForumAttachmentUploadInfo?> prefetchAttachmentUploadInfo({
+    required String fid,
+    String? tid,
+    ForumAttachmentUploadInfo? seed,
+  }) async {
+    return null;
+  }
 
   @override
   Future<EditPostFormInfo> fetchEditPostForm({

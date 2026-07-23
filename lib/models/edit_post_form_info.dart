@@ -1,3 +1,5 @@
+import '../models/forum_attachment_upload_info.dart';
+
 class EditPostFormInfo {
   const EditPostFormInfo({
     this.subject = '',
@@ -10,6 +12,7 @@ class EditPostFormInfo {
     this.isFirst = false,
     this.special = 0,
     this.attachImageUrls = const {},
+    this.attachmentUploadInfo,
     this.error,
   });
 
@@ -25,6 +28,10 @@ class EditPostFormInfo {
 
   /// 编辑页 / 读帖 HTML 解析出的 `aid → 图片 URL`（预览 `[attachimg]` 用）。
   final Map<String, String> attachImageUrls;
+
+  /// 编辑页刮取的论坛附件上传凭据（可缺）。
+  final ForumAttachmentUploadInfo? attachmentUploadInfo;
+
   final String? error;
 
   bool get canEdit =>

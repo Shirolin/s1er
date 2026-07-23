@@ -396,7 +396,21 @@ String filenameFromUrl(String url) {
   required int end,
   required String url,
 }) {
-  final tag = '[img]$url[/img]';
+  return insertMediaTagAt(
+    text: text,
+    start: start,
+    end: end,
+    tag: '[img]$url[/img]',
+  );
+}
+
+/// 在光标处插入完整媒体 BBCode（`[img]` / `[attachimg]`）。
+({String text, int cursor}) insertMediaTagAt({
+  required String text,
+  required int start,
+  required int end,
+  required String tag,
+}) {
   return insertSnippetPadded(
     text: text,
     start: start,

@@ -57,6 +57,47 @@ class ApiConfig {
       '$forumPostUrl?mod=post&action=edit&editsubmit=yes&inajax=yes'
       '&wysiwyg=1&delete=0';
 
+  /// 回复编辑页（刮取论坛附件上传 hash/uid）。
+  static String replyEditorUrl({required String tid}) =>
+      '$forumPostUrl?mod=post&action=reply&inajax=yes'
+      '&tid=${Uri.encodeQueryComponent(tid)}';
+
+  /// 发新帖编辑页（刮取论坛附件上传 hash/uid）。
+  static String newThreadEditorUrl({required String fid}) =>
+      '$forumPostUrl?mod=post&action=newthread&fid=${Uri.encodeQueryComponent(fid)}'
+      '&inajax=yes';
+
+  /// Discuz swfupload 图片附件上传。
+  static String forumAttachmentUploadUrl({required String fid}) =>
+      '$baseUrl/misc.php?mod=swfupload&action=swfupload&operation=upload'
+      '&fid=${Uri.encodeQueryComponent(fid)}';
+
+  /// 上传后拉取缩略图（单图 imagelist）。
+  static String forumAttachmentImageListUrl({
+    required String aids,
+    required String fid,
+    String ajaxTarget = 'WU_FILE_0',
+  }) =>
+      '$forumPostUrl?mod=ajax&action=imagelist&type=single'
+      '&pid=0&aids=${Uri.encodeQueryComponent(aids)}'
+      '&fid=${Uri.encodeQueryComponent(fid)}'
+      '&inajax=1&ajaxtarget=${Uri.encodeQueryComponent(ajaxTarget)}';
+
+  /// 含论坛附件时的网页回复提交。
+  static String webReplySubmitUrl({
+    required String fid,
+    required String tid,
+  }) =>
+      '$forumPostUrl?mod=post&action=reply&fid=${Uri.encodeQueryComponent(fid)}'
+      '&tid=${Uri.encodeQueryComponent(tid)}'
+      '&extra=&replysubmit=yes&inajax=1';
+
+  /// 含论坛附件时的网页发新帖提交。
+  static String webNewThreadSubmitUrl({required String fid}) =>
+      '$forumPostUrl?mod=post&action=newthread'
+      '&fid=${Uri.encodeQueryComponent(fid)}'
+      '&extra=&topicsubmit=yes&inajax=1';
+
   // API module names
   static const String moduleForumIndex = 'forumindex';
   static const String moduleForumDisplay = 'forumdisplay';

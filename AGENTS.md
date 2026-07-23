@@ -28,7 +28,7 @@
 | 设备机型标签 | device_info_plus（小尾巴细机型；失败回退平台名） | ^13.2.0 |
 | 桌面窗口管理 | window_manager（自绘标题栏；仅 Windows / macOS / Linux） | ^0.5.1 |
 | 备份（L1 ZIP） | archive / file_selector / share_plus | ^4.0.9 / ^1.1.0 / ^13.2.0 |
-| 回复插图 | file_selector + pasteboard + p.sda1.dev 外链图床 | 已有 file_selector；`pasteboard` 原生剪贴板读图（Web 降级）；不做 Discuz attach |
+| 回复插图 | file_selector + pasteboard；默认 Discuz 论坛附件（swfupload → `[attachimg]`）；备选 `p.sda1.dev` 外链 | 有 `[attachimg]` 时网页提交带 `attachnew`；否则 Mobile `sendreply`/`newthread` |
 | 麻将脸表情 | `assets/emoticons/` + packs/list/ATTRIBUTION | 自 s1emoticon Release；无 LICENSE 已声明 |
 | WebView | webview_flutter | ^4.7.0 |
 | HTML 渲染 | flutter_html | ^3.0.0 |
@@ -179,7 +179,7 @@ flutter run -d chrome --dart-define=TALKER_LOG_LEVEL=all --dart-define=TALKER_MA
 | `CONNECT_TIMEOUT` | int | `20` | Dio 连接超时（秒） |
 | `RECEIVE_TIMEOUT` | int | `30` | Dio 响应超时（秒） |
 | `SEND_TIMEOUT` | int | `30` | Dio 发送超时（秒） |
-| `IMAGE_UPLOAD_TIMEOUT` | int | `120` | 外链图床上传 send/receive 超时（秒；Web 代理 `/ext-upload` 同上限） |
+| `IMAGE_UPLOAD_TIMEOUT` | int | `120` | 插图上传 send/receive 超时（秒；外链 `/ext-upload` 与论坛 `misc.php` swfupload 同上限） |
 | `UPDATE_MANIFEST_URL` | String | GitHub raw `docs/release/latest.json` | 应用升级清单 URL |
 | `DISTRIBUTION` | String | `github` | 分发渠道：`github` / `play`（影响升级 CTA 链接） |
 | `SENTRY_DSN` | String | 空 | 非空时启用 Sentry；详见 `docs/sentry-setup.md` |

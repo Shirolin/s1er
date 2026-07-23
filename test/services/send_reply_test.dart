@@ -88,4 +88,15 @@ void main() {
       expect(result.pid, '123');
     });
   });
+
+  group('ApiService.parseReplyResponse with attach flow', () {
+    test('parses web succeedhandle after attachnew submit', () {
+      const xml =
+          "<root><![CDATA[<script>succeedhandle_postform('r', 'ok', {fid:'4',tid:'456',pid:'210'});</script>]]></root>";
+      final result = ApiService.parseReplyResponse(xml);
+      expect(result.isSuccess, isTrue);
+      expect(result.pid, '210');
+      expect(result.tid, '456');
+    });
+  });
 }

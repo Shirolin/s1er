@@ -33,8 +33,7 @@ class _UpdatePromptHostState extends ConsumerState<UpdatePromptHost> {
           await showAppUpdateDialog(
             context,
             evaluation: prompt,
-            onPromptInteracted: notifier.markPromptInteracted,
-            onIgnoreVersion: notifier.ignoreVersion,
+            onPromptClosed: notifier.onPromptClosed,
           );
         } finally {
           if (mounted) {

@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -7,18 +9,23 @@ import '../providers/update_check_provider.dart';
 import '../providers/update_download_provider.dart';
 import '../utils/post_link_resolver.dart';
 import '../utils/s1_snack_bar.dart';
+import '../utils/update_prompt_store.dart';
 
 typedef ExternalUrlLauncher = Future<bool> Function(
   Uri uri, {
   LaunchMode mode,
 });
 
+typedef UpdatePromptClosed = void Function(
+  UpdatePromptCloseReason reason, {
+  String? ignoredVersion,
+});
+
 /// M3 升级提醒：Android 可应用内下载；网盘为国内备选；其它平台外链。
 Future<void> showAppUpdateDialog(
   BuildContext context, {
   required UpdateEvaluation evaluation,
-  required VoidCallback onPromptInteracted,
-  required void Function(String version) onIgnoreVersion,
+  required UpdatePromptClosed onPromptClosed,
   ExternalUrlLauncher? launchUrlFn,
   ProviderContainer? container,
 }) async {
@@ -34,22 +41,34 @@ Future<void> showAppUpdateDialog(
     captured = container;
   }
 
+  final force = evaluation.availability == UpdateAvailability.force;
+  var closeReason = UpdatePromptCloseReason.later;
+  String? ignoredVersion;
+
   await showDialog<void>(
     context: context,
-    barrierDismissible: true,
+    barrierDismissible: !force,
     builder: (ctx) {
       final dialog = _AppUpdateDialogBody(
         evaluation: evaluation,
-        onIgnoreVersion: onIgnoreVersion,
         launchUrlFn: launch,
+        onRequestClose: (reason, {String? version}) {
+          closeReason = reason;
+          ignoredVersion = version;
+          Navigator.of(ctx).pop();
+        },
+      );
+      final wrapped = PopScope(
+        canPop: !force,
+        child: dialog,
       );
       if (container != null) {
         return UncontrolledProviderScope(
           container: container,
-          child: dialog,
+          child: wrapped,
         );
       }
-      return dialog;
+      return wrapped;
     },
   );
 
@@ -59,33 +78,79 @@ Future<void> showAppUpdateDialog(
     // container 可能已 dispose
   }
 
-  // 关闭 Dialog（scrim / 返回 / 按钮）均记入冷却；忽略此版额外写入 ignored。
-  onPromptInteracted();
+  onPromptClosed(closeReason, ignoredVersion: ignoredVersion);
 }
 
 class _AppUpdateDialogBody extends ConsumerStatefulWidget {
   const _AppUpdateDialogBody({
     required this.evaluation,
-    required this.onIgnoreVersion,
     required this.launchUrlFn,
+    required this.onRequestClose,
   });
 
   final UpdateEvaluation evaluation;
-  final void Function(String version) onIgnoreVersion;
   final ExternalUrlLauncher launchUrlFn;
+  final void Function(
+    UpdatePromptCloseReason reason, {
+    String? version,
+  }) onRequestClose;
 
   @override
   ConsumerState<_AppUpdateDialogBody> createState() =>
       _AppUpdateDialogBodyState();
 }
 
-class _AppUpdateDialogBodyState extends ConsumerState<_AppUpdateDialogBody> {
+class _AppUpdateDialogBodyState extends ConsumerState<_AppUpdateDialogBody>
+    with WidgetsBindingObserver {
   UpdateEvaluation get evaluation => widget.evaluation;
+
+  var _observingLifecycle = false;
+  var _autoRetrying = false;
 
   bool get _useInApp =>
       !kIsWeb &&
       defaultTargetPlatform == TargetPlatform.android &&
       evaluation.canInAppDownload;
+
+  @override
+  void dispose() {
+    _stopLifecycleObserver();
+    super.dispose();
+  }
+
+  void _startLifecycleObserver() {
+    if (_observingLifecycle) return;
+    WidgetsBinding.instance.addObserver(this);
+    _observingLifecycle = true;
+  }
+
+  void _stopLifecycleObserver() {
+    if (!_observingLifecycle) return;
+    WidgetsBinding.instance.removeObserver(this);
+    _observingLifecycle = false;
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    if (state != AppLifecycleState.resumed) return;
+    if (_autoRetrying) return;
+    final phase = ref.read(updateDownloadProvider).phase;
+    if (phase != UpdateDownloadPhase.needsPermission) return;
+    unawaited(_tryResumeAfterPermission());
+  }
+
+  Future<void> _tryResumeAfterPermission() async {
+    if (_autoRetrying || !mounted) return;
+    _autoRetrying = true;
+    try {
+      final installer = ref.read(appUpdateInstallerProvider);
+      final canInstall = await installer.canInstallPackages();
+      if (!mounted || !canInstall) return;
+      await ref.read(updateDownloadProvider.notifier).retry(evaluation);
+    } finally {
+      _autoRetrying = false;
+    }
+  }
 
   Future<void> _openExternal(String url, {String? snackAfter}) async {
     final uri = Uri.tryParse(url);
@@ -139,8 +204,7 @@ class _AppUpdateDialogBodyState extends ConsumerState<_AppUpdateDialogBody> {
       await notifier.startAndroidUpdate(evaluation);
       final phase = ref.read(updateDownloadProvider).phase;
       if (phase == UpdateDownloadPhase.idle && mounted) {
-        // 安装器已调起
-        Navigator.of(context).pop();
+        widget.onRequestClose(UpdatePromptCloseReason.later);
       }
     } on Object catch (e) {
       if (mounted) {
@@ -156,16 +220,25 @@ class _AppUpdateDialogBodyState extends ConsumerState<_AppUpdateDialogBody> {
     final scheme = Theme.of(context).colorScheme;
     final textTheme = Theme.of(context).textTheme;
     final failed = download.phase == UpdateDownloadPhase.failed;
+    final cancelled = download.phase == UpdateDownloadPhase.cancelled;
     final needsPermission =
         download.phase == UpdateDownloadPhase.needsPermission;
     final downloading = download.phase == UpdateDownloadPhase.downloading ||
         download.phase == UpdateDownloadPhase.installing;
 
+    if (needsPermission) {
+      _startLifecycleObserver();
+    } else {
+      _stopLifecycleObserver();
+    }
+
     final title = failed
         ? '下载失败'
-        : needsPermission
-            ? '需要安装权限'
-            : (force ? '需要更新' : '发现新版本');
+        : cancelled
+            ? '已取消下载'
+            : needsPermission
+                ? '需要安装权限'
+                : (force ? '需要更新' : '发现新版本');
 
     return AlertDialog(
       title: Text(title),
@@ -176,6 +249,7 @@ class _AppUpdateDialogBodyState extends ConsumerState<_AppUpdateDialogBody> {
           download: download,
           force: force,
           failed: failed,
+          cancelled: cancelled,
           needsPermission: needsPermission,
           downloading: downloading,
         ),
@@ -184,6 +258,7 @@ class _AppUpdateDialogBodyState extends ConsumerState<_AppUpdateDialogBody> {
         download: download,
         force: force,
         failed: failed,
+        cancelled: cancelled,
         needsPermission: needsPermission,
         downloading: downloading,
       ),
@@ -196,6 +271,7 @@ class _AppUpdateDialogBodyState extends ConsumerState<_AppUpdateDialogBody> {
     required UpdateDownloadState download,
     required bool force,
     required bool failed,
+    required bool cancelled,
     required bool needsPermission,
     required bool downloading,
   }) {
@@ -237,16 +313,22 @@ class _AppUpdateDialogBodyState extends ConsumerState<_AppUpdateDialogBody> {
       );
     }
 
-    if (failed) {
+    if (failed || cancelled) {
       final buffer = StringBuffer(
-        download.message?.trim().isNotEmpty == true
-            ? '${download.message}\n\n直链下载失败，可能是网络受限。'
-            : '直链下载失败，可能是网络受限。',
+        cancelled
+            ? (download.message?.trim().isNotEmpty == true
+                ? download.message!
+                : '已取消下载。')
+            : (download.message?.trim().isNotEmpty == true
+                ? '${download.message}\n\n直链下载失败，可能是网络受限。'
+                : '直链下载失败，可能是网络受限。'),
       );
-      if (evaluation.hasNetdisk) {
-        buffer.write('可用网盘获取安装包。');
-      } else {
-        buffer.write('可尝试浏览器打开下载页。');
+      if (!cancelled) {
+        if (evaluation.hasNetdisk) {
+          buffer.write('可用网盘获取安装包。');
+        } else {
+          buffer.write('可尝试浏览器打开下载页。');
+        }
       }
       if (hint != null) {
         buffer.write('\n\n');
@@ -275,6 +357,7 @@ class _AppUpdateDialogBodyState extends ConsumerState<_AppUpdateDialogBody> {
     required UpdateDownloadState download,
     required bool force,
     required bool failed,
+    required bool cancelled,
     required bool needsPermission,
     required bool downloading,
   }) {
@@ -304,12 +387,15 @@ class _AppUpdateDialogBodyState extends ConsumerState<_AppUpdateDialogBody> {
     }
 
     if (needsPermission) {
-      actions.add(
-        TextButton(
-          onPressed: () => Navigator.of(context).pop(),
-          child: const Text('关闭'),
-        ),
-      );
+      if (!force) {
+        actions.add(
+          TextButton(
+            onPressed: () =>
+                widget.onRequestClose(UpdatePromptCloseReason.later),
+            child: const Text('关闭'),
+          ),
+        );
+      }
       actions.add(
         FilledButton(
           onPressed: () async {
@@ -330,7 +416,7 @@ class _AppUpdateDialogBodyState extends ConsumerState<_AppUpdateDialogBody> {
       return actions;
     }
 
-    if (failed) {
+    if (failed || cancelled) {
       actions.add(
         TextButton(
           onPressed: () =>
@@ -349,7 +435,9 @@ class _AppUpdateDialogBodyState extends ConsumerState<_AppUpdateDialogBody> {
           FilledButton(
             onPressed: () async {
               await _openNetdisk();
-              if (mounted) Navigator.of(context).pop();
+              if (mounted) {
+                widget.onRequestClose(UpdatePromptCloseReason.later);
+              }
             },
             child: const Text('网盘下载'),
           ),
@@ -359,7 +447,9 @@ class _AppUpdateDialogBodyState extends ConsumerState<_AppUpdateDialogBody> {
           FilledButton(
             onPressed: () async {
               await _openBrowserDownload();
-              if (mounted) Navigator.of(context).pop();
+              if (mounted) {
+                widget.onRequestClose(UpdatePromptCloseReason.later);
+              }
             },
             child: const Text('浏览器打开'),
           ),
@@ -372,11 +462,17 @@ class _AppUpdateDialogBodyState extends ConsumerState<_AppUpdateDialogBody> {
     if (!force) {
       actions.add(
         TextButton(
-          onPressed: () {
-            widget.onIgnoreVersion(evaluation.manifest.latest);
-            Navigator.of(context).pop();
-          },
+          onPressed: () => widget.onRequestClose(
+            UpdatePromptCloseReason.ignored,
+            version: evaluation.manifest.latest,
+          ),
           child: const Text('忽略此版'),
+        ),
+      );
+      actions.add(
+        TextButton(
+          onPressed: () => widget.onRequestClose(UpdatePromptCloseReason.later),
+          child: const Text('稍后'),
         ),
       );
     }
@@ -386,7 +482,9 @@ class _AppUpdateDialogBodyState extends ConsumerState<_AppUpdateDialogBody> {
         TextButton(
           onPressed: () async {
             await _openNetdisk();
-            if (mounted) Navigator.of(context).pop();
+            if (mounted) {
+              widget.onRequestClose(UpdatePromptCloseReason.later);
+            }
           },
           child: const Text('网盘下载'),
         ),
@@ -405,7 +503,9 @@ class _AppUpdateDialogBodyState extends ConsumerState<_AppUpdateDialogBody> {
         FilledButton(
           onPressed: () async {
             await _openBrowserDownload();
-            if (mounted) Navigator.of(context).pop();
+            if (mounted) {
+              widget.onRequestClose(UpdatePromptCloseReason.later);
+            }
           },
           child: const Text('去更新'),
         ),

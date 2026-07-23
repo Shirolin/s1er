@@ -6,6 +6,9 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:s1er/models/app_exceptions.dart';
 import 'package:s1er/services/app_update_downloader.dart';
 
+/// Minimal ZIP local-file header (APK magic).
+final Uint8List _apkMagic = Uint8List.fromList([0x50, 0x4B, 0x03, 0x04, 0, 0]);
+
 void main() {
   late Directory tempRoot;
 
@@ -21,8 +24,7 @@ void main() {
 
   group('AppUpdateDownloader', () {
     test('downloads allowed URL into updates dir', () async {
-      final dio = Dio()
-        ..httpClientAdapter = _BytesAdapter(Uint8List.fromList([1, 2, 3, 4]));
+      final dio = Dio()..httpClientAdapter = _BytesAdapter(_apkMagic);
       final downloader = AppUpdateDownloader(
         dio: dio,
         temporaryDirectory: () async => tempRoot,
@@ -37,7 +39,7 @@ void main() {
 
       expect(result.filePath, endsWith('s1er-1.0.0.apk'));
       expect(File(result.filePath).existsSync(), isTrue);
-      expect(File(result.filePath).lengthSync(), 4);
+      expect(File(result.filePath).lengthSync(), _apkMagic.length);
     });
 
     test('skips disallowed host and fails when none left', () async {
@@ -64,7 +66,7 @@ void main() {
       final dio = Dio()
         ..httpClientAdapter = _UrlSensitiveAdapter(
           failPathContains: 'missing.apk',
-          bytes: Uint8List.fromList([9, 9]),
+          bytes: _apkMagic,
         );
       final downloader = AppUpdateDownloader(
         dio: dio,
@@ -79,7 +81,7 @@ void main() {
         versionLabel: '1.0.0',
       );
       expect(result.sourceUrl, contains('ok.apk'));
-      expect(File(result.filePath).lengthSync(), 2);
+      expect(File(result.filePath).lengthSync(), _apkMagic.length);
     });
 
     test('rejects empty downloaded file', () async {
@@ -100,6 +102,30 @@ void main() {
             (e) => e.message,
             'message',
             '下载文件为空',
+          ),
+        ),
+      );
+    });
+
+    test('rejects non-ZIP payload (e.g. HTML error page)', () async {
+      final html = Uint8List.fromList('Not Found'.codeUnits);
+      final dio = Dio()..httpClientAdapter = _BytesAdapter(html);
+      final downloader = AppUpdateDownloader(
+        dio: dio,
+        temporaryDirectory: () async => tempRoot,
+      );
+      expect(
+        () => downloader.downloadApk(
+          urls: const [
+            'https://github.com/Shirolin/s1er/releases/download/v1/app.apk',
+          ],
+          versionLabel: '1.0.0',
+        ),
+        throwsA(
+          isA<UpdateCheckException>().having(
+            (e) => e.message,
+            'message',
+            '下载文件不是有效安装包',
           ),
         ),
       );

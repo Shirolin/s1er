@@ -148,30 +148,68 @@ class UpdateCheckService {
     'wwwa.lanzoui.com',
   };
 
+  /// 按设备 ABI 顺序解析 Android APK 直链（分架构 → universal），已 sanitize 去重。
+  ///
+  /// [supportedAbis] 为空时仅返回 universal（若有）。
+  static List<String> resolveAndroidApkUrls(
+    AppUpdateManifest manifest, {
+    List<String> supportedAbis = const [],
+  }) {
+    final urls = <String>[];
+    void addIfAllowed(String? raw) {
+      final url = _sanitizeUrl(raw, allowedDownloadHosts);
+      if (url == null || urls.contains(url)) return;
+      urls.add(url);
+    }
+
+    final perAbi = manifest.channels.androidApks;
+    if (perAbi != null && perAbi.isNotEmpty) {
+      for (final abi in supportedAbis) {
+        final key = abi.trim();
+        if (key.isEmpty) continue;
+        addIfAllowed(perAbi[key]);
+      }
+    }
+    addIfAllowed(manifest.channels.androidApk);
+    return List<String>.unmodifiable(urls);
+  }
+
   /// 按分发渠道与平台解析下载 / 商店 URL。
   ///
   /// 仅返回通过主机白名单的 https URL；无一可用时返回空字符串。
+  /// Android 时 [supportedAbis] 用于优先分架构包；返回列表首项。
   static String resolveDownloadUrl(
     AppUpdateManifest manifest, {
     String distribution = EnvConfig.distribution,
     bool isWeb = kIsWeb,
     TargetPlatform? platform,
+    List<String> supportedAbis = const [],
   }) {
     final dist = distribution.trim().toLowerCase();
     if (dist == 'play') {
+      // Play 渠道：只走商店或 GitHub Release 页，绝不回落 APK 直链。
       final play = _sanitizeUrl(
         manifest.channels.play,
         allowedDownloadHosts,
       );
       if (play != null) return play;
+      return _sanitizeUrl(manifest.channels.github, allowedDownloadHosts) ?? '';
     }
     if (isWeb) {
       return _sanitizeUrl(manifest.channels.github, allowedDownloadHosts) ?? '';
     }
 
     final target = platform ?? defaultTargetPlatform;
+    if (target == TargetPlatform.android) {
+      final apkUrls = resolveAndroidApkUrls(
+        manifest,
+        supportedAbis: supportedAbis,
+      );
+      if (apkUrls.isNotEmpty) return apkUrls.first;
+      return _sanitizeUrl(manifest.channels.github, allowedDownloadHosts) ?? '';
+    }
+
     final platformUrl = switch (target) {
-      TargetPlatform.android => manifest.channels.androidApk,
       TargetPlatform.windows => manifest.channels.windows,
       TargetPlatform.linux => manifest.channels.linux,
       TargetPlatform.macOS => manifest.channels.macos,
@@ -191,20 +229,24 @@ class UpdateCheckService {
         '';
   }
 
-  /// Android 应用内下载是否可用（非 Play、有合法 APK 直链）。
+  /// Android 应用内下载是否可用（非 Play、本机可解析出至少一条 APK 直链）。
+  ///
+  /// 以 [resolveAndroidApkUrls] 为准：须匹配本机 [supportedAbis] 或 universal。
   static bool canInAppAndroidDownload({
     required AppUpdateManifest manifest,
     String distribution = EnvConfig.distribution,
     bool isWeb = kIsWeb,
     TargetPlatform? platform,
+    List<String> supportedAbis = const [],
   }) {
     if (isWeb) return false;
     if (distribution.trim().toLowerCase() == 'play') return false;
     final target = platform ?? defaultTargetPlatform;
     if (target != TargetPlatform.android) return false;
-    final apk =
-        _sanitizeUrl(manifest.channels.androidApk, allowedDownloadHosts);
-    return apk != null;
+    return resolveAndroidApkUrls(
+      manifest,
+      supportedAbis: supportedAbis,
+    ).isNotEmpty;
   }
 
   static bool isAllowedDownloadUrl(String url) =>

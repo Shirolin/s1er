@@ -161,9 +161,27 @@ class AppUpdateDownloader {
       throw const UpdateCheckException('下载文件不存在');
     }
     final length = await file.length();
-    if (length <= 0) {
+    if (length < 4) {
       await _deleteQuietly(file);
-      throw const UpdateCheckException('下载文件为空');
+      throw UpdateCheckException(
+        length <= 0 ? '下载文件为空' : '下载文件不是有效安装包',
+      );
+    }
+    final raf = await file.open();
+    try {
+      final header = await raf.read(4);
+      // ZIP local file header (APK = ZIP)
+      const zipMagic = [0x50, 0x4B, 0x03, 0x04];
+      if (header.length != 4 ||
+          header[0] != zipMagic[0] ||
+          header[1] != zipMagic[1] ||
+          header[2] != zipMagic[2] ||
+          header[3] != zipMagic[3]) {
+        await _deleteQuietly(file);
+        throw const UpdateCheckException('下载文件不是有效安装包');
+      }
+    } finally {
+      await raf.close();
     }
   }
 

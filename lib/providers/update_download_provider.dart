@@ -1,12 +1,9 @@
-import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
-import '../config/env_config.dart';
 import '../models/app_exceptions.dart';
 import '../services/app_update_downloader.dart';
 import '../services/app_update_installer.dart';
 import '../services/talker.dart';
-import '../services/update_check_service.dart';
 import 'update_check_provider.dart';
 
 enum UpdateDownloadPhase {
@@ -109,13 +106,8 @@ class UpdateDownloadNotifier extends Notifier<UpdateDownloadState> {
   }
 
   Future<void> _downloadAndInstall(UpdateEvaluation evaluation) async {
-    final apkUrl = UpdateCheckService.resolveDownloadUrl(
-      evaluation.manifest,
-      distribution: EnvConfig.distribution,
-      isWeb: kIsWeb,
-      platform: TargetPlatform.android,
-    );
-    if (apkUrl.isEmpty) {
+    final apkUrls = evaluation.apkDownloadUrls;
+    if (apkUrls.isEmpty) {
       state = state.copyWith(
         phase: UpdateDownloadPhase.failed,
         message: '没有可用的下载地址',
@@ -131,7 +123,7 @@ class UpdateDownloadNotifier extends Notifier<UpdateDownloadState> {
 
     try {
       final result = await _downloader.downloadApk(
-        urls: [apkUrl],
+        urls: apkUrls,
         versionLabel: evaluation.manifest.latest,
         onProgress: (p) {
           if (!ref.mounted) return;

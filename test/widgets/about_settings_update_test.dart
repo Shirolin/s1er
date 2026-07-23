@@ -8,6 +8,7 @@ import 'package:package_info_plus/package_info_plus.dart';
 import 'package:s1er/providers/settings_provider.dart';
 import 'package:s1er/providers/talker_provider.dart';
 import 'package:s1er/providers/update_check_provider.dart';
+import 'package:s1er/services/android_abi_reader.dart';
 import 'package:s1er/services/update_check_service.dart';
 import 'package:s1er/widgets/settings/about_settings_section.dart';
 
@@ -31,6 +32,7 @@ void main() {
       },
     };
     final dio = Dio()..httpClientAdapter = _JsonAdapter(payload);
+    final stubAbi = AndroidAbiReader(readAbis: () async => const <String>[]);
 
     await tester.pumpWidget(
       ProviderScope(
@@ -56,6 +58,7 @@ void main() {
               manifestUrl: 'https://example.com/latest.json',
             ),
           ),
+          androidAbiReaderProvider.overrideWithValue(stubAbi),
         ],
         child: wrapWithAppTheme(const AboutSettingsSection()),
       ),
@@ -69,6 +72,7 @@ void main() {
     expect(find.text('发现新版本'), findsOneWidget);
     expect(find.text('去更新'), findsOneWidget);
     expect(find.text('忽略此版'), findsOneWidget);
+    expect(find.text('稍后'), findsOneWidget);
     expect(find.textContaining('测试说明'), findsOneWidget);
   });
 }

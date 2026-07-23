@@ -110,6 +110,27 @@ void main() {
       );
     });
 
+    test('resolveDownloadUrl play without play URL falls back to github only',
+        () {
+      final m = AppUpdateManifest.fromJson({
+        'latest': '1.0.0',
+        'channels': {
+          'github': 'https://github.com/example/releases/latest',
+          'androidApk':
+              'https://github.com/example/releases/download/v1/app.apk',
+        },
+      });
+      expect(
+        UpdateCheckService.resolveDownloadUrl(
+          m,
+          distribution: 'play',
+          isWeb: false,
+          platform: TargetPlatform.android,
+        ),
+        'https://github.com/example/releases/latest',
+      );
+    });
+
     test('resolveDownloadUrl uses github on web', () {
       final m = AppUpdateManifest.fromJson({
         'latest': '1.0.0',
@@ -269,6 +290,125 @@ void main() {
           platform: TargetPlatform.windows,
         ),
         isFalse,
+      );
+    });
+
+    test('canInAppAndroidDownload true when split matches device ABI', () {
+      final m = AppUpdateManifest.fromJson({
+        'latest': '1.0.0',
+        'channels': {
+          'androidApks': {
+            'arm64-v8a':
+                'https://github.com/example/releases/download/v1/arm64.apk',
+          },
+        },
+      });
+      expect(
+        UpdateCheckService.canInAppAndroidDownload(
+          manifest: m,
+          distribution: 'github',
+          isWeb: false,
+          platform: TargetPlatform.android,
+          supportedAbis: const ['arm64-v8a'],
+        ),
+        isTrue,
+      );
+    });
+
+    test('canInAppAndroidDownload false when only split and ABI empty', () {
+      final m = AppUpdateManifest.fromJson({
+        'latest': '1.0.0',
+        'channels': {
+          'androidApks': {
+            'arm64-v8a':
+                'https://github.com/example/releases/download/v1/arm64.apk',
+          },
+        },
+      });
+      expect(
+        UpdateCheckService.canInAppAndroidDownload(
+          manifest: m,
+          distribution: 'github',
+          isWeb: false,
+          platform: TargetPlatform.android,
+          supportedAbis: const [],
+        ),
+        isFalse,
+      );
+    });
+
+    test('resolveAndroidApkUrls prefers primary ABI then universal', () {
+      final m = AppUpdateManifest.fromJson({
+        'latest': '1.0.0',
+        'channels': {
+          'androidApk':
+              'https://github.com/example/releases/download/v1/universal.apk',
+          'androidApks': {
+            'arm64-v8a':
+                'https://github.com/example/releases/download/v1/arm64.apk',
+            'armeabi-v7a':
+                'https://github.com/example/releases/download/v1/v7a.apk',
+            'x86_64': 'https://github.com/example/releases/download/v1/x64.apk',
+          },
+        },
+      });
+      expect(
+        UpdateCheckService.resolveAndroidApkUrls(
+          m,
+          supportedAbis: const ['arm64-v8a', 'armeabi-v7a'],
+        ),
+        [
+          'https://github.com/example/releases/download/v1/arm64.apk',
+          'https://github.com/example/releases/download/v1/v7a.apk',
+          'https://github.com/example/releases/download/v1/universal.apk',
+        ],
+      );
+      expect(
+        UpdateCheckService.resolveDownloadUrl(
+          m,
+          distribution: 'github',
+          isWeb: false,
+          platform: TargetPlatform.android,
+          supportedAbis: const ['arm64-v8a'],
+        ),
+        'https://github.com/example/releases/download/v1/arm64.apk',
+      );
+    });
+
+    test('resolveAndroidApkUrls falls back to universal only', () {
+      final m = AppUpdateManifest.fromJson({
+        'latest': '1.0.0',
+        'channels': {
+          'androidApk':
+              'https://github.com/example/releases/download/v1/universal.apk',
+        },
+      });
+      expect(
+        UpdateCheckService.resolveAndroidApkUrls(
+          m,
+          supportedAbis: const ['arm64-v8a'],
+        ),
+        ['https://github.com/example/releases/download/v1/universal.apk'],
+      );
+    });
+
+    test('resolveAndroidApkUrls drops disallowed hosts', () {
+      final m = AppUpdateManifest.fromJson({
+        'latest': '1.0.0',
+        'channels': {
+          'androidApk': 'https://evil.example/universal.apk',
+          'androidApks': {
+            'arm64-v8a': 'https://evil.example/arm64.apk',
+            'x86_64': 'https://github.com/example/releases/download/v1/x64.apk',
+          },
+        },
+      });
+      expect(
+        UpdateCheckService.resolveAndroidApkUrls(
+          m,
+          supportedAbis: const ['arm64-v8a', 'x86_64'],
+        ),
+        ['https://github.com/example/releases/download/v1/x64.apk'],
       );
     });
 

@@ -39,6 +39,7 @@ class AppUpdateChannels {
   const AppUpdateChannels({
     required this.github,
     this.androidApk,
+    this.androidApks,
     this.androidNetdisk,
     this.netdiskHint,
     this.windows,
@@ -66,6 +67,7 @@ class AppUpdateChannels {
     return AppUpdateChannels(
       github: github,
       androidApk: optionalUrl('androidApk'),
+      androidApks: _parseAndroidApks(json['androidApks']),
       androidNetdisk: optionalUrl('androidNetdisk'),
       netdiskHint: optionalText('netdiskHint'),
       windows: optionalUrl('windows'),
@@ -75,8 +77,27 @@ class AppUpdateChannels {
     );
   }
 
+  /// 分架构 APK 直链；键为 ABI（如 `arm64-v8a`），与 Flutter `--split-per-abi` 一致。
+  static Map<String, String>? _parseAndroidApks(Object? raw) {
+    if (raw is! Map) return null;
+    final out = <String, String>{};
+    for (final entry in raw.entries) {
+      final abi = entry.key.toString().trim();
+      final url = entry.value?.toString().trim() ?? '';
+      if (abi.isEmpty || url.isEmpty) continue;
+      out[abi] = url;
+    }
+    if (out.isEmpty) return null;
+    return Map<String, String>.unmodifiable(out);
+  }
+
   final String github;
+
+  /// Universal（全 ABI）APK；旧客户端与分架构失败时的回退。
   final String? androidApk;
+
+  /// 可选分架构直链；缺省时仅用 [androidApk]。
+  final Map<String, String>? androidApks;
 
   /// 国内网盘分享链接（仅外链打开，不进 APK 下载白名单）。
   final String? androidNetdisk;

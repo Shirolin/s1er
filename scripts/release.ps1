@@ -108,7 +108,7 @@ S1er release.ps1 - step-by-step (preferred)
   build        fat APK + per-ABI APKs + windows -> dist\  (NO upload)
   create       gh release create TAG with notes only; opens browser + dist\
   upload       gh release upload dist artifacts (SLOW on some networks)
-  manifest     Rewrite docs/release/latest.json (androidApk = fat universal)
+  manifest     Rewrite docs/release/latest.json (androidApk + androidApks)
   open         Open the GitHub Release page for current tag
 
 Examples:
@@ -330,10 +330,16 @@ function Step-Manifest {
     $v = Get-PubspecVersion
     if (-not (Test-Path $Manifest)) { throw "Missing $Manifest" }
 
-    # In-app update CTA uses the universal fat APK (no ABI pick needed).
+    # In-app update: prefer per-ABI; androidApk = universal fallback.
     $apkFile = "s1er-$($v.Label)-android-universal.apk"
+    $apkArm64File = "s1er-$($v.Label)-android-arm64-v8a.apk"
+    $apkArmeabiFile = "s1er-$($v.Label)-android-armeabi-v7a.apk"
+    $apkX64File = "s1er-$($v.Label)-android-x86_64.apk"
     $zipFile = "s1er-$($v.Label)-windows-x64.zip"
     $apkUrl = "https://github.com/$RepoSlug/releases/download/$($v.Tag)/$([uri]::EscapeDataString($apkFile))"
+    $apkArm64Url = "https://github.com/$RepoSlug/releases/download/$($v.Tag)/$([uri]::EscapeDataString($apkArm64File))"
+    $apkArmeabiUrl = "https://github.com/$RepoSlug/releases/download/$($v.Tag)/$([uri]::EscapeDataString($apkArmeabiFile))"
+    $apkX64Url = "https://github.com/$RepoSlug/releases/download/$($v.Tag)/$([uri]::EscapeDataString($apkX64File))"
     $zipUrl = "https://github.com/$RepoSlug/releases/download/$($v.Tag)/$([uri]::EscapeDataString($zipFile))"
     $today = Get-Date -Format 'yyyy-MM-dd'
 
@@ -346,6 +352,16 @@ function Step-Manifest {
     }
     $json.channels.github = "https://github.com/$RepoSlug/releases/latest"
     $json.channels.androidApk = $apkUrl
+    $androidApks = [ordered]@{
+        'arm64-v8a'   = $apkArm64Url
+        'armeabi-v7a' = $apkArmeabiUrl
+        'x86_64'      = $apkX64Url
+    }
+    if ($json.channels.PSObject.Properties.Name -contains 'androidApks') {
+        $json.channels.androidApks = $androidApks
+    } else {
+        $json.channels | Add-Member -NotePropertyName androidApks -NotePropertyValue $androidApks
+    }
     $json.channels.windows = $zipUrl
     # Preserve netdisk fields if already set (manual); ensure keys exist.
     if (-not ($json.channels.PSObject.Properties.Name -contains 'androidNetdisk')) {
@@ -364,7 +380,7 @@ function Step-Manifest {
     $utf8 = New-Object System.Text.UTF8Encoding $false
     [System.IO.File]::WriteAllText($Manifest, ($out.Trim() + "`n"), $utf8)
     Write-Host "Updated $Manifest" -ForegroundColor Green
-    Write-Host "  latest=$($v.Name)  androidApk=universal fat; split APKs only on GitHub Release page"
+    Write-Host "  latest=$($v.Name)  androidApk=universal; androidApks=arm64/armeabi/x86_64"
     if ($nameChanged) {
         Write-Host "Name changed vs previous latest.json - commit pubspec.yaml + latest.json to main." -ForegroundColor Yellow
     } else {

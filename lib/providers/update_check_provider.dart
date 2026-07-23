@@ -2,10 +2,12 @@ import 'dart:async';
 
 import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:package_info_plus/package_info_plus.dart';
 
 import '../config/env_config.dart';
 import '../models/app_exceptions.dart';
 import '../models/app_update_manifest.dart';
+import '../services/android_abi_reader.dart';
 import '../services/settings_store.dart';
 import '../services/talker.dart';
 import '../services/update_check_service.dart';
@@ -24,6 +26,7 @@ class UpdateEvaluation {
     required this.manifest,
     required this.downloadUrl,
     required this.shouldShowDialog,
+    this.downloadUrls = const [],
     this.userMessage,
     this.netdiskUrl = '',
     this.canInAppDownload = false,
@@ -32,7 +35,12 @@ class UpdateEvaluation {
   final UpdateAvailability availability;
   final String localVersion;
   final AppUpdateManifest manifest;
+
+  /// 外链 / 浏览器打开用的首选 URL（通常为 [downloadUrls] 首项）。
   final String downloadUrl;
+
+  /// Android 应用内下载候选（分架构 → universal）；空则回退 [downloadUrl]。
+  final List<String> downloadUrls;
 
   /// 白名单校验后的网盘外链；空则不展示网盘按钮。
   final String netdiskUrl;
@@ -45,6 +53,14 @@ class UpdateEvaluation {
 
   /// 手动检查时无 Dialog 时的 SnackBar 文案；启动静默时可为 null。
   final String? userMessage;
+
+  /// 应用内下载实际使用的 URL 列表。
+  List<String> get apkDownloadUrls {
+    if (downloadUrls.isNotEmpty) return downloadUrls;
+    final single = downloadUrl.trim();
+    if (single.isEmpty) return const [];
+    return [single];
+  }
 
   String? get netdiskHint {
     final hint = manifest.channels.netdiskHint?.trim();
@@ -59,16 +75,29 @@ class UpdateEvaluation {
       availability == UpdateAvailability.optional;
 }
 
+class _UpdateFetchBundle {
+  const _UpdateFetchBundle({
+    required this.info,
+    required this.manifest,
+    required this.supportedAbis,
+  });
+
+  final PackageInfo info;
+  final AppUpdateManifest manifest;
+  final List<String> supportedAbis;
+}
+
 /// 纯函数：比较本地版本与清单，结合忽略 / 冷却决定是否弹窗。
 UpdateEvaluation evaluateUpdate({
   required String localVersion,
   required AppUpdateManifest manifest,
   required String downloadUrl,
+  List<String> downloadUrls = const [],
   String? ignoredVersion,
   int? lastPromptMs,
   required DateTime now,
   required bool manual,
-  Duration cooldown = UpdatePromptStore.cooldown,
+  Duration cooldown = UpdatePromptStore.softCooldown,
   String netdiskUrl = '',
   bool canInAppDownload = false,
 }) {
@@ -80,6 +109,7 @@ UpdateEvaluation evaluateUpdate({
       localVersion: local,
       manifest: manifest,
       downloadUrl: downloadUrl,
+      downloadUrls: downloadUrls,
       netdiskUrl: netdiskUrl,
       canInAppDownload: canInAppDownload,
       shouldShowDialog: true,
@@ -92,6 +122,7 @@ UpdateEvaluation evaluateUpdate({
       localVersion: local,
       manifest: manifest,
       downloadUrl: downloadUrl,
+      downloadUrls: downloadUrls,
       netdiskUrl: netdiskUrl,
       canInAppDownload: canInAppDownload,
       shouldShowDialog: false,
@@ -109,6 +140,7 @@ UpdateEvaluation evaluateUpdate({
       localVersion: local,
       manifest: manifest,
       downloadUrl: downloadUrl,
+      downloadUrls: downloadUrls,
       netdiskUrl: netdiskUrl,
       canInAppDownload: canInAppDownload,
       shouldShowDialog: false,
@@ -124,6 +156,7 @@ UpdateEvaluation evaluateUpdate({
         localVersion: local,
         manifest: manifest,
         downloadUrl: downloadUrl,
+        downloadUrls: downloadUrls,
         netdiskUrl: netdiskUrl,
         canInAppDownload: canInAppDownload,
         shouldShowDialog: false,
@@ -136,6 +169,7 @@ UpdateEvaluation evaluateUpdate({
     localVersion: local,
     manifest: manifest,
     downloadUrl: downloadUrl,
+    downloadUrls: downloadUrls,
     netdiskUrl: netdiskUrl,
     canInAppDownload: canInAppDownload,
     shouldShowDialog: true,
@@ -182,9 +216,15 @@ final updateCheckServiceProvider = Provider<UpdateCheckService>((ref) {
   return UpdateCheckService();
 });
 
+final androidAbiReaderProvider = Provider<AndroidAbiReader>((ref) {
+  return AndroidAbiReader();
+});
+
 class UpdateCheckNotifier extends Notifier<UpdateCheckState> {
   @override
   UpdateCheckState build() => const UpdateCheckState();
+
+  Future<_UpdateFetchBundle>? _fetchInFlight;
 
   SettingsStore? _tryStore() {
     try {
@@ -202,7 +242,8 @@ class UpdateCheckNotifier extends Notifier<UpdateCheckState> {
     DateTime Function()? clock,
   }) async {
     if (state.autoCheckStarted) return;
-    state = state.copyWith(autoCheckStarted: true);
+    // 延迟前即占 isChecking，避免与关于页手动检查叠弹。
+    state = state.copyWith(autoCheckStarted: true, isChecking: true);
 
     if (delay > Duration.zero) {
       await Future<void>.delayed(delay);
@@ -222,7 +263,7 @@ class UpdateCheckNotifier extends Notifier<UpdateCheckState> {
       talker.handle(e, st, 'Startup update check failed');
     } finally {
       if (ref.mounted) {
-        state = state.copyWith(startupSettled: true);
+        state = state.copyWith(isChecking: false, startupSettled: true);
       }
     }
   }
@@ -247,25 +288,63 @@ class UpdateCheckNotifier extends Notifier<UpdateCheckState> {
     }
   }
 
+  Future<_UpdateFetchBundle> _fetchBundle() async {
+    final existing = _fetchInFlight;
+    if (existing != null) return existing;
+
+    final future = () async {
+      final info = await ref.read(packageInfoProvider.future);
+      if (!ref.mounted) {
+        throw const UpdateCheckException('检查已取消');
+      }
+      final manifest = await _service.fetchManifest();
+      if (!ref.mounted) {
+        throw const UpdateCheckException('检查已取消');
+      }
+      final supportedAbis =
+          await ref.read(androidAbiReaderProvider).supportedAbis();
+      if (!ref.mounted) {
+        throw const UpdateCheckException('检查已取消');
+      }
+      return _UpdateFetchBundle(
+        info: info,
+        manifest: manifest,
+        supportedAbis: supportedAbis,
+      );
+    }();
+
+    _fetchInFlight = future;
+    try {
+      return await future;
+    } finally {
+      if (identical(_fetchInFlight, future)) {
+        _fetchInFlight = null;
+      }
+    }
+  }
+
   Future<UpdateEvaluation> _evaluate({
     required bool manual,
     DateTime Function()? clock,
   }) async {
     final now = clock?.call() ?? DateTime.now();
-    final info = await ref.read(packageInfoProvider.future);
-    if (!ref.mounted) {
-      throw const UpdateCheckException('检查已取消');
-    }
-    final manifest = await _service.fetchManifest();
-    if (!ref.mounted) {
-      throw const UpdateCheckException('检查已取消');
-    }
+    final bundle = await _fetchBundle();
     final store = _tryStore();
+    final manifest = bundle.manifest;
+    final supportedAbis = bundle.supportedAbis;
+    final downloadUrls =
+        !kIsWeb && defaultTargetPlatform == TargetPlatform.android
+            ? UpdateCheckService.resolveAndroidApkUrls(
+                manifest,
+                supportedAbis: supportedAbis,
+              )
+            : const <String>[];
     final downloadUrl = UpdateCheckService.resolveDownloadUrl(
       manifest,
       distribution: EnvConfig.distribution,
       isWeb: kIsWeb,
       platform: defaultTargetPlatform,
+      supportedAbis: supportedAbis,
     );
     final netdiskUrl = UpdateCheckService.resolveNetdiskUrl(manifest);
     final canInApp = UpdateCheckService.canInAppAndroidDownload(
@@ -273,17 +352,20 @@ class UpdateCheckNotifier extends Notifier<UpdateCheckState> {
       distribution: EnvConfig.distribution,
       isWeb: kIsWeb,
       platform: defaultTargetPlatform,
+      supportedAbis: supportedAbis,
     );
     return evaluateUpdate(
-      localVersion: info.version,
+      localVersion: bundle.info.version,
       manifest: manifest,
       downloadUrl: downloadUrl,
+      downloadUrls: downloadUrls,
       netdiskUrl: netdiskUrl,
       canInAppDownload: canInApp,
       ignoredVersion: UpdatePromptStore.ignoredVersion(store),
       lastPromptMs: UpdatePromptStore.lastPromptMs(store),
       now: now,
       manual: manual,
+      cooldown: UpdatePromptStore.softCooldown,
     );
   }
 
@@ -301,19 +383,36 @@ class UpdateCheckNotifier extends Notifier<UpdateCheckState> {
     );
   }
 
-  /// Dialog 已展示或关闭（含稍后）：写入冷却时间戳。
+  /// Dialog 关闭：稍后写 1 天冷却；忽略只写 ignoredVersion。
+  void onPromptClosed(
+    UpdatePromptCloseReason reason, {
+    String? ignoredVersion,
+    DateTime Function()? clock,
+  }) {
+    final store = _tryStore();
+    switch (reason) {
+      case UpdatePromptCloseReason.ignored:
+        final version = ignoredVersion?.trim() ?? '';
+        if (version.isNotEmpty) {
+          UpdatePromptStore.setIgnoredVersion(store, version);
+        }
+      case UpdatePromptCloseReason.later:
+        final now = clock?.call() ?? DateTime.now();
+        UpdatePromptStore.setLastPromptMs(store, now.millisecondsSinceEpoch);
+    }
+    clearPendingPrompt();
+  }
+
+  /// 兼容旧测试 / 调用：等同 [UpdatePromptCloseReason.later]。
   void markPromptInteracted({DateTime Function()? clock}) {
-    final now = clock?.call() ?? DateTime.now();
-    UpdatePromptStore.setLastPromptMs(
-      _tryStore(),
-      now.millisecondsSinceEpoch,
-    );
+    onPromptClosed(UpdatePromptCloseReason.later, clock: clock);
   }
 
   void ignoreVersion(String version) {
-    UpdatePromptStore.setIgnoredVersion(_tryStore(), version);
-    markPromptInteracted();
-    clearPendingPrompt();
+    onPromptClosed(
+      UpdatePromptCloseReason.ignored,
+      ignoredVersion: version,
+    );
   }
 }
 

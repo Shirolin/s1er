@@ -5,7 +5,12 @@ abstract class UpdatePromptStore {
   static const ignoredVersionKey = 'update_ignored_version';
   static const lastPromptMsKey = 'update_last_prompt_ms';
 
-  static const cooldown = Duration(days: 3);
+  /// 「稍后」/ 点遮罩关闭后的冷却（可选更新）。
+  static const softCooldown = Duration(days: 1);
+
+  /// 兼容旧调用；等同 [softCooldown]。
+  static const cooldown = softCooldown;
+
   static const startupDelay = Duration(seconds: 3);
 
   static String? ignoredVersion(SettingsStore? store) {
@@ -33,11 +38,20 @@ abstract class UpdatePromptStore {
   static bool isWithinCooldown({
     required SettingsStore? store,
     required DateTime now,
-    Duration cooldown = cooldown,
+    Duration cooldown = softCooldown,
   }) {
     final last = lastPromptMs(store);
     if (last == null) return false;
     final elapsed = now.millisecondsSinceEpoch - last;
     return elapsed >= 0 && elapsed < cooldown.inMilliseconds;
   }
+}
+
+/// 升级 Dialog 关闭原因（决定写忽略还是稍后冷却）。
+enum UpdatePromptCloseReason {
+  /// 稍后 / 点遮罩 / 系统返回 / 外链后关闭。
+  later,
+
+  /// 用户选择忽略此版本。
+  ignored,
 }

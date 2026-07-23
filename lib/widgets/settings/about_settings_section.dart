@@ -155,8 +155,7 @@ class _CheckUpdateTileState extends ConsumerState<_CheckUpdateTile> {
         await showAppUpdateDialog(
           context,
           evaluation: evaluation,
-          onPromptInteracted: notifier.markPromptInteracted,
-          onIgnoreVersion: notifier.ignoreVersion,
+          onPromptClosed: notifier.onPromptClosed,
         );
         return;
       }

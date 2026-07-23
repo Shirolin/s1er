@@ -9,6 +9,8 @@ import 'package:s1er/models/app_update_manifest.dart';
 import 'package:s1er/providers/settings_provider.dart';
 import 'package:s1er/providers/talker_provider.dart';
 import 'package:s1er/providers/update_check_provider.dart';
+import 'package:s1er/services/android_abi_reader.dart';
+import 'package:s1er/services/app_local_data.dart';
 import 'package:s1er/services/update_check_service.dart';
 import 'package:s1er/utils/update_prompt_store.dart';
 
@@ -27,7 +29,64 @@ void main() {
 
   final manifest = AppUpdateManifest.fromJson(manifestJson);
 
+  final stubAbiReader = AndroidAbiReader(
+    readAbis: () async => const <String>[],
+  );
+
+  updateCheckOverrides({
+    required AppLocalData local,
+    required Dio dio,
+    String version = '1.5.0',
+  }) =>
+      [
+        localDataProvider.overrideWithValue(local),
+        packageInfoProvider.overrideWith(
+          (_) async => PackageInfo(
+            appName: 'S1er',
+            packageName: 'dev.s1er',
+            version: version,
+            buildNumber: '1',
+          ),
+        ),
+        updateCheckServiceProvider.overrideWithValue(
+          UpdateCheckService(
+            dio: dio,
+            manifestUrl: 'https://example.com/latest.json',
+          ),
+        ),
+        androidAbiReaderProvider.overrideWithValue(stubAbiReader),
+      ];
+
   group('evaluateUpdate', () {
+    test('apkDownloadUrls falls back to downloadUrl', () {
+      final result = evaluateUpdate(
+        localVersion: '1.0.0',
+        manifest: manifest,
+        downloadUrl: 'https://github.com/example/a.apk',
+        now: DateTime(2026, 7, 17),
+        manual: true,
+      );
+      expect(result.apkDownloadUrls, ['https://github.com/example/a.apk']);
+    });
+
+    test('apkDownloadUrls prefers explicit list', () {
+      final result = evaluateUpdate(
+        localVersion: '1.0.0',
+        manifest: manifest,
+        downloadUrl: 'https://github.com/example/a.apk',
+        downloadUrls: const [
+          'https://github.com/example/arm64.apk',
+          'https://github.com/example/universal.apk',
+        ],
+        now: DateTime(2026, 7, 17),
+        manual: true,
+      );
+      expect(result.apkDownloadUrls, [
+        'https://github.com/example/arm64.apk',
+        'https://github.com/example/universal.apk',
+      ]);
+    });
+
     test('force when below minSupported', () {
       final result = evaluateUpdate(
         localVersion: '0.9.0',
@@ -78,18 +137,33 @@ void main() {
       expect(result.userMessage, '已忽略此版本的更新提示');
     });
 
-    test('startup respects cooldown for optional', () {
+    test('startup respects soft cooldown for optional', () {
       final now = DateTime(2026, 7, 17);
       final result = evaluateUpdate(
         localVersion: '1.5.0',
         manifest: manifest,
         downloadUrl: 'https://example.com',
         lastPromptMs:
-            now.subtract(const Duration(days: 1)).millisecondsSinceEpoch,
+            now.subtract(const Duration(hours: 12)).millisecondsSinceEpoch,
         now: now,
         manual: false,
       );
       expect(result.shouldShowDialog, isFalse);
+    });
+
+    test('startup shows again after soft cooldown elapsed', () {
+      final now = DateTime(2026, 7, 17);
+      final result = evaluateUpdate(
+        localVersion: '1.5.0',
+        manifest: manifest,
+        downloadUrl: 'https://example.com',
+        lastPromptMs: now
+            .subtract(const Duration(days: 1, minutes: 1))
+            .millisecondsSinceEpoch,
+        now: now,
+        manual: false,
+      );
+      expect(result.shouldShowDialog, isTrue);
     });
 
     test('manual ignores cooldown', () {
@@ -99,7 +173,7 @@ void main() {
         manifest: manifest,
         downloadUrl: 'https://example.com',
         lastPromptMs:
-            now.subtract(const Duration(days: 1)).millisecondsSinceEpoch,
+            now.subtract(const Duration(hours: 12)).millisecondsSinceEpoch,
         now: now,
         manual: true,
       );
@@ -133,23 +207,7 @@ void main() {
 
       final dio = Dio()..httpClientAdapter = _JsonAdapter(manifestJson);
       final container = ProviderContainer(
-        overrides: [
-          localDataProvider.overrideWithValue(local),
-          packageInfoProvider.overrideWith(
-            (_) async => PackageInfo(
-              appName: 'S1er',
-              packageName: 'dev.s1er',
-              version: '1.5.0',
-              buildNumber: '1',
-            ),
-          ),
-          updateCheckServiceProvider.overrideWithValue(
-            UpdateCheckService(
-              dio: dio,
-              manifestUrl: 'https://example.com/latest.json',
-            ),
-          ),
-        ],
+        overrides: updateCheckOverrides(local: local, dio: dio),
       );
       addTearDown(container.dispose);
 
@@ -167,23 +225,7 @@ void main() {
 
       final dio = Dio()..httpClientAdapter = _JsonAdapter(manifestJson);
       final container = ProviderContainer(
-        overrides: [
-          localDataProvider.overrideWithValue(local),
-          packageInfoProvider.overrideWith(
-            (_) async => PackageInfo(
-              appName: 'S1er',
-              packageName: 'dev.s1er',
-              version: '1.5.0',
-              buildNumber: '1',
-            ),
-          ),
-          updateCheckServiceProvider.overrideWithValue(
-            UpdateCheckService(
-              dio: dio,
-              manifestUrl: 'https://example.com/latest.json',
-            ),
-          ),
-        ],
+        overrides: updateCheckOverrides(local: local, dio: dio),
       );
       addTearDown(container.dispose);
 
@@ -202,23 +244,7 @@ void main() {
 
       final dio = Dio()..httpClientAdapter = _JsonAdapter(manifestJson);
       final container = ProviderContainer(
-        overrides: [
-          localDataProvider.overrideWithValue(local),
-          packageInfoProvider.overrideWith(
-            (_) async => PackageInfo(
-              appName: 'S1er',
-              packageName: 'dev.s1er',
-              version: '1.5.0',
-              buildNumber: '1',
-            ),
-          ),
-          updateCheckServiceProvider.overrideWithValue(
-            UpdateCheckService(
-              dio: dio,
-              manifestUrl: 'https://example.com/latest.json',
-            ),
-          ),
-        ],
+        overrides: updateCheckOverrides(local: local, dio: dio),
       );
       addTearDown(container.dispose);
 
@@ -236,23 +262,7 @@ void main() {
 
       final dio = Dio()..httpClientAdapter = _JsonAdapter(manifestJson);
       final container = ProviderContainer(
-        overrides: [
-          localDataProvider.overrideWithValue(local),
-          packageInfoProvider.overrideWith(
-            (_) async => PackageInfo(
-              appName: 'S1er',
-              packageName: 'dev.s1er',
-              version: '1.5.0',
-              buildNumber: '1',
-            ),
-          ),
-          updateCheckServiceProvider.overrideWithValue(
-            UpdateCheckService(
-              dio: dio,
-              manifestUrl: 'https://example.com/latest.json',
-            ),
-          ),
-        ],
+        overrides: updateCheckOverrides(local: local, dio: dio),
       );
       addTearDown(container.dispose);
 

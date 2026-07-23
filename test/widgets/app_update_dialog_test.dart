@@ -69,8 +69,7 @@ void main() {
                     showAppUpdateDialog(
                       context,
                       evaluation: evaluation,
-                      onPromptInteracted: () {},
-                      onIgnoreVersion: (_) {},
+                      onPromptClosed: (reason, {ignoredVersion}) {},
                       launchUrlFn: (
                         uri, {
                         mode = LaunchMode.platformDefault,
@@ -93,10 +92,70 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(find.text('发现新版本'), findsOneWidget);
+    expect(find.text('稍后'), findsOneWidget);
+    expect(find.text('忽略此版'), findsOneWidget);
     expect(find.text('网盘下载'), findsOneWidget);
     expect(find.text('去更新'), findsOneWidget);
     expect(find.textContaining('提取码：abcd'), findsOneWidget);
     expect(find.text('立即更新'), findsNothing);
+  });
+
+  testWidgets('cancelled download shows retry state', (tester) async {
+    final manifest = manifestWith(
+      androidApk:
+          'https://github.com/Shirolin/s1er/releases/download/v2/app.apk',
+    );
+    final evaluation = evaluationFor(
+      manifest,
+      canInApp: true,
+      downloadUrl:
+          'https://github.com/Shirolin/s1er/releases/download/v2/app.apk',
+    );
+
+    final container = ProviderContainer(
+      overrides: [
+        updateDownloadProvider.overrideWith(_CancelledDownloadNotifier.new),
+      ],
+    );
+    addTearDown(container.dispose);
+
+    await tester.pumpWidget(
+      UncontrolledProviderScope(
+        container: container,
+        child: wrapWithAppTheme(
+          Builder(
+            builder: (context) {
+              return Scaffold(
+                body: FilledButton(
+                  onPressed: () {
+                    showAppUpdateDialog(
+                      context,
+                      evaluation: evaluation,
+                      onPromptClosed: (reason, {ignoredVersion}) {},
+                      container: container,
+                      launchUrlFn: (
+                        uri, {
+                        mode = LaunchMode.platformDefault,
+                      }) async =>
+                          true,
+                    );
+                  },
+                  child: const Text('open'),
+                ),
+              );
+            },
+          ),
+        ),
+      ),
+    );
+
+    await tester.tap(find.text('open'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('立即更新'));
+    await tester.pumpAndSettle();
+
+    expect(find.text('已取消下载'), findsWidgets);
+    expect(find.text('重试'), findsOneWidget);
   });
 
   testWidgets('failed download elevates netdisk as primary CTA',
@@ -133,8 +192,7 @@ void main() {
                     showAppUpdateDialog(
                       context,
                       evaluation: evaluation,
-                      onPromptInteracted: () {},
-                      onIgnoreVersion: (_) {},
+                      onPromptClosed: (reason, {ignoredVersion}) {},
                       container: container,
                       launchUrlFn: (
                         uri, {
@@ -198,8 +256,7 @@ void main() {
                     showAppUpdateDialog(
                       context,
                       evaluation: evaluation,
-                      onPromptInteracted: () {},
-                      onIgnoreVersion: (_) {},
+                      onPromptClosed: (reason, {ignoredVersion}) {},
                       launchUrlFn: (
                         uri, {
                         mode = LaunchMode.platformDefault,
@@ -255,6 +312,16 @@ class _FailedDownloadNotifier extends UpdateDownloadNotifier {
     state = const UpdateDownloadState(
       phase: UpdateDownloadPhase.failed,
       message: '下载超时',
+    );
+  }
+}
+
+class _CancelledDownloadNotifier extends UpdateDownloadNotifier {
+  @override
+  Future<void> startAndroidUpdate(UpdateEvaluation evaluation) async {
+    state = const UpdateDownloadState(
+      phase: UpdateDownloadPhase.cancelled,
+      message: '已取消下载',
     );
   }
 }

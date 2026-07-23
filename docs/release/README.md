@@ -52,11 +52,12 @@ version: 0.1.0+1
 
      | 文件后缀 | 含义 |
      |:---|:---|
-     | `-android-universal.apk` | 合一包（全部 ABI）；应用内更新直链用这个 |
-     | `-android-arm64-v8a.apk` | 仅 arm64（多数真机） |
-     | `-android-armeabi-v7a.apk` | 仅 32 位 ARM |
-     | `-android-x86_64.apk` | 仅 x86_64（模拟器等） |
+     | `-android-universal.apk` | 合一包（全部 ABI）；清单 `androidApk` 与下载失败回退 |
+     | `-android-arm64-v8a.apk` | 仅 arm64（多数真机）；进 `androidApks` |
+     | `-android-armeabi-v7a.apk` | 仅 32 位 ARM；进 `androidApks` |
+     | `-android-x86_64.apk` | 仅 x86_64（模拟器等）；进 `androidApks` |
 
+   - 应用内更新：按设备 `supportedAbis` 优先下对应分架构包，再回退 `androidApk`（universal）。
    - Release 正文由 `release.ps1 create` 自动写入「下哪个包」选型表。
    - **Windows**：`s1er-…-windows-x64.zip`。
 6. 将 `pubspec.yaml` + `latest.json` + `whats_new.json` 等改动提交到 `main`（raw URL 指向 main）。
@@ -109,14 +110,23 @@ flutter run --dart-define=DISTRIBUTION=play
 
 Android（非 Play）升级 Dialog：
 
-- **立即更新**：应用内下载 `channels.androidApk`（GitHub Releases；国内可能失败）
+- **立即更新**：按设备 ABI 依次尝试 `channels.androidApks[abi]`，再回退 `channels.androidApk`（universal；GitHub Releases；国内可能失败）
+- **稍后**：写入 1 天冷却（点遮罩 / 系统返回同效）；**忽略此版**只压制该 `latest`
+- **强制更新**（低于 `minSupported`）：不可点遮罩关闭；下次冷启动仍会提示
 - **网盘下载**：外链打开 `channels.androidNetdisk`（不解析网盘直链）；`channels.netdiskHint` 展示提取码等说明
+- **Play 渠道**（`DISTRIBUTION=play`）：不应用内下 APK；CTA 只走 Play 商店或 GitHub Release 页，不回落 APK 直链
 
 填写示例：
 
 ```json
+"androidApk": "https://github.com/Shirolin/s1er/releases/download/v0.3.0/s1er-0.3.0%2B1-android-universal.apk",
+"androidApks": {
+  "arm64-v8a": "https://github.com/Shirolin/s1er/releases/download/v0.3.0/s1er-0.3.0%2B1-android-arm64-v8a.apk",
+  "armeabi-v7a": "https://github.com/Shirolin/s1er/releases/download/v0.3.0/s1er-0.3.0%2B1-android-armeabi-v7a.apk",
+  "x86_64": "https://github.com/Shirolin/s1er/releases/download/v0.3.0/s1er-0.3.0%2B1-android-x86_64.apk"
+},
 "androidNetdisk": "https://pan.quark.cn/s/c05196e3c06a",
 "netdiskHint": "夸克网盘（GitHub 下载慢时可走这里）"
 ```
 
-无网盘时两项可保持 `null`；非法主机不会显示网盘按钮。`release.ps1 manifest` 会保留已有网盘字段，只改版本与 APK/Windows 直链。
+无 `androidApks` 时行为与旧版一致（只用 universal）。无网盘时两项可保持 `null`；非法主机不会显示网盘按钮。`release.ps1 manifest` 会保留已有网盘字段，并写入版本与 APK（含分架构）/ Windows 直链。

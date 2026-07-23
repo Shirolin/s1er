@@ -6,6 +6,11 @@
   "channels": {
     "github": "https://github.com/Shirolin/s1er/releases/latest",
     "androidApk": "https://github.com/Shirolin/s1er/releases/download/v0.3.0/s1er-0.3.0%2B1-android-universal.apk",
+    "androidApks": {
+      "arm64-v8a": "https://github.com/Shirolin/s1er/releases/download/v0.3.0/s1er-0.3.0%2B1-android-arm64-v8a.apk",
+      "armeabi-v7a": "https://github.com/Shirolin/s1er/releases/download/v0.3.0/s1er-0.3.0%2B1-android-armeabi-v7a.apk",
+      "x86_64": "https://github.com/Shirolin/s1er/releases/download/v0.3.0/s1er-0.3.0%2B1-android-x86_64.apk"
+    },
     "androidNetdisk": "https://pan.quark.cn/s/c05196e3c06a",
     "netdiskHint": "夸克网盘（发版后请同步更新分享；GitHub 下载慢时可走这里）",
     "windows": "https://github.com/Shirolin/s1er/releases/download/v0.3.0/s1er-0.3.0%2B1-windows-x64.zip",

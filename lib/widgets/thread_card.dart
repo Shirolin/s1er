@@ -421,9 +421,8 @@ class _TitleLine extends StatelessWidget {
       overflow: TextOverflow.ellipsis,
     );
 
-    final pin = isSticky
-        ? Icon(Icons.push_pin, size: 13, color: scheme.primary)
-        : null;
+    final pin =
+        isSticky ? Icon(Icons.push_pin, size: 13, color: scheme.primary) : null;
 
     final tag = hasTag
         ? _CategoryTag(

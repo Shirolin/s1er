@@ -70,4 +70,3 @@ Future<S1DraftLeaveChoice> showS1DraftLeaveDialog(
   );
   return choice ?? S1DraftLeaveChoice.stay;
 }
-

@@ -101,7 +101,8 @@ void main() {
     expect(hideCalled, isTrue);
   });
 
-  testWidgets('shows thread list density toggles when provided', (tester) async {
+  testWidgets('shows thread list density toggles when provided',
+      (tester) async {
     ListDensity? selected;
     await pumpMenu(
       tester,

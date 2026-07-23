@@ -558,9 +558,8 @@ class _SharePreviewSheetState extends ConsumerState<_SharePreviewSheet> {
     final scheme = Theme.of(context).colorScheme;
     final textTheme = Theme.of(context).textTheme;
     final maxHeight = MediaQuery.of(context).size.height * 0.7;
-    final title = widget.floors.length > 1
-        ? '分享 ${widget.floors.length} 个楼层'
-        : '分享帖子';
+    final title =
+        widget.floors.length > 1 ? '分享 ${widget.floors.length} 个楼层' : '分享帖子';
 
     return SafeArea(
       child: ConstrainedBox(

@@ -405,9 +405,8 @@ class _FavoriteForumTile extends StatelessWidget {
                           if (item.dateline > 0) formatTimeAgo(item.dateline),
                         ].join(' · '),
                         style: textTheme.labelSmall?.copyWith(
-                          color: isHidden
-                              ? scheme.error
-                              : scheme.onSurfaceVariant,
+                          color:
+                              isHidden ? scheme.error : scheme.onSurfaceVariant,
                         ),
                       ),
                     ],

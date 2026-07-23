@@ -7,6 +7,7 @@ abstract class S1MenuSpec {
   static const double iconSize = 24;
   static const double itemHorizontalPadding = 12;
   static const double dividerVerticalGap = 8;
+
   /// Wide enough for leading icon + short CJK label + trailing check.
   static const double minWidth = 200;
   static const double maxWidth = 280;

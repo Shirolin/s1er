@@ -431,8 +431,7 @@ class _FavoriteForumsSection extends StatelessWidget {
               ],
             ),
           ),
-          for (final forum in forums)
-            _ForumTile(forum: forum, compact: true),
+          for (final forum in forums) _ForumTile(forum: forum, compact: true),
         ],
       ),
     );
@@ -672,8 +671,7 @@ class _ForumTile extends ConsumerWidget {
     }
 
     final membership = ref.read(favoriteMembershipProvider);
-    final wasFavorited =
-        membership.isFavorited(FavoriteType.forum, forum.fid);
+    final wasFavorited = membership.isFavorited(FavoriteType.forum, forum.fid);
     if (wasFavorited) {
       final confirmed = await confirmUnfavorite(context);
       if (!confirmed || !context.mounted) return;

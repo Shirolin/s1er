@@ -410,8 +410,10 @@ class S1HttpClient {
 
     final action = uri.queryParameters['action'];
     if (!_isWeb) {
-      final existingReferer = options.headers['Referer'] ?? options.headers['referer'];
-      final hasReferer = existingReferer is String && existingReferer.isNotEmpty;
+      final existingReferer =
+          options.headers['Referer'] ?? options.headers['referer'];
+      final hasReferer =
+          existingReferer is String && existingReferer.isNotEmpty;
       if (!hasReferer) {
         if (action == 'reply') {
           final fid = uri.queryParameters['fid'] ?? '';

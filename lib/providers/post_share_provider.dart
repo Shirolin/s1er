@@ -27,8 +27,7 @@ class PostShareNotifier extends Notifier<void> {
   }) async {
     if (floors.isEmpty) return;
     final sorted = ShareFloorSelection.sortedForExport(floors);
-    final includePoll =
-        poll != null && sorted.any((f) => f.displayFloor == 1);
+    final includePoll = poll != null && sorted.any((f) => f.displayFloor == 1);
     await PostShareService.share(
       context: context,
       floors: sorted,

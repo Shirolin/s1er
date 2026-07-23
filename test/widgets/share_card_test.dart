@@ -133,7 +133,8 @@ void main() {
     expect(find.textContaining('共 15 人参与'), findsOneWidget);
   });
 
-  testWidgets('multi-floor card shows one title and both floors', (tester) async {
+  testWidgets('multi-floor card shows one title and both floors',
+      (tester) async {
     final floors = [
       ShareFloorData(
         post: _post(pid: '1', message: '一楼内容', author: 'Alice', number: '1'),

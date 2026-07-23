@@ -39,8 +39,6 @@ import '../utils/quote_builder.dart';
 import '../utils/quote_snapshot_store.dart';
 import '../utils/s1_snack_bar.dart';
 import '../utils/window_size.dart';
-import '../services/external_image_upload_service.dart';
-import '../services/forum_attachment_upload_service.dart';
 import '../models/forum_attachment_upload_info.dart';
 import '../models/compose_image_upload_result.dart';
 import '../widgets/bbcode_renderer.dart';
@@ -1339,9 +1337,8 @@ class _ComposeScreenState extends ConsumerState<ComposeScreen> {
   void _enqueueImages(List<({Uint8List bytes, String filename})> items) {
     if (_isSubmitting || items.isEmpty) return;
 
-    final maxBytes = _uploadSource == ComposeImageUploadSource.external
-        ? ExternalImageUploadService.maxBytes
-        : ForumAttachmentUploadService.maxBytes;
+    final maxBytes =
+        ref.read(composeControllerProvider).imageUploadMaxBytes(_uploadSource);
     final oversize = <String>[];
     final accepted = <({Uint8List bytes, String filename})>[];
     var truncated = false;
@@ -1392,7 +1389,6 @@ class _ComposeScreenState extends ConsumerState<ComposeScreen> {
     });
     unawaited(_drainUploadQueue());
   }
-
 
   Future<void> _drainUploadQueue() async {
     if (_isUploadingImage || _isSubmitting || _preparingUpload) return;
@@ -1475,9 +1471,8 @@ class _ComposeScreenState extends ConsumerState<ComposeScreen> {
           S1SnackBar.error(
             context,
             message: e.toString(),
-            actionLabel: _uploadSource == ComposeImageUploadSource.forum
-                ? '改用外链'
-                : '重试',
+            actionLabel:
+                _uploadSource == ComposeImageUploadSource.forum ? '改用外链' : '重试',
             onAction: () {
               if (!mounted) return;
               if (_uploadSource == ComposeImageUploadSource.forum) {
@@ -1536,9 +1531,8 @@ class _ComposeScreenState extends ConsumerState<ComposeScreen> {
     if (_editMediaDetached) {
       final slot = _nextEditMediaSlot();
       final selection = _messageController.selection;
-      final start = selection.isValid
-          ? selection.start
-          : _messageController.text.length;
+      final start =
+          selection.isValid ? selection.start : _messageController.text.length;
       final end =
           selection.isValid ? selection.end : _messageController.text.length;
       final inserted = insertComposeMediaPlaceholderAt(
@@ -1564,9 +1558,8 @@ class _ComposeScreenState extends ConsumerState<ComposeScreen> {
       _persistEditDraft();
     } else {
       final selection = _messageController.selection;
-      final start = selection.isValid
-          ? selection.start
-          : _messageController.text.length;
+      final start =
+          selection.isValid ? selection.start : _messageController.text.length;
       final end =
           selection.isValid ? selection.end : _messageController.text.length;
       final inserted = insertMediaTagAt(
@@ -1581,6 +1574,7 @@ class _ComposeScreenState extends ConsumerState<ComposeScreen> {
       );
     }
   }
+
   Future<void> _pasteIntoMessage() async {
     if (_isSubmitting) return;
     final bytes = await readComposeClipboardImage();
@@ -2437,9 +2431,7 @@ class _ComposePreviewSheet extends StatelessWidget {
     final actions = Padding(
       padding: const EdgeInsets.fromLTRB(16, 8, 16, 16),
       child: FilledButton(
-        onPressed: canSubmit
-            ? () => Navigator.of(context).pop(true)
-            : null,
+        onPressed: canSubmit ? () => Navigator.of(context).pop(true) : null,
         child: Text(submitLabel),
       ),
     );
@@ -3257,8 +3249,7 @@ class _ComposeImageUploadOptions extends StatelessWidget {
   Widget build(BuildContext context) {
     final scheme = Theme.of(context).colorScheme;
     final textTheme = Theme.of(context).textTheme;
-    final sourceLabel =
-        source == ComposeImageUploadSource.forum ? '论坛' : '外链';
+    final sourceLabel = source == ComposeImageUploadSource.forum ? '论坛' : '外链';
     final qualityLabel = useOriginal ? '原图' : '压缩';
     final summary = '图片：$sourceLabel · $qualityLabel';
 
@@ -3340,9 +3331,8 @@ class _ComposeImageUploadOptions extends StatelessWidget {
                 ],
               ),
             ),
-            crossFadeState: expanded
-                ? CrossFadeState.showSecond
-                : CrossFadeState.showFirst,
+            crossFadeState:
+                expanded ? CrossFadeState.showSecond : CrossFadeState.showFirst,
             duration: S1Motion.medium,
           ),
         ],

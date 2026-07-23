@@ -283,8 +283,7 @@ ForumAttachmentUploadInfo? _fromScripts(
     if (hash == null || hash.isEmpty) continue;
     final uid = _jsonStringField(uploadFormData, 'uid');
     final uploadUrl = _extractJsStringProperty(content, 'uploadurl');
-    final fid =
-        fidFromUploadUrl(uploadUrl) ?? fallbackFid;
+    final fid = fidFromUploadUrl(uploadUrl) ?? fallbackFid;
     if (fid == null || fid.isEmpty) continue;
     return ForumAttachmentUploadInfo(
       hash: hash,

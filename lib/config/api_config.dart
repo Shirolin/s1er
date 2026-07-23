@@ -53,9 +53,12 @@ class ApiConfig {
   }) =>
       '$forumPostUrl?mod=post&action=edit&fid=$fid&tid=$tid&pid=$pid';
 
+  /// `handlekey=postform`：Ajax 成功回调名与回复一致（`succeedhandle_postform`）。
+  /// `inajax=1`：与站内其它写入对齐；S1 若开启 `post_edit_succeed` 快速跳转，
+  /// 仍可能直接 302 到主题页，解析侧需兼容。
   static String editPostSubmitUrl() =>
-      '$forumPostUrl?mod=post&action=edit&editsubmit=yes&inajax=yes'
-      '&wysiwyg=1&delete=0';
+      '$forumPostUrl?mod=post&action=edit&editsubmit=yes&inajax=1'
+      '&handlekey=postform&wysiwyg=1&delete=0';
 
   /// 回复编辑页（刮取论坛附件上传 hash/uid）。
   ///

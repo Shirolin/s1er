@@ -5,6 +5,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:go_router/go_router.dart';
 import 'package:s1er/models/edit_post_form_info.dart';
 import 'package:s1er/models/edit_post_submit_result.dart';
+import 'package:s1er/models/forum_attachment_upload_info.dart';
 import 'package:s1er/providers/auth_provider.dart';
 import 'package:s1er/providers/compose_provider.dart';
 import 'package:s1er/providers/settings_provider.dart';
@@ -146,6 +147,9 @@ void main() {
     expect(find.text('pdd叠券能到260+'), findsOneWidget);
     // 与回复页一致：引用条纯文本，不是 QuoteBlock 渲染 BBCode。
     expect(find.text('引用 · 二十二颗牛油果'), findsOneWidget);
+    // 紧凑屏默认折叠摘要，点开后再核对正文预览。
+    await tester.tap(find.text('引用 · 二十二颗牛油果'));
+    await tester.pumpAndSettle();
     expect(find.text('现在实体版有好价吗'), findsOneWidget);
     expect(find.byType(BbcodeRenderer), findsNothing);
     expect(find.textContaining('[quote]'), findsNothing);
@@ -405,6 +409,15 @@ class _EditComposeController extends ComposeController {
   _EditComposeController(super.ref);
 
   @override
+  Future<ForumAttachmentUploadInfo?> prefetchAttachmentUploadInfo({
+    required String fid,
+    String? tid,
+    String? editPid,
+    ForumAttachmentUploadInfo? seed,
+  }) async =>
+      null;
+
+  @override
   Future<EditPostFormInfo> fetchEditPostForm({
     required String fid,
     required String tid,
@@ -437,6 +450,15 @@ class _EditComposeController extends ComposeController {
 
 class _QuotedEditComposeController extends ComposeController {
   _QuotedEditComposeController(super.ref);
+
+  @override
+  Future<ForumAttachmentUploadInfo?> prefetchAttachmentUploadInfo({
+    required String fid,
+    String? tid,
+    String? editPid,
+    ForumAttachmentUploadInfo? seed,
+  }) async =>
+      null;
 
   @override
   Future<EditPostFormInfo> fetchEditPostForm({
@@ -479,6 +501,15 @@ class _ImageEditComposeController extends ComposeController {
   _ImageEditComposeController(super.ref);
 
   @override
+  Future<ForumAttachmentUploadInfo?> prefetchAttachmentUploadInfo({
+    required String fid,
+    String? tid,
+    String? editPid,
+    ForumAttachmentUploadInfo? seed,
+  }) async =>
+      null;
+
+  @override
   Future<EditPostFormInfo> fetchEditPostForm({
     required String fid,
     required String tid,
@@ -509,6 +540,15 @@ class _ImageEditComposeController extends ComposeController {
 
 class _AttachEditComposeController extends ComposeController {
   _AttachEditComposeController(super.ref);
+
+  @override
+  Future<ForumAttachmentUploadInfo?> prefetchAttachmentUploadInfo({
+    required String fid,
+    String? tid,
+    String? editPid,
+    ForumAttachmentUploadInfo? seed,
+  }) async =>
+      null;
 
   @override
   Future<EditPostFormInfo> fetchEditPostForm({
@@ -543,6 +583,15 @@ class _CaptureLayoutEditComposeController extends ComposeController {
   _CaptureLayoutEditComposeController(super.ref);
 
   String? lastMessage;
+
+  @override
+  Future<ForumAttachmentUploadInfo?> prefetchAttachmentUploadInfo({
+    required String fid,
+    String? tid,
+    String? editPid,
+    ForumAttachmentUploadInfo? seed,
+  }) async =>
+      null;
 
   @override
   Future<EditPostFormInfo> fetchEditPostForm({

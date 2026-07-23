@@ -43,7 +43,8 @@ void main() {
     await tester.pumpAndSettle();
   }
 
-  testWidgets('standard post density uses larger avatar chrome', (tester) async {
+  testWidgets('standard post density uses larger avatar chrome',
+      (tester) async {
     await pumpPost(tester, density: ListDensity.standard);
     final avatar = tester.widget<WebAvatar>(find.byType(WebAvatar));
     final card = tester.widget<Card>(find.byType(Card).first);
@@ -54,7 +55,8 @@ void main() {
     );
   });
 
-  testWidgets('compact post density uses smaller avatar chrome', (tester) async {
+  testWidgets('compact post density uses smaller avatar chrome',
+      (tester) async {
     await pumpPost(tester, density: ListDensity.compact);
     final avatar = tester.widget<WebAvatar>(find.byType(WebAvatar));
     final card = tester.widget<Card>(find.byType(Card).first);

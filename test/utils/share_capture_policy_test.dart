@@ -27,8 +27,7 @@ void main() {
     expect(
       shouldUseChunkedShareCapture(
         floorCount: 1,
-        estimatedCapturePixels:
-            S1Constants.shareCaptureChunkThresholdPixels,
+        estimatedCapturePixels: S1Constants.shareCaptureChunkThresholdPixels,
       ),
       isTrue,
     );

@@ -94,9 +94,7 @@ class BrowsingSettingsSection extends ConsumerWidget {
               ),
               title: const Text('已屏蔽版块'),
               subtitle: Text(
-                hiddenCount == 0
-                    ? '从首页隐藏不感兴趣的版块'
-                    : '已屏蔽 $hiddenCount 个版块',
+                hiddenCount == 0 ? '从首页隐藏不感兴趣的版块' : '已屏蔽 $hiddenCount 个版块',
                 style: subtitleStyle,
               ),
               trailing: Icon(

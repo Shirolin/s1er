@@ -11,6 +11,19 @@ abstract class ScrollFloorNavigator {
   /// 已对齐时跳过微动画，避免连点抖动。
   static const double alignSkipTolerance = 16;
 
+  /// [getOffsetToReveal] 会读 size；pop / 换页时楼层可能仍 NEEDS-LAYOUT。
+  static double? _offsetToReveal(RenderObject renderObject, double alignment) {
+    if (!renderObject.attached) return null;
+    if (renderObject is RenderBox && !renderObject.hasSize) return null;
+    final viewport = RenderAbstractViewport.maybeOf(renderObject);
+    if (viewport == null) return null;
+    try {
+      return viewport.getOffsetToReveal(renderObject, alignment).offset;
+    } catch (_) {
+      return null;
+    }
+  }
+
   /// 单击「下一楼」：将下一楼滚至 [revealAlignment]；末楼时调用 [onAtLastFloor]。
   static Future<void> scrollToNextFloor({
     required List<GlobalKey> postKeys,
@@ -55,10 +68,9 @@ abstract class ScrollFloorNavigator {
       final ctx = postKeys[i].currentContext;
       if (ctx == null) continue;
       final renderObject = ctx.findRenderObject();
-      if (renderObject == null || !renderObject.attached) continue;
-      final viewport = RenderAbstractViewport.maybeOf(renderObject);
-      if (viewport == null) continue;
-      final itemTop = viewport.getOffsetToReveal(renderObject, 0).offset;
+      if (renderObject == null) continue;
+      final itemTop = _offsetToReveal(renderObject, 0);
+      if (itemTop == null) continue;
       if (itemTop <= anchorContentY + 0.5) {
         currentIndex = i;
       }
@@ -78,15 +90,14 @@ abstract class ScrollFloorNavigator {
     if (nextContext == null) {
       final currentContext = postKeys[currentIndex].currentContext;
       final currentRender = currentContext?.findRenderObject();
-      if (currentRender == null || !currentRender.attached) return;
-      final currentViewport = RenderAbstractViewport.maybeOf(currentRender);
-      if (currentViewport == null) return;
+      if (currentRender == null) return;
+      final currentTop = _offsetToReveal(currentRender, 0);
+      if (currentTop == null) return;
+      if (currentRender is! RenderBox || !currentRender.hasSize) return;
 
       // 下一楼可能尚未被 ListView.builder 构建：先一次主滚拉入视口，再静默校正。
-      final currentTop =
-          currentViewport.getOffsetToReveal(currentRender, 0).offset;
       final estimatedTarget = currentTop +
-          currentRender.paintBounds.height -
+          currentRender.size.height -
           viewportDimension * revealAlignment;
 
       final revealTarget = estimatedTarget.clamp(
@@ -106,14 +117,14 @@ abstract class ScrollFloorNavigator {
     }
 
     final nextRender = postKeys[nextIndex].currentContext?.findRenderObject();
-    if (nextRender == null || !nextRender.attached) return;
-    final nextViewport = RenderAbstractViewport.maybeOf(nextRender);
-    if (nextViewport == null) return;
+    if (nextRender == null) return;
+    final targetOffset = _offsetToReveal(nextRender, revealAlignment);
+    if (targetOffset == null) return;
 
-    final targetScroll = nextViewport
-        .getOffsetToReveal(nextRender, revealAlignment)
-        .offset
-        .clamp(position.minScrollExtent, position.maxScrollExtent);
+    final targetScroll = targetOffset.clamp(
+      position.minScrollExtent,
+      position.maxScrollExtent,
+    );
 
     final delta = (targetScroll - position.pixels).abs();
     if (delta <= alignSkipTolerance) return;
@@ -177,11 +188,12 @@ abstract class ScrollFloorNavigator {
       final refContext = postKeys[refIndex].currentContext!;
       if (!refContext.mounted) return false;
       final refRender = refContext.findRenderObject();
-      if (refRender == null || !refRender.attached) return false;
-      final refViewport = RenderAbstractViewport.maybeOf(refRender);
-      if (refViewport == null) return false;
-      final refTop = refViewport.getOffsetToReveal(refRender, 0).offset;
-      final itemHeight = refRender.paintBounds.height;
+      if (refRender == null) return false;
+      final refTop = _offsetToReveal(refRender, 0);
+      if (refTop == null) return false;
+      final itemHeight = refRender is RenderBox && refRender.hasSize
+          ? refRender.size.height
+          : refRender.paintBounds.height;
       if (itemHeight <= 0) return false;
 
       // 每轮最多推进约一屏，逐步拉近懒列表构建窗口。
@@ -201,14 +213,14 @@ abstract class ScrollFloorNavigator {
 
     if (!targetContext.mounted) return false;
     final render = targetContext.findRenderObject();
-    if (render == null || !render.attached) return false;
-    final viewport = RenderAbstractViewport.maybeOf(render);
-    if (viewport == null) return false;
+    if (render == null) return false;
+    final targetOffset = _offsetToReveal(render, alignment);
+    if (targetOffset == null) return false;
 
-    final targetScroll = viewport
-        .getOffsetToReveal(render, alignment)
-        .offset
-        .clamp(position.minScrollExtent, position.maxScrollExtent);
+    final targetScroll = targetOffset.clamp(
+      position.minScrollExtent,
+      position.maxScrollExtent,
+    );
 
     final delta = (targetScroll - position.pixels).abs();
     if (delta > alignSkipTolerance) {
@@ -246,10 +258,9 @@ abstract class ScrollFloorNavigator {
       final ctx = postKeys[i].currentContext;
       if (ctx == null) continue;
       final renderObject = ctx.findRenderObject();
-      if (renderObject == null || !renderObject.attached) continue;
-      final viewport = RenderAbstractViewport.maybeOf(renderObject);
-      if (viewport == null) continue;
-      final itemTop = viewport.getOffsetToReveal(renderObject, 0).offset;
+      if (renderObject == null) continue;
+      final itemTop = _offsetToReveal(renderObject, 0);
+      if (itemTop == null) continue;
       if (itemTop <= anchorContentY + 0.5) {
         currentIndex = i;
       }

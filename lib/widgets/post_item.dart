@@ -69,6 +69,7 @@ class PostItemDensityTokens {
     }
   }
 }
+
 class PostItem extends ConsumerStatefulWidget {
   const PostItem({
     super.key,
@@ -612,7 +613,8 @@ class _PostItemState extends ConsumerState<PostItem>
   }) {
     final textTheme = Theme.of(context).textTheme;
     final scheme = Theme.of(context).colorScheme;
-    final nameStyle = textTheme.bodyMedium?.copyWith(fontWeight: FontWeight.bold);
+    final nameStyle =
+        textTheme.bodyMedium?.copyWith(fontWeight: FontWeight.bold);
     final timeStyle = textTheme.labelSmall?.copyWith(
       color: scheme.onSurfaceVariant,
     );

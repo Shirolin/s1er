@@ -221,4 +221,3 @@ abstract class S1SnackBar {
     );
   }
 }
-

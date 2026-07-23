@@ -166,6 +166,10 @@ void main() {
     expect(request.method, 'POST');
     expect(request.path, contains('action=edit'));
     expect(request.path, contains('editsubmit=yes'));
+    expect(request.path, contains('inajax=1'));
+    expect(request.path, contains('handlekey=postform'));
+    expect(request.responseType, ResponseType.plain);
+    expect(request.extra['s1DesktopUa'], isTrue);
     final data = request.data as Map;
     expect(data['fid'], '4');
     expect(data['tid'], '100');
@@ -178,10 +182,87 @@ void main() {
     expect(data.containsKey('delete'), isFalse);
   });
 
-  test('unknown POST response is uncertain and not retried', () async {
+  test('parseEditPostSubmitResponse accepts redirect-style success', () {
+    expect(
+      ApiService.parseEditPostSubmitResponse(
+        "location.href='forum.php?mod=viewthread&tid=100';",
+      ).isSuccess,
+      isTrue,
+    );
+    expect(
+      ApiService.parseEditPostSubmitResponse(
+        '<div class="jump_c"><p>您的帖子编辑成功，现在将转入主题页</p></div>',
+      ).isSuccess,
+      isTrue,
+    );
+    expect(
+      ApiService.parseEditPostSubmitResponse(
+        "<root><![CDATA[<script>succeedhandle_edit('ok');</script>]]></root>",
+      ).isSuccess,
+      isTrue,
+    );
+  });
+
+  test('parses real S1 ajax edit success XML', () {
+    const body = '''
+<?xml version="1.0" encoding="utf-8"?>
+<root><![CDATA[<script type="text/javascript" reload="1">if(typeof succeedhandle_postform=='function') {succeedhandle_postform('forum.php?mod=viewthread&tid=2285884&page=&extra=#pid69955887', '帖子编辑成功，现在将转入主题页，请稍候……[ 点击这里转入主题列表 ]', {'fid':'51','tid':'2285884','pid':'69955887'});}</script>]]></root>
+''';
+    expect(
+      ApiService.parseEditPostSubmitResponse(body).disposition,
+      EditPostDisposition.success,
+    );
+  });
+
+  test('unknown POST body still succeeds after form verify', () async {
     final container = ProviderContainer();
     addTearDown(container.dispose);
-    final adapter = _CaptureAdapter([threadForm, 'unknown response']);
+    const savedForm = '''
+<form>
+  <input type="hidden" name="formhash" value="fh" />
+  <input type="hidden" name="special" value="0" />
+  <input id="subject" value="新标题" />
+  <select id="typeid"><option value="1" selected>其他</option></select>
+  <select id="readperm"><option value="0" selected>不限</option></select>
+  <textarea id="e_textarea">新正文</textarea>
+</form>
+''';
+    final adapter = _CaptureAdapter([
+      threadForm,
+      '<html>viewthread page without markers</html>',
+      savedForm,
+    ]);
+    final api = ApiService(
+      S1HttpClient.test(container, Dio()..httpClientAdapter = adapter),
+    );
+    final baseline = ApiService.parseEditPostFormResponse(
+      threadForm,
+      isFirst: true,
+    );
+    final result = await api.submitEditPost(
+      fid: '4',
+      tid: '100',
+      pid: '200',
+      isFirst: true,
+      subject: '新标题',
+      message: '新正文',
+      typeId: '1',
+      readPerm: '0',
+      baseline: baseline,
+    );
+    expect(result.disposition, EditPostDisposition.success);
+    expect(adapter.requests, hasLength(3));
+    expect(adapter.requests[2].method, 'GET');
+  });
+
+  test('unknown POST response is uncertain when verify mismatches', () async {
+    final container = ProviderContainer();
+    addTearDown(container.dispose);
+    final adapter = _CaptureAdapter([
+      threadForm,
+      'unknown response',
+      threadForm,
+    ]);
     final api = ApiService(
       S1HttpClient.test(container, Dio()..httpClientAdapter = adapter),
     );
@@ -201,7 +282,7 @@ void main() {
       baseline: baseline,
     );
     expect(result.isUncertain, isTrue);
-    expect(adapter.requests, hasLength(2));
+    expect(adapter.requests, hasLength(3));
   });
 }
 

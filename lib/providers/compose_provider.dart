@@ -62,13 +62,12 @@ class ComposeController {
     }
     final cached = _cachedFor(fid: fid, tid: tid, editPid: editPid);
     if (cached != null) return cached;
-    final info = await _ref
-        .read(apiServiceProvider)
-        .fetchForumAttachmentUploadInfo(
-          fid: fid,
-          tid: tid,
-          editPid: editPid,
-        );
+    final info =
+        await _ref.read(apiServiceProvider).fetchForumAttachmentUploadInfo(
+              fid: fid,
+              tid: tid,
+              editPid: editPid,
+            );
     if (info != null && info.isValid) {
       _cacheUploadInfo(fid: fid, tid: tid, editPid: editPid, info: info);
     }
@@ -262,6 +261,12 @@ class ComposeController {
   /// 按当前设置追加小尾巴（预览与发帖/回复提交共用）。
   Future<String> applySignature(String message) =>
       _messageWithSignature(message);
+
+  /// 插图客户端预检上限（与对应上传服务一致）。
+  int imageUploadMaxBytes(ComposeImageUploadSource source) =>
+      source == ComposeImageUploadSource.external
+          ? ExternalImageUploadService.maxBytes
+          : ForumAttachmentUploadService.maxBytes;
 
   Future<String> _messageWithSignature(String message) async {
     final settings = _ref.read(settingsProvider);

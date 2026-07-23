@@ -494,34 +494,137 @@ class ApiService {
       data,
       collectForumAttachmentIds(data['message']),
     );
+    final submittedSubject = data['subject']!;
+    final submittedMessage = data['message']!;
     try {
       final response = await _httpClient.post(
         ApiConfig.editPostSubmitUrl(),
         data: data,
-        options: Options(contentType: Headers.formUrlEncodedContentType),
+        options: Options(
+          contentType: Headers.formUrlEncodedContentType,
+          responseType: ResponseType.plain,
+          extra: const {'s1DesktopUa': true},
+        ),
       );
-      return parseEditPostSubmitResponse(response.data?.toString() ?? '');
+      final body = _responseBodyText(response.data);
+      final parsed = parseEditPostSubmitResponse(body);
+      if (!parsed.isUncertain) return parsed;
+      talker.warning(
+        'edit submit parse uncertain; '
+        'dataType=${response.data.runtimeType} '
+        'status=${response.statusCode} len=${body.length}',
+      );
+      final verified = await _verifyEditPostApplied(
+        fid: fid,
+        tid: tid,
+        pid: pid,
+        isFirst: isFirst,
+        subject: submittedSubject,
+        message: submittedMessage,
+        typeId: typeId,
+        readPerm: readPerm,
+      );
+      if (verified) {
+        return const EditPostSubmitResult.success(message: '编辑成功');
+      }
+      return parsed;
     } catch (e, st) {
       talker.handle(e, st, 'submitEditPost transport uncertain');
+      final verified = await _verifyEditPostApplied(
+        fid: fid,
+        tid: tid,
+        pid: pid,
+        isFirst: isFirst,
+        subject: submittedSubject,
+        message: submittedMessage,
+        typeId: typeId,
+        readPerm: readPerm,
+      );
+      if (verified) {
+        return const EditPostSubmitResult.success(message: '编辑成功');
+      }
       return const EditPostSubmitResult.uncertain(
         '编辑请求状态不确定，请先核对服务器内容，不要直接重复提交',
       );
     }
   }
 
-  static EditPostSubmitResult parseEditPostSubmitResponse(String body) {
-    final trimmed = body.trim();
-    if (RegExp(
-      r'succeedhandle_postform|post_edit_succeed',
-      caseSensitive: false,
-    ).hasMatch(trimmed)) {
-      return const EditPostSubmitResult.success(message: '编辑成功');
+  /// POST 响应偶发无法解析（类型非 String、超时后仍已写入等）时，回读编辑表单核对正文。
+  Future<bool> _verifyEditPostApplied({
+    required String fid,
+    required String tid,
+    required String pid,
+    required bool isFirst,
+    required String subject,
+    required String message,
+    String? typeId,
+    String? readPerm,
+  }) async {
+    try {
+      final latest = await fetchEditPostForm(
+        fid: fid,
+        tid: tid,
+        pid: pid,
+        isFirst: isFirst,
+      );
+      if (!latest.canEdit) return false;
+      if (latest.message.trim() != message.trim()) return false;
+      if (isFirst && latest.subject.trim() != subject.trim()) return false;
+      if (typeId != null &&
+          typeId.trim().isNotEmpty &&
+          latest.selectedTypeId != typeId) {
+        return false;
+      }
+      if (readPerm != null &&
+          readPerm.trim().isNotEmpty &&
+          latest.selectedReadPermission != readPerm) {
+        return false;
+      }
+      return true;
+    } catch (e, st) {
+      talker.handle(e, st, 'verifyEditPostApplied failed');
+      return false;
     }
-    final error = _extractEditPostError(trimmed);
-    if (error != null) return EditPostSubmitResult.rejected(error);
-    if (trimmed.isEmpty) {
+  }
+
+  /// Dio 在未设 [ResponseType.plain] 时偶发给出 `List<int>`；`.toString()` 会丢掉正文。
+  static String _responseBodyText(dynamic data) {
+    if (data == null) return '';
+    if (data is String) return data;
+    if (data is List<int>) {
+      return utf8.decode(data, allowMalformed: true);
+    }
+    return data.toString();
+  }
+
+  static EditPostSubmitResult parseEditPostSubmitResponse(String body) {
+    final html = _unwrapAjaxHtml(body).trim();
+    if (html.isEmpty) {
       return const EditPostSubmitResult.uncertain('服务器未返回编辑结果');
     }
+    // Ajax：`succeedhandle_postform`；语言包 key；触屏文案；msgforward 跳转脚本。
+    if (RegExp(
+      r'succeedhandle_|post_edit_succeed|编辑成功|帖子编辑成功',
+      caseSensitive: false,
+    ).hasMatch(html)) {
+      return const EditPostSubmitResult.success(message: '编辑成功');
+    }
+    if (RegExp(
+      r'(?:window\.location|location\.href)\s*=\s*\S*(?:mod=viewthread|tid=\d+)',
+      caseSensitive: false,
+    ).hasMatch(html)) {
+      return const EditPostSubmitResult.success(message: '编辑成功');
+    }
+    if (RegExp(
+      'http-equiv\\s*=\\s*["\']?refresh["\']?[^>]*(?:mod=viewthread|tid=\\d+)',
+      caseSensitive: false,
+    ).hasMatch(html)) {
+      return const EditPostSubmitResult.success(message: '编辑成功');
+    }
+    final error = _extractEditPostError(html);
+    if (error != null) return EditPostSubmitResult.rejected(error);
+    final preview = html.length > 180 ? '${html.substring(0, 180)}…' : html;
+    talker.warning('edit submit unrecognized body: $preview');
     return const EditPostSubmitResult.uncertain(
       '服务器返回未知结果，请先核对服务器内容，不要直接重复提交',
     );

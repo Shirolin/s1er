@@ -652,7 +652,7 @@ if(typeof succeedhandle_reply=='function') {
 - 预检 GET：`$baseUrl/forum.php?mod=post&action=edit&fid={fid}&tid={tid}&pid={pid}`，解析服务器原始 BBCode、标题、分类、阅读权限和 `formhash`。
 - 提交 POST：`$baseUrl/forum.php`
 - Content-Type：`application/x-www-form-urlencoded`
-- Query：`mod=post&action=edit&editsubmit=yes&inajax=yes&wysiwyg=1&delete=0`
+- Query：`mod=post&action=edit&editsubmit=yes&inajax=1&handlekey=postform&wysiwyg=1&delete=0`
 - Headers: `x-requested-with: XMLHttpRequest`
 - Cookie: 需要已登录态
 
@@ -671,7 +671,7 @@ if(typeof succeedhandle_reply=='function') {
 | `attachnew[N][description]` | 有论坛附件时 | 空字符串即可 |
 | `attachnew[N][readperm]` | 有论坛附件时 | 空字符串即可 |
 
-首版仅允许当前登录用户编辑自己的普通主题首帖和普通回复；特殊主题首帖、管理员代编辑和原生附件增删不开放。提交前会再次 GET 编辑页并检查内容基线，发生变化时不发送 POST。POST 超时或未知响应按“状态不确定”处理，禁止自动重试。
+首版仅允许当前登录用户编辑自己的普通主题首帖和普通回复；特殊主题首帖、管理员代编辑和原生附件增删不开放。提交前会再次 GET 编辑页并检查内容基线，发生变化时不发送 POST。POST 超时或未知响应先回读编辑表单核对正文；仍无法确认时按“状态不确定”处理，禁止自动重试。成功响应一般为 `inajax` XML，CDATA 内含 `succeedhandle_postform(...)`（文案如「帖子编辑成功」）；提交使用 `ResponseType.plain`，避免 body 被当成字节数组导致误判。
 
 ---
 

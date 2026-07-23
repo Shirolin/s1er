@@ -139,7 +139,8 @@ class ForumAttachmentUploadService {
           extra: const {'s1DesktopUa': true},
         ),
       );
-      final map = parseForumAttachmentImageList(response.data?.toString() ?? '');
+      final map =
+          parseForumAttachmentImageList(response.data?.toString() ?? '');
       return map[aid];
     }
 

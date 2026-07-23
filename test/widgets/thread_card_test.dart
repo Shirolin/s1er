@@ -65,8 +65,7 @@ void main() {
     await pumpCard(tester, density: ListDensity.compact);
 
     final tagCenter = tester.getCenter(find.text('NS')).dy;
-    final titleCenter =
-        tester.getCenter(find.text(sampleThread.subject)).dy;
+    final titleCenter = tester.getCenter(find.text(sampleThread.subject)).dy;
     expect((tagCenter - titleCenter).abs(), lessThan(12));
 
     final text = tester.widget<Text>(find.text(sampleThread.subject));

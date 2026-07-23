@@ -35,7 +35,8 @@ void main() {
     expect(find.byIcon(Icons.info_outline), findsOneWidget);
   });
 
-  testWidgets('S1SnackBar.success displays check icon and text', (tester) async {
+  testWidgets('S1SnackBar.success displays check icon and text',
+      (tester) async {
     await tester.pumpWidget(
       buildTestApp(
         Builder(
@@ -77,7 +78,8 @@ void main() {
     expect(find.byIcon(Icons.error_outline), findsOneWidget);
   });
 
-  testWidgets('S1SnackBar flushes previous snackbar on new show call', (tester) async {
+  testWidgets('S1SnackBar flushes previous snackbar on new show call',
+      (tester) async {
     await tester.pumpWidget(
       buildTestApp(
         Builder(
@@ -108,7 +110,8 @@ void main() {
     expect(find.text('消息 2'), findsOneWidget);
   });
 
-  testWidgets('S1SnackBar sets maxWidth 400 on wide screens (> 600)', (tester) async {
+  testWidgets('S1SnackBar sets maxWidth 400 on wide screens (> 600)',
+      (tester) async {
     await tester.pumpWidget(
       buildTestApp(
         Builder(

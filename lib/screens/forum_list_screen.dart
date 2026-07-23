@@ -8,6 +8,7 @@ import '../widgets/s1_content_width.dart';
 import 'thread_detail_screen.dart';
 import '../providers/forum_name_provider.dart';
 import '../providers/auth_provider.dart';
+import '../providers/settings_provider.dart';
 import '../providers/thread_list_provider.dart';
 import '../widgets/app_bar_more_menu.dart';
 import '../widgets/favorite_bookmark_button.dart';
@@ -131,6 +132,12 @@ class _ForumListScreenState extends ConsumerState<ForumListScreen> {
                 fid: widget.fid,
                 page: threadsAsync.asData?.value.currentPage ?? 1,
               ),
+              threadListDensity: ref.watch(
+                settingsProvider.select((s) => s.threadListDensity),
+              ),
+              onThreadListDensityChanged: (density) => ref
+                  .read(settingsProvider.notifier)
+                  .setThreadListDensity(density),
             ),
           ],
         ),

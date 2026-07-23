@@ -254,6 +254,20 @@ void main() {
       expect(find.textContaining('secret'), findsOneWidget);
     });
 
+    testWidgets('renders credit hide [hide=N] like plain hide', (tester) async {
+      await tester.pumpWidget(
+        _wrapBbcode(
+          BbcodeRenderer(
+            bbcode: '[hide=10]locked[/hide]',
+            imageIndexCounter: PostImageIndexCounter(),
+          ),
+          dark: true,
+        ),
+      );
+      await tester.pump();
+      expect(find.textContaining('locked'), findsOneWidget);
+    });
+
     testWidgets('renders near-black author color text in dark theme',
         (tester) async {
       await tester.pumpWidget(

@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../models/list_density.dart';
 import '../../providers/settings_provider.dart';
 import '../../theme/app_theme.dart';
 import '../../theme/s1_haptics.dart';
@@ -17,11 +18,18 @@ class BrowsingSettingsSection extends ConsumerWidget {
     final hapticsEnabled = ref.watch(
       settingsProvider.select((settings) => settings.hapticsEnabled),
     );
+    final threadListDensity = ref.watch(
+      settingsProvider.select((settings) => settings.threadListDensity),
+    );
+    final postListDensity = ref.watch(
+      settingsProvider.select((settings) => settings.postListDensity),
+    );
     final notifier = ref.read(settingsProvider.notifier);
     final scheme = Theme.of(context).colorScheme;
-    final subtitleStyle = Theme.of(context).textTheme.bodySmall?.copyWith(
-          color: scheme.onSurfaceVariant,
-        );
+    final textTheme = Theme.of(context).textTheme;
+    final subtitleStyle = textTheme.bodySmall?.copyWith(
+      color: scheme.onSurfaceVariant,
+    );
 
     return Card(
       elevation: 0,
@@ -73,6 +81,66 @@ class BrowsingSettingsSection extends ConsumerWidget {
               contentPadding: const EdgeInsets.symmetric(horizontal: 8),
               shape: const RoundedRectangleBorder(
                 borderRadius: S1Shape.small,
+              ),
+            ),
+            const SizedBox(height: 8),
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 8),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text('主题列表密度', style: textTheme.titleSmall),
+                  const SizedBox(height: 4),
+                  Text(
+                    '仅影响版块主题列表。紧凑模式下同一屏可显示更多帖子。',
+                    style: subtitleStyle,
+                  ),
+                  const SizedBox(height: 12),
+                  SegmentedButton<ListDensity>(
+                    segments: const [
+                      ButtonSegment(
+                        value: ListDensity.standard,
+                        label: Text('标准'),
+                      ),
+                      ButtonSegment(
+                        value: ListDensity.compact,
+                        label: Text('紧凑'),
+                      ),
+                    ],
+                    selected: {threadListDensity},
+                    showSelectedIcon: false,
+                    onSelectionChanged: (selection) {
+                      S1Haptics.selection();
+                      notifier.setThreadListDensity(selection.first);
+                    },
+                  ),
+                  const SizedBox(height: 16),
+                  Text('楼层密度', style: textTheme.titleSmall),
+                  const SizedBox(height: 4),
+                  Text(
+                    '仅影响帖子详情楼层卡片外壳，正文排版不变。',
+                    style: subtitleStyle,
+                  ),
+                  const SizedBox(height: 12),
+                  SegmentedButton<ListDensity>(
+                    segments: const [
+                      ButtonSegment(
+                        value: ListDensity.standard,
+                        label: Text('标准'),
+                      ),
+                      ButtonSegment(
+                        value: ListDensity.compact,
+                        label: Text('紧凑'),
+                      ),
+                    ],
+                    selected: {postListDensity},
+                    showSelectedIcon: false,
+                    onSelectionChanged: (selection) {
+                      S1Haptics.selection();
+                      notifier.setPostListDensity(selection.first);
+                    },
+                  ),
+                ],
               ),
             ),
           ],

@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:s1er/config/constants.dart';
 import 'package:s1er/models/image_load_policy.dart';
+import 'package:s1er/models/list_density.dart';
 import 'package:s1er/models/share_image_format.dart';
 import 'package:s1er/providers/settings_provider.dart';
 import 'package:s1er/services/app_icon_service.dart';
@@ -65,6 +66,8 @@ void main() {
     expect(state.collapsedForums, const {'42'});
     expect(state.shareImageFormat, ShareImageFormat.webp);
     expect(state.sharePixelRatio, 1.5);
+    expect(state.threadListDensity, ListDensity.standard);
+    expect(state.postListDensity, ListDensity.standard);
   });
 
   test('setRecordReadingHistory persists to settings store', () async {
@@ -104,6 +107,69 @@ void main() {
 
     container.read(settingsProvider.notifier).setHapticsEnabled(true);
     expect(S1Haptics.enabled, isTrue);
+  });
+
+  test('setThreadListDensity and setPostListDensity persist independently',
+      () async {
+    final container = ProviderContainer(
+      overrides: [
+        settingsProvider.overrideWith(
+          () => SettingsNotifier(store: store, initial: const AppSettings()),
+        ),
+      ],
+    );
+    addTearDown(container.dispose);
+
+    container
+        .read(settingsProvider.notifier)
+        .setThreadListDensity(ListDensity.compact);
+    expect(
+      container.read(settingsProvider).threadListDensity,
+      ListDensity.compact,
+    );
+    expect(
+      container.read(settingsProvider).postListDensity,
+      ListDensity.standard,
+    );
+    await Future<void>.delayed(const Duration(milliseconds: 50));
+    expect(store.get<String>('threadListDensity'), 'compact');
+    expect(store.get<String>('postListDensity'), isNull);
+
+    container
+        .read(settingsProvider.notifier)
+        .setPostListDensity(ListDensity.compact);
+    expect(
+      container.read(settingsProvider).postListDensity,
+      ListDensity.compact,
+    );
+    expect(
+      container.read(settingsProvider).threadListDensity,
+      ListDensity.compact,
+    );
+    await Future<void>.delayed(const Duration(milliseconds: 50));
+    expect(store.get<String>('postListDensity'), 'compact');
+  });
+
+  test('resetAppearanceSettings restores list density defaults', () {
+    final container = ProviderContainer(
+      overrides: [
+        settingsProvider.overrideWith(
+          () => SettingsNotifier(
+            store: store,
+            initial: const AppSettings(
+              threadListDensity: ListDensity.compact,
+              postListDensity: ListDensity.compact,
+            ),
+          ),
+        ),
+      ],
+    );
+    addTearDown(container.dispose);
+
+    container.read(settingsProvider.notifier).resetAppearanceSettings();
+    final state = container.read(settingsProvider);
+    expect(state.threadListDensity, ListDensity.standard);
+    expect(state.postListDensity, ListDensity.standard);
   });
 
   test('legacy custom theme colors are normalized to the default preset', () {

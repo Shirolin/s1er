@@ -1,8 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import '../models/list_density.dart';
 import '../models/post.dart';
 import '../providers/auth_provider.dart';
+import '../providers/settings_provider.dart';
 import '../providers/thread_rate_logs_provider.dart';
 import '../providers/user_profile_provider.dart';
 import '../theme/app_theme.dart';
@@ -22,6 +24,51 @@ import 'web_avatar.dart';
 import 's1_adaptive_sheet.dart';
 import 's1_click_region.dart';
 
+/// Spacing / layout tokens for [PostItem] chrome density (not body typography).
+class PostItemDensityTokens {
+  const PostItemDensityTokens({
+    required this.cardMarginVertical,
+    required this.cardPadding,
+    required this.avatarRadius,
+    required this.dividerHeight,
+    required this.inlineAuthorMeta,
+    required this.narrowColumnGap,
+  });
+
+  final double cardMarginVertical;
+  final double cardPadding;
+  final double avatarRadius;
+  final double dividerHeight;
+  final bool inlineAuthorMeta;
+  final double narrowColumnGap;
+
+  static const standard = PostItemDensityTokens(
+    cardMarginVertical: 4,
+    cardPadding: 12,
+    avatarRadius: 20,
+    dividerHeight: 16,
+    inlineAuthorMeta: false,
+    narrowColumnGap: 8,
+  );
+
+  static const compact = PostItemDensityTokens(
+    cardMarginVertical: 2,
+    cardPadding: 8,
+    avatarRadius: 16,
+    dividerHeight: 8,
+    inlineAuthorMeta: true,
+    narrowColumnGap: 4,
+  );
+
+  static PostItemDensityTokens forDensity(ListDensity density) {
+    switch (density) {
+      case ListDensity.compact:
+        return compact;
+      case ListDensity.standard:
+        return standard;
+    }
+  }
+}
 class PostItem extends ConsumerStatefulWidget {
   const PostItem({
     super.key,
@@ -143,10 +190,16 @@ class _PostItemState extends ConsumerState<PostItem>
     final timeStr = formatDateTime(widget.post.dateline);
     final floor = widget.displayFloor ?? widget.post.floor;
     final isBanned = BannedPostDetector.isBanned(widget.post.message);
+    final tokens = PostItemDensityTokens.forDensity(
+      ref.watch(settingsProvider.select((s) => s.postListDensity)),
+    );
 
     final selected = widget.shareSelectMode && widget.isShareSelected;
     final card = Card(
-      margin: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+      margin: EdgeInsets.symmetric(
+        horizontal: 8,
+        vertical: tokens.cardMarginVertical,
+      ),
       elevation: 0,
       color: selected
           ? scheme.secondaryContainer.withValues(alpha: S1Alpha.half)
@@ -160,12 +213,15 @@ class _PostItemState extends ConsumerState<PostItem>
             )
           : S1Shape.cardShape,
       child: Padding(
-        padding: const EdgeInsets.all(12),
+        padding: EdgeInsets.all(tokens.cardPadding),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            _buildAuthorHeader(context, timeStr, floor),
-            Divider(height: 16, color: scheme.outlineVariant),
+            _buildAuthorHeader(context, timeStr, floor, tokens),
+            Divider(
+              height: tokens.dividerHeight,
+              color: scheme.outlineVariant,
+            ),
             if (isBanned)
               _buildBannedPostSection(context, scheme)
             else
@@ -437,7 +493,12 @@ class _PostItemState extends ConsumerState<PostItem>
     );
   }
 
-  Widget _buildAuthorHeader(BuildContext context, String timeStr, int floor) {
+  Widget _buildAuthorHeader(
+    BuildContext context,
+    String timeStr,
+    int floor,
+    PostItemDensityTokens tokens,
+  ) {
     final canCopy = widget.post.message.trim().isNotEmpty;
     final scheme = Theme.of(context).colorScheme;
 
@@ -453,7 +514,13 @@ class _PostItemState extends ConsumerState<PostItem>
                 : scheme.onSurfaceVariant,
           ),
           const SizedBox(width: 8),
-          Expanded(child: _authorDetailsColumn(context, timeStr)),
+          Expanded(
+            child: _authorDetails(
+              context,
+              timeStr,
+              inline: tokens.inlineAuthorMeta,
+            ),
+          ),
           const SizedBox(width: 8),
           Badge(
             label: Text(
@@ -490,13 +557,17 @@ class _PostItemState extends ConsumerState<PostItem>
         onTap: () => _showUserInfo(context, ref),
         child: WebAvatar(
           url: widget.post.avatar,
-          radius: 20,
+          radius: tokens.avatarRadius,
           fallbackLetter:
               widget.post.author.isNotEmpty ? widget.post.author[0] : '?',
         ),
       ),
     );
-    final authorDetails = _authorDetailsColumn(context, timeStr);
+    final authorDetails = _authorDetails(
+      context,
+      timeStr,
+      inline: tokens.inlineAuthorMeta,
+    );
     final actions = Wrap(
       spacing: 2,
       runSpacing: 2,
@@ -513,7 +584,7 @@ class _PostItemState extends ConsumerState<PostItem>
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               avatar,
-              const SizedBox(height: 8),
+              SizedBox(height: tokens.narrowColumnGap),
               authorDetails,
               if (constraints.maxWidth >= 80) actions,
             ],
@@ -534,7 +605,34 @@ class _PostItemState extends ConsumerState<PostItem>
     );
   }
 
-  Widget _authorDetailsColumn(BuildContext context, String timeStr) {
+  Widget _authorDetails(
+    BuildContext context,
+    String timeStr, {
+    required bool inline,
+  }) {
+    final textTheme = Theme.of(context).textTheme;
+    final scheme = Theme.of(context).colorScheme;
+    final nameStyle = textTheme.bodyMedium?.copyWith(fontWeight: FontWeight.bold);
+    final timeStyle = textTheme.labelSmall?.copyWith(
+      color: scheme.onSurfaceVariant,
+    );
+
+    if (inline) {
+      return Text.rich(
+        TextSpan(
+          children: [
+            TextSpan(text: widget.post.author, style: nameStyle),
+            if (timeStr.isNotEmpty) ...[
+              TextSpan(text: ' · ', style: timeStyle),
+              TextSpan(text: timeStr, style: timeStyle),
+            ],
+          ],
+        ),
+        maxLines: 1,
+        overflow: TextOverflow.ellipsis,
+      );
+    }
+
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -542,19 +640,14 @@ class _PostItemState extends ConsumerState<PostItem>
           widget.post.author,
           maxLines: 1,
           overflow: TextOverflow.ellipsis,
-          style: Theme.of(context)
-              .textTheme
-              .bodyMedium
-              ?.copyWith(fontWeight: FontWeight.bold),
+          style: nameStyle,
         ),
         if (timeStr.isNotEmpty)
           Text(
             timeStr,
             maxLines: 1,
             overflow: TextOverflow.ellipsis,
-            style: Theme.of(context).textTheme.labelSmall?.copyWith(
-                  color: Theme.of(context).colorScheme.onSurfaceVariant,
-                ),
+            style: timeStyle,
           ),
       ],
     );

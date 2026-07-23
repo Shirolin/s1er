@@ -3,6 +3,7 @@ import 'package:flutter/services.dart';
 import 'package:go_router/go_router.dart';
 import 'package:url_launcher/url_launcher.dart';
 
+import '../models/list_density.dart';
 import '../theme/s1_haptics.dart';
 import '../utils/post_link_resolver.dart';
 import '../utils/s1_snack_bar.dart';
@@ -21,6 +22,10 @@ class AppBarMoreMenu extends StatelessWidget {
     required this.browserUrl,
     this.launcher = launchUrl,
     this.showOpenLink = true,
+    this.threadListDensity,
+    this.onThreadListDensityChanged,
+    this.postListDensity,
+    this.onPostListDensityChanged,
   });
 
   final VoidCallback? onRefresh;
@@ -28,6 +33,20 @@ class AppBarMoreMenu extends StatelessWidget {
   final String browserUrl;
   final BrowserUrlLauncher launcher;
   final bool showOpenLink;
+
+  /// When both are set, show standard/compact thread-list toggles.
+  final ListDensity? threadListDensity;
+  final ValueChanged<ListDensity>? onThreadListDensityChanged;
+
+  /// When both are set, show standard/compact post-floor toggles.
+  final ListDensity? postListDensity;
+  final ValueChanged<ListDensity>? onPostListDensityChanged;
+
+  bool get _showThreadListDensity =>
+      threadListDensity != null && onThreadListDensityChanged != null;
+
+  bool get _showPostListDensity =>
+      postListDensity != null && onPostListDensityChanged != null;
 
   Future<void> _copyPageLink(BuildContext context) async {
     try {
@@ -155,6 +174,48 @@ class AppBarMoreMenu extends StatelessWidget {
             icon: Icons.last_page,
             label: '跳转到最新',
           ),
+        if (_showThreadListDensity) ...[
+          const S1MenuDivider(),
+          s1MenuItem(
+            onPressed: () {
+              S1Haptics.selection();
+              onThreadListDensityChanged!(ListDensity.standard);
+            },
+            icon: Icons.view_agenda_outlined,
+            label: '标准列表',
+            selected: threadListDensity == ListDensity.standard,
+          ),
+          s1MenuItem(
+            onPressed: () {
+              S1Haptics.selection();
+              onThreadListDensityChanged!(ListDensity.compact);
+            },
+            icon: Icons.view_headline,
+            label: '紧凑列表',
+            selected: threadListDensity == ListDensity.compact,
+          ),
+        ],
+        if (_showPostListDensity) ...[
+          const S1MenuDivider(),
+          s1MenuItem(
+            onPressed: () {
+              S1Haptics.selection();
+              onPostListDensityChanged!(ListDensity.standard);
+            },
+            icon: Icons.view_agenda_outlined,
+            label: '标准楼层',
+            selected: postListDensity == ListDensity.standard,
+          ),
+          s1MenuItem(
+            onPressed: () {
+              S1Haptics.selection();
+              onPostListDensityChanged!(ListDensity.compact);
+            },
+            icon: Icons.view_headline,
+            label: '紧凑楼层',
+            selected: postListDensity == ListDensity.compact,
+          ),
+        ],
         s1MenuItem(
           onPressed: () {
             _copyPageLink(context);

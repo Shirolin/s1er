@@ -978,6 +978,12 @@ class _ThreadDetailScreenState extends ConsumerState<ThreadDetailScreen> {
                     tid: widget.tid,
                     page: postsAsync.asData?.value.currentPage ?? 1,
                   ),
+                  postListDensity: ref.watch(
+                    settingsProvider.select((s) => s.postListDensity),
+                  ),
+                  onPostListDensityChanged: (density) => ref
+                      .read(settingsProvider.notifier)
+                      .setPostListDensity(density),
                 ),
               ],
       ),
@@ -1299,7 +1305,7 @@ class _ThreadDetailPostTile extends ConsumerWidget {
 }
 
 /// 被屏蔽楼层的可展开占位行（保留列表键位）。
-class _BlockedPostPlaceholder extends StatelessWidget {
+class _BlockedPostPlaceholder extends ConsumerWidget {
   const _BlockedPostPlaceholder({
     required this.author,
     required this.onExpand,
@@ -1309,13 +1315,19 @@ class _BlockedPostPlaceholder extends StatelessWidget {
   final VoidCallback onExpand;
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
     final scheme = Theme.of(context).colorScheme;
     final textTheme = Theme.of(context).textTheme;
     final name = author.isNotEmpty ? author : '未知用户';
+    final tokens = PostItemDensityTokens.forDensity(
+      ref.watch(settingsProvider.select((s) => s.postListDensity)),
+    );
 
     return Card(
-      margin: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+      margin: EdgeInsets.symmetric(
+        horizontal: 8,
+        vertical: tokens.cardMarginVertical,
+      ),
       elevation: 0,
       color: S1Surface.card(scheme),
       shape: S1Shape.cardShape,
@@ -1323,7 +1335,10 @@ class _BlockedPostPlaceholder extends StatelessWidget {
         onTap: onExpand,
         borderRadius: S1Shape.medium,
         child: Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 14),
+          padding: EdgeInsets.symmetric(
+            horizontal: tokens.cardPadding,
+            vertical: tokens.cardPadding + 2,
+          ),
           child: Row(
             children: [
               Icon(

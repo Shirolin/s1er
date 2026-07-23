@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:s1er/models/list_density.dart';
 import 'package:s1er/theme/app_theme.dart';
 import 'package:s1er/widgets/app_bar_more_menu.dart';
 import 'package:url_launcher/url_launcher.dart';
@@ -11,6 +12,10 @@ void main() {
     WidgetTester tester, {
     required BrowserUrlLauncher launcher,
     VoidCallback? onGoToLatest,
+    ListDensity? threadListDensity,
+    ValueChanged<ListDensity>? onThreadListDensityChanged,
+    ListDensity? postListDensity,
+    ValueChanged<ListDensity>? onPostListDensityChanged,
   }) {
     return tester.pumpWidget(
       MaterialApp(
@@ -23,6 +28,10 @@ void main() {
                 browserUrl: browserUrl,
                 launcher: launcher,
                 onGoToLatest: onGoToLatest,
+                threadListDensity: threadListDensity,
+                onThreadListDensityChanged: onThreadListDensityChanged,
+                postListDensity: postListDensity,
+                onPostListDensityChanged: onPostListDensityChanged,
               ),
             ],
           ),
@@ -51,7 +60,6 @@ void main() {
 
     await openMoreMenu(tester);
 
-    // Menu items are visible by default.
     expect(find.text('复制链接'), findsOneWidget);
     expect(find.text('输入链接'), findsOneWidget);
   });
@@ -72,6 +80,64 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(goToLatestCalled, isTrue);
+  });
+
+  testWidgets('shows thread list density toggles when provided', (tester) async {
+    ListDensity? selected;
+    await pumpMenu(
+      tester,
+      launcher: (url, {mode = LaunchMode.platformDefault}) async => true,
+      threadListDensity: ListDensity.standard,
+      onThreadListDensityChanged: (density) => selected = density,
+    );
+
+    await openMoreMenu(tester);
+
+    expect(find.text('标准列表'), findsOneWidget);
+    expect(find.text('紧凑列表'), findsOneWidget);
+    expect(find.text('标准楼层'), findsNothing);
+    // Selected row keeps semantic leading icon and shows trailing check.
+    expect(find.byIcon(Icons.view_agenda_outlined), findsOneWidget);
+    expect(find.byIcon(Icons.view_headline), findsOneWidget);
+    expect(find.byIcon(Icons.check), findsOneWidget);
+    await tester.tap(find.text('紧凑列表'));
+    await tester.pumpAndSettle();
+
+    expect(selected, ListDensity.compact);
+  });
+
+  testWidgets('shows post list density toggles when provided', (tester) async {
+    ListDensity? selected;
+    await pumpMenu(
+      tester,
+      launcher: (url, {mode = LaunchMode.platformDefault}) async => true,
+      postListDensity: ListDensity.standard,
+      onPostListDensityChanged: (density) => selected = density,
+    );
+
+    await openMoreMenu(tester);
+
+    expect(find.text('标准楼层'), findsOneWidget);
+    expect(find.text('紧凑楼层'), findsOneWidget);
+    expect(find.text('标准列表'), findsNothing);
+    await tester.tap(find.text('紧凑楼层'));
+    await tester.pumpAndSettle();
+
+    expect(selected, ListDensity.compact);
+  });
+
+  testWidgets('hides density toggles by default', (tester) async {
+    await pumpMenu(
+      tester,
+      launcher: (url, {mode = LaunchMode.platformDefault}) async => true,
+    );
+
+    await openMoreMenu(tester);
+
+    expect(find.text('标准列表'), findsNothing);
+    expect(find.text('紧凑列表'), findsNothing);
+    expect(find.text('标准楼层'), findsNothing);
+    expect(find.text('紧凑楼层'), findsNothing);
   });
 
   testWidgets('opens the URL in an external application', (tester) async {

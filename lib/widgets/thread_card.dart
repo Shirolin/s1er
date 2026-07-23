@@ -2,8 +2,10 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import '../config/constants.dart';
+import '../models/list_density.dart';
 import '../models/thread.dart';
 import '../providers/reading_history_provider.dart';
+import '../providers/settings_provider.dart';
 import '../theme/app_theme.dart';
 import '../theme/s1_haptics.dart';
 import '../models/thread_destination.dart';
@@ -16,6 +18,68 @@ typedef ThreadOpenCallback = void Function(
   ThreadDestination destination, {
   int? resumePageHint,
 });
+
+/// Spacing / layout tokens for [ThreadCard] density modes.
+class ThreadCardDensityTokens {
+  const ThreadCardDensityTokens({
+    required this.cardMarginVertical,
+    required this.cardPaddingVertical,
+    required this.titleMetaGap,
+    required this.titleMaxLines,
+    required this.titleHeight,
+    required this.progressTop,
+    required this.inlineTag,
+    required this.tagMaxChars,
+    required this.inlineProgress,
+  });
+
+  final double cardMarginVertical;
+  final double cardPaddingVertical;
+  final double titleMetaGap;
+  final int titleMaxLines;
+  final double titleHeight;
+  final double progressTop;
+  final bool inlineTag;
+
+  /// Max category tag characters when [inlineTag]; null = no truncation.
+  final int? tagMaxChars;
+
+  /// When true, reading progress is a meta-row badge (no dedicated bar row).
+  final bool inlineProgress;
+
+  static const standard = ThreadCardDensityTokens(
+    cardMarginVertical: 4,
+    cardPaddingVertical: 8,
+    titleMetaGap: 8,
+    titleMaxLines: 2,
+    titleHeight: 1.45,
+    progressTop: 6,
+    inlineTag: false,
+    tagMaxChars: null,
+    inlineProgress: false,
+  );
+
+  static const compact = ThreadCardDensityTokens(
+    cardMarginVertical: 2,
+    cardPaddingVertical: 5,
+    titleMetaGap: 4,
+    titleMaxLines: 1,
+    titleHeight: 1.3,
+    progressTop: 4,
+    inlineTag: true,
+    tagMaxChars: 4,
+    inlineProgress: true,
+  );
+
+  static ThreadCardDensityTokens forDensity(ListDensity density) {
+    switch (density) {
+      case ListDensity.compact:
+        return compact;
+      case ListDensity.standard:
+        return standard;
+    }
+  }
+}
 
 /// 从当前用户的阅读历史列表中查出指定 tid 的记录（无则 null）。
 class ThreadCard extends ConsumerWidget {
@@ -100,6 +164,10 @@ class ThreadCard extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final scheme = Theme.of(context).colorScheme;
     final textTheme = Theme.of(context).textTheme;
+    final density = ref.watch(
+      settingsProvider.select((s) => s.threadListDensity),
+    );
+    final tokens = ThreadCardDensityTokens.forDensity(density);
     final hasTag = thread.typeName != null && thread.typeName!.isNotEmpty;
     final isSticky = thread.isSticky;
     final totalPages = _calcTotalPages(thread.replies);
@@ -113,7 +181,10 @@ class ThreadCard extends ConsumerWidget {
       button: true,
       label: thread.subject,
       child: Card(
-        margin: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+        margin: EdgeInsets.symmetric(
+          horizontal: 8,
+          vertical: tokens.cardMarginVertical,
+        ),
         elevation: 0,
         shadowColor: Colors.transparent,
         surfaceTintColor: Colors.transparent,
@@ -128,7 +199,10 @@ class ThreadCard extends ConsumerWidget {
           onTap: () => _handleTap(context, ref),
           borderRadius: S1Shape.medium,
           child: Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+            padding: EdgeInsets.symmetric(
+              horizontal: 12,
+              vertical: tokens.cardPaddingVertical,
+            ),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
@@ -139,8 +213,9 @@ class ThreadCard extends ConsumerWidget {
                   tagName: thread.typeName,
                   scheme: scheme,
                   textTheme: textTheme,
+                  tokens: tokens,
                 ),
-                const SizedBox(height: 8),
+                SizedBox(height: tokens.titleMetaGap),
                 _MetaLine(
                   author: thread.author,
                   time: formatTimeAgo(thread.dateline),
@@ -151,11 +226,16 @@ class ThreadCard extends ConsumerWidget {
                   scheme: scheme,
                   onPageTap:
                       totalPages > 1 ? () => _showPageSheet(context) : null,
-                ),
-                _ReadingProgressBar(
                   tid: thread.tid,
                   liveTotalReplies: thread.replies,
+                  showInlineProgress: tokens.inlineProgress,
                 ),
+                if (!tokens.inlineProgress)
+                  _ReadingProgressBar(
+                    tid: thread.tid,
+                    liveTotalReplies: thread.replies,
+                    progressTop: tokens.progressTop,
+                  ),
               ],
             ),
           ),
@@ -166,16 +246,28 @@ class ThreadCard extends ConsumerWidget {
 }
 
 // ═══════════════════════════════════════════════════════════
-//  阅读进度指示器：无记录时不占位
+//  阅读进度指示器：无记录时不占位（仅标准密度）
 // ═══════════════════════════════════════════════════════════
+
+String? _readingProgressLabel({
+  required int lastReadFloor,
+  required int liveTotalReplies,
+  required bool isFinished,
+}) {
+  if (isFinished) return '已读';
+  final liveTotalPosts = liveTotalReplies + 1;
+  return '#$lastReadFloor/$liveTotalPosts';
+}
 
 class _ReadingProgressBar extends ConsumerWidget {
   const _ReadingProgressBar({
     required this.tid,
     required this.liveTotalReplies,
+    required this.progressTop,
   });
   final String tid;
   final int liveTotalReplies;
+  final double progressTop;
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -188,12 +280,15 @@ class _ReadingProgressBar extends ConsumerWidget {
     final scheme = Theme.of(context).colorScheme;
     final textTheme = Theme.of(context).textTheme;
     final isFinished = record.isFinishedAt(liveTotalReplies);
-    final hasNewReplies = record.hasNewReplies(liveTotalReplies);
-    final liveTotalPosts = liveTotalReplies + 1;
     final accent = isFinished ? scheme.onSurfaceVariant : scheme.primary;
+    final label = _readingProgressLabel(
+      lastReadFloor: record.lastReadFloor,
+      liveTotalReplies: liveTotalReplies,
+      isFinished: isFinished,
+    )!;
 
     return Padding(
-      padding: const EdgeInsets.only(top: 6),
+      padding: EdgeInsets.only(top: progressTop),
       child: Row(
         children: [
           Icon(
@@ -220,17 +315,73 @@ class _ReadingProgressBar extends ConsumerWidget {
           ),
           const SizedBox(width: 6),
           Text(
-            isFinished
-                ? '已读'
-                : hasNewReplies
-                    ? '#${record.lastReadFloor}/$liveTotalPosts'
-                    : '#${record.lastReadFloor}',
+            label,
             style: textTheme.labelSmall?.copyWith(
               color: accent,
               fontWeight: FontWeight.w500,
             ),
           ),
         ],
+      ),
+    );
+  }
+}
+
+/// Compact density: reading progress as a meta-row chip (no extra bar row).
+class _CompactReadingBadge extends ConsumerWidget {
+  const _CompactReadingBadge({
+    required this.tid,
+    required this.liveTotalReplies,
+    required this.metaStyle,
+  });
+
+  final String tid;
+  final int liveTotalReplies;
+  final TextStyle? metaStyle;
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final record = ref.watch(readingRecordProvider(tid));
+    if (record == null || record.progressAt(liveTotalReplies) <= 0) {
+      return const SizedBox.shrink();
+    }
+
+    final scheme = Theme.of(context).colorScheme;
+    final isFinished = record.isFinishedAt(liveTotalReplies);
+    final label = _readingProgressLabel(
+      lastReadFloor: record.lastReadFloor,
+      liveTotalReplies: liveTotalReplies,
+      isFinished: isFinished,
+    )!;
+
+    final Color fg;
+    final Color bg;
+    if (isFinished) {
+      fg = scheme.onSurfaceVariant;
+      bg = scheme.surfaceContainerHighest;
+    } else {
+      fg = scheme.onPrimaryContainer;
+      bg = scheme.primaryContainer;
+    }
+
+    return Padding(
+      padding: const EdgeInsets.only(left: 8),
+      child: Chip(
+        label: CompactLabel.text(
+          label,
+          style: CompactLabel.style(
+            context,
+            base: metaStyle,
+            color: fg,
+            fontWeight: FontWeight.w500,
+          ),
+        ),
+        labelPadding: const EdgeInsets.symmetric(horizontal: 6),
+        backgroundColor: bg,
+        side: BorderSide.none,
+        visualDensity: VisualDensity.compact,
+        materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
+        padding: EdgeInsets.zero,
       ),
     );
   }
@@ -248,6 +399,7 @@ class _TitleLine extends StatelessWidget {
     required this.tagName,
     required this.scheme,
     required this.textTheme,
+    required this.tokens,
   });
   final String subject;
   final bool isSticky;
@@ -255,41 +407,69 @@ class _TitleLine extends StatelessWidget {
   final String? tagName;
   final ColorScheme scheme;
   final TextTheme textTheme;
+  final ThreadCardDensityTokens tokens;
 
   @override
   Widget build(BuildContext context) {
+    final title = Text(
+      subject,
+      style: textTheme.titleSmall?.copyWith(
+        height: tokens.titleHeight,
+        fontWeight: isSticky ? FontWeight.bold : null,
+      ),
+      maxLines: tokens.titleMaxLines,
+      overflow: TextOverflow.ellipsis,
+    );
+
+    final pin = isSticky
+        ? Icon(Icons.push_pin, size: 13, color: scheme.primary)
+        : null;
+
+    final tag = hasTag
+        ? _CategoryTag(
+            label: _truncateTagLabel(tagName!, tokens.tagMaxChars),
+            color: scheme.onSecondaryContainer,
+            bgColor: scheme.secondaryContainer,
+          )
+        : null;
+
+    if (tokens.inlineTag) {
+      return Row(
+        crossAxisAlignment: CrossAxisAlignment.center,
+        children: [
+          if (tag != null) ...[
+            tag,
+            const SizedBox(width: 6),
+          ],
+          if (pin != null) ...[
+            pin,
+            const SizedBox(width: 4),
+          ],
+          Expanded(child: title),
+        ],
+      );
+    }
+
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        if (hasTag) ...[
-          _CategoryTag(
-            label: tagName!,
-            color: scheme.onSecondaryContainer,
-            bgColor: scheme.secondaryContainer,
-          ),
+        if (tag != null) ...[
+          tag,
           const SizedBox(height: 4),
         ],
         Row(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            if (isSticky) ...[
+            if (pin != null) ...[
               Padding(
-                padding: const EdgeInsets.only(top: 2),
-                child: Icon(Icons.push_pin, size: 13, color: scheme.primary),
+                padding: EdgeInsets.only(
+                  top: (tokens.titleHeight * 14 - 13) / 2,
+                ),
+                child: pin,
               ),
               const SizedBox(width: 4),
             ],
-            Expanded(
-              child: Text(
-                subject,
-                style: textTheme.titleSmall?.copyWith(
-                  height: 1.45,
-                  fontWeight: isSticky ? FontWeight.bold : null,
-                ),
-                maxLines: 2,
-                overflow: TextOverflow.ellipsis,
-              ),
-            ),
+            Expanded(child: title),
           ],
         ),
       ],
@@ -313,6 +493,9 @@ class _MetaLine extends StatelessWidget {
     required this.totalPages,
     required this.metaStyle,
     required this.scheme,
+    required this.tid,
+    required this.liveTotalReplies,
+    required this.showInlineProgress,
     this.onPageTap,
   });
   final String author;
@@ -323,6 +506,9 @@ class _MetaLine extends StatelessWidget {
   final TextStyle? metaStyle;
   final ColorScheme scheme;
   final VoidCallback? onPageTap;
+  final String tid;
+  final int liveTotalReplies;
+  final bool showInlineProgress;
 
   @override
   Widget build(BuildContext context) {
@@ -358,7 +544,7 @@ class _MetaLine extends StatelessWidget {
           ),
         ),
         const SizedBox(width: 8),
-        // ── 右侧：统计（固定） + 页码（如果存在） ──
+        // ── 右侧：统计 + 阅读进度徽标（紧凑） + 页码 ──
         Row(
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.center,
@@ -377,6 +563,12 @@ class _MetaLine extends StatelessWidget {
               textStyle: metaStyle,
               iconOffset: const Offset(0, 0.5),
             ),
+            if (showInlineProgress)
+              _CompactReadingBadge(
+                tid: tid,
+                liveTotalReplies: liveTotalReplies,
+                metaStyle: metaStyle,
+              ),
             if (totalPages > 1) ...[
               const SizedBox(width: 8),
               ActionChip(
@@ -447,6 +639,11 @@ class _MetaStat extends StatelessWidget {
 // ═══════════════════════════════════════════════════════════
 //  分类标签
 // ═══════════════════════════════════════════════════════════
+
+String _truncateTagLabel(String label, int? maxChars) {
+  if (maxChars == null || label.length <= maxChars) return label;
+  return label.substring(0, maxChars);
+}
 
 class _CategoryTag extends StatelessWidget {
   const _CategoryTag({

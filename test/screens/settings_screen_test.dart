@@ -42,7 +42,7 @@ void main() {
     expect(find.text('关于'), findsOneWidget);
     expect(find.text('主题配色'), findsOneWidget);
     expect(find.text('自定义调试种子色 (Hex)'), findsNothing);
-    expect(find.text('标准'), findsOneWidget);
+    expect(find.text('标准'), findsWidgets);
     expect(find.text('版本'), findsOneWidget);
     expect(find.text('更新日志'), findsOneWidget);
     expect(find.text('检查更新'), findsOneWidget);

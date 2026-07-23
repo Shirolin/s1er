@@ -24,6 +24,7 @@ import '../providers/thread_list_provider.dart';
 import '../theme/app_theme.dart';
 import '../theme/s1_haptics.dart';
 import '../utils/compact_label.dart';
+import '../utils/author_color_adapter.dart';
 import '../utils/compose_bbcode_wrap.dart';
 import '../utils/compose_clipboard_image.dart';
 import '../utils/compose_img_tags.dart';
@@ -1099,6 +1100,84 @@ class _ComposeScreenState extends ConsumerState<ComposeScreen> {
     _messageFocusNode.requestFocus();
   }
 
+  void _applyBbcodeColor(String cssColor) {
+    final color = AuthorColorAdapter.parseCssColor(cssColor);
+    if (color == null) return;
+    final hex = AuthorColorAdapter.toCssHex(color);
+    _applyBbcodeWrap('[color=$hex]', '[/color]');
+  }
+
+  Future<void> _insertCreditHide() async {
+    if (_composeBusy || !mounted) return;
+    if (_showEmoticonPanel) {
+      setState(() => _showEmoticonPanel = false);
+    }
+    _messageFocusNode.unfocus();
+
+    final selection = _messageController.selection;
+    final start =
+        selection.isValid ? selection.start : _messageController.text.length;
+    final end =
+        selection.isValid ? selection.end : _messageController.text.length;
+
+    final creditController = TextEditingController();
+    final credits = await showDialog<int>(
+      context: context,
+      builder: (ctx) {
+        return AlertDialog(
+          title: const Text('积分隐藏'),
+          content: TextField(
+            controller: creditController,
+            autofocus: true,
+            keyboardType: TextInputType.number,
+            inputFormatters: [FilteringTextInputFormatter.digitsOnly],
+            decoration: const InputDecoration(
+              labelText: '所需积分',
+              hintText: '例如 10',
+            ),
+            onSubmitted: (value) {
+              final n = int.tryParse(value.trim());
+              if (n == null || n < 1) return;
+              Navigator.of(ctx).pop(n);
+            },
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.of(ctx).pop(),
+              child: const Text('取消'),
+            ),
+            FilledButton(
+              onPressed: () {
+                final n = int.tryParse(creditController.text.trim());
+                if (n == null || n < 1) return;
+                Navigator.of(ctx).pop(n);
+              },
+              child: const Text('插入'),
+            ),
+          ],
+        );
+      },
+    );
+    creditController.dispose();
+    if (!mounted || credits == null) {
+      _messageFocusNode.requestFocus();
+      return;
+    }
+
+    final result = wrapBbcodeSelection(
+      text: _messageController.text,
+      start: start,
+      end: end,
+      openTag: '[hide=$credits]',
+      closeTag: '[/hide]',
+    );
+    _messageController.value = TextEditingValue(
+      text: result.text,
+      selection: TextSelection.collapsed(offset: result.cursor),
+    );
+    _messageFocusNode.requestFocus();
+  }
+
   void _dismissEmoticonPanelForShortcut() {
     if (!_showEmoticonPanel) return;
     setState(() => _showEmoticonPanel = false);
@@ -2108,6 +2187,8 @@ class _ComposeScreenState extends ConsumerState<ComposeScreen> {
           onSubmit: _submit,
           onBbcodeWrap: _applyBbcodeWrap,
           onInsertUrl: _insertUrlBbcode,
+          onWrapColor: _applyBbcodeColor,
+          onInsertCreditHide: _insertCreditHide,
           submitLabel: _isEditing ? '保存编辑' : '发送',
         ),
       ],
@@ -3324,6 +3405,8 @@ class _ComposeBottomBar extends StatelessWidget {
     required this.onSubmit,
     required this.onBbcodeWrap,
     required this.onInsertUrl,
+    required this.onWrapColor,
+    required this.onInsertCreditHide,
     this.uploadProgressLabel,
     this.submitLabel = '发送',
   });
@@ -3342,6 +3425,8 @@ class _ComposeBottomBar extends StatelessWidget {
   final VoidCallback onSubmit;
   final void Function(String openTag, String closeTag) onBbcodeWrap;
   final VoidCallback onInsertUrl;
+  final ValueChanged<String> onWrapColor;
+  final VoidCallback onInsertCreditHide;
   final String submitLabel;
 
   @override
@@ -3368,6 +3453,8 @@ class _ComposeBottomBar extends StatelessWidget {
                 busy: busy,
                 onWrap: onBbcodeWrap,
                 onInsertUrl: onInsertUrl,
+                onWrapColor: onWrapColor,
+                onInsertCreditHide: onInsertCreditHide,
               ),
               Divider(
                 height: 1,

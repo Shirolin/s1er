@@ -7,7 +7,8 @@ abstract class S1MenuSpec {
   static const double iconSize = 24;
   static const double itemHorizontalPadding = 12;
   static const double dividerVerticalGap = 8;
-  static const double minWidth = 168;
+  /// Wide enough for leading icon + short CJK label + trailing check.
+  static const double minWidth = 200;
   static const double maxWidth = 280;
   static const double underAnchorGap = 4;
 
@@ -65,11 +66,15 @@ class S1MenuDivider extends StatelessWidget {
 }
 
 /// M3 菜单项：48dp 高度、24dp 图标、语义色、labelLarge 排版。
+///
+/// When [selected] is true, shows a trailing check while keeping [icon] as the
+/// leading affordance (single-select menu pattern).
 Widget s1MenuItem({
   required VoidCallback? onPressed,
   required IconData icon,
   required String label,
   bool destructive = false,
+  bool selected = false,
 }) {
   return Builder(
     builder: (context) {
@@ -95,6 +100,9 @@ Widget s1MenuItem({
       return MenuItemButton(
         onPressed: onPressed,
         leadingIcon: Icon(icon, size: S1MenuSpec.iconSize),
+        trailingIcon: selected
+            ? const Icon(Icons.check, size: S1MenuSpec.iconSize)
+            : null,
         style: style,
         child: Text(label),
       );

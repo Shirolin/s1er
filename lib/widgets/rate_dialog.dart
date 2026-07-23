@@ -100,8 +100,8 @@ class _RateDialogState extends ConsumerState<_RateDialog> {
           .loadFullRateLog(widget.pid);
 
       if (!mounted) return;
+      S1SnackBar.success(context, message: '评分成功');
       Navigator.of(context).pop();
-      S1SnackBar.show(context, message: '评分成功');
     } catch (e) {
       if (!mounted) return;
       S1SnackBar.error(context, message: '评分失败: $e');

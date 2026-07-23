@@ -95,6 +95,8 @@ v1 **不使用** JSONL；列表一律为 JSON 数组。
 | `image_cache_limit_mb` | int | 磁盘图片缓存上限（MB）；常见 `100` / `256` / `512` |
 | `record_reading_history` | bool | |
 | `haptics_enabled` | bool | 交互震动总开关（默认 `true`；无触感硬件的平台可忽略） |
+| `thread_list_density` | string | `standard` / `compact`；版块主题列表密度（默认 `standard`） |
+| `post_list_density` | string | `standard` / `compact`；帖子详情楼层卡片外壳密度（默认 `standard`） |
 | `font_size` | int | |
 | `collapsed_forums` | string[] | 版块 id |
 | `share_image_format` | string | `webp` / `jpeg` / `png`；分享卡片导出图片格式（默认 `webp`） |

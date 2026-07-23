@@ -110,6 +110,8 @@ void main() {
         'imageCacheLimitMb': 512,
         'shareImageFormat': 'webp',
         'sharePixelRatio': 2,
+        'threadListDensity': 'compact',
+        'postListDensity': 'standard',
       });
       expect(backup['theme_mode'], 'dark');
       expect(backup['collapsed_forums'], isA<List>());
@@ -120,6 +122,8 @@ void main() {
       expect(backup['image_cache_limit_mb'], 512);
       expect(backup['share_image_format'], 'webp');
       expect(backup['share_pixel_ratio'], 2);
+      expect(backup['thread_list_density'], 'compact');
+      expect(backup['post_list_density'], 'standard');
       expect(backup.containsKey('use_dynamic_color'), isFalse);
       expect(backup.containsKey('simulate_dynamic'), isFalse);
 

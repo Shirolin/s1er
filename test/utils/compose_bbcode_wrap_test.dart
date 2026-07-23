@@ -63,6 +63,30 @@ void main() {
       expect(result.cursor, '[url=https://s1er.app]'.length);
     });
 
+    test('supports color= open tag with selection', () {
+      final result = wrapBbcodeSelection(
+        text: 'red',
+        start: 0,
+        end: 3,
+        openTag: '[color=#FF0000]',
+        closeTag: '[/color]',
+      );
+      expect(result.text, '[color=#FF0000]red[/color]');
+      expect(result.cursor, result.text.length);
+    });
+
+    test('supports hide=N open tag with selection', () {
+      final result = wrapBbcodeSelection(
+        text: 'secret',
+        start: 0,
+        end: 6,
+        openTag: '[hide=10]',
+        closeTag: '[/hide]',
+      );
+      expect(result.text, '[hide=10]secret[/hide]');
+      expect(result.cursor, result.text.length);
+    });
+
     test('does not pad whitespace around neighbors', () {
       final result = wrapBbcodeSelection(
         text: '你好世界',

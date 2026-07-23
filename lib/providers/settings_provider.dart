@@ -5,6 +5,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../config/app_icon_catalog.dart';
 import '../models/image_load_policy.dart';
+import '../models/list_density.dart';
 import '../models/share_image_format.dart';
 import '../models/share_pixel_ratio.dart';
 import '../config/constants.dart';
@@ -29,6 +30,8 @@ class AppSettings {
     this.imageCacheLimitMb = S1Constants.defaultImageCacheLimitMb,
     this.recordReadingHistory = true,
     this.hapticsEnabled = true,
+    this.threadListDensity = ListDensity.standard,
+    this.postListDensity = ListDensity.standard,
     this.fontSize = S1Typography.defaultBodySize,
     this.collapsedForums = const {},
     this.shareImageFormat = ShareImageFormat.webp,
@@ -49,6 +52,8 @@ class AppSettings {
   final int imageCacheLimitMb;
   final bool recordReadingHistory;
   final bool hapticsEnabled;
+  final ListDensity threadListDensity;
+  final ListDensity postListDensity;
   final int fontSize;
   final Set<String> collapsedForums;
   final ShareImageFormat shareImageFormat;
@@ -71,6 +76,8 @@ class AppSettings {
     int? imageCacheLimitMb,
     bool? recordReadingHistory,
     bool? hapticsEnabled,
+    ListDensity? threadListDensity,
+    ListDensity? postListDensity,
     int? fontSize,
     Set<String>? collapsedForums,
     ShareImageFormat? shareImageFormat,
@@ -91,6 +98,8 @@ class AppSettings {
       imageCacheLimitMb: imageCacheLimitMb ?? this.imageCacheLimitMb,
       recordReadingHistory: recordReadingHistory ?? this.recordReadingHistory,
       hapticsEnabled: hapticsEnabled ?? this.hapticsEnabled,
+      threadListDensity: threadListDensity ?? this.threadListDensity,
+      postListDensity: postListDensity ?? this.postListDensity,
       fontSize: fontSize ?? this.fontSize,
       collapsedForums: collapsedForums ?? this.collapsedForums,
       shareImageFormat: shareImageFormat ?? this.shareImageFormat,
@@ -118,6 +127,8 @@ class AppSettings {
         other.imageCacheLimitMb == imageCacheLimitMb &&
         other.recordReadingHistory == recordReadingHistory &&
         other.hapticsEnabled == hapticsEnabled &&
+        other.threadListDensity == threadListDensity &&
+        other.postListDensity == postListDensity &&
         other.fontSize == fontSize &&
         _setEquals(other.collapsedForums, collapsedForums) &&
         other.shareImageFormat == shareImageFormat &&
@@ -143,13 +154,18 @@ class AppSettings {
         imageCacheLimitMb,
         recordReadingHistory,
         hapticsEnabled,
+        threadListDensity,
+        postListDensity,
         fontSize,
         Object.hashAllUnordered(collapsedForums),
         shareImageFormat,
         sharePixelRatio,
-        postSignatureEnabled,
-        postSignatureShowDevice,
-        Object.hash(postSignatureCustom, customFontFileName),
+        Object.hash(
+          postSignatureEnabled,
+          postSignatureShowDevice,
+          postSignatureCustom,
+          customFontFileName,
+        ),
       );
 }
 
@@ -295,6 +311,12 @@ class SettingsNotifier extends Notifier<AppSettings> {
             defaultValue: true,
           ) ??
           true,
+      threadListDensity: ListDensity.fromStored(
+        settingsStore.get<String>('threadListDensity'),
+      ),
+      postListDensity: ListDensity.fromStored(
+        settingsStore.get<String>('postListDensity'),
+      ),
       fontSize: settingsStore.get<int>(
             'fontSize',
             defaultValue: S1Typography.defaultBodySize,
@@ -430,6 +452,16 @@ class SettingsNotifier extends Notifier<AppSettings> {
     _persist('hapticsEnabled', value);
   }
 
+  void setThreadListDensity(ListDensity value) {
+    _commit(state.copyWith(threadListDensity: value));
+    _persist('threadListDensity', value.storageKey);
+  }
+
+  void setPostListDensity(ListDensity value) {
+    _commit(state.copyWith(postListDensity: value));
+    _persist('postListDensity', value.storageKey);
+  }
+
   void setFontSize(int value) {
     _commit(state.copyWith(fontSize: value));
     _persist('fontSize', value);
@@ -485,6 +517,8 @@ class SettingsNotifier extends Notifier<AppSettings> {
       imageCacheLimitMb: defaults.imageCacheLimitMb,
       recordReadingHistory: defaults.recordReadingHistory,
       hapticsEnabled: defaults.hapticsEnabled,
+      threadListDensity: defaults.threadListDensity,
+      postListDensity: defaults.postListDensity,
       fontSize: defaults.fontSize,
       shareImageFormat: defaults.shareImageFormat,
       sharePixelRatio: defaults.sharePixelRatio,
@@ -503,6 +537,8 @@ class SettingsNotifier extends Notifier<AppSettings> {
     _applyImageCacheLimit(defaults.imageCacheLimitMb);
     _persist('recordReadingHistory', defaults.recordReadingHistory);
     _persist('hapticsEnabled', defaults.hapticsEnabled);
+    _persist('threadListDensity', defaults.threadListDensity.storageKey);
+    _persist('postListDensity', defaults.postListDensity.storageKey);
     _persist('fontSize', defaults.fontSize);
     _persist('shareImageFormat', defaults.shareImageFormat.storageKey);
     _persist('sharePixelRatio', defaults.sharePixelRatio);

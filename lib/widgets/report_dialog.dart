@@ -81,8 +81,8 @@ class _ReportDialogState extends ConsumerState<_ReportDialog> {
       S1SnackBar.error(context, message: error);
       return;
     }
+    S1SnackBar.success(context, message: '举报成功');
     Navigator.of(context).pop();
-    S1SnackBar.show(context, message: '举报成功');
   }
 
   @override

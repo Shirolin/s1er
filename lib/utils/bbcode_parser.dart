@@ -130,6 +130,10 @@ class BbcodeParser {
       (m) => '<pre>${m.group(1)}</pre>',
     );
     output = output.replaceAllMapped(
+      RegExp(r'\[hide=(\d+)\](.*?)\[/hide\]', dotAll: true),
+      (m) => '<span class="hide-content">${m.group(2)}</span>',
+    );
+    output = output.replaceAllMapped(
       RegExp(r'\[hide\](.*?)\[/hide\]', dotAll: true),
       (m) => '<span class="hide-content">${m.group(1)}</span>',
     );

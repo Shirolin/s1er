@@ -46,6 +46,17 @@ void main() {
       expect(parsed, contains('mark'));
     });
 
+    test('[hide=N] and [hide] both become hide-content', () {
+      final credit = BbcodeParser.parse('[hide=5]secret[/hide]');
+      expect(credit, contains('class="hide-content"'));
+      expect(credit, contains('secret'));
+      expect(credit, isNot(contains('hide=5')));
+
+      final plain = BbcodeParser.parse('[hide]plain[/hide]');
+      expect(plain, contains('class="hide-content"'));
+      expect(plain, contains('plain'));
+    });
+
     test('extractImages reads data-preview attributes', () {
       const html =
           '<span class="post-image" data-preview="https://a/p.jpg" data-full="https://a/f.jpg"></span>';

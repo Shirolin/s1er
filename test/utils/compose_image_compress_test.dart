@@ -6,14 +6,14 @@ import 'package:s1er/utils/compose_image_compress.dart';
 
 void main() {
   group('ComposeImageCompress', () {
-    Uint8List _bigPng() {
+    Uint8List bigPng() {
       final image = img.Image(width: 3000, height: 2000);
       img.fill(image, color: img.ColorRgb8(10, 20, 30));
       return Uint8List.fromList(img.encodePng(image));
     }
 
     test('skips when useOriginal', () async {
-      final bytes = _bigPng();
+      final bytes = bigPng();
       final out = await ComposeImageCompress.maybeCompress(
         bytes: bytes,
         filename: 'big.png',
@@ -24,7 +24,7 @@ void main() {
     });
 
     test('shrinks long edge to default max', () async {
-      final bytes = _bigPng();
+      final bytes = bigPng();
       final out = await ComposeImageCompress.maybeCompress(
         bytes: bytes,
         filename: 'big.png',

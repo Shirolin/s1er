@@ -194,6 +194,8 @@ class S1BackupSettingsMapper {
     'imageCacheLimitMb': 'image_cache_limit_mb',
     'recordReadingHistory': 'record_reading_history',
     'hapticsEnabled': 'haptics_enabled',
+    'threadListDensity': 'thread_list_density',
+    'postListDensity': 'post_list_density',
     'fontSize': 'font_size',
     'collapsedForums': 'collapsed_forums',
     'shareImageFormat': 'share_image_format',

@@ -114,4 +114,54 @@ void main() {
       greaterThanOrEqualTo(S1BottomBarStyle.minTouchTarget),
     );
   });
+
+  testWidgets('PaginationBar edge tooltips reflect first/last page',
+      (tester) async {
+    await tester.binding.setSurfaceSize(const Size(500, 800));
+    addTearDown(() => tester.binding.setSurfaceSize(null));
+
+    await tester.pumpWidget(
+      MaterialApp(
+        theme: AppTheme.lightTheme('purple'),
+        home: Scaffold(
+          body: PaginationBar(
+            currentPage: 1,
+            totalPages: 5,
+            onPageChanged: (_) async {},
+          ),
+        ),
+      ),
+    );
+
+    final prev = tester.widget<IconButton>(
+      find.widgetWithIcon(IconButton, Icons.chevron_left),
+    );
+    expect(prev.tooltip, '已是首页');
+    expect(prev.onPressed, isNull);
+
+    final first = tester.widget<IconButton>(
+      find.widgetWithIcon(IconButton, Icons.first_page),
+    );
+    expect(first.tooltip, '已是首页');
+
+    await tester.pumpWidget(
+      MaterialApp(
+        theme: AppTheme.lightTheme('purple'),
+        home: Scaffold(
+          body: PaginationBar(
+            currentPage: 5,
+            totalPages: 5,
+            onPageChanged: (_) async {},
+          ),
+        ),
+      ),
+    );
+    await tester.pump();
+
+    final next = tester.widget<IconButton>(
+      find.widgetWithIcon(IconButton, Icons.chevron_right),
+    );
+    expect(next.tooltip, '已是末页');
+    expect(next.onPressed, isNull);
+  });
 }

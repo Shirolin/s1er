@@ -20,6 +20,8 @@ class AppBarMoreMenu extends StatelessWidget {
     this.onRefresh,
     this.onGoToLatest,
     this.onHideForum,
+    this.onPageSearch,
+    this.pageSearchOpen = false,
     required this.browserUrl,
     this.launcher = launchUrl,
     this.showOpenLink = true,
@@ -32,6 +34,11 @@ class AppBarMoreMenu extends StatelessWidget {
   final VoidCallback? onRefresh;
   final VoidCallback? onGoToLatest;
   final VoidCallback? onHideForum;
+
+  /// 本页本地搜索；非 null 时在菜单中显示开关项。
+  final VoidCallback? onPageSearch;
+  final bool pageSearchOpen;
+
   final String browserUrl;
   final BrowserUrlLauncher launcher;
   final bool showOpenLink;
@@ -166,6 +173,16 @@ class AppBarMoreMenu extends StatelessWidget {
             },
             icon: Icons.refresh,
             label: '刷新',
+          ),
+        if (onPageSearch != null)
+          s1MenuItem(
+            onPressed: () {
+              S1Haptics.selection();
+              onPageSearch!();
+            },
+            icon: pageSearchOpen ? Icons.search_off : Icons.search,
+            label: pageSearchOpen ? '关闭本页搜索' : '本页搜索',
+            selected: pageSearchOpen,
           ),
         if (onGoToLatest != null)
           s1MenuItem(

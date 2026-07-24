@@ -17,6 +17,7 @@ import '../theme/s1_haptics.dart';
 import '../widgets/app_bar_more_menu.dart';
 import '../widgets/pagination_bar.dart';
 import '../widgets/s1_error_view.dart';
+import '../widgets/s1_list_boundary_footer.dart';
 import '../widgets/s1_swipe_pagination.dart';
 import '../widgets/s1_desktop_scaffold.dart';
 
@@ -213,8 +214,16 @@ class _FavoriteListBody extends ConsumerWidget {
                     : ListView.builder(
                         controller: scrollController,
                         padding: const EdgeInsets.symmetric(vertical: 8),
-                        itemCount: state.items.length,
+                        itemCount: state.items.length + 1,
                         itemBuilder: (context, index) {
+                          if (index >= state.items.length) {
+                            return S1ListBoundaryFooter(
+                              kind: pagedBoundaryKind(
+                                currentPage: state.currentPage,
+                                totalPages: state.totalPages,
+                              ),
+                            );
+                          }
                           final item = state.items[index];
                           return KeyedSubtree(
                             key: ValueKey('favorite_${item.favid}'),

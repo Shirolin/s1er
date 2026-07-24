@@ -13,6 +13,8 @@ void main() {
     required BrowserUrlLauncher launcher,
     VoidCallback? onGoToLatest,
     VoidCallback? onHideForum,
+    VoidCallback? onPageSearch,
+    bool pageSearchOpen = false,
     ListDensity? threadListDensity,
     ValueChanged<ListDensity>? onThreadListDensityChanged,
     ListDensity? postListDensity,
@@ -30,6 +32,8 @@ void main() {
                 launcher: launcher,
                 onGoToLatest: onGoToLatest,
                 onHideForum: onHideForum,
+                onPageSearch: onPageSearch,
+                pageSearchOpen: pageSearchOpen,
                 threadListDensity: threadListDensity,
                 onThreadListDensityChanged: onThreadListDensityChanged,
                 postListDensity: postListDensity,
@@ -82,6 +86,37 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(goToLatestCalled, isTrue);
+  });
+
+  testWidgets('shows and triggers page search menu item when provided',
+      (tester) async {
+    var pageSearchCalled = false;
+    await pumpMenu(
+      tester,
+      launcher: (url, {mode = LaunchMode.platformDefault}) async => true,
+      onPageSearch: () => pageSearchCalled = true,
+    );
+
+    await openMoreMenu(tester);
+
+    expect(find.text('本页搜索'), findsOneWidget);
+    await tester.tap(find.text('本页搜索'));
+    await tester.pumpAndSettle();
+
+    expect(pageSearchCalled, isTrue);
+  });
+
+  testWidgets('shows close page search label when open', (tester) async {
+    await pumpMenu(
+      tester,
+      launcher: (url, {mode = LaunchMode.platformDefault}) async => true,
+      onPageSearch: () {},
+      pageSearchOpen: true,
+    );
+
+    await openMoreMenu(tester);
+
+    expect(find.text('关闭本页搜索'), findsOneWidget);
   });
 
   testWidgets('shows and triggers hide forum when provided', (tester) async {

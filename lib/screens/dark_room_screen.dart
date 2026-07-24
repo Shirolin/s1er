@@ -7,16 +7,26 @@ import '../models/dark_room_entry.dart';
 import '../models/user.dart';
 import '../providers/dark_room_provider.dart';
 import '../theme/s1_haptics.dart';
+import '../utils/boundary_feedback.dart';
 import '../widgets/app_bar_more_menu.dart';
 import '../widgets/s1_error_view.dart';
+import '../widgets/s1_list_boundary_footer.dart';
+import '../widgets/s1_scroll_boundary_listener.dart';
 import '../widgets/web_avatar.dart';
 import '../widgets/s1_desktop_scaffold.dart';
 
-class DarkRoomScreen extends ConsumerWidget {
+class DarkRoomScreen extends ConsumerStatefulWidget {
   const DarkRoomScreen({super.key});
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  ConsumerState<DarkRoomScreen> createState() => _DarkRoomScreenState();
+}
+
+class _DarkRoomScreenState extends ConsumerState<DarkRoomScreen> {
+  final _boundaryFeedback = BoundaryFeedbackController();
+
+  @override
+  Widget build(BuildContext context) {
     final async = ref.watch(darkRoomProvider);
 
     return S1DesktopScaffold(
@@ -50,39 +60,50 @@ class DarkRoomScreen extends ConsumerWidget {
             if (state.items.isEmpty) {
               return const _EmptyDarkRoom();
             }
-            return RefreshIndicator(
-              onRefresh: () => S1Haptics.wrapRefresh(
-                () => ref.read(darkRoomProvider.notifier).refresh(),
-              ),
-              child: ListView.builder(
-                padding: const EdgeInsets.fromLTRB(12, 8, 12, 24),
-                itemCount: state.items.length + (state.hasMore ? 1 : 0),
-                itemBuilder: (context, index) {
-                  if (index >= state.items.length) {
+            return S1ScrollBoundaryListener(
+              isTerminal: !state.hasMore,
+              feedback: _boundaryFeedback,
+              message: state.hasMore ? null : '没有更多了',
+              child: RefreshIndicator(
+                onRefresh: () => S1Haptics.wrapRefresh(
+                  () => ref.read(darkRoomProvider.notifier).refresh(),
+                ),
+                child: ListView.builder(
+                  padding: const EdgeInsets.fromLTRB(12, 8, 12, 24),
+                  itemCount: state.items.length + 1,
+                  itemBuilder: (context, index) {
+                    if (index >= state.items.length) {
+                      if (state.hasMore) {
+                        return Padding(
+                          padding: const EdgeInsets.symmetric(vertical: 12),
+                          child: Center(
+                            child: state.isLoadingMore
+                                ? const SizedBox(
+                                    width: 24,
+                                    height: 24,
+                                    child: CircularProgressIndicator(
+                                      strokeWidth: 2,
+                                    ),
+                                  )
+                                : FilledButton.tonal(
+                                    onPressed: () => ref
+                                        .read(darkRoomProvider.notifier)
+                                        .loadMore(),
+                                    child: const Text('加载更多'),
+                                  ),
+                          ),
+                        );
+                      }
+                      return const S1ListBoundaryFooter(
+                        kind: S1ListBoundaryKind.noMore,
+                      );
+                    }
                     return Padding(
-                      padding: const EdgeInsets.symmetric(vertical: 12),
-                      child: Center(
-                        child: state.isLoadingMore
-                            ? const SizedBox(
-                                width: 24,
-                                height: 24,
-                                child:
-                                    CircularProgressIndicator(strokeWidth: 2),
-                              )
-                            : FilledButton.tonal(
-                                onPressed: () => ref
-                                    .read(darkRoomProvider.notifier)
-                                    .loadMore(),
-                                child: const Text('加载更多'),
-                              ),
-                      ),
+                      padding: const EdgeInsets.only(bottom: 8),
+                      child: _DarkRoomCard(entry: state.items[index]),
                     );
-                  }
-                  return Padding(
-                    padding: const EdgeInsets.only(bottom: 8),
-                    child: _DarkRoomCard(entry: state.items[index]),
-                  );
-                },
+                  },
+                ),
               ),
             );
           },

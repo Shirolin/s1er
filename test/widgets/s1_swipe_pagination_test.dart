@@ -3,6 +3,7 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:s1er/theme/app_theme.dart';
+import 'package:s1er/utils/boundary_feedback.dart';
 import 'package:s1er/widgets/s1_fab_layout.dart';
 import 'package:s1er/widgets/s1_swipe_pagination.dart';
 
@@ -222,6 +223,47 @@ void main() {
     await swipeToNextPage(tester);
 
     expect(requestCount, 0);
+  });
+
+  testWidgets('S1SwipePagination reports boundary on last-page overscroll',
+      (tester) async {
+    final edges = <BoundaryEdge>[];
+    var now = DateTime(2026, 7, 23, 12);
+
+    await tester.pumpWidget(
+      MaterialApp(
+        theme: AppTheme.lightTheme('purple'),
+        home: Scaffold(
+          body: S1SwipePagination(
+            currentPage: 5,
+            totalPages: 5,
+            onPageChanged: (_) async {},
+            onBoundaryHit: edges.add,
+            boundaryFeedback: BoundaryFeedbackController(
+              clock: () => now,
+              onHaptic: () {},
+              onShowMessage: (_, __) {},
+            ),
+            pageBuilder: (context, scrollController) => ListView(
+              controller: scrollController,
+              children: const [
+                SizedBox(height: 800, child: Center(child: Text('Page 5'))),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+    await tester.pump();
+
+    final size = tester.view.physicalSize / tester.view.devicePixelRatio;
+    // Drag past the clamp so PageView emits overscroll at last page.
+    await tester.drag(find.byType(PageView), Offset(-size.width * 0.35, 0));
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 50));
+
+    expect(edges, isNotEmpty);
+    expect(edges.first, BoundaryEdge.lastPage);
   });
 
   testWidgets('S1SwipePagination shows loading bar while paging',

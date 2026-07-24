@@ -15,11 +15,15 @@ import '../widgets/favorite_bookmark_button.dart';
 import '../widgets/hide_forum_confirm_dialog.dart';
 import '../models/favorite_item.dart';
 import '../models/new_thread_submit_result.dart';
+import '../models/thread.dart';
 import '../widgets/pagination_bar.dart';
 import '../widgets/s1_error_view.dart';
 import '../widgets/s1_fab_layout.dart';
+import '../widgets/s1_list_boundary_footer.dart';
+import '../widgets/s1_local_search_bar.dart';
 import '../widgets/s1_swipe_pagination.dart';
 import '../widgets/thread_card.dart';
+import '../utils/page_search.dart';
 import '../utils/s1_snack_bar.dart';
 import '../utils/forum_list_layout.dart';
 import '../models/thread_open_intent.dart';
@@ -46,6 +50,8 @@ class ForumListScreen extends ConsumerStatefulWidget {
 class _ForumListScreenState extends ConsumerState<ForumListScreen> {
   final _swipeKey = GlobalKey<S1SwipePaginationState>();
   bool _showScrollToTop = false;
+  bool _pageSearchOpen = false;
+  String _pageSearchQuery = '';
 
   void _openThread(
     ThreadDestination destination, {
@@ -129,6 +135,13 @@ class _ForumListScreenState extends ConsumerState<ForumListScreen> {
             AppBarMoreMenu(
               onRefresh: () =>
                   ref.read(threadListProvider(widget.fid).notifier).refresh(),
+              onPageSearch: () {
+                setState(() {
+                  _pageSearchOpen = !_pageSearchOpen;
+                  if (!_pageSearchOpen) _pageSearchQuery = '';
+                });
+              },
+              pageSearchOpen: _pageSearchOpen,
               browserUrl: ApiConfig.forumBrowserUrl(
                 fid: widget.fid,
                 page: threadsAsync.asData?.value.currentPage ?? 1,
@@ -161,71 +174,126 @@ class _ForumListScreenState extends ConsumerState<ForumListScreen> {
                 if (isSplit)
                   SizedBox(
                     width: forumListPaneWidth(constraints.maxWidth),
-                    child: threadsAsync.when(
-                      loading: () => const Column(
-                        children: [
-                          LinearProgressIndicator(),
-                          Expanded(child: SizedBox()),
-                        ],
-                      ),
-                      error: (e, st) => S1ErrorView(
-                        error: e,
-                        onRetry: () => S1Haptics.wrapRefresh(
-                          () => ref
-                              .read(threadListProvider(widget.fid).notifier)
-                              .refresh(),
+                    child: Column(
+                      children: [
+                        if (_pageSearchOpen)
+                          S1LocalSearchBar(
+                            hintText: '搜索本页主题 / 作者',
+                            query: _pageSearchQuery,
+                            onChanged: (q) =>
+                                setState(() => _pageSearchQuery = q),
+                            onClose: () => setState(() {
+                              _pageSearchOpen = false;
+                              _pageSearchQuery = '';
+                            }),
+                            matchCount: threadsAsync.asData == null
+                                ? null
+                                : _filterThreads(
+                                    threadsAsync.asData!.value.threads,
+                                    _pageSearchQuery,
+                                  ).length,
+                          ),
+                        Expanded(
+                          child: threadsAsync.when(
+                            loading: () => const Column(
+                              children: [
+                                LinearProgressIndicator(),
+                                Expanded(child: SizedBox()),
+                              ],
+                            ),
+                            error: (e, st) => S1ErrorView(
+                              error: e,
+                              onRetry: () => S1Haptics.wrapRefresh(
+                                () => ref
+                                    .read(
+                                      threadListProvider(widget.fid).notifier,
+                                    )
+                                    .refresh(),
+                              ),
+                              onLogin: () => context.push('/login'),
+                            ),
+                            data: (state) => _ForumThreadList(
+                              state: state,
+                              isLoggedIn: isLoggedIn,
+                              fid: widget.fid,
+                              selectedThreadId: widget.selectedThreadId,
+                              swipeKey: _swipeKey,
+                              showScrollToTop: _showScrollToTop,
+                              onScrollMetricsChanged: _onScrollMetricsChanged,
+                              onOpenNewThread: _openNewThread,
+                              onOpenThread: _openThread,
+                              onPageChanged: (page) => ref
+                                  .read(threadListProvider(widget.fid).notifier)
+                                  .goToPage(page),
+                              pageSearchQuery: _pageSearchQuery,
+                            ),
+                          ),
                         ),
-                        onLogin: () => context.push('/login'),
-                      ),
-                      data: (state) => _ForumThreadList(
-                        state: state,
-                        isLoggedIn: isLoggedIn,
-                        fid: widget.fid,
-                        selectedThreadId: widget.selectedThreadId,
-                        swipeKey: _swipeKey,
-                        showScrollToTop: _showScrollToTop,
-                        onScrollMetricsChanged: _onScrollMetricsChanged,
-                        onOpenNewThread: _openNewThread,
-                        onOpenThread: _openThread,
-                        onPageChanged: (page) => ref
-                            .read(threadListProvider(widget.fid).notifier)
-                            .goToPage(page),
-                      ),
+                      ],
                     ),
                   )
                 else
                   Expanded(
                     child: S1ContentWidth(
-                      child: threadsAsync.when(
-                        loading: () => const Column(
-                          children: [
-                            LinearProgressIndicator(),
-                            Expanded(child: SizedBox()),
-                          ],
-                        ),
-                        error: (e, st) => S1ErrorView(
-                          error: e,
-                          onRetry: () => S1Haptics.wrapRefresh(
-                            () => ref
-                                .read(threadListProvider(widget.fid).notifier)
-                                .refresh(),
+                      child: Column(
+                        children: [
+                          if (_pageSearchOpen)
+                            S1LocalSearchBar(
+                              hintText: '搜索本页主题 / 作者',
+                              query: _pageSearchQuery,
+                              onChanged: (q) =>
+                                  setState(() => _pageSearchQuery = q),
+                              onClose: () => setState(() {
+                                _pageSearchOpen = false;
+                                _pageSearchQuery = '';
+                              }),
+                              matchCount: threadsAsync.asData == null
+                                  ? null
+                                  : _filterThreads(
+                                      threadsAsync.asData!.value.threads,
+                                      _pageSearchQuery,
+                                    ).length,
+                            ),
+                          Expanded(
+                            child: threadsAsync.when(
+                              loading: () => const Column(
+                                children: [
+                                  LinearProgressIndicator(),
+                                  Expanded(child: SizedBox()),
+                                ],
+                              ),
+                              error: (e, st) => S1ErrorView(
+                                error: e,
+                                onRetry: () => S1Haptics.wrapRefresh(
+                                  () => ref
+                                      .read(
+                                        threadListProvider(widget.fid).notifier,
+                                      )
+                                      .refresh(),
+                                ),
+                                onLogin: () => context.push('/login'),
+                              ),
+                              data: (state) => _ForumThreadList(
+                                state: state,
+                                isLoggedIn: isLoggedIn,
+                                fid: widget.fid,
+                                selectedThreadId: widget.selectedThreadId,
+                                swipeKey: _swipeKey,
+                                showScrollToTop: _showScrollToTop,
+                                onScrollMetricsChanged: _onScrollMetricsChanged,
+                                onOpenNewThread: _openNewThread,
+                                onOpenThread:
+                                    opensThreadInPlace ? _openThread : null,
+                                onPageChanged: (page) => ref
+                                    .read(
+                                      threadListProvider(widget.fid).notifier,
+                                    )
+                                    .goToPage(page),
+                                pageSearchQuery: _pageSearchQuery,
+                              ),
+                            ),
                           ),
-                          onLogin: () => context.push('/login'),
-                        ),
-                        data: (state) => _ForumThreadList(
-                          state: state,
-                          isLoggedIn: isLoggedIn,
-                          fid: widget.fid,
-                          selectedThreadId: widget.selectedThreadId,
-                          swipeKey: _swipeKey,
-                          showScrollToTop: _showScrollToTop,
-                          onScrollMetricsChanged: _onScrollMetricsChanged,
-                          onOpenNewThread: _openNewThread,
-                          onOpenThread: opensThreadInPlace ? _openThread : null,
-                          onPageChanged: (page) => ref
-                              .read(threadListProvider(widget.fid).notifier)
-                              .goToPage(page),
-                        ),
+                        ],
                       ),
                     ),
                   ),
@@ -259,6 +327,19 @@ class _ForumListScreenState extends ConsumerState<ForumListScreen> {
   }
 }
 
+List<Thread> _filterThreads(List<Thread> threads, String query) {
+  return PageSearch.filterByQuery(
+    threads,
+    query,
+    (t) => [
+      t.subject,
+      t.author,
+      if (t.lastPoster != null) t.lastPoster!,
+      if (t.typeName != null) t.typeName!,
+    ],
+  );
+}
+
 class _ForumThreadList extends ConsumerWidget {
   const _ForumThreadList({
     required this.state,
@@ -271,6 +352,7 @@ class _ForumThreadList extends ConsumerWidget {
     required this.onOpenNewThread,
     required this.onOpenThread,
     required this.onPageChanged,
+    this.pageSearchQuery = '',
   });
 
   final ThreadListState state;
@@ -283,9 +365,13 @@ class _ForumThreadList extends ConsumerWidget {
   final Future<void> Function() onOpenNewThread;
   final ThreadOpenCallback? onOpenThread;
   final S1PageChangeCallback onPageChanged;
+  final String pageSearchQuery;
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
+    final threads = _filterThreads(state.threads, pageSearchQuery);
+    final hasQuery = PageSearch.normalizeQuery(pageSearchQuery).isNotEmpty;
+
     return Column(
       children: [
         if (state.isLoading) const LinearProgressIndicator(),
@@ -340,23 +426,39 @@ class _ForumThreadList extends ConsumerWidget {
                             ),
                           ],
                         )
-                      : ListView.builder(
-                          controller: scrollController,
-                          padding: S1FabLayout.scrollBottomPadding,
-                          itemCount: state.threads.length,
-                          itemBuilder: (context, index) {
-                            final thread = state.threads[index];
-                            return RepaintBoundary(
-                              key: ValueKey('thread_card_${thread.tid}'),
-                              child: ThreadCard(
-                                key: ValueKey(thread.tid),
-                                thread: thread,
-                                selected: thread.tid == selectedThreadId,
-                                onOpenThread: onOpenThread,
-                              ),
-                            );
-                          },
-                        ),
+                      : threads.isEmpty && hasQuery
+                          ? ListView(
+                              controller: scrollController,
+                              children: const [
+                                SizedBox(height: 48),
+                                Center(child: Text('本页无匹配主题')),
+                              ],
+                            )
+                          : ListView.builder(
+                              controller: scrollController,
+                              padding: S1FabLayout.scrollBottomPadding,
+                              itemCount: threads.length + 1,
+                              itemBuilder: (context, index) {
+                                if (index >= threads.length) {
+                                  return S1ListBoundaryFooter(
+                                    kind: pagedBoundaryKind(
+                                      currentPage: state.currentPage,
+                                      totalPages: state.totalPages,
+                                    ),
+                                  );
+                                }
+                                final thread = threads[index];
+                                return RepaintBoundary(
+                                  key: ValueKey('thread_card_${thread.tid}'),
+                                  child: ThreadCard(
+                                    key: ValueKey(thread.tid),
+                                    thread: thread,
+                                    selected: thread.tid == selectedThreadId,
+                                    onOpenThread: onOpenThread,
+                                  ),
+                                );
+                              },
+                            ),
                 ),
               ),
             ),

@@ -15,6 +15,7 @@ import '../utils/thread_navigation.dart';
 import '../widgets/app_bar_more_menu.dart';
 import '../widgets/pagination_bar.dart';
 import '../widgets/s1_error_view.dart';
+import '../widgets/s1_list_boundary_footer.dart';
 import '../widgets/s1_swipe_pagination.dart';
 import '../widgets/s1_content_width.dart';
 import '../widgets/s1_desktop_scaffold.dart';
@@ -206,11 +207,21 @@ class _ThreadList extends ConsumerWidget {
                     .goToPage(page),
                 pageBuilder: (context, scrollController) => ListView.builder(
                   controller: scrollController,
-                  itemCount: state.items.length,
-                  itemBuilder: (context, index) => KeyedSubtree(
-                    key: ValueKey('uspace_thread_${state.items[index].tid}'),
-                    child: _ThreadCard(item: state.items[index]),
-                  ),
+                  itemCount: state.items.length + 1,
+                  itemBuilder: (context, index) {
+                    if (index >= state.items.length) {
+                      return S1ListBoundaryFooter(
+                        kind: pagedBoundaryKind(
+                          currentPage: state.page,
+                          totalPages: state.totalPages,
+                        ),
+                      );
+                    }
+                    return KeyedSubtree(
+                      key: ValueKey('uspace_thread_${state.items[index].tid}'),
+                      child: _ThreadCard(item: state.items[index]),
+                    );
+                  },
                 ),
               ),
             ),
@@ -268,8 +279,16 @@ class _ReplyList extends ConsumerWidget {
                     .goToPage(page),
                 pageBuilder: (context, scrollController) => ListView.builder(
                   controller: scrollController,
-                  itemCount: state.items.length,
+                  itemCount: state.items.length + 1,
                   itemBuilder: (context, index) {
+                    if (index >= state.items.length) {
+                      return S1ListBoundaryFooter(
+                        kind: pagedBoundaryKind(
+                          currentPage: state.page,
+                          totalPages: state.totalPages,
+                        ),
+                      );
+                    }
                     final item = state.items[index];
                     return KeyedSubtree(
                       key: ValueKey('uspace_reply_${item.pid ?? item.tid}'),

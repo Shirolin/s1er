@@ -32,6 +32,7 @@ import '../widgets/s1_confirm_dialog.dart';
 import '../widgets/s1_error_view.dart';
 import '../widgets/s1_fab_layout.dart';
 import '../widgets/s1_swipe_pagination.dart';
+import '../widgets/s1_list_boundary_footer.dart';
 import '../widgets/scroll_pointer_gate.dart';
 import '../widgets/s1_desktop_scaffold.dart';
 import '../widgets/s1_content_width.dart';
@@ -39,9 +40,12 @@ import '../models/reading_record.dart';
 import '../models/open_scroll_target.dart';
 import '../models/thread_destination.dart';
 import '../models/thread_open_intent.dart';
+import '../utils/page_search.dart';
+import '../utils/post_plain_text.dart';
 import '../utils/scroll_floor.dart';
 import '../widgets/s1_adaptive_sheet.dart';
 import '../widgets/s1_click_region.dart';
+import '../widgets/s1_local_search_bar.dart';
 import '../utils/s1_snack_bar.dart';
 import '../utils/thread_navigation.dart';
 import '../providers/post_share_provider.dart';
@@ -153,9 +157,15 @@ class _ThreadDetailScreenState extends ConsumerState<ThreadDetailScreen> {
   bool _shareSelectMode = false;
   List<ShareFloorData> _shareSelectedFloors = [];
 
+  /// 本页本地搜索（过滤 + 正文高亮）。
+  bool _pageSearchOpen = false;
+  String _pageSearchQuery = '';
+
   void _enterShareSelectMode(Post post, int displayFloor) {
     setState(() {
       _shareSelectMode = true;
+      _pageSearchOpen = false;
+      _pageSearchQuery = '';
       _shareSelectedFloors = [
         ShareFloorData(post: post, displayFloor: displayFloor),
       ];
@@ -544,10 +554,47 @@ class _ThreadDetailScreenState extends ConsumerState<ThreadDetailScreen> {
   }
 
   bool _showsPollOnPage(PostListState state) =>
-      state.currentPage == 1 && state.poll != null;
+      state.currentPage == 1 &&
+      state.poll != null &&
+      PageSearch.normalizeQuery(_pageSearchQuery).isEmpty;
 
-  int _detailItemCount(PostListState state) =>
-      state.posts.length + (_showsPollOnPage(state) ? 1 : 0);
+  List<({Post post, int originalIndex})> _visiblePosts(PostListState state) {
+    final q = PageSearch.normalizeQuery(_pageSearchQuery);
+    if (q.isEmpty) {
+      return [
+        for (var i = 0; i < state.posts.length; i++)
+          (post: state.posts[i], originalIndex: i),
+      ];
+    }
+    final floorOffset = (state.currentPage - 1) * state.perPage;
+    final out = <({Post post, int originalIndex})>[];
+    for (var i = 0; i < state.posts.length; i++) {
+      final post = state.posts[i];
+      final displayFloor = floorOffset + i + 1;
+      final fields = [
+        post.author,
+        '${post.floor}',
+        '$displayFloor',
+        PostPlainText.fromMessage(post.message),
+      ];
+      if (fields.any((f) => PageSearch.matchesQuery(f, q))) {
+        out.add((post: post, originalIndex: i));
+      }
+    }
+    return out;
+  }
+
+  int _detailContentCount(
+    PostListState state,
+    List<({Post post, int originalIndex})> visible,
+  ) =>
+      visible.length + (_showsPollOnPage(state) ? 1 : 0);
+
+  int _detailItemCount(
+    PostListState state,
+    List<({Post post, int originalIndex})> visible,
+  ) =>
+      _detailContentCount(state, visible) + 1;
 
   Future<void> _openCompose(
     PostListState state, {
@@ -662,8 +709,18 @@ class _ThreadDetailScreenState extends ConsumerState<ThreadDetailScreen> {
   Widget _buildDetailItem(
     BuildContext context,
     PostListState state,
+    List<({Post post, int originalIndex})> visible,
     int index,
   ) {
+    if (index >= _detailContentCount(state, visible)) {
+      return S1ListBoundaryFooter(
+        kind: pagedBoundaryKind(
+          currentPage: state.currentPage,
+          totalPages: state.totalPages,
+        ),
+      );
+    }
+
     if (_showsPollOnPage(state) && index == 1) {
       return RepaintBoundary(
         key: ValueKey('poll-${widget.tid}'),
@@ -671,8 +728,11 @@ class _ThreadDetailScreenState extends ConsumerState<ThreadDetailScreen> {
       );
     }
 
-    final postIndex = _showsPollOnPage(state) && index > 1 ? index - 1 : index;
-    final post = state.posts[postIndex];
+    final visibleIndex =
+        _showsPollOnPage(state) && index > 1 ? index - 1 : index;
+    final entry = visible[visibleIndex];
+    final post = entry.post;
+    final postIndex = entry.originalIndex;
     final highlightPid = _highlightPid ??
         switch (state.openScrollTarget) {
           ScrollToPid(:final pid, :final highlight) when highlight => pid,
@@ -683,6 +743,7 @@ class _ThreadDetailScreenState extends ConsumerState<ThreadDetailScreen> {
 
     final floorOffset = (state.currentPage - 1) * state.perPage;
     final displayFloor = floorOffset + postIndex + 1;
+    final pageQuery = PageSearch.normalizeQuery(_pageSearchQuery);
 
     return _ThreadDetailPostTile(
       key: ValueKey(post.pid),
@@ -696,6 +757,7 @@ class _ThreadDetailScreenState extends ConsumerState<ThreadDetailScreen> {
       shareSelectMode: _shareSelectMode,
       isShareSelected:
           ShareFloorSelection.containsPid(_shareSelectedFloors, post.pid),
+      highlightQuery: pageQuery.isEmpty ? null : pageQuery,
       onExpandBlocked: () {
         setState(() => _expandedBlockedPids.add(post.pid));
       },
@@ -973,6 +1035,13 @@ class _ThreadDetailScreenState extends ConsumerState<ThreadDetailScreen> {
                 AppBarMoreMenu(
                   onRefresh: () =>
                       ref.read(postProvider(widget.tid).notifier).refresh(),
+                  onPageSearch: () {
+                    setState(() {
+                      _pageSearchOpen = !_pageSearchOpen;
+                      if (!_pageSearchOpen) _pageSearchQuery = '';
+                    });
+                  },
+                  pageSearchOpen: _pageSearchOpen,
                   onGoToLatest: _goToLatest,
                   browserUrl: ApiConfig.threadBrowserUrl(
                     tid: widget.tid,
@@ -1014,6 +1083,9 @@ class _ThreadDetailScreenState extends ConsumerState<ThreadDetailScreen> {
           final showPrimary = isLoggedIn && state.allowReply;
           final hasNextPage = state.currentPage < state.totalPages;
           final scheme = Theme.of(context).colorScheme;
+          final visible = _visiblePosts(state);
+          final hasPageQuery =
+              PageSearch.normalizeQuery(_pageSearchQuery).isNotEmpty;
 
           return Column(
             children: [
@@ -1068,6 +1140,17 @@ class _ThreadDetailScreenState extends ConsumerState<ThreadDetailScreen> {
                     ],
                   ),
                 ),
+              if (_pageSearchOpen && !_shareSelectMode)
+                S1LocalSearchBar(
+                  hintText: '搜索本页回复',
+                  query: _pageSearchQuery,
+                  onChanged: (q) => setState(() => _pageSearchQuery = q),
+                  onClose: () => setState(() {
+                    _pageSearchOpen = false;
+                    _pageSearchQuery = '';
+                  }),
+                  matchCount: hasPageQuery ? visible.length : null,
+                ),
               Expanded(
                 child: S1ContentWidth(
                   mode: S1ContentWidthMode.reading,
@@ -1118,20 +1201,30 @@ class _ThreadDetailScreenState extends ConsumerState<ThreadDetailScreen> {
                           controller: scrollController,
                           child: state.posts.isEmpty
                               ? const Center(child: Text('暂无回复'))
-                              : ListView.builder(
-                                  controller: scrollController,
-                                  scrollCacheExtent:
-                                      S1FabLayout.threadDetailScrollCacheExtent,
-                                  padding: S1FabLayout
-                                      .threadDetailScrollBottomPadding,
-                                  itemCount: _detailItemCount(state),
-                                  itemBuilder: (context, index) =>
-                                      _buildDetailItem(
-                                    context,
-                                    state,
-                                    index,
-                                  ),
-                                ),
+                              : visible.isEmpty && hasPageQuery
+                                  ? ListView(
+                                      controller: scrollController,
+                                      children: const [
+                                        SizedBox(height: 48),
+                                        Center(child: Text('本页无匹配回复')),
+                                      ],
+                                    )
+                                  : ListView.builder(
+                                      controller: scrollController,
+                                      scrollCacheExtent: S1FabLayout
+                                          .threadDetailScrollCacheExtent,
+                                      padding: S1FabLayout
+                                          .threadDetailScrollBottomPadding,
+                                      itemCount:
+                                          _detailItemCount(state, visible),
+                                      itemBuilder: (context, index) =>
+                                          _buildDetailItem(
+                                        context,
+                                        state,
+                                        visible,
+                                        index,
+                                      ),
+                                    ),
                         ),
                       ),
                     ),
@@ -1214,6 +1307,7 @@ class _ThreadDetailPostTile extends ConsumerWidget {
     required this.onRate,
     required this.onAddToBlacklist,
     required this.onReport,
+    this.highlightQuery,
   });
 
   final Key? postKey;
@@ -1235,6 +1329,7 @@ class _ThreadDetailPostTile extends ConsumerWidget {
   final VoidCallback onRate;
   final VoidCallback onAddToBlacklist;
   final VoidCallback onReport;
+  final String? highlightQuery;
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -1290,6 +1385,7 @@ class _ThreadDetailPostTile extends ConsumerWidget {
         isHighlighted: isHighlighted,
         shareSelectMode: shareSelectMode,
         isShareSelected: isShareSelected,
+        highlightQuery: highlightQuery,
         onFilterByAuthor: onFilterByAuthor,
         onReply: onReply,
         onShare: onShare,

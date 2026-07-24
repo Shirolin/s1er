@@ -91,6 +91,7 @@ class PostItem extends ConsumerStatefulWidget {
     this.shareSelectMode = false,
     this.onShareSelectToggle,
     this.currentPage,
+    this.highlightQuery,
   });
 
   final Post post;
@@ -112,6 +113,8 @@ class PostItem extends ConsumerStatefulWidget {
   final VoidCallback? onShareSelectToggle;
   final int? currentPage;
 
+  /// 本页搜索关键词；非空时正文 `<mark>` 高亮。
+  final String? highlightQuery;
   @override
   ConsumerState<PostItem> createState() => _PostItemState();
 }
@@ -233,6 +236,7 @@ class _PostItemState extends ConsumerState<PostItem>
                 imagesExpanded: _imagesExpanded,
                 onExpandImages: _expandImages,
                 selectable: false,
+                highlightQuery: widget.highlightQuery,
               ),
             if (widget.tid != null)
               _PostRateLogSection(
@@ -484,6 +488,7 @@ class _PostItemState extends ConsumerState<PostItem>
                     currentTid: widget.tid,
                     imagesExpanded: true,
                     selectable: true,
+                    highlightQuery: widget.highlightQuery,
                   ),
                 ),
               ),

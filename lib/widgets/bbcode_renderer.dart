@@ -15,6 +15,7 @@ import '../utils/bbcode_parser.dart';
 import '../utils/post_image_index_counter.dart';
 import '../utils/post_image_urls.dart';
 import '../utils/internal_navigation.dart';
+import '../utils/page_search.dart';
 import '../utils/post_link_resolver.dart';
 import '../utils/quote_jump.dart';
 import 'emoticon_widget.dart';
@@ -66,6 +67,7 @@ class BbcodeRenderer extends ConsumerWidget {
     this.imagesExpanded = false,
     this.onExpandImages,
     this.selectable = true,
+    this.highlightQuery,
   });
 
   final String bbcode;
@@ -78,6 +80,9 @@ class BbcodeRenderer extends ConsumerWidget {
   /// 顶层是否包 [SelectionArea]。Dialog / 路由切换首帧易触发
   /// `!debugNeedsLayout`（Flutter #125065），预览等浮层应关。
   final bool selectable;
+
+  /// 非空时在 HTML 文本节点中用 `<mark>` 高亮匹配词（本页搜索）。
+  final String? highlightQuery;
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -194,6 +199,7 @@ class BbcodeRenderer extends ConsumerWidget {
           onExpandImages: onExpandImages,
           deferImages: deferImages,
           currentTid: currentTid,
+          highlightQuery: highlightQuery,
         ),
       );
     }
@@ -248,6 +254,7 @@ class _MemoizedHtmlBlock extends StatefulWidget {
     this.onExpandImages,
     this.deferImages = true,
     this.currentTid,
+    this.highlightQuery,
   });
 
   final String html;
@@ -258,7 +265,7 @@ class _MemoizedHtmlBlock extends StatefulWidget {
   final VoidCallback? onExpandImages;
   final bool deferImages;
   final String? currentTid;
-
+  final String? highlightQuery;
   @override
   State<_MemoizedHtmlBlock> createState() => _MemoizedHtmlBlockState();
 }
@@ -272,6 +279,8 @@ class _MemoizedHtmlBlockState extends State<_MemoizedHtmlBlock> {
   Widget? _cachedWidget;
   late final Key _htmlKey;
 
+  String? _cachedHighlightQuery;
+
   @override
   void initState() {
     super.initState();
@@ -280,6 +289,7 @@ class _MemoizedHtmlBlockState extends State<_MemoizedHtmlBlock> {
     _cachedShowImages = widget.showImages;
     _cachedMaxImages = widget.maxImagesPerPost;
     _cachedImagesExpanded = widget.imagesExpanded;
+    _cachedHighlightQuery = widget.highlightQuery;
   }
 
   @override
@@ -288,11 +298,13 @@ class _MemoizedHtmlBlockState extends State<_MemoizedHtmlBlock> {
     if (widget.html != _cachedHtml ||
         widget.showImages != _cachedShowImages ||
         widget.maxImagesPerPost != _cachedMaxImages ||
-        widget.imagesExpanded != _cachedImagesExpanded) {
+        widget.imagesExpanded != _cachedImagesExpanded ||
+        widget.highlightQuery != _cachedHighlightQuery) {
       _cachedHtml = widget.html;
       _cachedShowImages = widget.showImages;
       _cachedMaxImages = widget.maxImagesPerPost;
       _cachedImagesExpanded = widget.imagesExpanded;
+      _cachedHighlightQuery = widget.highlightQuery;
       _cachedWidget = null;
     }
   }
@@ -306,6 +318,8 @@ class _MemoizedHtmlBlockState extends State<_MemoizedHtmlBlock> {
       scheme.onSurface,
       scheme.surface,
       scheme.surfaceContainerHighest,
+      scheme.tertiaryContainer,
+      scheme.onTertiaryContainer,
     );
     if (themeToken != _cachedThemeToken) {
       _cachedThemeToken = themeToken;
@@ -322,11 +336,15 @@ class _MemoizedHtmlBlockState extends State<_MemoizedHtmlBlock> {
     final imagesExpanded = widget.imagesExpanded;
 
     final scheme = Theme.of(context).colorScheme;
-    final html = AuthorColorCache.adapt(
+    var html = AuthorColorCache.adapt(
       widget.html,
       scheme,
       _cachedThemeToken ?? 0,
     );
+    final highlight = widget.highlightQuery;
+    if (highlight != null && highlight.trim().isNotEmpty) {
+      html = PageSearch.highlightHtml(html, highlight);
+    }
     final profileDetail = 'links=${_countAnchors(html)} len=${html.length}';
     final textTheme = Theme.of(context).textTheme;
     final bodySize = S1Typography.bodySize(textTheme);
@@ -397,8 +415,11 @@ class _MemoizedHtmlBlockState extends State<_MemoizedHtmlBlock> {
       'ul': Style(padding: HtmlPaddings.only(left: 16)),
       'ol': Style(padding: HtmlPaddings.only(left: 16)),
       'li': Style(margin: Margins.only(bottom: 8)),
+      'mark': Style(
+        backgroundColor: scheme.tertiaryContainer,
+        color: scheme.onTertiaryContainer,
+      ),
     };
-
     final extensions = <HtmlExtension>[
       const HtmlClickableAnchorExtension(),
       MatcherExtension(

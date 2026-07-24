@@ -1,8 +1,10 @@
 import 'package:flutter/material.dart';
 
 import '../theme/s1_haptics.dart';
+import '../utils/boundary_feedback.dart';
 import '../utils/scroll_motion.dart';
 import 's1_fab_layout.dart';
+import 's1_scroll_boundary_listener.dart';
 
 typedef S1PageBuilder = Widget Function(
   BuildContext context,
@@ -10,6 +12,8 @@ typedef S1PageBuilder = Widget Function(
 );
 
 typedef S1PageChangeCallback = Future<void> Function(int page);
+
+typedef S1PageBoundaryCallback = void Function(BoundaryEdge edge);
 
 /// 三槽 [PageView] 左右滑动翻页，与底部分页栏双向同步。
 ///
@@ -23,6 +27,8 @@ class S1SwipePagination extends StatefulWidget {
     required this.onPageChanged,
     required this.pageBuilder,
     this.onScrollMetricsChanged,
+    this.onBoundaryHit,
+    this.boundaryFeedback,
     this.enabled = true,
   });
 
@@ -41,6 +47,12 @@ class S1SwipePagination extends StatefulWidget {
   /// 当前页滚动状态，供 FAB「返回顶部」等使用。
   final ValueChanged<S1ScrollMetrics>? onScrollMetricsChanged;
 
+  /// 首/末页横滑越界（便于测试）；默认走 [boundaryFeedback]。
+  final S1PageBoundaryCallback? onBoundaryHit;
+
+  /// 越界节流控制器；为 null 时使用内部默认实例。
+  final BoundaryFeedbackController? boundaryFeedback;
+
   /// 是否启用左右滑动（单页时自动禁用）。
   final bool enabled;
 
@@ -53,12 +65,14 @@ class S1SwipePaginationState extends State<S1SwipePagination> {
 
   late PageController _pageController;
   late ScrollController _scrollController;
+  late BoundaryFeedbackController _boundaryFeedback;
   bool _isPaging = false;
   int? _pendingPage;
 
   @override
   void initState() {
     super.initState();
+    _boundaryFeedback = widget.boundaryFeedback ?? BoundaryFeedbackController();
     _pageController = PageController(initialPage: _centerSlot);
     _scrollController = _createScrollController();
     WidgetsBinding.instance.addPostFrameCallback((_) {
@@ -70,8 +84,13 @@ class S1SwipePaginationState extends State<S1SwipePagination> {
   @override
   void didUpdateWidget(covariant S1SwipePagination oldWidget) {
     super.didUpdateWidget(oldWidget);
+    if (widget.boundaryFeedback != null &&
+        widget.boundaryFeedback != oldWidget.boundaryFeedback) {
+      _boundaryFeedback = widget.boundaryFeedback!;
+    }
     if (oldWidget.currentPage != widget.currentPage &&
         widget.currentPage != _pendingPage) {
+      _boundaryFeedback.reset();
       _resetScrollForPageChange();
     }
   }
@@ -174,6 +193,34 @@ class S1SwipePaginationState extends State<S1SwipePagination> {
         canSwipeToNext: _canSwipeToNext,
       );
 
+  void _onHorizontalBoundaryBlocked(BoundaryEdge edge) {
+    widget.onBoundaryHit?.call(edge);
+    if (!mounted) return;
+    _boundaryFeedback.hit(context, edge);
+  }
+
+  bool _onPageViewScrollNotification(ScrollNotification notification) {
+    if (notification.depth != 0) return false;
+    if (notification is ScrollEndNotification) {
+      _snapToNearestSlot();
+      return false;
+    }
+    if (notification is! OverscrollNotification) return false;
+    if (!_pageController.hasClients) return false;
+
+    final page = _pageController.page;
+    if (page == null) return false;
+    // 中心槽附近才认首末越界，避免翻页动画中误触。
+    if ((page - _centerSlot).abs() > 0.05) return false;
+
+    if (notification.overscroll < 0 && !_canSwipeToPrevious) {
+      _onHorizontalBoundaryBlocked(BoundaryEdge.firstPage);
+    } else if (notification.overscroll > 0 && !_canSwipeToNext) {
+      _onHorizontalBoundaryBlocked(BoundaryEdge.lastPage);
+    }
+    return false;
+  }
+
   Future<void> _requestPage(int page) async {
     if (_isPaging || page == widget.currentPage) {
       if (_pageController.hasClients) {
@@ -237,7 +284,11 @@ class S1SwipePaginationState extends State<S1SwipePagination> {
     if (slot == _centerSlot) {
       return KeyedSubtree(
         key: ValueKey(widget.currentPage),
-        child: widget.pageBuilder(context, _scrollController),
+        child: S1ScrollBoundaryListener(
+          isTerminal: widget.currentPage >= widget.totalPages,
+          feedback: _boundaryFeedback,
+          child: widget.pageBuilder(context, _scrollController),
+        ),
       );
     }
 
@@ -263,13 +314,8 @@ class S1SwipePaginationState extends State<S1SwipePagination> {
         Expanded(
           child: Semantics(
             label: '左右滑动可翻页',
-            child: NotificationListener<ScrollEndNotification>(
-              onNotification: (notification) {
-                if (notification.depth == 0) {
-                  _snapToNearestSlot();
-                }
-                return false;
-              },
+            child: NotificationListener<ScrollNotification>(
+              onNotification: _onPageViewScrollNotification,
               child: PageView(
                 controller: _pageController,
                 onPageChanged: _onSlotChanged,
@@ -292,7 +338,11 @@ class S1SwipePaginationState extends State<S1SwipePagination> {
   }
 
   Widget _buildSinglePageBody(BuildContext context) {
-    return widget.pageBuilder(context, _scrollController);
+    return S1ScrollBoundaryListener(
+      isTerminal: true,
+      feedback: _boundaryFeedback,
+      child: widget.pageBuilder(context, _scrollController),
+    );
   }
 
   @override

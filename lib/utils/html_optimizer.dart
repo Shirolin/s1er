@@ -16,6 +16,9 @@ abstract class HtmlOptimizer {
     _mergeSimilarSiblings(fragment);
   }
 
+  /// 深度不可合并标签集合（自闭合、换行或独立元素，防止误吞换行符）
+  static const _nonMergeableTags = {'br', 'hr', 'img'};
+
   /// 递归合并 node 下相邻且具有相同标签与属性的 Element 子节点。
   static void _mergeSimilarSiblings(Node node) {
     if (node.nodes.isEmpty) return;
@@ -26,6 +29,7 @@ abstract class HtmlOptimizer {
 
       if (current is Element &&
           next is Element &&
+          !_nonMergeableTags.contains(current.localName) &&
           current.localName == next.localName &&
           _areAttributesEqual(current.attributes, next.attributes)) {
         // 将 next 的所有子节点平移到 current 末尾

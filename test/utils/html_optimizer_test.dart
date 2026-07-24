@@ -64,5 +64,17 @@ void main() {
         equals('<div><span class="a">Hello World</span></div>'),
       );
     });
+
+    test('Preserves adjacent br tags without merging them into one', () {
+      const input = 'Line 1<br><br>Line 2';
+      final fragment = parseFragment(input);
+
+      HtmlOptimizer.flatten(fragment);
+
+      expect(
+        fragment.outerHtml,
+        equals('Line 1<br><br>Line 2'),
+      );
+    });
   });
 }

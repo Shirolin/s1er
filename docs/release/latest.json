@@ -1,14 +1,14 @@
 {
-  "latest": "0.3.0",
+  "latest": "0.3.1",
   "minSupported": "0.1.0",
-  "notes": "Beta — 0.3.0：BBCode 工具栏与论坛附件插图、首页收藏/屏蔽版块、列表密度与自定义字体、多楼层分享、跳转最新与编辑保存修复",
-  "publishedAt": "2026-07-23",
+  "notes": "Beta — 0.3.1",
+  "publishedAt": "2026-07-24",
   "channels": {
     "github": "https://github.com/Shirolin/s1er/releases/latest",
-    "androidApk": "https://github.com/Shirolin/s1er/releases/download/v0.3.0/s1er-0.3.0%2B1-android-universal.apk",
+    "androidApk": "https://github.com/Shirolin/s1er/releases/download/v0.3.1/s1er-0.3.1%2B1-android-universal.apk",
     "androidNetdisk": "https://pan.quark.cn/s/c05196e3c06a",
     "netdiskHint": "夸克网盘（发版后请同步更新分享；GitHub 下载慢时可走这里）",
-    "windows": "https://github.com/Shirolin/s1er/releases/download/v0.3.0/s1er-0.3.0%2B1-windows-x64.zip",
+    "windows": "https://github.com/Shirolin/s1er/releases/download/v0.3.1/s1er-0.3.1%2B1-windows-x64.zip",
     "linux": null,
     "macos": null,
     "play": null

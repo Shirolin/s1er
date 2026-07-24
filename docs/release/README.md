@@ -38,14 +38,17 @@ version: 0.1.0+1
 
 ## 发版清单
 
-1. 改 [`pubspec.yaml`](../../pubspec.yaml) 的 `version`（name 与/或 build）。
-2. 若 **name** 相对上一正式版有变化：更新 [`latest.json`](latest.json)
+1. **写更新内容**（构建之前！）：
+   - [`CHANGELOG.md`](../../CHANGELOG.md)：新增 `[X.Y.Z]` section，按 Added / Changed / Fixed 分类
+   - [`assets/changelog/whats_new.json`](../../assets/changelog/whats_new.json)：**顶部追加**该版本的用户向要点（3–8 条大白话；应用内「新功能」弹窗与设置「更新日志」读此文件，**不是** `CHANGELOG.md`）
+   - [`docs/release/latest.json`](latest.json) 的 `notes`：一句话面向用户说明
+2. 改 [`pubspec.yaml`](../../pubspec.yaml) 的 `version`（name 与/或 build）。
+3. 若 **name** 相对上一正式版有变化：更新 [`latest.json`](latest.json)
    - `latest`：与 name 一致（如 `0.2.0`，**不含** `+build`）
    - `notes`：面向用户的更新说明（可空；可写「Beta」）
    - `publishedAt`：发布日（`YYYY-MM-DD`）
    - `channels.*`：有直链则填，否则 `null`（客户端回退 `github`）
    - Android 国内备选：`androidNetdisk`（分享链接）+ `netdiskHint`（提取码等说明，可空）
-3. 同步在 [`assets/changelog/whats_new.json`](../../assets/changelog/whats_new.json) **顶部追加**该 name 的用户向要点（约 3–8 条；应用内「新功能」弹窗与设置「更新日志」读此文件，**不是**根目录 `CHANGELOG.md`）。
 4. 需要踢掉过旧安装包时，抬高 `minSupported`（低于该版本每次冷启动强提醒，可关但下次仍弹）。仅抬 build、name 不变时一般不用动。
 5. 打 GitHub Release（附各平台安装包，如有）；tag 建议与 name 对齐（如 `v0.1.0`）。
    - **Android 文件名规范**（`s1er-<name>+<build>-android-<variant>.apk`）：
@@ -59,7 +62,7 @@ version: 0.1.0+1
 
    - Release 正文由 `release.ps1 create` 自动写入「下哪个包」选型表。
    - **Windows**：`s1er-…-windows-x64.zip`。
-6. 将 `pubspec.yaml` + `latest.json` + `whats_new.json` 等改动提交到 `main`（raw URL 指向 main）。
+6. 将 `pubspec.yaml` + `latest.json` + `whats_new.json` + `CHANGELOG.md` 等改动提交到 `main`（raw URL 指向 main）。
 
 ## 半自动分步脚本（推荐）
 
@@ -67,22 +70,31 @@ version: 0.1.0+1
 
 ```powershell
 .\scripts\release.ps1 status          # 当前版本与 dist\ 产物
-.\scripts\release.ps1 bump-build      # 只涨 +build（括号内）；不改 name
+# ① 先写更新内容：CHANGELOG.md + whats_new.json + latest.json notes
+.\scripts\release.ps1 bump-name -BumpName patch   # 或 bump-build
 .\scripts\release.ps1 build           # fat + 分架构 APK + Windows zip → dist\（不上传）
 .\scripts\release.ps1 create          # 建空 Release + 打开网页
 # 在网页上把 dist\ 里的 apk / zip 拖上去
 .\scripts\release.ps1 manifest        # 写 latest.json 直链
-# 自行 commit / push pubspec.yaml + docs/release/latest.json + assets/changelog/whats_new.json
+# ② 提交到 main：pubspec.yaml + latest.json + whats_new.json + CHANGELOG.md
+git add pubspec.yaml docs/release/latest.json assets/changelog/whats_new.json CHANGELOG.md
+git commit --no-verify -m "chore(release): vX.Y.Z+1"
+git push origin main
 ```
 
 升产品版本（应用内会提示更新）：
 
 ```powershell
+# ① 先写更新内容：CHANGELOG.md + whats_new.json + latest.json notes
 .\scripts\release.ps1 bump-name -BumpName patch   # 或 minor / major
 .\scripts\release.ps1 build
 .\scripts\release.ps1 create
 # 浏览器上传 …
 .\scripts\release.ps1 manifest
+# ② 提交到 main
+git add pubspec.yaml docs/release/latest.json assets/changelog/whats_new.json CHANGELOG.md
+git commit --no-verify -m "chore(release): vX.Y.Z+1"
+git push origin main
 ```
 
 可选：`.\scripts\release.ps1 upload` 用 `gh` 传附件（慢）；`-SkipApk` / `-SkipWindows` 只打一端；`-DryRun` 演练。

@@ -1,14 +1,14 @@
 {
-  "latest": "0.3.4",
+  "latest": "0.3.5",
   "minSupported": "0.3.2",
-  "notes": "Beta — 0.3.4：按架构精准下载安装包",
+  "notes": "Beta — 0.3.5：更新弹窗与排版修复",
   "publishedAt": "2026-07-24",
   "channels": {
     "github": "https://github.com/Shirolin/s1er/releases/latest",
-    "androidApk": "https://github.com/Shirolin/s1er/releases/download/v0.3.4/s1er-0.3.4%2B1-android-universal.apk",
+    "androidApk": "https://github.com/Shirolin/s1er/releases/download/v0.3.5/s1er-0.3.5%2B1-android-universal.apk",
     "androidNetdisk": "https://pan.quark.cn/s/c05196e3c06a",
     "netdiskHint": "夸克网盘（GitHub 下载慢时可走这里）",
-    "windows": "https://github.com/Shirolin/s1er/releases/download/v0.3.4/s1er-0.3.4%2B1-windows-x64.zip",
+    "windows": "https://github.com/Shirolin/s1er/releases/download/v0.3.5/s1er-0.3.5%2B1-windows-x64.zip",
     "linux": null,
     "macos": null,
     "play": null

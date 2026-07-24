@@ -7,6 +7,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.3.5] - 2026-07-24
+
+### Fixed
+
+- **更新弹窗修复**：UpdatePromptHost 移入 Navigator 上下文内部，解决弹窗异常
+- **BBCode 排版修复**：防止连续 br 标签被误合并；消除 br 后紧跟换行导致的列表重复空行
+
 ## [0.3.4] - 2026-07-24
 
 ### Added

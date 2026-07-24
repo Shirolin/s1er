@@ -1,6 +1,14 @@
 {
   "entries": [
     {
+      "version": "0.3.5",
+      "date": "2026-07-24",
+      "highlights": [
+        "更新弹窗更稳定",
+        "帖子排版更准确"
+      ]
+    },
+    {
       "version": "0.3.4",
       "date": "2026-07-24",
       "highlights": [

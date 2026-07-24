@@ -65,6 +65,7 @@ UpdateEvaluation evaluateUpdate({
   required AppUpdateManifest manifest,
   required String downloadUrl,
   String? ignoredVersion,
+  String? lastPromptVersion,
   int? lastPromptMs,
   required DateTime now,
   required bool manual,
@@ -117,17 +118,22 @@ UpdateEvaluation evaluateUpdate({
   }
 
   if (!manual && lastPromptMs != null) {
-    final elapsed = now.millisecondsSinceEpoch - lastPromptMs;
-    if (elapsed >= 0 && elapsed < cooldown.inMilliseconds) {
-      return UpdateEvaluation(
-        availability: UpdateAvailability.optional,
-        localVersion: local,
-        manifest: manifest,
-        downloadUrl: downloadUrl,
-        netdiskUrl: netdiskUrl,
-        canInAppDownload: canInAppDownload,
-        shouldShowDialog: false,
-      );
+    final isSameVersion = lastPromptVersion == null ||
+        lastPromptVersion.trim().isEmpty ||
+        lastPromptVersion.trim() == manifest.latest.trim();
+    if (isSameVersion) {
+      final elapsed = now.millisecondsSinceEpoch - lastPromptMs;
+      if (elapsed >= 0 && elapsed < cooldown.inMilliseconds) {
+        return UpdateEvaluation(
+          availability: UpdateAvailability.optional,
+          localVersion: local,
+          manifest: manifest,
+          downloadUrl: downloadUrl,
+          netdiskUrl: netdiskUrl,
+          canInAppDownload: canInAppDownload,
+          shouldShowDialog: false,
+        );
+      }
     }
   }
 
@@ -281,6 +287,7 @@ class UpdateCheckNotifier extends Notifier<UpdateCheckState> {
       netdiskUrl: netdiskUrl,
       canInAppDownload: canInApp,
       ignoredVersion: UpdatePromptStore.ignoredVersion(store),
+      lastPromptVersion: UpdatePromptStore.lastPromptVersion(store),
       lastPromptMs: UpdatePromptStore.lastPromptMs(store),
       now: now,
       manual: manual,
@@ -301,18 +308,23 @@ class UpdateCheckNotifier extends Notifier<UpdateCheckState> {
     );
   }
 
-  /// Dialog 已展示或关闭（含稍后）：写入冷却时间戳。
-  void markPromptInteracted({DateTime Function()? clock}) {
+  /// Dialog 已展示或关闭（含稍后）：写入冷却时间戳与目标版本号。
+  void markPromptInteracted({
+    String? targetVersion,
+    DateTime Function()? clock,
+  }) {
     final now = clock?.call() ?? DateTime.now();
-    UpdatePromptStore.setLastPromptMs(
-      _tryStore(),
-      now.millisecondsSinceEpoch,
+    final version = targetVersion ?? state.pendingPrompt?.manifest.latest ?? '';
+    UpdatePromptStore.setLastPrompt(
+      store: _tryStore(),
+      version: version,
+      ms: now.millisecondsSinceEpoch,
     );
   }
 
   void ignoreVersion(String version) {
     UpdatePromptStore.setIgnoredVersion(_tryStore(), version);
-    markPromptInteracted();
+    markPromptInteracted(targetVersion: version);
     clearPendingPrompt();
   }
 }

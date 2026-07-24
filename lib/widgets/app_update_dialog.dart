@@ -41,6 +41,7 @@ Future<void> showAppUpdateDialog(
       final dialog = _AppUpdateDialogBody(
         evaluation: evaluation,
         onIgnoreVersion: onIgnoreVersion,
+        onPromptInteracted: onPromptInteracted,
         launchUrlFn: launch,
       );
       if (container != null) {
@@ -58,20 +59,19 @@ Future<void> showAppUpdateDialog(
   } on Object {
     // container 可能已 dispose
   }
-
-  // 关闭 Dialog（scrim / 返回 / 按钮）均记入冷却；忽略此版额外写入 ignored。
-  onPromptInteracted();
 }
 
 class _AppUpdateDialogBody extends ConsumerStatefulWidget {
   const _AppUpdateDialogBody({
     required this.evaluation,
     required this.onIgnoreVersion,
+    required this.onPromptInteracted,
     required this.launchUrlFn,
   });
 
   final UpdateEvaluation evaluation;
   final void Function(String version) onIgnoreVersion;
+  final VoidCallback onPromptInteracted;
   final ExternalUrlLauncher launchUrlFn;
 
   @override
@@ -180,6 +180,7 @@ class _AppUpdateDialogBodyState extends ConsumerState<_AppUpdateDialogBody> {
           downloading: downloading,
         ),
       ),
+      actionsOverflowDirection: VerticalDirection.down,
       actions: _buildActions(
         download: download,
         force: force,
@@ -377,6 +378,16 @@ class _AppUpdateDialogBodyState extends ConsumerState<_AppUpdateDialogBody> {
             Navigator.of(context).pop();
           },
           child: const Text('忽略此版'),
+        ),
+      );
+
+      actions.add(
+        TextButton(
+          onPressed: () {
+            widget.onPromptInteracted();
+            Navigator.of(context).pop();
+          },
+          child: const Text('稍后提醒'),
         ),
       );
     }

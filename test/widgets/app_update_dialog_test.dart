@@ -93,6 +93,8 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(find.text('发现新版本'), findsOneWidget);
+    expect(find.text('稍后提醒'), findsOneWidget);
+    expect(find.text('忽略此版'), findsOneWidget);
     expect(find.text('网盘下载'), findsOneWidget);
     expect(find.text('去更新'), findsOneWidget);
     expect(find.textContaining('提取码：abcd'), findsOneWidget);

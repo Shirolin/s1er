@@ -26,18 +26,37 @@ abstract class UpdatePromptStore {
     return null;
   }
 
-  static void setLastPromptMs(SettingsStore? store, int ms) {
-    store?.put(lastPromptMsKey, ms);
+  static const lastPromptVersionKey = 'update_last_prompt_version';
+
+  static String? lastPromptVersion(SettingsStore? store) {
+    final raw = store?.get<String>(lastPromptVersionKey);
+    final value = raw?.trim();
+    if (value == null || value.isEmpty) return null;
+    return value;
   }
 
   static bool isWithinCooldown({
     required SettingsStore? store,
+    required String targetVersion,
     required DateTime now,
     Duration cooldown = cooldown,
   }) {
+    final lastVersion = lastPromptVersion(store);
+    if (lastVersion != null && lastVersion != targetVersion.trim()) {
+      return false; // 新版本打破冷却！
+    }
     final last = lastPromptMs(store);
     if (last == null) return false;
     final elapsed = now.millisecondsSinceEpoch - last;
     return elapsed >= 0 && elapsed < cooldown.inMilliseconds;
+  }
+
+  static void setLastPrompt({
+    required SettingsStore? store,
+    required String version,
+    required int ms,
+  }) {
+    store?.put(lastPromptVersionKey, version.trim());
+    store?.put(lastPromptMsKey, ms);
   }
 }

@@ -78,18 +78,38 @@ void main() {
       expect(result.userMessage, '已忽略此版本的更新提示');
     });
 
-    test('startup respects cooldown for optional', () {
+    test('startup respects cooldown for optional on same version', () {
       final now = DateTime(2026, 7, 17);
       final result = evaluateUpdate(
         localVersion: '1.5.0',
         manifest: manifest,
         downloadUrl: 'https://example.com',
+        lastPromptVersion: '2.0.0',
         lastPromptMs:
             now.subtract(const Duration(days: 1)).millisecondsSinceEpoch,
         now: now,
         manual: false,
       );
       expect(result.shouldShowDialog, isFalse);
+    });
+
+    test('startup resets cooldown when a newer version is available', () {
+      final now = DateTime(2026, 7, 17);
+      final newManifest = AppUpdateManifest.fromJson({
+        ...manifestJson,
+        'latest': '2.1.0',
+      });
+      final result = evaluateUpdate(
+        localVersion: '1.5.0',
+        manifest: newManifest,
+        downloadUrl: 'https://example.com',
+        lastPromptVersion: '2.0.0', // 上次只弹过 2.0.0
+        lastPromptMs:
+            now.subtract(const Duration(days: 1)).millisecondsSinceEpoch,
+        now: now,
+        manual: false,
+      );
+      expect(result.shouldShowDialog, isTrue);
     });
 
     test('manual ignores cooldown', () {

@@ -69,7 +69,7 @@ void main() {
                     showAppUpdateDialog(
                       context,
                       evaluation: evaluation,
-                      onPromptInteracted: () {},
+                      onPromptInteracted: ({targetVersion}) {},
                       onIgnoreVersion: (_) {},
                       launchUrlFn: (
                         uri, {
@@ -135,7 +135,7 @@ void main() {
                     showAppUpdateDialog(
                       context,
                       evaluation: evaluation,
-                      onPromptInteracted: () {},
+                      onPromptInteracted: ({targetVersion}) {},
                       onIgnoreVersion: (_) {},
                       container: container,
                       launchUrlFn: (
@@ -200,7 +200,7 @@ void main() {
                     showAppUpdateDialog(
                       context,
                       evaluation: evaluation,
-                      onPromptInteracted: () {},
+                      onPromptInteracted: ({targetVersion}) {},
                       onIgnoreVersion: (_) {},
                       launchUrlFn: (
                         uri, {

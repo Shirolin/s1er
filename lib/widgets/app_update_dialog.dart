@@ -17,7 +17,7 @@ typedef ExternalUrlLauncher = Future<bool> Function(
 Future<void> showAppUpdateDialog(
   BuildContext context, {
   required UpdateEvaluation evaluation,
-  required VoidCallback onPromptInteracted,
+  required void Function({String? targetVersion}) onPromptInteracted,
   required void Function(String version) onIgnoreVersion,
   ExternalUrlLauncher? launchUrlFn,
   ProviderContainer? container,
@@ -41,7 +41,9 @@ Future<void> showAppUpdateDialog(
       final dialog = _AppUpdateDialogBody(
         evaluation: evaluation,
         onIgnoreVersion: onIgnoreVersion,
-        onPromptInteracted: onPromptInteracted,
+        onPromptInteracted: () => onPromptInteracted(
+          targetVersion: evaluation.manifest.latest,
+        ),
         launchUrlFn: launch,
       );
       if (container != null) {

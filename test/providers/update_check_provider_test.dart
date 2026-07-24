@@ -287,6 +287,33 @@ void main() {
       expect(evaluation.shouldShowDialog, isFalse);
       expect(evaluation.userMessage, '已忽略此版本的更新提示');
     });
+
+    test(
+        'markPromptInteracted with targetVersion persists version and timestamp',
+        () async {
+      final (db, local) = await openTestLocalData();
+      addTearDown(db.close);
+
+      final container = ProviderContainer(
+        overrides: [
+          localDataProvider.overrideWithValue(local),
+        ],
+      );
+      addTearDown(container.dispose);
+
+      final notifier = container.read(updateCheckProvider.notifier);
+      final now = DateTime(2026, 7, 24);
+      notifier.markPromptInteracted(
+        targetVersion: '2.0.0',
+        clock: () => now,
+      );
+
+      expect(UpdatePromptStore.lastPromptVersion(local.settings), '2.0.0');
+      expect(
+        UpdatePromptStore.lastPromptMs(local.settings),
+        now.millisecondsSinceEpoch,
+      );
+    });
   });
 }
 

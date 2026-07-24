@@ -313,8 +313,15 @@ class UpdateCheckNotifier extends Notifier<UpdateCheckState> {
     String? targetVersion,
     DateTime Function()? clock,
   }) {
+    final rawVersion = targetVersion ?? state.pendingPrompt?.manifest.latest;
+    final version = rawVersion?.trim() ?? '';
+    if (version.isEmpty) {
+      talker.warning(
+        'markPromptInteracted called without a valid target version',
+      );
+      return;
+    }
     final now = clock?.call() ?? DateTime.now();
-    final version = targetVersion ?? state.pendingPrompt?.manifest.latest ?? '';
     UpdatePromptStore.setLastPrompt(
       store: _tryStore(),
       version: version,

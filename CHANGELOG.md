@@ -7,6 +7,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.3.3] - 2026-07-24
+
+### Changed
+
+- **更新检查优化**：CDN 作为默认主节点，镜像源并发竞态拉取，5 秒短超时隔离
+- **最低版本提升**：minSupported 提高至 0.3.2，老版本将强制更新
+- **冷却修复**：根治历史 null 版本号冷却误判
+
 ## [0.3.2] - 2026-07-24
 
 ### Fixed

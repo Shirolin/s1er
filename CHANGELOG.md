@@ -7,6 +7,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.3.2] - 2026-07-24
+
+### Fixed
+
+- **更新冷却隔离**：不同版本号的更新提示互不干扰，新版本会立即弹窗
+- **手动检查空版本漏洞**：修复手动检查更新时版本号注入的空值问题
+
 ## [0.3.1] - 2026-07-24
 
 ### Added

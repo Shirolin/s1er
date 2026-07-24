@@ -54,6 +54,7 @@ class BbcodeParser {
 
     output =
         output.replaceAll(RegExp(r'<br\s*/?>', caseSensitive: false), '<br/>');
+    output = output.replaceAll(RegExp(r'<br/>\s*\r?\n'), '<br/>');
     output =
         output.replaceAll(RegExp(r'(<br/>\s*|[\n\r]\s*){3,}'), '<br/><br/>');
 

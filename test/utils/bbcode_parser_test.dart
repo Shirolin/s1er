@@ -200,4 +200,30 @@ void main() {
       expect(parsed, isNot(contains('<select')));
     });
   });
+
+  group('br and newline normalization', () {
+    test('normalizes Discuz HTML single line break <br />\\r\\n to single <br/>', () {
+      const input = 'Line 1<br />\r\n- Line 2<br />\r\n- Line 3';
+      final parsed = BbcodeParser.parse(input);
+      expect(parsed, equals('Line 1<br/>- Line 2<br/>- Line 3'));
+    });
+
+    test('preserves Discuz HTML double line break <br />\\r\\n<br />\\r\\n as double <br/>', () {
+      const input = 'Paragraph 1<br />\r\n<br />\r\nParagraph 2';
+      final parsed = BbcodeParser.parse(input);
+      expect(parsed, equals('Paragraph 1<br/><br/>Paragraph 2'));
+    });
+
+    test('normalizes plain text single \\n to single <br/>', () {
+      const input = 'Line 1\n- Line 2\n- Line 3';
+      final parsed = BbcodeParser.parse(input);
+      expect(parsed, equals('Line 1<br/>- Line 2<br/>- Line 3'));
+    });
+
+    test('normalizes plain text double \\n\\n to double <br/>', () {
+      const input = 'Paragraph 1\n\nParagraph 2';
+      final parsed = BbcodeParser.parse(input);
+      expect(parsed, equals('Paragraph 1<br/><br/>Paragraph 2'));
+    });
+  });
 }

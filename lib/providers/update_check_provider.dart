@@ -118,8 +118,8 @@ UpdateEvaluation evaluateUpdate({
   }
 
   if (!manual && lastPromptMs != null) {
-    final isSameVersion = lastPromptVersion == null ||
-        lastPromptVersion.trim().isEmpty ||
+    final isSameVersion = lastPromptVersion != null &&
+        lastPromptVersion.trim().isNotEmpty &&
         lastPromptVersion.trim() == manifest.latest.trim();
     if (isSameVersion) {
       final elapsed = now.millisecondsSinceEpoch - lastPromptMs;

@@ -7,6 +7,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.3.4] - 2026-07-24
+
+### Added
+
+- **ABI 分架构下载**：Android 更新提示可选 arm64-v8a / armeabi-v7a / x86_64 精简包，不再强制下载 universal 全量包
+
+### Fixed
+
+- **Web 编译修复**：ABI 检测使用 conditional import，解耦 dart:ffi 依赖，修复 Web 平台编译失败
+
 ## [0.3.3] - 2026-07-24
 
 ### Changed

@@ -14,6 +14,7 @@ import '../widgets/app_bar_more_menu.dart';
 import '../widgets/pagination_bar.dart';
 import '../widgets/pm_message_bubble.dart';
 import '../widgets/s1_error_view.dart';
+import '../widgets/s1_list_boundary_footer.dart';
 import '../widgets/s1_swipe_pagination.dart';
 import '../utils/pm_draft_store.dart';
 import '../utils/s1_snack_bar.dart';
@@ -378,15 +379,24 @@ class _PmConversationScreenState extends ConsumerState<PmConversationScreen> {
                                   padding: EdgeInsets.symmetric(
                                     vertical: isDesktop ? 16 : 8,
                                   ),
-                                  itemCount: state.items.length,
-                                  itemBuilder: (context, index) =>
-                                      PmMessageBubble(
-                                    key: ValueKey(
-                                      'pm_message_${state.items[index].id}_$index',
-                                    ),
-                                    message: state.items[index],
-                                    compact: !isDesktop,
-                                  ),
+                                  itemCount: state.items.length + 1,
+                                  itemBuilder: (context, index) {
+                                    if (index >= state.items.length) {
+                                      return S1ListBoundaryFooter(
+                                        kind: pagedBoundaryKind(
+                                          currentPage: state.currentPage,
+                                          totalPages: state.totalPages,
+                                        ),
+                                      );
+                                    }
+                                    return PmMessageBubble(
+                                      key: ValueKey(
+                                        'pm_message_${state.items[index].id}_$index',
+                                      ),
+                                      message: state.items[index],
+                                      compact: !isDesktop,
+                                    );
+                                  },
                                 ),
                         ),
                       ),

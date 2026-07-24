@@ -74,14 +74,14 @@ class _PaginationBarState extends State<PaginationBar> {
       if (showEdgeButtons) ...[
         _PaginationIconButton(
           icon: Icons.first_page,
-          tooltip: '首页',
+          tooltip: canPrev ? '首页' : '已是首页',
           enabled: canPrev,
           onPressed: () => _goTo(1),
         ),
       ],
       _PaginationIconButton(
         icon: Icons.chevron_left,
-        tooltip: '上一页',
+        tooltip: canPrev ? '上一页' : '已是首页',
         enabled: canPrev,
         onPressed: () => _goTo(page - 1),
       ),
@@ -97,14 +97,14 @@ class _PaginationBarState extends State<PaginationBar> {
       const SizedBox(width: 8),
       _PaginationIconButton(
         icon: Icons.chevron_right,
-        tooltip: '下一页',
+        tooltip: canNext ? '下一页' : '已是末页',
         enabled: canNext,
         onPressed: () => _goTo(page + 1),
       ),
       if (showEdgeButtons) ...[
         _PaginationIconButton(
           icon: Icons.last_page,
-          tooltip: '末页',
+          tooltip: canNext ? '末页' : '已是末页',
           enabled: canNext,
           onPressed: () => _goTo(total),
         ),

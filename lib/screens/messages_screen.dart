@@ -13,6 +13,7 @@ import '../widgets/notice_list_tile.dart';
 import '../widgets/pagination_bar.dart';
 import '../widgets/pm_list_tile.dart';
 import '../widgets/s1_error_view.dart';
+import '../widgets/s1_list_boundary_footer.dart';
 import '../widgets/s1_swipe_pagination.dart';
 
 class MessagesScreen extends ConsumerStatefulWidget {
@@ -99,8 +100,13 @@ class _PmListBody extends ConsumerWidget {
               )
             : ListView.builder(
                 padding: const EdgeInsets.symmetric(vertical: 8),
-                itemCount: state.items.length,
+                itemCount: state.items.length + 1,
                 itemBuilder: (context, index) {
+                  if (index >= state.items.length) {
+                    return const S1ListBoundaryFooter(
+                      kind: S1ListBoundaryKind.listEnd,
+                    );
+                  }
                   final item = state.items[index];
                   return KeyedSubtree(
                     key: ValueKey('pm_${item.touid}'),
@@ -194,8 +200,16 @@ class _NoticeListBody extends ConsumerWidget {
                     : ListView.builder(
                         controller: scrollController,
                         padding: const EdgeInsets.symmetric(vertical: 8),
-                        itemCount: state.items.length,
+                        itemCount: state.items.length + 1,
                         itemBuilder: (context, index) {
+                          if (index >= state.items.length) {
+                            return S1ListBoundaryFooter(
+                              kind: pagedBoundaryKind(
+                                currentPage: state.currentPage,
+                                totalPages: state.totalPages,
+                              ),
+                            );
+                          }
                           final item = state.items[index];
                           return KeyedSubtree(
                             key: ValueKey('notice_${item.id}'),

@@ -96,6 +96,25 @@ void main() {
     await tester.pumpAndSettle();
     expect(pushed, '223056');
   });
+
+  testWidgets('DarkRoomScreen shows no-more footer when exhausted',
+      (tester) async {
+    final service = _ScreenFakeService(darkRoomHasMore: false);
+    await tester.pumpWidget(
+      ProviderScope(
+        overrides: [
+          forumToolsServiceProvider.overrideWithValue(service),
+        ],
+        child: MaterialApp(
+          theme: AppTheme.lightTheme('purple'),
+          home: const DarkRoomScreen(),
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+    expect(find.text('没有更多了'), findsOneWidget);
+    expect(find.text('加载更多'), findsNothing);
+  });
 }
 
 class _Auth extends AuthNotifier {
@@ -107,10 +126,11 @@ class _Auth extends AuthNotifier {
 }
 
 class _ScreenFakeService extends ForumToolsService {
-  _ScreenFakeService({this.friends})
+  _ScreenFakeService({this.friends, this.darkRoomHasMore = true})
       : super(S1HttpClient.test(ProviderContainer(), Dio()));
 
   final FriendListResult? friends;
+  final bool darkRoomHasMore;
 
   @override
   Future<FriendListResult> getFriendList({required String uid}) async {
@@ -123,8 +143,8 @@ class _ScreenFakeService extends ForumToolsService {
   @override
   Future<DarkRoomPage> getDarkRoom({String? cursor}) async {
     if (cursor != null) return DarkRoomPage.empty;
-    return const DarkRoomPage(
-      items: [
+    return DarkRoomPage(
+      items: const [
         DarkRoomEntry(
           cid: '1',
           uid: '223056',
@@ -137,8 +157,8 @@ class _ScreenFakeService extends ForumToolsService {
           groupExpiryRaw: '永不过期',
         ),
       ],
-      nextCursor: '2',
-      hasMore: true,
+      nextCursor: darkRoomHasMore ? '2' : null,
+      hasMore: darkRoomHasMore,
     );
   }
 }

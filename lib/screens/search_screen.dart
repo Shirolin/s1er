@@ -9,8 +9,11 @@ import '../providers/search_provider.dart';
 import '../providers/user_profile_provider.dart';
 import '../theme/app_theme.dart';
 import '../theme/s1_haptics.dart';
+import '../utils/boundary_feedback.dart';
 import '../utils/thread_navigation.dart';
 import '../widgets/s1_error_view.dart';
+import '../widgets/s1_list_boundary_footer.dart';
+import '../widgets/s1_scroll_boundary_listener.dart';
 import '../widgets/pagination_bar.dart';
 import '../widgets/user_profile_sheet.dart';
 import '../widgets/web_avatar.dart';
@@ -25,6 +28,7 @@ class SearchScreen extends ConsumerStatefulWidget {
 class _SearchScreenState extends ConsumerState<SearchScreen> {
   final _controller = TextEditingController();
   final _focusNode = FocusNode();
+  final _boundaryFeedback = BoundaryFeedbackController();
 
   @override
   void initState() {
@@ -133,16 +137,25 @@ class _SearchScreenState extends ConsumerState<SearchScreen> {
               ),
             ),
           ),
-        Expanded(child: _SearchBody(controller: _controller)),
+        Expanded(
+          child: _SearchBody(
+            controller: _controller,
+            boundaryFeedback: _boundaryFeedback,
+          ),
+        ),
       ],
     );
   }
 }
 
 class _SearchBody extends ConsumerWidget {
-  const _SearchBody({required this.controller});
+  const _SearchBody({
+    required this.controller,
+    required this.boundaryFeedback,
+  });
 
   final TextEditingController controller;
+  final BoundaryFeedbackController boundaryFeedback;
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -246,13 +259,25 @@ class _SearchBody extends ConsumerWidget {
           Expanded(
             child: Stack(
               children: [
-                ListView.builder(
-                  padding: const EdgeInsets.fromLTRB(0, 4, 0, 16),
-                  itemCount: state.forumHits.length,
-                  itemBuilder: (context, index) {
-                    final hit = state.forumHits[index];
-                    return _ForumHitTile(hit: hit);
-                  },
+                S1ScrollBoundaryListener(
+                  isTerminal: state.currentPage >= state.totalPages,
+                  feedback: boundaryFeedback,
+                  child: ListView.builder(
+                    padding: const EdgeInsets.fromLTRB(0, 4, 0, 16),
+                    itemCount: state.forumHits.length + 1,
+                    itemBuilder: (context, index) {
+                      if (index >= state.forumHits.length) {
+                        return S1ListBoundaryFooter(
+                          kind: pagedBoundaryKind(
+                            currentPage: state.currentPage,
+                            totalPages: state.totalPages,
+                          ),
+                        );
+                      }
+                      final hit = state.forumHits[index];
+                      return _ForumHitTile(hit: hit);
+                    },
+                  ),
                 ),
                 if (state.isLoading)
                   const Positioned(
@@ -268,8 +293,10 @@ class _SearchBody extends ConsumerWidget {
             PaginationBar(
               currentPage: state.currentPage,
               totalPages: state.totalPages,
-              onPageChanged: (page) =>
-                  ref.read(searchProvider.notifier).goToPage(page),
+              onPageChanged: (page) async {
+                boundaryFeedback.reset();
+                await ref.read(searchProvider.notifier).goToPage(page);
+              },
               sheetSubtitle: state.query,
             ),
         ],
@@ -281,13 +308,22 @@ class _SearchBody extends ConsumerWidget {
     }
     return Stack(
       children: [
-        ListView.builder(
-          padding: const EdgeInsets.symmetric(vertical: 4),
-          itemCount: state.userHits.length,
-          itemBuilder: (context, index) {
-            final hit = state.userHits[index];
-            return _UserHitTile(hit: hit);
-          },
+        S1ScrollBoundaryListener(
+          isTerminal: true,
+          feedback: boundaryFeedback,
+          child: ListView.builder(
+            padding: const EdgeInsets.symmetric(vertical: 4),
+            itemCount: state.userHits.length + 1,
+            itemBuilder: (context, index) {
+              if (index >= state.userHits.length) {
+                return const S1ListBoundaryFooter(
+                  kind: S1ListBoundaryKind.listEnd,
+                );
+              }
+              final hit = state.userHits[index];
+              return _UserHitTile(hit: hit);
+            },
+          ),
         ),
         if (state.isLoading)
           const Positioned(

@@ -67,11 +67,11 @@ class EnvConfig {
     defaultValue: 120,
   );
 
-  /// 应用升级清单 URL（默认 GitHub raw latest.json）
+  /// 应用升级清单 URL（默认 jsDelivr CDN latest.json）
   static const String updateManifestUrl = String.fromEnvironment(
     'UPDATE_MANIFEST_URL',
     defaultValue:
-        'https://raw.githubusercontent.com/Shirolin/s1er/main/docs/release/latest.json',
+        'https://cdn.jsdelivr.net/gh/Shirolin/s1er@main/docs/release/latest.json',
   );
 
   /// 分发渠道：`github`（默认）或 `play`（上架包 CTA 优先 Play）

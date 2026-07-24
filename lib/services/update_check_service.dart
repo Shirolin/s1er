@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:convert';
 
 import 'package:dio/dio.dart';
@@ -21,15 +22,9 @@ class UpdateCheckService {
         _dio = dio ??
             Dio(
               BaseOptions(
-                connectTimeout: const Duration(
-                  seconds: EnvConfig.connectTimeoutSeconds,
-                ),
-                sendTimeout: const Duration(
-                  seconds: EnvConfig.sendTimeoutSeconds,
-                ),
-                receiveTimeout: const Duration(
-                  seconds: EnvConfig.receiveTimeoutSeconds,
-                ),
+                connectTimeout: manifestTimeout,
+                sendTimeout: manifestTimeout,
+                receiveTimeout: manifestTimeout,
                 responseType: ResponseType.json,
                 headers: const {
                   Headers.acceptHeader: 'application/json',
@@ -37,12 +32,18 @@ class UpdateCheckService {
               ),
             );
 
-  final Dio _dio;
-  final List<String> _manifestUrls;
+  static const Duration manifestTimeout = Duration(seconds: 5);
 
   /// 国内可达的 jsDelivr 镜像（与 raw 同源文件）。
   static const String jsDelivrManifestUrl =
       'https://cdn.jsdelivr.net/gh/Shirolin/s1er@main/docs/release/latest.json';
+
+  /// 备选 GitHub raw 链接。
+  static const String rawGithubManifestUrl =
+      'https://raw.githubusercontent.com/Shirolin/s1er/main/docs/release/latest.json';
+
+  final Dio _dio;
+  final List<String> _manifestUrls;
 
   String get manifestUrl => _manifestUrls.first;
 
@@ -62,57 +63,86 @@ class UpdateCheckService {
     final urls = <String>[];
     final trimmed = primary.trim();
     if (trimmed.isNotEmpty) urls.add(trimmed);
-    if (trimmed != jsDelivrManifestUrl) {
+    if (trimmed != rawGithubManifestUrl) {
+      urls.add(rawGithubManifestUrl);
+    }
+    if (trimmed != jsDelivrManifestUrl && !urls.contains(jsDelivrManifestUrl)) {
       urls.add(jsDelivrManifestUrl);
     }
     return urls;
   }
 
   Future<AppUpdateManifest> fetchManifest() async {
+    if (_manifestUrls.isEmpty) {
+      throw const UpdateCheckException('没有可用的更新清单地址');
+    }
+
+    // 单个 URL 时直接发起
+    if (_manifestUrls.length == 1) {
+      return _fetchSingleUrl(_manifestUrls.first);
+    }
+
+    // 多源并发竞态（Fastest-Wins）：谁先成功返回合法清单就使用谁
+    final completer = Completer<AppUpdateManifest>();
+    var pendingCount = _manifestUrls.length;
     Object? lastError;
     StackTrace? lastStack;
     var lastMessage = '检查更新失败';
 
-    for (var i = 0; i < _manifestUrls.length; i++) {
-      final url = _manifestUrls[i];
-      try {
-        final response = await _dio.get<dynamic>(url);
-        return AppUpdateManifest.fromJson(_coerceManifestMap(response.data));
-      } on DioException catch (e, st) {
-        lastError = e;
-        lastStack = st;
-        lastMessage = _messageForDio(e);
-        final isLast = i == _manifestUrls.length - 1;
-        if (_isExpectedManifestMiss(e)) {
-          talker.warning(
-            'Fetch update manifest skipped ($url): $lastMessage',
-          );
-        } else if (isLast) {
-          talker.handle(e, st, 'Fetch update manifest failed');
-        } else {
-          talker.warning(
-            'Fetch update manifest failed ($url), trying next: $lastMessage',
-          );
-        }
-      } on FormatException catch (e, st) {
-        lastError = e;
-        lastStack = st;
-        lastMessage = '更新清单格式无效';
-        final isLast = i == _manifestUrls.length - 1;
-        if (isLast) {
-          talker.handle(e, st, 'Parse update manifest failed');
-          rethrow;
-        }
-        talker.warning(
-          'Parse update manifest failed ($url), trying next: $e',
-        );
-      }
+    for (final baseUrl in _manifestUrls) {
+      final urlWithTimestamp = Uri.parse(baseUrl).replace(
+        queryParameters: {
+          't': DateTime.now().millisecondsSinceEpoch.toString(),
+        },
+      ).toString();
+
+      unawaited(
+        _fetchSingleUrl(urlWithTimestamp).then((manifest) {
+          if (!completer.isCompleted) {
+            completer.complete(manifest);
+          }
+        }).catchError((Object e, StackTrace st) {
+          pendingCount--;
+          lastError = e;
+          lastStack = st;
+          if (e is UpdateCheckException) {
+            lastMessage = e.message;
+          } else if (e is FormatException) {
+            lastMessage = '更新清单格式无效';
+          }
+          if (pendingCount == 0 && !completer.isCompleted) {
+            if (lastError is FormatException) {
+              completer.completeError(lastError!, lastStack);
+            } else {
+              completer.completeError(
+                UpdateCheckException(lastMessage, lastError),
+                lastStack,
+              );
+            }
+          }
+        }),
+      );
     }
 
-    if (lastError is FormatException) {
-      Error.throwWithStackTrace(lastError, lastStack ?? StackTrace.current);
+    return completer.future;
+  }
+
+  Future<AppUpdateManifest> _fetchSingleUrl(String url) async {
+    try {
+      final response = await _dio.get<dynamic>(url);
+      return AppUpdateManifest.fromJson(_coerceManifestMap(response.data));
+    } on DioException catch (e) {
+      final msg = _messageForDio(e);
+      if (_isExpectedManifestMiss(e)) {
+        talker.warning('Fetch update manifest skipped ($url): $msg');
+      } else {
+        talker.warning('Fetch update manifest failed ($url): $msg');
+      }
+      throw UpdateCheckException(msg, e);
+    } on FormatException catch (e, st) {
+      talker.warning('Parse update manifest failed ($url): $e');
+      Error.throwWithStackTrace(e, st);
     }
-    throw UpdateCheckException(lastMessage, lastError);
   }
 
   /// 私有仓库 raw URL / 错链等：客户端无法公开拉取，属预期失败。

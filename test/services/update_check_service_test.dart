@@ -272,19 +272,60 @@ void main() {
       );
     });
 
-    test('default manifestUrls include jsDelivr fallback', () {
+    test('default manifestUrls include both raw and jsDelivr fallback', () {
       final service = UpdateCheckService(
-        manifestUrl:
-            'https://raw.githubusercontent.com/Shirolin/s1er/main/docs/release/latest.json',
+        manifestUrl: UpdateCheckService.jsDelivrManifestUrl,
       );
-      expect(service.manifestUrls.length, 2);
-      expect(service.manifestUrls.last, UpdateCheckService.jsDelivrManifestUrl);
+      expect(
+        service.manifestUrls,
+        contains(UpdateCheckService.rawGithubManifestUrl),
+      );
       expect(
         UpdateCheckService.isAllowedDownloadUrl(
           UpdateCheckService.jsDelivrManifestUrl,
         ),
         isTrue,
       );
+    });
+
+    test('fetchManifest uses fastest winning response (Fastest-Wins)',
+        () async {
+      final payloadSlow = {
+        'latest': '1.0.0-slow',
+        'minSupported': '1.0.0',
+        'notes': 'Slow',
+        'publishedAt': '2026-07-17',
+        'channels': {
+          'github': 'https://github.com/Shirolin/s1er/releases/latest',
+        },
+      };
+      final payloadFast = {
+        'latest': '2.0.0-fast',
+        'minSupported': '1.0.0',
+        'notes': 'Fast',
+        'publishedAt': '2026-07-17',
+        'channels': {
+          'github': 'https://github.com/Shirolin/s1er/releases/latest',
+        },
+      };
+
+      final dio = Dio()
+        ..httpClientAdapter = _RaceAdapter(
+          slowUrlSubstring: 'raw.githubusercontent.com',
+          slowPayload: payloadSlow,
+          fastPayload: payloadFast,
+        );
+
+      final service = UpdateCheckService(
+        dio: dio,
+        manifestUrls: [
+          'https://raw.githubusercontent.com/Shirolin/s1er/main/docs/release/latest.json',
+          'https://cdn.jsdelivr.net/gh/Shirolin/s1er@main/docs/release/latest.json',
+        ],
+      );
+
+      final manifest = await service.fetchManifest();
+      expect(manifest.latest, '2.0.0-fast');
     });
   });
 }
@@ -388,6 +429,47 @@ class _FailoverAdapter implements HttpClientAdapter {
     }
     return ResponseBody.fromString(
       jsonEncode(payload),
+      200,
+      headers: {
+        Headers.contentTypeHeader: [Headers.jsonContentType],
+      },
+    );
+  }
+}
+
+class _RaceAdapter implements HttpClientAdapter {
+  _RaceAdapter({
+    required this.slowUrlSubstring,
+    required this.slowPayload,
+    required this.fastPayload,
+  });
+
+  final String slowUrlSubstring;
+  final Map<String, dynamic> slowPayload;
+  final Map<String, dynamic> fastPayload;
+
+  @override
+  void close({bool force = false}) {}
+
+  @override
+  Future<ResponseBody> fetch(
+    RequestOptions options,
+    Stream<Uint8List>? requestStream,
+    Future<void>? cancelFuture,
+  ) async {
+    final url = options.uri.toString();
+    if (url.contains(slowUrlSubstring)) {
+      await Future<void>.delayed(const Duration(milliseconds: 300));
+      return ResponseBody.fromString(
+        jsonEncode(slowPayload),
+        200,
+        headers: {
+          Headers.contentTypeHeader: [Headers.jsonContentType],
+        },
+      );
+    }
+    return ResponseBody.fromString(
+      jsonEncode(fastPayload),
       200,
       headers: {
         Headers.contentTypeHeader: [Headers.jsonContentType],

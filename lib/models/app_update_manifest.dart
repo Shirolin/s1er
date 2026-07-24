@@ -39,6 +39,9 @@ class AppUpdateChannels {
   const AppUpdateChannels({
     required this.github,
     this.androidApk,
+    this.androidArm64V8aApk,
+    this.androidArmeabiV7aApk,
+    this.androidX8664Apk,
     this.androidNetdisk,
     this.netdiskHint,
     this.windows,
@@ -66,6 +69,9 @@ class AppUpdateChannels {
     return AppUpdateChannels(
       github: github,
       androidApk: optionalUrl('androidApk'),
+      androidArm64V8aApk: optionalUrl('androidArm64V8aApk'),
+      androidArmeabiV7aApk: optionalUrl('androidArmeabiV7aApk'),
+      androidX8664Apk: optionalUrl('androidX8664Apk'),
       androidNetdisk: optionalUrl('androidNetdisk'),
       netdiskHint: optionalText('netdiskHint'),
       windows: optionalUrl('windows'),
@@ -76,7 +82,18 @@ class AppUpdateChannels {
   }
 
   final String github;
+
+  /// Android 通用 (universal) 安装包链接。
   final String? androidApk;
+
+  /// Android arm64-v8a 专属精简安装包链接（优先于 [androidApk]）。
+  final String? androidArm64V8aApk;
+
+  /// Android armeabi-v7a 专属精简安装包链接（优先于 [androidApk]）。
+  final String? androidArmeabiV7aApk;
+
+  /// Android x86_64 专属精简安装包链接（优先于 [androidApk]）。
+  final String? androidX8664Apk;
 
   /// 国内网盘分享链接（仅外链打开，不进 APK 下载白名单）。
   final String? androidNetdisk;

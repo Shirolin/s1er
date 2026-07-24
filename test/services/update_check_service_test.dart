@@ -1,4 +1,5 @@
 import 'dart:convert';
+import 'dart:ffi';
 
 import 'package:dio/dio.dart';
 import 'package:flutter/foundation.dart';
@@ -232,6 +233,39 @@ void main() {
       expect(
         UpdateCheckService.isAllowedNetdiskUrl('https://evil.example/x'),
         isFalse,
+      );
+    });
+
+    test('resolveDownloadUrl prefers arm64-v8a APK when available', () {
+      final m = AppUpdateManifest.fromJson({
+        'latest': '1.0.0',
+        'channels': {
+          'androidApk':
+              'https://github.com/example/releases/download/v1/app-universal.apk',
+          'androidArm64V8aApk':
+              'https://github.com/example/releases/download/v1/app-arm64-v8a.apk',
+        },
+      });
+      final v8aUrl = UpdateCheckService.resolveDownloadUrl(
+        m,
+        isWeb: false,
+        platform: TargetPlatform.android,
+        abiOverride: Abi.androidArm64,
+      );
+      expect(
+        v8aUrl,
+        'https://github.com/example/releases/download/v1/app-arm64-v8a.apk',
+      );
+
+      final fallbackUrl = UpdateCheckService.resolveDownloadUrl(
+        m,
+        isWeb: false,
+        platform: TargetPlatform.android,
+        abiOverride: Abi.androidArm,
+      );
+      expect(
+        fallbackUrl,
+        'https://github.com/example/releases/download/v1/app-universal.apk',
       );
     });
 

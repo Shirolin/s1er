@@ -1,5 +1,6 @@
 import 'dart:async';
 import 'dart:convert';
+import 'dart:ffi';
 
 import 'package:dio/dio.dart';
 import 'package:flutter/foundation.dart';
@@ -158,6 +159,7 @@ class UpdateCheckService {
     'www.github.com',
     'raw.githubusercontent.com',
     'objects.githubusercontent.com',
+    'release-assets.githubusercontent.com',
     'cdn.jsdelivr.net',
     'play.google.com',
   };
@@ -178,6 +180,28 @@ class UpdateCheckService {
     'wwwa.lanzoui.com',
   };
 
+  /// 根据当前 CPU 架构 (Abi.current()) 解析 Android 最优 APK 链接。
+  static String? resolveAndroidApkUrl(
+    AppUpdateChannels channels, {
+    Abi? abiOverride,
+  }) {
+    final currentAbi = abiOverride ?? (kIsWeb ? null : Abi.current());
+    String? specificUrl;
+
+    if (currentAbi == Abi.androidArm64) {
+      specificUrl = channels.androidArm64V8aApk;
+    } else if (currentAbi == Abi.androidArm) {
+      specificUrl = channels.androidArmeabiV7aApk;
+    } else if (currentAbi == Abi.androidX64) {
+      specificUrl = channels.androidX8664Apk;
+    }
+
+    final sanitizedSpecific = _sanitizeUrl(specificUrl, allowedDownloadHosts);
+    if (sanitizedSpecific != null) return sanitizedSpecific;
+
+    return _sanitizeUrl(channels.androidApk, allowedDownloadHosts);
+  }
+
   /// 按分发渠道与平台解析下载 / 商店 URL。
   ///
   /// 仅返回通过主机白名单的 https URL；无一可用时返回空字符串。
@@ -186,6 +210,7 @@ class UpdateCheckService {
     String distribution = EnvConfig.distribution,
     bool isWeb = kIsWeb,
     TargetPlatform? platform,
+    Abi? abiOverride,
   }) {
     final dist = distribution.trim().toLowerCase();
     if (dist == 'play') {
@@ -200,8 +225,15 @@ class UpdateCheckService {
     }
 
     final target = platform ?? defaultTargetPlatform;
+    if (target == TargetPlatform.android) {
+      final androidUrl = resolveAndroidApkUrl(
+        manifest.channels,
+        abiOverride: abiOverride,
+      );
+      if (androidUrl != null) return androidUrl;
+    }
+
     final platformUrl = switch (target) {
-      TargetPlatform.android => manifest.channels.androidApk,
       TargetPlatform.windows => manifest.channels.windows,
       TargetPlatform.linux => manifest.channels.linux,
       TargetPlatform.macOS => manifest.channels.macos,
@@ -227,14 +259,17 @@ class UpdateCheckService {
     String distribution = EnvConfig.distribution,
     bool isWeb = kIsWeb,
     TargetPlatform? platform,
+    Abi? abiOverride,
   }) {
     if (isWeb) return false;
     if (distribution.trim().toLowerCase() == 'play') return false;
     final target = platform ?? defaultTargetPlatform;
     if (target != TargetPlatform.android) return false;
-    final apk =
-        _sanitizeUrl(manifest.channels.androidApk, allowedDownloadHosts);
-    return apk != null;
+    final apk = resolveAndroidApkUrl(
+      manifest.channels,
+      abiOverride: abiOverride,
+    );
+    return apk != null && apk.isNotEmpty;
   }
 
   static bool isAllowedDownloadUrl(String url) =>

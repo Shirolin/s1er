@@ -1,6 +1,5 @@
 import 'dart:async';
 import 'dart:convert';
-import 'dart:ffi';
 
 import 'package:dio/dio.dart';
 import 'package:flutter/foundation.dart';
@@ -8,6 +7,7 @@ import 'package:flutter/foundation.dart';
 import '../config/env_config.dart';
 import '../models/app_exceptions.dart';
 import '../models/app_update_manifest.dart';
+import '../utils/abi_detector.dart';
 import 'talker.dart';
 
 /// 拉取远端升级清单（独立 Dio，不走论坛 [S1HttpClient]）。
@@ -180,19 +180,19 @@ class UpdateCheckService {
     'wwwa.lanzoui.com',
   };
 
-  /// 根据当前 CPU 架构 (Abi.current()) 解析 Android 最优 APK 链接。
+  /// 根据当前 CPU 架构 (arm64-v8a / armeabi-v7a / x86_64) 解析 Android 最优 APK 链接。
   static String? resolveAndroidApkUrl(
     AppUpdateChannels channels, {
-    Abi? abiOverride,
+    String? abiOverride,
   }) {
-    final currentAbi = abiOverride ?? (kIsWeb ? null : Abi.current());
+    final abi = abiOverride ?? currentAbi();
     String? specificUrl;
 
-    if (currentAbi == Abi.androidArm64) {
+    if (abi == 'arm64-v8a') {
       specificUrl = channels.androidArm64V8aApk;
-    } else if (currentAbi == Abi.androidArm) {
+    } else if (abi == 'armeabi-v7a') {
       specificUrl = channels.androidArmeabiV7aApk;
-    } else if (currentAbi == Abi.androidX64) {
+    } else if (abi == 'x86_64') {
       specificUrl = channels.androidX8664Apk;
     }
 
@@ -210,7 +210,7 @@ class UpdateCheckService {
     String distribution = EnvConfig.distribution,
     bool isWeb = kIsWeb,
     TargetPlatform? platform,
-    Abi? abiOverride,
+    String? abiOverride,
   }) {
     final dist = distribution.trim().toLowerCase();
     if (dist == 'play') {
@@ -259,7 +259,7 @@ class UpdateCheckService {
     String distribution = EnvConfig.distribution,
     bool isWeb = kIsWeb,
     TargetPlatform? platform,
-    Abi? abiOverride,
+    String? abiOverride,
   }) {
     if (isWeb) return false;
     if (distribution.trim().toLowerCase() == 'play') return false;

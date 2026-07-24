@@ -1,5 +1,4 @@
 import 'dart:convert';
-import 'dart:ffi';
 
 import 'package:dio/dio.dart';
 import 'package:flutter/foundation.dart';
@@ -250,7 +249,7 @@ void main() {
         m,
         isWeb: false,
         platform: TargetPlatform.android,
-        abiOverride: Abi.androidArm64,
+        abiOverride: 'arm64-v8a',
       );
       expect(
         v8aUrl,
@@ -261,10 +260,54 @@ void main() {
         m,
         isWeb: false,
         platform: TargetPlatform.android,
-        abiOverride: Abi.androidArm,
+        abiOverride: 'armeabi-v7a',
       );
       expect(
         fallbackUrl,
+        'https://github.com/example/releases/download/v1/app-universal.apk',
+      );
+    });
+
+    test('resolveDownloadUrl falls back to universal APK when specific APK host is disallowed', () {
+      final m = AppUpdateManifest.fromJson({
+        'latest': '1.0.0',
+        'channels': {
+          'androidApk':
+              'https://github.com/example/releases/download/v1/app-universal.apk',
+          'androidArm64V8aApk':
+              'https://evil.example/releases/download/v1/app-arm64-v8a.apk',
+        },
+      });
+      final url = UpdateCheckService.resolveDownloadUrl(
+        m,
+        isWeb: false,
+        platform: TargetPlatform.android,
+        abiOverride: 'arm64-v8a',
+      );
+      expect(
+        url,
+        'https://github.com/example/releases/download/v1/app-universal.apk',
+      );
+    });
+
+    test('resolveDownloadUrl falls back to universal APK when ABI is null', () {
+      final m = AppUpdateManifest.fromJson({
+        'latest': '1.0.0',
+        'channels': {
+          'androidApk':
+              'https://github.com/example/releases/download/v1/app-universal.apk',
+          'androidArm64V8aApk':
+              'https://github.com/example/releases/download/v1/app-arm64-v8a.apk',
+        },
+      });
+      final url = UpdateCheckService.resolveDownloadUrl(
+        m,
+        isWeb: false,
+        platform: TargetPlatform.android,
+        abiOverride: null,
+      );
+      expect(
+        url,
         'https://github.com/example/releases/download/v1/app-universal.apk',
       );
     });

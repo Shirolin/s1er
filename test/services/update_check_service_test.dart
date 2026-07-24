@@ -268,7 +268,9 @@ void main() {
       );
     });
 
-    test('resolveDownloadUrl falls back to universal APK when specific APK host is disallowed', () {
+    test(
+        'resolveDownloadUrl falls back to universal APK when specific APK host is disallowed',
+        () {
       final m = AppUpdateManifest.fromJson({
         'latest': '1.0.0',
         'channels': {

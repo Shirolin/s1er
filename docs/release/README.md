@@ -61,6 +61,7 @@ version: 0.1.0+1
      | `-android-x86_64.apk` | 仅 x86_64（模拟器等） |
 
    - Release 正文由 `release.ps1 create` 自动写入「下哪个包」选型表。
+   - **别忘了在 Release 正文里加上「更新内容」section**（`release.ps1 create` 生成的模板只有下载表，需要手动补更新要点）。
    - **Windows**：`s1er-…-windows-x64.zip`。
 6. 将 `pubspec.yaml` + `latest.json` + `whats_new.json` + `CHANGELOG.md` 等改动提交到 `main`（raw URL 指向 main）。
 

@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:url_launcher/url_launcher.dart';
 
+import '../app.dart' show rootNavigatorKey;
 import '../providers/update_check_provider.dart';
 import '../providers/update_download_provider.dart';
 import '../utils/post_link_resolver.dart';
@@ -26,16 +27,18 @@ Future<void> showAppUpdateDialog(
       ((Uri uri, {LaunchMode mode = LaunchMode.platformDefault}) =>
           launchUrl(uri, mode: mode));
 
+  final targetContext = rootNavigatorKey.currentContext ?? context;
+
   // Capture container before the dialog so reset still works after pop.
   ProviderContainer? captured;
   try {
-    captured = container ?? ProviderScope.containerOf(context);
+    captured = container ?? ProviderScope.containerOf(targetContext);
   } on Object {
     captured = container;
   }
 
   await showDialog<void>(
-    context: context,
+    context: targetContext,
     barrierDismissible: true,
     builder: (ctx) {
       final dialog = _AppUpdateDialogBody(

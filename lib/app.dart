@@ -68,7 +68,10 @@ ImageViewerScreen? _parseImageViewerRoute(GoRouterState state) {
   );
 }
 
+final rootNavigatorKey = GlobalKey<NavigatorState>();
+
 final _router = GoRouter(
+  navigatorKey: rootNavigatorKey,
   initialLocation: '/',
   routes: [
     GoRoute(path: '/', builder: (context, state) => const HomeScreen()),
@@ -286,13 +289,15 @@ class _S1AppState extends ConsumerState<S1App> with WidgetsBindingObserver {
         themeMode: themeMode,
         routerConfig: _router,
         builder: (context, child) {
-          return UpdatePromptHost(
-            child: WhatsNewPromptHost(
-              child: MediaQuery(
-                data: MediaQuery.of(
-                  context,
-                ).copyWith(textScaler: TextScaler.linear(textScaleFactor)),
-                child: S1DesktopWindowFrame(child: child!),
+          return MediaQuery(
+            data: MediaQuery.of(
+              context,
+            ).copyWith(textScaler: TextScaler.linear(textScaleFactor)),
+            child: S1DesktopWindowFrame(
+              child: UpdatePromptHost(
+                child: WhatsNewPromptHost(
+                  child: child!,
+                ),
               ),
             ),
           );

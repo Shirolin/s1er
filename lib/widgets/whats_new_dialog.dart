@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+import '../app.dart' show rootNavigatorKey;
 import '../models/whats_new_entry.dart';
 import '../screens/whats_new_screen.dart';
 import 'whats_new_entry_list.dart';
@@ -11,8 +12,9 @@ Future<void> showWhatsNewDialog(
   required VoidCallback onDismissed,
   bool showViewAll = true,
 }) async {
+  final targetContext = rootNavigatorKey.currentContext ?? context;
   await showDialog<void>(
-    context: context,
+    context: targetContext,
     barrierDismissible: true,
     builder: (ctx) {
       final scheme = Theme.of(ctx).colorScheme;

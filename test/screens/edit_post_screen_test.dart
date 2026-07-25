@@ -56,8 +56,138 @@ void main() {
     expect(find.text('编辑主题'), findsOneWidget);
     expect(find.text('主题标题'), findsOneWidget);
     expect(find.text('原标题'), findsOneWidget);
-    expect(find.text('保存编辑'), findsOneWidget);
+    expect(find.text('保存'), findsOneWidget);
     expect(find.text('原始正文'), findsOneWidget);
+  });
+
+  testWidgets('edit first post rejects empty title on submit', (tester) async {
+    await tester.pumpWidget(
+      ProviderScope(
+        overrides: [
+          localDataProvider.overrideWithValue(local),
+          authStateProvider.overrideWith(_LoggedInAuthNotifier.new),
+          composeControllerProvider.overrideWith(
+            (ref) => _EditComposeController(ref),
+          ),
+        ],
+        child: MaterialApp(
+          theme: AppTheme.lightTheme('purple'),
+          home: const ComposeScreen(
+            tid: '100',
+            fid: '4',
+            editPid: '200',
+            editIsFirst: true,
+          ),
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    await tester.enterText(find.byType(TextField).first, '');
+    await tester.tap(find.text('保存'));
+    await tester.pumpAndSettle();
+
+    expect(find.text('请输入标题'), findsOneWidget);
+    expect(find.text('确认编辑'), findsNothing);
+  });
+
+  testWidgets('edit reply without settings omits empty header', (tester) async {
+    await tester.pumpWidget(
+      ProviderScope(
+        overrides: [
+          localDataProvider.overrideWithValue(local),
+          authStateProvider.overrideWith(_LoggedInAuthNotifier.new),
+          composeControllerProvider.overrideWith(
+            (ref) => _ReplyOnlyEditComposeController(ref),
+          ),
+        ],
+        child: MaterialApp(
+          theme: AppTheme.lightTheme('purple'),
+          home: const ComposeScreen(
+            tid: '100',
+            fid: '4',
+            subject: '实体版好价讨论',
+            editPid: '200',
+            editIsFirst: false,
+          ),
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    expect(find.text('编辑回复'), findsOneWidget);
+    expect(find.text('主题标题'), findsNothing);
+    expect(find.textContaining('主题 · 实体版好价讨论'), findsOneWidget);
+  });
+
+  testWidgets('edit first post compact shows thread settings summary sheet',
+      (tester) async {
+    await tester.pumpWidget(
+      ProviderScope(
+        overrides: [
+          localDataProvider.overrideWithValue(local),
+          authStateProvider.overrideWith(_LoggedInAuthNotifier.new),
+          composeControllerProvider.overrideWith(
+            (ref) => _MetaEditComposeController(ref),
+          ),
+        ],
+        child: MaterialApp(
+          theme: AppTheme.lightTheme('purple'),
+          home: const ComposeScreen(
+            tid: '100',
+            fid: '4',
+            editPid: '200',
+            editIsFirst: true,
+          ),
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    expect(find.text('主题标题'), findsOneWidget);
+    expect(find.text('主题设置 · 软件 · 阅读权限 组A'), findsOneWidget);
+    expect(find.text('主题分类'), findsNothing);
+
+    await tester.tap(find.text('主题设置 · 软件 · 阅读权限 组A'));
+    await tester.pumpAndSettle();
+
+    expect(find.text('主题设置'), findsOneWidget);
+    expect(find.text('主题分类'), findsOneWidget);
+    expect(find.text('阅读权限'), findsOneWidget);
+    expect(find.byType(DropdownMenu<String>), findsNWidgets(2));
+  });
+
+  testWidgets('edit first post wide screen shows full save label and count',
+      (tester) async {
+    tester.view.physicalSize = const Size(1200, 800);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
+
+    await tester.pumpWidget(
+      ProviderScope(
+        overrides: [
+          localDataProvider.overrideWithValue(local),
+          authStateProvider.overrideWith(_LoggedInAuthNotifier.new),
+          composeControllerProvider.overrideWith(
+            (ref) => _EditComposeController(ref),
+          ),
+        ],
+        child: MaterialApp(
+          theme: AppTheme.lightTheme('purple'),
+          home: const ComposeScreen(
+            tid: '100',
+            fid: '4',
+            editPid: '200',
+            editIsFirst: true,
+          ),
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    expect(find.text('保存编辑'), findsOneWidget);
+    expect(find.textContaining('字'), findsOneWidget);
   });
 
   testWidgets('edit reply shows thread subject like compose reply',
@@ -271,7 +401,7 @@ void main() {
     final field = find.byType(TextField).last;
     await tester.enterText(field, '先⟦图2⟧再⟦图1⟧');
     await tester.pump();
-    await tester.tap(find.text('保存编辑'));
+    await tester.tap(find.text('保存'));
     await tester.pump();
     await tester.tap(find.text('确认编辑'));
     await tester.pump();
@@ -331,7 +461,7 @@ void main() {
     expect(find.text('编辑回复'), findsOneWidget);
     await tester.enterText(find.byType(TextField).last, '改过的正文');
     await tester.pump();
-    await tester.tap(find.text('保存编辑'));
+    await tester.tap(find.text('保存'));
     await tester.pumpAndSettle();
     await tester.tap(find.text('确认编辑'));
     await tester.pumpAndSettle();
@@ -394,7 +524,7 @@ void main() {
     expect(find.text('编辑回复'), findsOneWidget);
     await tester.enterText(find.byType(TextField).last, '改过的正文');
     await tester.pump();
-    await tester.tap(find.text('保存编辑'));
+    await tester.tap(find.text('保存'));
     await tester.pumpAndSettle();
     await tester.tap(find.text('确认编辑'));
     await tester.pumpAndSettle();
@@ -403,6 +533,95 @@ void main() {
     expect(popped?.isSuccess, isTrue);
     expect(router.state.uri.path, '/');
   });
+}
+
+class _ReplyOnlyEditComposeController extends ComposeController {
+  _ReplyOnlyEditComposeController(super.ref);
+
+  @override
+  Future<ForumAttachmentUploadInfo?> prefetchAttachmentUploadInfo({
+    required String fid,
+    String? tid,
+    String? editPid,
+    ForumAttachmentUploadInfo? seed,
+  }) async =>
+      null;
+
+  @override
+  Future<EditPostFormInfo> fetchEditPostForm({
+    required String fid,
+    required String tid,
+    required String pid,
+    required bool isFirst,
+  }) async {
+    return const EditPostFormInfo(
+      message: '回复正文',
+      formhash: 'fixture',
+      isFirst: false,
+    );
+  }
+
+  @override
+  Future<EditPostSubmitResult> submitEditPost({
+    required String fid,
+    required String tid,
+    required String pid,
+    required bool isFirst,
+    required String subject,
+    required String message,
+    String? typeId,
+    String? readPerm,
+    required EditPostFormInfo baseline,
+  }) async {
+    return const EditPostSubmitResult.success(message: '编辑成功');
+  }
+}
+
+class _MetaEditComposeController extends ComposeController {
+  _MetaEditComposeController(super.ref);
+
+  @override
+  Future<ForumAttachmentUploadInfo?> prefetchAttachmentUploadInfo({
+    required String fid,
+    String? tid,
+    String? editPid,
+    ForumAttachmentUploadInfo? seed,
+  }) async =>
+      null;
+
+  @override
+  Future<EditPostFormInfo> fetchEditPostForm({
+    required String fid,
+    required String tid,
+    required String pid,
+    required bool isFirst,
+  }) async {
+    return const EditPostFormInfo(
+      subject: '原标题',
+      message: '原始正文',
+      formhash: 'fixture',
+      isFirst: true,
+      selectedTypeId: '2',
+      selectedReadPermission: '1',
+      threadTypes: {'2': '软件'},
+      readPermissions: {'': '不限', '1': '组A'},
+    );
+  }
+
+  @override
+  Future<EditPostSubmitResult> submitEditPost({
+    required String fid,
+    required String tid,
+    required String pid,
+    required bool isFirst,
+    required String subject,
+    required String message,
+    String? typeId,
+    String? readPerm,
+    required EditPostFormInfo baseline,
+  }) async {
+    return const EditPostSubmitResult.success(message: '编辑成功');
+  }
 }
 
 class _EditComposeController extends ComposeController {

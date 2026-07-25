@@ -7,6 +7,8 @@ import 'package:s1er/models/post.dart';
 import 'package:s1er/models/quote_info.dart';
 import 'package:s1er/models/reply_submit_result.dart';
 import 'package:s1er/models/new_thread_form_info.dart';
+import 'package:s1er/models/edit_post_form_info.dart';
+import 'package:s1er/models/edit_post_submit_result.dart';
 import 'package:s1er/models/forum_attachment_upload_info.dart';
 import 'package:s1er/providers/auth_provider.dart';
 import 'package:s1er/providers/compose_provider.dart';
@@ -92,8 +94,8 @@ void main() {
     expect(find.textContaining('quoted content'), findsOneWidget);
     expect(find.textContaining('主题 · 示例主题标题'), findsOneWidget);
     expect(find.text('发送'), findsOneWidget);
-    expect(find.text('图片'), findsOneWidget);
-    expect(find.text('表情'), findsOneWidget);
+    expect(find.byTooltip('图片'), findsOneWidget);
+    expect(find.byTooltip('表情'), findsOneWidget);
     expect(find.byTooltip('预览'), findsOneWidget);
     expect(find.byIcon(Icons.image_outlined), findsOneWidget);
     expect(find.byType(FilledButton), findsOneWidget);
@@ -118,9 +120,42 @@ void main() {
     expect(find.text('发新主题'), findsOneWidget);
     expect(find.text('游戏论坛'), findsOneWidget);
     expect(find.text('主题标题'), findsOneWidget);
+    expect(find.text('主题设置 · 请选择分类'), findsOneWidget);
+    expect(find.text('主题分类'), findsNothing);
+    expect(find.byType(DropdownMenu<String>), findsNothing);
+    expect(find.text('发送'), findsOneWidget);
+
+    await tester.tap(find.text('主题设置 · 请选择分类'));
+    await tester.pumpAndSettle();
+    expect(find.text('主题设置'), findsOneWidget);
     expect(find.text('主题分类'), findsOneWidget);
     expect(find.byType(DropdownMenu<String>), findsOneWidget);
-    expect(find.text('发送'), findsOneWidget);
+  });
+
+  testWidgets('new thread shows inline category on wide screens',
+      (tester) async {
+    tester.view.physicalSize = const Size(1200, 800);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
+
+    await tester.pumpWidget(
+      ProviderScope(
+        overrides: [
+          ...buildOverrides(auth: _LoggedInAuthNotifier.new),
+          forumNameProvider('4').overrideWith((ref) => '游戏论坛'),
+        ],
+        child: MaterialApp(
+          theme: AppTheme.lightTheme('purple'),
+          home: const ComposeScreen(fid: '4', newThread: true),
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    expect(find.text('主题分类'), findsOneWidget);
+    expect(find.byType(DropdownMenu<String>), findsOneWidget);
+    expect(find.text('主题设置 · 请选择分类'), findsNothing);
   });
 
   testWidgets('ComposeScreen shows simple quote banner for reppost only',
@@ -265,8 +300,8 @@ void main() {
 
     expect(find.textContaining('主题 · 另一个主题'), findsOneWidget);
     expect(find.text('发送'), findsOneWidget);
-    expect(find.text('图片'), findsOneWidget);
-    expect(find.text('表情'), findsOneWidget);
+    expect(find.byTooltip('图片'), findsOneWidget);
+    expect(find.byTooltip('表情'), findsOneWidget);
     expect(find.byTooltip('预览'), findsOneWidget);
     expect(find.byIcon(Icons.image_outlined), findsOneWidget);
   });
@@ -284,7 +319,7 @@ void main() {
     );
     await tester.pumpAndSettle();
 
-    await tester.tap(find.text('表情'));
+    await tester.tap(find.byTooltip('表情'));
     await tester.pumpAndSettle();
     expect(find.text('麻将脸'), findsOneWidget);
 
@@ -478,6 +513,98 @@ void main() {
       S1Breakpoints.contentWidthLarge - 48,
     );
   });
+
+  testWidgets('ComposeScreen edit bottom bar fits narrow width',
+      (tester) async {
+    tester.view.physicalSize = const Size(360, 640);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
+
+    Object? layoutError;
+    final previousOnError = FlutterError.onError;
+    FlutterError.onError = (details) {
+      final message = details.exceptionAsString();
+      if (message.contains('RenderFlex overflowed')) {
+        layoutError = details.exception;
+      } else {
+        previousOnError?.call(details);
+      }
+    };
+    addTearDown(() {
+      FlutterError.onError = previousOnError;
+    });
+
+    await tester.pumpWidget(
+      ProviderScope(
+        overrides: [
+          localDataProvider.overrideWithValue(local),
+          authStateProvider.overrideWith(_LoggedInAuthNotifier.new),
+          composeControllerProvider.overrideWith(
+            (ref) => _EditComposeController(ref),
+          ),
+        ],
+        child: MaterialApp(
+          theme: AppTheme.lightTheme('purple'),
+          home: const ComposeScreen(
+            tid: '100',
+            fid: '4',
+            editPid: '200',
+            editIsFirst: true,
+          ),
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    expect(layoutError, isNull);
+    expect(find.text('保存'), findsOneWidget);
+    expect(find.byTooltip('表情'), findsOneWidget);
+    expect(find.byTooltip('图片'), findsOneWidget);
+  });
+}
+
+class _EditComposeController extends ComposeController {
+  _EditComposeController(super.ref);
+
+  @override
+  Future<ForumAttachmentUploadInfo?> prefetchAttachmentUploadInfo({
+    required String fid,
+    String? tid,
+    String? editPid,
+    ForumAttachmentUploadInfo? seed,
+  }) async =>
+      null;
+
+  @override
+  Future<EditPostFormInfo> fetchEditPostForm({
+    required String fid,
+    required String tid,
+    required String pid,
+    required bool isFirst,
+  }) async {
+    return const EditPostFormInfo(
+      subject: '原标题',
+      message: '原始正文',
+      formhash: 'fixture',
+      isFirst: true,
+    );
+  }
+
+  @override
+  Future<EditPostSubmitResult> submitEditPost({
+    required String fid,
+    required String tid,
+    required String pid,
+    required bool isFirst,
+    required String subject,
+    required String message,
+    String? typeId,
+    String? readPerm,
+    required EditPostFormInfo baseline,
+  }) async {
+    return const EditPostSubmitResult.success(message: '编辑成功');
+  }
 }
 
 class _StubComposeController extends ComposeController {

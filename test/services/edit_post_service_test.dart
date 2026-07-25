@@ -44,7 +44,76 @@ void main() {
     expect(form.canEdit, isTrue);
     expect(form.subject, '原标题');
     expect(form.selectedTypeId, '1');
-    expect(form.selectedReadPermission, '0');
+    expect(form.selectedReadPermission, '');
+    expect(form.readPermissions, {'': '不限', '10': '10'});
+  });
+
+  test('deduplicates repeated read permission options from forum HTML', () {
+    const html = '''
+<form>
+  <input type="hidden" name="formhash" value="fh" />
+  <input type="hidden" name="special" value="0" />
+  <input id="subject" value="原标题" />
+  <select id="readperm">
+    <option value="1" selected>1</option>
+    <option value="1">1</option>
+    <option value="1">1</option>
+    <option value="10">10</option>
+    <option value="10">10</option>
+    <option value="20">20</option>
+  </select>
+  <textarea id="e_textarea">正文</textarea>
+</form>
+''';
+    final form = ApiService.parseEditPostFormResponse(html, isFirst: true);
+    expect(form.readPermissions, {'1': '1', '10': '10', '20': '20'});
+    expect(form.selectedReadPermission, '1');
+  });
+
+  test('parses S1 readperm options with merged group labels', () {
+    const html = '''
+<form>
+  <input type="hidden" name="formhash" value="fh" />
+  <input type="hidden" name="special" value="0" />
+  <input id="subject" value="原标题" />
+  <select id="readperm">
+    <option value="">不限</option>
+    <option value="1" title="阅读权限: 1">YYY组</option>
+    <option value="1" title="阅读权限: 1">QQ游客</option>
+    <option value="1" title="阅读权限: 1">抹布</option>
+    <option value="10" title="阅读权限: 10">游客</option>
+    <option value="10" title="阅读权限: 10">等待验证会员</option>
+    <option value="20" title="阅读权限: 20">萌新</option>
+    <option value="20" title="阅读权限: 20">狂信者</option>
+    <option value="100" title="阅读权限: 100">半肾</option>
+    <option value="255" title="阅读权限: 255">2012</option>
+    <option value="255" title="阅读权限: 255">管理员</option>
+    <option value="255">最高权限</option>
+  </select>
+  <textarea id="e_textarea">正文</textarea>
+</form>
+''';
+    final form = ApiService.parseEditPostFormResponse(html, isFirst: true);
+
+    expect(form.readPermissions[''], '不限');
+    expect(
+      form.readPermissions['1'],
+      'YYY组 / QQ游客 / 抹布',
+    );
+    expect(
+      form.readPermissions['10'],
+      '游客 / 等待验证会员',
+    );
+    expect(
+      form.readPermissions['20'],
+      '萌新 / 狂信者',
+    );
+    expect(form.readPermissions['100'], '半肾');
+    expect(
+      form.readPermissions['255'],
+      '2012 / 管理员 / 最高权限',
+    );
+    expect(form.readPermissions.length, 6);
   });
 
   test('parses touch/mobile editor (#needmessage / #needsubject)', () {
@@ -178,7 +247,7 @@ void main() {
     expect(data['subject'], '新标题');
     expect(data['message'], '新正文');
     expect(data['typeid'], '1');
-    expect(data['readperm'], '0');
+    expect(data.containsKey('readperm'), isFalse);
     expect(data.containsKey('delete'), isFalse);
   });
 

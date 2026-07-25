@@ -32,11 +32,41 @@ void main() {
     expect(adapter.requests.single.method, 'GET');
   });
 
+  test('prefers web thread types over mobile API', () async {
+    final container = ProviderContainer();
+    addTearDown(container.dispose);
+    const webTypes = '''
+<select id="typeid">
+  <option value="0">选择主题分类</option>
+  <option value="47">网页分类</option>
+</select>
+<script>var typerequired = parseInt('1');</script>
+''';
+    final adapter = _CaptureAdapter([
+      '{"Variables":{"formhash":"fh","threadtypes":{"required":"1","types":{"1":"API分类"}}},"Message":{}}',
+      webTypes,
+    ]);
+    final api = ApiService(
+      S1HttpClient.test(container, Dio()..httpClientAdapter = adapter),
+    );
+
+    final form = await api.fetchNewThreadForm(fid: '4');
+    expect(form.threadTypes, {'47': '网页分类'});
+    expect(form.typeRequired, isTrue);
+    expect(adapter.requests, hasLength(2));
+    expect(adapter.requests[1].path, contains('action=newthread'));
+  });
+
   test('allowed form submits the newthread field contract once', () async {
     final container = ProviderContainer();
     addTearDown(container.dispose);
+    const webTypes = '''
+<select id="typeid"><option value="47">网页分类</option></select>
+<script>var typerequired = parseInt('1');</script>
+''';
     final adapter = _CaptureAdapter([
       '{"Variables":{"formhash":"fh","threadtypes":{"required":"1","types":{"1":"分类"}}},"Message":{}}',
+      webTypes,
       '{"Variables":{"tid":"900","pid":"901"},"Message":{"messageval":"post_newthread_succeed","messagestr":"succeed"}}',
     ]);
     final api = ApiService(
@@ -47,24 +77,40 @@ void main() {
       fid: '4',
       subject: '标题',
       message: '正文',
-      typeId: '1',
+      typeId: '47',
     );
 
     expect(result.isSuccess, isTrue);
     expect(result.tid, '900');
-    expect(adapter.requests, hasLength(2));
-    final request = adapter.requests[1];
+    expect(adapter.requests, hasLength(3));
+    final request = adapter.requests[2];
     expect(request.method, 'POST');
     expect(request.path, contains('module=${ApiConfig.moduleNewThread}'));
     expect(request.path, contains('topicsubmit=yes'));
     final data = request.data as Map;
     expect(data['formhash'], 'fh');
-    expect(data['typeid'], '1');
+    expect(data['typeid'], '47');
     expect(data['subject'], '标题');
     expect(data['message'], '正文');
     expect(data['allownoticeauthor'], '1');
     expect(data['usesig'], '1');
     expect(data.containsKey('save'), isFalse);
+  });
+
+  test('falls back to API types when web page has no typeid', () async {
+    final container = ProviderContainer();
+    addTearDown(container.dispose);
+    final adapter = _CaptureAdapter([
+      '{"Variables":{"formhash":"fh","threadtypes":{"required":"0","types":{"1":"API分类"}}},"Message":{}}',
+      '<form></form>',
+    ]);
+    final api = ApiService(
+      S1HttpClient.test(container, Dio()..httpClientAdapter = adapter),
+    );
+
+    final form = await api.fetchNewThreadForm(fid: '4');
+    expect(form.threadTypes, {'1': 'API分类'});
+    expect(form.typeRequired, isFalse);
   });
 
   test('successful marker without tid is treated as unknown failure', () {

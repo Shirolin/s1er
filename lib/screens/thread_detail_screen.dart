@@ -634,8 +634,14 @@ class _ThreadDetailScreenState extends ConsumerState<ThreadDetailScreen> {
 
     final result = await context.push<ReplySubmitResult>(query.toString());
     if (!mounted || result == null || !result.isSuccess) return;
-
     await _afterReplySubmitted(result, state);
+    if (mounted) {
+      S1SnackBar.show(
+        context,
+        message: '回复成功',
+        feedback: S1SnackBarFeedback.success,
+      );
+    }
   }
 
   Future<void> _openEdit(PostListState state, Post post) async {
@@ -663,6 +669,13 @@ class _ThreadDetailScreenState extends ConsumerState<ThreadDetailScreen> {
     );
     if (!mounted || result == null || !result.isSuccess) return;
     await ref.read(postProvider(widget.tid).notifier).refresh();
+    if (mounted) {
+      S1SnackBar.show(
+        context,
+        message: '编辑成功',
+        feedback: S1SnackBarFeedback.success,
+      );
+    }
   }
 
   Future<void> _openRateDialog(Post post) async {

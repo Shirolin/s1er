@@ -30,6 +30,8 @@ import '../utils/error_handler.dart';
 import '../utils/discuz_message.dart';
 import '../utils/forum_attachment_submit.dart';
 import '../utils/forum_attachment_upload_info_parser.dart';
+import '../utils/new_thread_form_parser.dart';
+import '../utils/read_perm_options.dart';
 import '../models/forum_attachment_upload_info.dart';
 import 'formhash_service.dart';
 import 'http_client.dart';
@@ -176,6 +178,9 @@ class ApiService {
   }
 
   /// 只读预检新主题权限，并缓存响应中的 formhash。
+  ///
+  /// 主题分类优先从网页发帖助手 (`forum.php?mod=post&action=newthread`) 解析，
+  /// 与 S1-Next 对齐；Mobile API 的 `threadtypes` 仅作回退。
   Future<NewThreadFormInfo> fetchNewThreadForm({required String fid}) async {
     try {
       final response = await _httpClient.get(
@@ -183,22 +188,51 @@ class ApiService {
       );
       _httpClient.cacheFormhashFromResponse(response.data);
       final json = ensureJson(response.data);
-      final result = parseNewThreadForm(json);
-      if (result.formhash == null || result.formhash!.isEmpty) {
+      final apiResult = parseNewThreadForm(json);
+      if (apiResult.error != null) return apiResult;
+
+      var threadTypes = apiResult.threadTypes;
+      var typeRequired = apiResult.typeRequired;
+      try {
+        final webResponse = await _httpClient.get(
+          ApiConfig.newThreadEditorUrl(fid: fid),
+          options: Options(
+            responseType: ResponseType.plain,
+            extra: const {'s1DesktopUa': true},
+          ),
+        );
+        final webForm = parseNewThreadFormHtml(
+          webResponse.data?.toString() ?? '',
+        );
+        if (webForm.threadTypes.isNotEmpty) {
+          threadTypes = webForm.threadTypes;
+        }
+        if (webForm.typeRequired != null) {
+          typeRequired = webForm.typeRequired!;
+        }
+      } catch (e, st) {
+        talker.handle(e, st, 'fetchNewThreadForm web types fallback');
+      }
+
+      if (apiResult.formhash == null || apiResult.formhash!.isEmpty) {
         return NewThreadFormInfo(
-          threadTypes: result.threadTypes,
-          typeRequired: result.typeRequired,
-          error: result.error ?? '无法获取发帖表单验证串，请稍后重试',
+          threadTypes: threadTypes,
+          typeRequired: typeRequired,
+          error: '无法获取发帖表单验证串，请稍后重试',
         );
       }
-      if (result.typeRequired && result.threadTypes.isEmpty) {
+      if (typeRequired && threadTypes.isEmpty) {
         return NewThreadFormInfo(
-          formhash: result.formhash,
+          formhash: apiResult.formhash,
           typeRequired: true,
           error: '服务器未返回必需的主题分类，请稍后重试',
         );
       }
-      return result;
+      return NewThreadFormInfo(
+        threadTypes: threadTypes,
+        typeRequired: typeRequired,
+        formhash: apiResult.formhash,
+      );
     } catch (e, st) {
       return NewThreadFormInfo(error: friendlyError(e, '加载发帖表单', st));
     }
@@ -386,16 +420,16 @@ class ApiService {
         if (option.attributes.containsKey('selected')) selectedTypeId = value;
       }
       final permissionSelect = document.querySelector('select#readperm');
-      final permissions = <String>[];
+      final permissionOptions = <({String value, String label})>[];
       String? selectedPermission;
       for (final option in permissionSelect?.querySelectorAll('option') ?? []) {
         final value = option.attributes['value']?.trim() ?? '';
-        if (value.isEmpty) continue;
-        permissions.add(value);
+        permissionOptions.add((value: value, label: option.text.trim()));
         if (option.attributes.containsKey('selected')) {
-          selectedPermission = value;
+          selectedPermission = normalizeReadPermValue(value);
         }
       }
+      final permissions = mergeReadPermOptions(permissionOptions);
       final special = int.tryParse(
             document
                     .querySelector('input[name="special"]')
@@ -457,6 +491,7 @@ class ApiService {
     String? readPerm,
     required EditPostFormInfo baseline,
   }) async {
+    final normalizedReadPerm = normalizeSelectedReadPerm(readPerm);
     final latest = await fetchEditPostForm(
       fid: fid,
       tid: tid,
@@ -487,8 +522,8 @@ class ApiService {
       'usesig': '1',
     };
     if (typeId != null && typeId.trim().isNotEmpty) data['typeid'] = typeId;
-    if (readPerm != null && readPerm.trim().isNotEmpty) {
-      data['readperm'] = readPerm;
+    if (normalizedReadPerm != null && normalizedReadPerm.isNotEmpty) {
+      data['readperm'] = normalizedReadPerm;
     }
     appendAttachNewFields(
       data,
@@ -522,7 +557,7 @@ class ApiService {
         subject: submittedSubject,
         message: submittedMessage,
         typeId: typeId,
-        readPerm: readPerm,
+        readPerm: normalizedReadPerm,
       );
       if (verified) {
         return const EditPostSubmitResult.success(message: '编辑成功');
@@ -538,7 +573,7 @@ class ApiService {
         subject: submittedSubject,
         message: submittedMessage,
         typeId: typeId,
-        readPerm: readPerm,
+        readPerm: normalizedReadPerm,
       );
       if (verified) {
         return const EditPostSubmitResult.success(message: '编辑成功');
@@ -575,10 +610,12 @@ class ApiService {
           latest.selectedTypeId != typeId) {
         return false;
       }
-      if (readPerm != null &&
-          readPerm.trim().isNotEmpty &&
-          latest.selectedReadPermission != readPerm) {
-        return false;
+      if (readPerm != null && readPerm.isNotEmpty) {
+        final latestReadPerm =
+            normalizeReadPermValue(latest.selectedReadPermission ?? '');
+        if (latestReadPerm != readPerm) {
+          return false;
+        }
       }
       return true;
     } catch (e, st) {

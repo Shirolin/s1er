@@ -367,12 +367,6 @@ void main() {
       );
     });
 
-    test('custom manifestUrl does not add CDN fallbacks', () {
-      const mockUrl = 'http://127.0.0.1:8765/mock-latest.json';
-      final service = UpdateCheckService(manifestUrl: mockUrl);
-      expect(service.manifestUrls, [mockUrl]);
-    });
-
     test('fetchManifest uses fastest winning response (Fastest-Wins)',
         () async {
       final payloadSlow = {

@@ -217,7 +217,6 @@ flutter run -d chrome --dart-define=TALKER_LOG_LEVEL=all --dart-define=TALKER_MA
 - **Android 应用内更新按 ABI 选包**：`UpdateCheckService.resolveAndroidApkUrl` 优先 `androidArm64V8aApk` / `androidArmeabiV7aApk` / `androidX8664Apk`；`androidApk`（universal）仅为回退。**禁止**把应用内更新「简化」为只下 universal，或让 `manifest` 只写 `androidApk`。
 - **`manifest` 必须写入四个 APK 直链**（`release.ps1` 已内置校验，缺字段会抛错）。改发版逻辑时须同步 `docs/release/README.md` 与相关测试。
 - **版本比较只看 `pubspec` name**（如 `0.3.5`），忽略 `+build`；仅抬 build 不必改 `latest`。
-- **预览更新弹窗（开发）**：`dart run scripts/serve_mock_manifest.dart` + `flutter run --dart-define=UPDATE_MANIFEST_URL=http://127.0.0.1:8765/mock-latest.json`；自定义清单 URL 时不应回退 CDN 正式清单（见 `UpdateCheckService._buildManifestUrls`）。
 
 ---
 

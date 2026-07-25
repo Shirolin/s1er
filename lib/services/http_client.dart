@@ -133,6 +133,11 @@ class S1HttpClient {
           }
 
           _applyForumPostHeaders(options);
+          // Native auth images: CookieManager 只按请求 host 匹配；若登录
+          // Cookie 是 host-only（无 Domain=.stage1st.com），不会带到
+          // img.stage1st.com。与 proxy_server _attachCookies 对齐，强制带上
+          // API 会话 Cookie + Referer（CDN/源站防盗链）。
+          await _applyAuthImageRequest(options);
 
           if (_isWeb) {
             final uri = Uri.parse(options.path);
@@ -432,6 +437,57 @@ class S1HttpClient {
       }
     }
     options.headers['X-Requested-With'] = 'XMLHttpRequest';
+  }
+
+  /// Native `img.stage1st.com` 等认证图：补 Referer / Accept，并用 API 域会话 Cookie。
+  ///
+  /// Web 走 `/img-proxy`，由 [scripts/proxy_server.dart] 注入同等头，此处跳过。
+  Future<void> _applyAuthImageRequest(RequestOptions options) async {
+    if (_isWeb) return;
+
+    final uri = _requestUri(options);
+    if (ResourceDomains.match(uri.host)?.type != ResourceType.authImage) {
+      return;
+    }
+
+    applyAuthImageHeaders(options);
+
+    final jar = _cookieJar;
+    if (jar == null) return;
+
+    final cookies = await jar.loadForRequest(
+      Uri.parse('https://${ResourceDomains.apiHost}/2b/'),
+    );
+    applyAuthImageSessionCookies(options, cookies);
+  }
+
+  /// 设置认证图请求的 Referer / Accept（与代理 `/img-proxy` 一致）。
+  @visibleForTesting
+  static void applyAuthImageHeaders(RequestOptions options) {
+    final existingReferer =
+        options.headers['Referer'] ?? options.headers['referer'];
+    if (existingReferer is! String || existingReferer.isEmpty) {
+      final host = _requestUri(options).host;
+      options.headers['Referer'] = ResourceDomains.getReferer(host);
+    }
+    options.headers['Accept'] = 'image/*,*/*;q=0.8';
+  }
+
+  /// 将会话 Cookie 写入认证图请求（忽略 Cookie 原 Domain，对齐代理行为）。
+  @visibleForTesting
+  static void applyAuthImageSessionCookies(
+    RequestOptions options,
+    List<Cookie> cookies,
+  ) {
+    final matched = <String>[];
+    for (final cookie in cookies) {
+      if (cookie.name.startsWith(ResourceDomains.cookiePrefix)) {
+        matched.add('${cookie.name}=${cookie.value}');
+      }
+    }
+    if (matched.isNotEmpty) {
+      options.headers['Cookie'] = matched.join('; ');
+    }
   }
 
   static Uri _requestUri(RequestOptions options) {

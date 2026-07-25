@@ -1208,9 +1208,12 @@ class _ComposeScreenState extends ConsumerState<ComposeScreen> {
           .read(composeControllerProvider)
           .applySignature(_previewBodyWithMedia(message));
     } else {
+      // 回复/新帖：正文里已 inline `[attachimg]`，勿再 appendComposeMedia（会重复）。
+      // 预览需改写成 `[img]url[/img]`，否则 BbcodeRenderer 看不到图。
       quoteInfo = _quoting ? _quoteInfo : null;
-      previewBbcode =
-          await ref.read(composeControllerProvider).applySignature(message);
+      previewBbcode = await ref.read(composeControllerProvider).applySignature(
+            rewriteAttachimgForPreview(message, _attachImageUrls),
+          );
     }
     if (!mounted) return;
 

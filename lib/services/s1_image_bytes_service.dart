@@ -37,10 +37,14 @@ class S1ImageBytesService {
       await S1ImageCache.putBytes(url, bytes);
       return bytes;
     } on DioException catch (e, st) {
-      // 404 = missing avatar / deleted attachment; other network errors
-      // (CORS, timeout, connection refused, etc.) are equally non-fatal —
-      // callers render a placeholder when bytes are null.
-      talker.handle(e, st, 'Fetch image bytes failed: $url');
+      // 403 = CDN/源站拒未登录或防盗链；404 = 缺失附件/头像。
+      // 其它网络错误同样非致命 — 调用方在 bytes == null 时渲染占位。
+      final code = e.response?.statusCode;
+      if (code == 403 || code == 404) {
+        talker.warning('Fetch image bytes failed ($code): $url');
+      } else {
+        talker.handle(e, st, 'Fetch image bytes failed: $url');
+      }
       return null;
     } catch (e, st) {
       talker.handle(e, st, 'Fetch image bytes failed: $url');

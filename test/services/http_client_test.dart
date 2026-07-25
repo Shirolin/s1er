@@ -1,9 +1,45 @@
+import 'package:cookie_jar/cookie_jar.dart';
 import 'package:dio/dio.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:s1er/config/resource_domains.dart';
 import 'package:s1er/services/http_client.dart';
 
 void main() {
+  test('auth image headers set Referer and Accept', () {
+    final options = RequestOptions(
+      path: 'https://img.stage1st.com/forum/a.png',
+    );
+    S1HttpClient.applyAuthImageHeaders(options);
+    expect(options.headers['Referer'], ResourceDomains.defaultReferer);
+    expect(options.headers['Accept'], 'image/*,*/*;q=0.8');
+  });
+
+  test('auth image headers keep an existing Referer', () {
+    final options = RequestOptions(
+      path: 'https://img.stage1st.com/forum/a.png',
+      headers: {'Referer': 'https://stage1st.com/2b/forum.php'},
+    );
+    S1HttpClient.applyAuthImageHeaders(options);
+    expect(options.headers['Referer'], 'https://stage1st.com/2b/forum.php');
+  });
+
+  test('auth image session cookies copy API-domain cookies', () {
+    final options = RequestOptions(
+      path: 'https://img.stage1st.com/forum/a.png',
+    );
+    S1HttpClient.applyAuthImageSessionCookies(options, [
+      Cookie('${ResourceDomains.cookiePrefix}auth', 'token')..path = '/',
+      Cookie('${ResourceDomains.cookiePrefix}saltkey', 'salt')..path = '/',
+      Cookie('unrelated', 'nope')..path = '/',
+    ]);
+    expect(
+      options.headers['Cookie'],
+      '${ResourceDomains.cookiePrefix}auth=token; '
+      '${ResourceDomains.cookiePrefix}saltkey=salt',
+    );
+  });
+
   test('serializes concurrent request rate-limit admission', () async {
     var now = DateTime(2026);
     final waits = <Duration>[];

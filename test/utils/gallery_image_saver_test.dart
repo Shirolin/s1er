@@ -1,3 +1,4 @@
+import 'dart:io';
 import 'dart:typed_data';
 
 import 'package:flutter_test/flutter_test.dart';
@@ -26,6 +27,8 @@ Uint8List _webpMagicOnly() {
 }
 
 void main() {
+  TestWidgetsFlutterBinding.ensureInitialized();
+
   group('gallery_image_saver magic sniffers', () {
     test('detects PNG / JPEG / WebP signatures', () {
       expect(isPngImageBytes(_tinyPng()), isTrue);
@@ -41,6 +44,26 @@ void main() {
       expect(isPngImageBytes(Uint8List(0)), isFalse);
       expect(isJpegImageBytes(Uint8List.fromList([0xff])), isFalse);
       expect(isWebpImageBytes(Uint8List(8)), isFalse);
+    });
+
+    test(
+        'saveImageBytesToGallery writes to customDirectory on desktop platform',
+        () async {
+      final tempDir = Directory.systemTemp.createTempSync('s1er_save_test');
+      try {
+        final result = await saveImageBytesToGallery(
+          bytes: _tinyPng(),
+          fileName: 'test_custom.png',
+          customDirectory: tempDir.path,
+        );
+        expect(result, equals(SaveImageResultStatus.success));
+        final file = File('${tempDir.path}/test_custom.png');
+        expect(file.existsSync(), isTrue);
+      } finally {
+        if (tempDir.existsSync()) {
+          tempDir.deleteSync(recursive: true);
+        }
+      }
     });
   });
 }

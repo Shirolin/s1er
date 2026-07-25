@@ -6,6 +6,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../config/app_icon_catalog.dart';
 import '../models/image_load_policy.dart';
 import '../models/list_density.dart';
+import '../models/share_save_mode.dart';
 import '../models/share_image_format.dart';
 import '../models/share_pixel_ratio.dart';
 import '../config/constants.dart';
@@ -37,6 +38,8 @@ class AppSettings {
     this.hiddenForums = const {},
     this.shareImageFormat = ShareImageFormat.webp,
     this.sharePixelRatio = SharePixelRatio.defaultValue,
+    this.shareSaveMode = ShareSaveMode.autoDir,
+    this.customExportPath,
     this.postSignatureEnabled = true,
     this.postSignatureShowDevice = true,
     this.postSignatureCustom = '',
@@ -60,6 +63,8 @@ class AppSettings {
   final Set<String> hiddenForums;
   final ShareImageFormat shareImageFormat;
   final double sharePixelRatio;
+  final ShareSaveMode shareSaveMode;
+  final String? customExportPath;
   final bool postSignatureEnabled;
   final bool postSignatureShowDevice;
   final String postSignatureCustom;
@@ -85,6 +90,8 @@ class AppSettings {
     Set<String>? hiddenForums,
     ShareImageFormat? shareImageFormat,
     double? sharePixelRatio,
+    ShareSaveMode? shareSaveMode,
+    Object? customExportPath = _Sentinel.value,
     bool? postSignatureEnabled,
     bool? postSignatureShowDevice,
     String? postSignatureCustom,
@@ -108,6 +115,10 @@ class AppSettings {
       hiddenForums: hiddenForums ?? this.hiddenForums,
       shareImageFormat: shareImageFormat ?? this.shareImageFormat,
       sharePixelRatio: sharePixelRatio ?? this.sharePixelRatio,
+      shareSaveMode: shareSaveMode ?? this.shareSaveMode,
+      customExportPath: customExportPath == _Sentinel.value
+          ? this.customExportPath
+          : customExportPath as String?,
       postSignatureEnabled: postSignatureEnabled ?? this.postSignatureEnabled,
       postSignatureShowDevice:
           postSignatureShowDevice ?? this.postSignatureShowDevice,
@@ -334,6 +345,11 @@ class SettingsNotifier extends Notifier<AppSettings> {
       sharePixelRatio: SharePixelRatio.normalize(
         settingsStore.get<Object>('sharePixelRatio'),
       ),
+      shareSaveMode: ShareSaveMode.values.firstWhere(
+        (e) => e.name == settingsStore.get<String>('shareSaveMode'),
+        orElse: () => ShareSaveMode.autoDir,
+      ),
+      customExportPath: settingsStore.get<String>('customExportPath'),
       collapsedForums: Set<String>.from(
         (settingsStore.get<List<dynamic>>('collapsedForums'))?.cast<String>() ??
             [],
@@ -359,6 +375,16 @@ class SettingsNotifier extends Notifier<AppSettings> {
           '',
       customFontFileName: settingsStore.get<String>('customFontFileName'),
     );
+  }
+
+  void setShareSaveMode(ShareSaveMode value) {
+    _commit(state.copyWith(shareSaveMode: value));
+    _persist('shareSaveMode', value.name);
+  }
+
+  void setCustomExportPath(String? path) {
+    _commit(state.copyWith(customExportPath: path));
+    _persist('customExportPath', path);
   }
 
   Future<String> importCustomFont(XFile file) async {

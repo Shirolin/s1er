@@ -1,10 +1,12 @@
-import 'dart:typed_data';
+import 'dart:io';
 
+import 'package:file_selector/file_selector.dart';
+import 'package:flutter/foundation.dart';
 import 'package:gal/gal.dart';
 import 'package:path/path.dart' as p;
 import 'package:path_provider/path_provider.dart';
-import 'package:share_plus/share_plus.dart';
 
+import '../models/share_save_mode.dart';
 import 'share_native_image_encoder.dart';
 
 /// Whether [bytes] look like a RIFF/WebP container.
@@ -38,21 +40,53 @@ bool isJpegImageBytes(Uint8List bytes) {
   return bytes.length >= 2 && bytes[0] == 0xff && bytes[1] == 0xd8;
 }
 
-/// Saves image [bytes] to the system gallery.
+/// Result of a save image operation.
+enum SaveImageResultStatus {
+  success,
+  cancelled,
+  fallbackSuccess,
+}
+
+/// Saves image [bytes] to the system gallery or specified desktop folder.
 ///
-/// Prefer temp file + [Gal.putImage] over [Gal.putImageBytes]:
-///
-/// - **Android**: `putImageBytes` uses commons-imaging `1.0-alpha3`, which
-///   cannot sniff WebP (`Imaging.guessFormat` → `UNKNOWN` → `.bin`). That
-///   breaks MediaStore inserts for share-card WebP exports. `putImage(path)`
-///   uses the file extension instead and keeps `.webp`.
-/// - If the OS / OEM still rejects WebP, fall back to a PNG re-encode.
-///
-/// [fileName] should include an extension matching [bytes] (e.g. `s1_1.webp`).
-Future<void> saveImageBytesToGallery({
+/// Returns [SaveImageResultStatus] to indicate whether saved directly, via prompt or cancelled.
+Future<SaveImageResultStatus> saveImageBytesToGallery({
   required Uint8List bytes,
   required String fileName,
+  String? customDirectory,
+  ShareSaveMode saveMode = ShareSaveMode.autoDir,
 }) async {
+  final isDesktop =
+      !kIsWeb && (Platform.isWindows || Platform.isMacOS || Platform.isLinux);
+
+  if (isDesktop) {
+    if (saveMode == ShareSaveMode.promptSaveAs) {
+      final saveLocation = await getSaveLocation(
+        suggestedName: fileName,
+      );
+      if (saveLocation == null) {
+        return SaveImageResultStatus.cancelled;
+      }
+      final file = File(saveLocation.path);
+      await file.writeAsBytes(bytes);
+      return SaveImageResultStatus.success;
+    }
+
+    if (customDirectory != null && customDirectory.trim().isNotEmpty) {
+      final targetDir = Directory(customDirectory.trim());
+      try {
+        if (!targetDir.existsSync()) {
+          targetDir.createSync(recursive: true);
+        }
+        final targetPath = p.join(targetDir.path, fileName);
+        await File(targetPath).writeAsBytes(bytes);
+        return SaveImageResultStatus.success;
+      } on Object {
+        // Fallback to Gal / default system pictures folder on permission/directory failure
+      }
+    }
+  }
+
   final dir = await getTemporaryDirectory();
   final path = p.join(dir.path, fileName);
   await XFile.fromData(bytes, name: fileName).saveTo(path);
@@ -73,4 +107,9 @@ Future<void> saveImageBytesToGallery({
     await XFile.fromData(pngBytes, name: pngName).saveTo(pngPath);
     await Gal.putImage(pngPath);
   }
+  return (isDesktop &&
+          customDirectory != null &&
+          customDirectory.trim().isNotEmpty)
+      ? SaveImageResultStatus.fallbackSuccess
+      : SaveImageResultStatus.success;
 }

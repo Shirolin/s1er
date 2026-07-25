@@ -35,8 +35,8 @@ void main() {
     );
     await tester.pumpAndSettle();
 
-    final card = find.ancestor(
-      of: find.text('分享'),
+    final card = find.descendant(
+      of: find.byType(ShareSettingsSection),
       matching: find.byType(Card),
     );
     expect(tester.getSize(card).width, greaterThan(1000));

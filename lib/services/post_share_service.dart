@@ -197,14 +197,28 @@ class _SharePreviewSheetState extends ConsumerState<_SharePreviewSheet> {
       return;
     }
 
+    String successToast = '已保存到相册';
     try {
       if (kIsWeb) {
         await downloadImageWeb(encoded.bytes, _fileNameFor(encoded.format));
+        successToast = '下载已开始';
       } else {
-        await saveImageBytesToGallery(
+        final settings = ref.read(settingsProvider);
+        final result = await saveImageBytesToGallery(
           bytes: encoded.bytes,
           fileName: _fileNameFor(encoded.format),
+          customDirectory: settings.customExportPath,
+          saveMode: settings.shareSaveMode,
         );
+        if (result == SaveImageResultStatus.cancelled) {
+          _finishQuietly();
+          return;
+        } else if (result == SaveImageResultStatus.fallbackSuccess) {
+          successToast = '原目录不可用，已自动保存至系统图片文件夹';
+        } else if (settings.customExportPath != null &&
+            settings.customExportPath!.isNotEmpty) {
+          successToast = '已保存至自定义目录';
+        }
       }
     } catch (e) {
       if (!mounted) return;
@@ -213,7 +227,7 @@ class _SharePreviewSheetState extends ConsumerState<_SharePreviewSheet> {
     }
 
     if (!mounted) return;
-    _finishWithMessage(kIsWeb ? '下载已开始' : '已保存到相册');
+    _finishWithMessage(successToast);
   }
 
   void _showStatus(String message, {required bool isError}) {

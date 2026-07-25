@@ -46,15 +46,39 @@ version=3。所有请求走 `ApiConfig.mobileApiUrl`，通过 query params 指�
 
 ## search.php（主题 / 用户搜索）
 
-> Discuz 搜索：`POST /2b/search.php?searchsubmit=yes&mod=forum|user`，body 含 `formhash` + `srchtxt`。响应为 HTML（非 Mobile JSON）。
+> Discuz 搜索：`POST /2b/search.php?searchsubmit=yes&mod=forum|user`，body 含 `formhash` + 搜索字段。响应为 HTML（非 Mobile JSON）。
+
+### 快速搜索
+
+| 字段 | 说明 |
+|------|------|
+| `formhash` | CSRF token（必填） |
+| `srchtxt` | 关键词 |
+| `searchsubmit` | `yes` |
+
+### 主题高级搜索（`search.php?mod=forum&adv=yes`）
+
+客户端模型：[`ForumSearchQuery`](../lib/models/forum_search_query.dart) → `toPostFields()`。
+
+| 字段 | 类型 | 说明 |
+|------|------|------|
+| `srchtxt` | string | 关键词（可与 `srchuname` 二选一或同时填写） |
+| `srchuname` | string | 作者用户名 |
+| `srchfilter` | `all` / `digest` / `top` | 主题范围 |
+| `special` | `1`–`5`（POST 为 `special[]=…`） | 投票 / 商品 / 悬赏 / 活动 / 辩论 |
+| `srchfrom` | 秒 | `0` 全部；`86400` 1 天 … `31536000` 1 年 |
+| `before` | `1` 或省略 | `1` = 以前；省略 = 以内 |
+| `orderby` | string | `lastpost` / `dateline` / `replies` / `views`；商品主题另有 `price` / `expiration` |
+| `ascdesc` | `asc` / `desc` | 排序方向 |
+| `srchfid` | fid 列表或 `all`（POST 为 `srchfid[]=…`） | 快速搜索可省略；高级搜索空选时须传 `all` |
 
 | | 主题 `mod=forum` | 用户 `mod=user` |
 |--|------------------|-----------------|
-| 入口 | 登录态「搜索」Tab → 主题 | 同 Tab → 用户 |
-| 首次请求 | POST + formhash | POST + formhash |
+| 入口 | 登录态「搜索」Tab → 主题 →「高级」 | 同 Tab → 用户 |
+| 首次请求 | POST + formhash + 筛选字段 | POST + formhash + `srchtxt` |
 | 翻页 | GET `pageHref`（`searchid` + `page=`） | 通常单页 |
 | 解析 | 桌面 `li.pbw` / 移动 `li.list`、`div.pg` | 移动提示页继续 `forcemobile=1`，再解析 `li.bbda.cl` |
-| 限流 | 用户组 `allowsearch`（常见 30s）；客户端另有 30s 提交冷却 | 同左 |
+| 限流 | 用户组 `allowsearch`（常见 30s）；客户端另有 60s 提交冷却 | 同左 |
 
 主题结果结构化为 `tid` / 标题 / 摘要 / 版块 / 作者 / 时间，点击进 `/thread/{tid}`。用户结果打开资料 sheet。
 

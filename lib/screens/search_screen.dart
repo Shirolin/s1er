@@ -14,6 +14,7 @@ import '../utils/thread_navigation.dart';
 import '../widgets/s1_error_view.dart';
 import '../widgets/s1_list_boundary_footer.dart';
 import '../widgets/s1_scroll_boundary_listener.dart';
+import '../widgets/forum_search_advanced_sheet.dart';
 import '../widgets/pagination_bar.dart';
 import '../widgets/user_profile_sheet.dart';
 import '../widgets/web_avatar.dart';
@@ -52,13 +53,36 @@ class _SearchScreenState extends ConsumerState<SearchScreen> {
     await ref.read(searchProvider.notifier).submit(_controller.text);
   }
 
+  Future<void> _openAdvancedSearch() async {
+    final state = ref.read(searchProvider);
+    final result = await showForumSearchAdvancedSheet(
+      context: context,
+      initialQuery: state.forumQuery.copyWith(keyword: _controller.text),
+    );
+    if (result == null || !mounted) return;
+    ref.read(searchProvider.notifier).updateForumQuery(result);
+    _controller.text = result.keyword;
+    await _submit();
+  }
+
   @override
   Widget build(BuildContext context) {
     final scheme = Theme.of(context).colorScheme;
     final textTheme = Theme.of(context).textTheme;
     final state = ref.watch(searchProvider);
     final hasQuery = _controller.text.trim().isNotEmpty;
-    final canSubmit = hasQuery && !state.isLoading && !state.isCoolingDown;
+    final hasForumInput = hasQuery || state.forumQuery.trimmedAuthor.isNotEmpty;
+    final canSubmitInput =
+        state.type == SearchType.user ? hasQuery : hasForumInput;
+    final canSubmit =
+        canSubmitInput && !state.isLoading && !state.isCoolingDown;
+    final submitTooltip = state.isCoolingDown
+        ? '搜索间隔中'
+        : canSubmitInput
+            ? '搜索'
+            : state.type == SearchType.user
+                ? '请输入搜索关键词'
+                : '请输入关键词或作者';
 
     return Column(
       children: [
@@ -89,44 +113,87 @@ class _SearchScreenState extends ConsumerState<SearchScreen> {
         ),
         Padding(
           padding: const EdgeInsets.fromLTRB(16, 0, 16, 8),
-          child: SearchBar(
-            controller: _controller,
-            focusNode: _focusNode,
-            hintText: state.type == SearchType.forum ? '搜索主题…' : '搜索用户…',
-            leading: const Icon(Icons.search),
-            trailing: [
-              if (hasQuery)
-                IconButton(
-                  tooltip: '清除',
+          child: Row(
+            crossAxisAlignment: CrossAxisAlignment.center,
+            children: [
+              Expanded(
+                child: SearchBar(
+                  controller: _controller,
+                  focusNode: _focusNode,
+                  hintText: state.type == SearchType.forum ? '搜索主题…' : '搜索用户…',
+                  leading: const Icon(Icons.search),
+                  trailing: [
+                    if (hasQuery)
+                      IconButton(
+                        tooltip: '清除',
+                        onPressed: state.isLoading
+                            ? null
+                            : () {
+                                _controller.clear();
+                              },
+                        icon: const Icon(Icons.clear),
+                      ),
+                    IconButton(
+                      tooltip: submitTooltip,
+                      onPressed: canSubmit ? _submit : null,
+                      icon: state.isLoading
+                          ? SizedBox(
+                              width: 20,
+                              height: 20,
+                              child: CircularProgressIndicator(
+                                strokeWidth: 2,
+                                color: scheme.primary,
+                              ),
+                            )
+                          : const Icon(Icons.arrow_forward),
+                    ),
+                  ],
+                  onSubmitted: canSubmit ? (_) => _submit() : null,
+                ),
+              ),
+              if (state.type == SearchType.forum) ...[
+                const SizedBox(width: 4),
+                TextButton(
+                  onPressed: state.isLoading ? null : _openAdvancedSearch,
+                  child: Badge(
+                    isLabelVisible: state.forumQuery.activeFilterCount > 0,
+                    label: Text('${state.forumQuery.activeFilterCount}'),
+                    child: const Text('高级'),
+                  ),
+                ),
+              ],
+            ],
+          ),
+        ),
+        if (state.type == SearchType.forum && state.hasAdvancedFilters)
+          Padding(
+            padding: const EdgeInsets.fromLTRB(16, 0, 16, 8),
+            child: Row(
+              children: [
+                Expanded(
+                  child: Text(
+                    state.forumQuery.summaryParts().join(' · '),
+                    maxLines: 2,
+                    overflow: TextOverflow.ellipsis,
+                    style: textTheme.bodySmall?.copyWith(
+                      color: scheme.onSurfaceVariant,
+                    ),
+                  ),
+                ),
+                TextButton(
                   onPressed: state.isLoading
                       ? null
                       : () {
-                          _controller.clear();
+                          ref
+                              .read(searchProvider.notifier)
+                              .clearAdvancedFilters();
+                          setState(() {});
                         },
-                  icon: const Icon(Icons.clear),
+                  child: const Text('清除筛选'),
                 ),
-              IconButton(
-                tooltip: state.isCoolingDown
-                    ? '搜索间隔中'
-                    : hasQuery
-                        ? '搜索'
-                        : '请输入搜索关键词',
-                onPressed: canSubmit ? _submit : null,
-                icon: state.isLoading
-                    ? SizedBox(
-                        width: 20,
-                        height: 20,
-                        child: CircularProgressIndicator(
-                          strokeWidth: 2,
-                          color: scheme.primary,
-                        ),
-                      )
-                    : const Icon(Icons.arrow_forward),
-              ),
-            ],
-            onSubmitted: canSubmit ? (_) => _submit() : null,
+              ],
+            ),
           ),
-        ),
         if (state.isCoolingDown && state.hasSearched)
           Padding(
             padding: const EdgeInsets.fromLTRB(16, 0, 16, 8),
@@ -226,7 +293,9 @@ class _SearchBody extends ConsumerWidget {
               ),
               const SizedBox(height: 8),
               Text(
-                '输入关键词后按回车或点击箭头',
+                state.type == SearchType.forum
+                    ? '输入关键词或打开高级搜索指定作者'
+                    : '输入关键词后按回车或点击箭头',
                 style: textTheme.bodyMedium?.copyWith(
                   color: scheme.onSurfaceVariant,
                 ),

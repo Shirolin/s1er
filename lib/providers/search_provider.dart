@@ -2,18 +2,20 @@ import 'dart:async';
 
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../models/forum_search_query.dart';
 import '../models/search_result.dart';
 import '../services/api_service.dart';
 import '../utils/error_handler.dart';
 import 'api_service_provider.dart';
 
 /// Discuz `allowsearch` 常见间隔；客户端提交冷却，降低连点触发限流。
-const searchSubmitCooldown = Duration(seconds: 30);
+const searchSubmitCooldown = Duration(seconds: 60);
 
 class SearchUiState {
   const SearchUiState({
     this.type = SearchType.forum,
     this.query = '',
+    this.forumQuery = ForumSearchQuery.empty,
     this.forumHits = const [],
     this.userHits = const [],
     this.count = 0,
@@ -28,6 +30,7 @@ class SearchUiState {
 
   final SearchType type;
   final String query;
+  final ForumSearchQuery forumQuery;
   final List<ForumSearchHit> forumHits;
   final List<UserSearchHit> userHits;
   final int count;
@@ -41,9 +44,12 @@ class SearchUiState {
 
   bool get isCoolingDown => cooldownRemainingSeconds > 0;
 
+  bool get hasAdvancedFilters => !forumQuery.isDefault;
+
   SearchUiState copyWith({
     SearchType? type,
     String? query,
+    ForumSearchQuery? forumQuery,
     List<ForumSearchHit>? forumHits,
     List<UserSearchHit>? userHits,
     int? count,
@@ -60,6 +66,7 @@ class SearchUiState {
     return SearchUiState(
       type: type ?? this.type,
       query: query ?? this.query,
+      forumQuery: forumQuery ?? this.forumQuery,
       forumHits: forumHits ?? this.forumHits,
       userHits: userHits ?? this.userHits,
       count: count ?? this.count,
@@ -95,12 +102,26 @@ class SearchNotifier extends Notifier<SearchUiState> {
     );
   }
 
-  Future<void> submit(String rawQuery) async {
-    final query = rawQuery.trim();
-    if (query.isEmpty) {
-      state = state.copyWith(error: '请输入搜索关键词', hasSearched: false);
-      return;
-    }
+  void updateForumQuery(ForumSearchQuery query) {
+    state = state.copyWith(forumQuery: query);
+  }
+
+  void clearAdvancedFilters() {
+    state = state.copyWith(
+      forumQuery: state.forumQuery.copyWith(
+        author: '',
+        filter: ForumSearchFilter.all,
+        specials: const {},
+        srchfromSeconds: 0,
+        before: false,
+        orderby: 'lastpost',
+        ascending: false,
+        forumIds: const {},
+      ),
+    );
+  }
+
+  Future<void> submit(String rawKeyword) async {
     if (state.isLoading) return;
     if (state.isCoolingDown) {
       final sec = state.cooldownRemainingSeconds;
@@ -110,19 +131,55 @@ class SearchNotifier extends Notifier<SearchUiState> {
       return;
     }
 
+    if (state.type == SearchType.user) {
+      final query = rawKeyword.trim();
+      if (query.isEmpty) {
+        state = state.copyWith(error: '请输入搜索关键词', hasSearched: false);
+        return;
+      }
+      await _runSearch(
+        query: query,
+        forumQuery: null,
+        userQuery: query,
+      );
+      return;
+    }
+
+    final forumQuery = state.forumQuery.copyWith(keyword: rawKeyword);
+    final validationError = forumQuery.validate();
+    if (validationError != null) {
+      state = state.copyWith(error: validationError, hasSearched: false);
+      return;
+    }
+
+    await _runSearch(
+      query: forumQuery.trimmedKeyword.isNotEmpty
+          ? forumQuery.trimmedKeyword
+          : forumQuery.trimmedAuthor,
+      forumQuery: forumQuery,
+      userQuery: null,
+    );
+  }
+
+  Future<void> _runSearch({
+    required String query,
+    required ForumSearchQuery? forumQuery,
+    required String? userQuery,
+  }) async {
     state = state.copyWith(
       isLoading: true,
       clearError: true,
       query: query,
+      forumQuery: forumQuery ?? state.forumQuery,
       hasSearched: true,
     );
 
     try {
       if (state.type == SearchType.forum) {
-        final page = await _api.searchForum(query: query);
-        _applyForumPage(page, query: query);
+        final page = await _api.searchForum(query: forumQuery!);
+        _applyForumPage(page, query: query, startCooldown: true);
       } else {
-        final page = await _api.searchUser(query: query);
+        final page = await _api.searchUser(query: userQuery!);
         _applyUserPage(page, query: query);
       }
     } on LoginRequiredException catch (e) {
@@ -154,7 +211,7 @@ class SearchNotifier extends Notifier<SearchUiState> {
     state = state.copyWith(isLoading: true, clearError: true);
     try {
       final result = await _api.searchForum(
-        query: query,
+        query: state.forumQuery,
         page: page,
         pageHref: state.pageHref.isEmpty ? null : state.pageHref,
       );

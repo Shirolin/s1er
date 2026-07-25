@@ -1,8 +1,8 @@
 {
-  "latest": "0.3.5",
-  "minSupported": "0.3.2",
-  "notes": "Beta — 0.3.5：更新弹窗与排版修复",
-  "publishedAt": "2026-07-24",
+  "latest": "9.9.9",
+  "minSupported": "0.1.0",
+  "notes": "本地 mock：用于预览应用内更新弹窗（勿用于正式发版）",
+  "publishedAt": "2026-07-25",
   "channels": {
     "github": "https://github.com/Shirolin/s1er/releases/latest",
     "androidApk": "https://github.com/Shirolin/s1er/releases/download/v0.3.5/s1er-0.3.5%2B1-android-universal.apk",
@@ -10,7 +10,7 @@
     "androidArmeabiV7aApk": "https://github.com/Shirolin/s1er/releases/download/v0.3.5/s1er-0.3.5%2B1-android-armeabi-v7a.apk",
     "androidX8664Apk": "https://github.com/Shirolin/s1er/releases/download/v0.3.5/s1er-0.3.5%2B1-android-x86_64.apk",
     "androidNetdisk": "https://pan.quark.cn/s/c05196e3c06a",
-    "netdiskHint": "夸克网盘（GitHub 下载慢时可走这里）",
+    "netdiskHint": "夸克网盘（mock 测试）",
     "windows": "https://github.com/Shirolin/s1er/releases/download/v0.3.5/s1er-0.3.5%2B1-windows-x64.zip",
     "linux": null,
     "macos": null,

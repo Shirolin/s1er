@@ -48,6 +48,15 @@ version: 0.1.0+1
    - `notes`：面向用户的更新说明（可空；可写「Beta」）
    - `publishedAt`：发布日（`YYYY-MM-DD`）
    - `channels.*`：有直链则填，否则 `null`（客户端回退 `github`）
+   - **Android APK 直链**（`release.ps1 manifest` 自动写入；应用内更新按 ABI 选包）：
+
+     | JSON 字段 | 对应产物 | 用途 |
+     |:---|:---|:---|
+     | `androidArm64V8aApk` | `-android-arm64-v8a.apk` | arm64 真机；**应用内更新优先** |
+     | `androidArmeabiV7aApk` | `-android-armeabi-v7a.apk` | 32 位 ARM |
+     | `androidX8664Apk` | `-android-x86_64.apk` | 模拟器 / x86_64 设备 |
+     | `androidApk` | `-android-universal.apk` | 无法识别 ABI 或分架构字段缺失时的**回退** |
+
    - Android 国内备选：`androidNetdisk`（分享链接）+ `netdiskHint`（提取码等说明，可空）
 4. 需要踢掉过旧安装包时，抬高 `minSupported`（低于该版本每次冷启动强提醒，可关但下次仍弹）。仅抬 build、name 不变时一般不用动。
 5. 打 GitHub Release（附各平台安装包，如有）；tag 建议与 name 对齐（如 `v0.1.0`）。
@@ -55,10 +64,12 @@ version: 0.1.0+1
 
      | 文件后缀 | 含义 |
      |:---|:---|
-     | `-android-universal.apk` | 合一包（全部 ABI）；应用内更新直链用这个 |
-     | `-android-arm64-v8a.apk` | 仅 arm64（多数真机） |
+     | `-android-universal.apk` | 合一包（全部 ABI，无法识别架构时的回退） |
+     | `-android-arm64-v8a.apk` | 仅 arm64（多数真机；应用内更新优先） |
      | `-android-armeabi-v7a.apk` | 仅 32 位 ARM |
      | `-android-x86_64.apk` | 仅 x86_64（模拟器等） |
+
+   `release.ps1 manifest` 会把上述四个 APK 直链写入 `latest.json`（`androidApk` + `androidArm64V8aApk` 等）；客户端按设备 ABI 选包，识别失败时回退 universal。**不要只手改 `latest.json` 而跳过 `manifest`**——旧版脚本曾只写 universal，下次发版会把分架构字段冲掉（v0.3.4 即发生过）。
 
    - Release 正文由 `release.ps1 create` 自动写入「下哪个包」选型表。
    - **别忘了在 Release 正文里加上「更新内容」section**（`release.ps1 create` 生成的模板只有下载表，需要手动补更新要点）。
@@ -76,8 +87,8 @@ version: 0.1.0+1
 .\scripts\release.ps1 build           # fat + 分架构 APK + Windows zip → dist\（不上传）
 .\scripts\release.ps1 create          # 建空 Release + 打开网页
 # 在网页上把 dist\ 里的 apk / zip 拖上去
-.\scripts\release.ps1 manifest        # 写 latest.json 直链
-# ② 提交到 main：pubspec.yaml + latest.json + whats_new.json + CHANGELOG.md
+.\scripts\release.ps1 manifest        # 写 latest.json 直链（含四个 Android APK；缺一会报错）
+# ② 提交到 main
 git add pubspec.yaml docs/release/latest.json assets/changelog/whats_new.json CHANGELOG.md
 git commit --no-verify -m "chore(release): vX.Y.Z+1"
 git push origin main
@@ -91,7 +102,7 @@ git push origin main
 .\scripts\release.ps1 build
 .\scripts\release.ps1 create
 # 浏览器上传 …
-.\scripts\release.ps1 manifest
+.\scripts\release.ps1 manifest        # 写 latest.json 直链（含四个 Android APK；缺一会报错）
 # ② 提交到 main
 git add pubspec.yaml docs/release/latest.json assets/changelog/whats_new.json CHANGELOG.md
 git commit --no-verify -m "chore(release): vX.Y.Z+1"
@@ -122,14 +133,20 @@ flutter run --dart-define=DISTRIBUTION=play
 
 Android（非 Play）升级 Dialog：
 
-- **立即更新**：应用内下载 `channels.androidApk`（GitHub Releases；国内可能失败）
+- **立即更新**：应用内按设备 ABI 下载对应 APK（优先 `androidArm64V8aApk` / `androidArmeabiV7aApk` / `androidX8664Apk`；清单缺字段或识别失败时回退 `androidApk` universal）
 - **网盘下载**：外链打开 `channels.androidNetdisk`（不解析网盘直链）；`channels.netdiskHint` 展示提取码等说明
 
-填写示例：
+`latest.json` 示例（节选）：
 
 ```json
-"androidNetdisk": "https://pan.quark.cn/s/c05196e3c06a",
-"netdiskHint": "夸克网盘（GitHub 下载慢时可走这里）"
+"channels": {
+  "androidApk": "https://github.com/.../s1er-0.3.5+1-android-universal.apk",
+  "androidArm64V8aApk": "https://github.com/.../s1er-0.3.5+1-android-arm64-v8a.apk",
+  "androidArmeabiV7aApk": "https://github.com/.../s1er-0.3.5+1-android-armeabi-v7a.apk",
+  "androidX8664Apk": "https://github.com/.../s1er-0.3.5+1-android-x86_64.apk",
+  "androidNetdisk": "https://pan.quark.cn/s/c05196e3c06a",
+  "netdiskHint": "夸克网盘（GitHub 下载慢时可走这里）"
+}
 ```
 
-无网盘时两项可保持 `null`；非法主机不会显示网盘按钮。`release.ps1 manifest` 会保留已有网盘字段，只改版本与 APK/Windows 直链。
+无网盘时 `androidNetdisk` / `netdiskHint` 可保持 `null`；非法主机不会显示网盘按钮。`release.ps1 manifest` 会保留已有网盘字段，并重写全部 APK 与 Windows 直链。

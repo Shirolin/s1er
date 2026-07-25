@@ -61,9 +61,15 @@ class UpdateCheckService {
           .where((u) => u.isNotEmpty)
           .toList(growable: false);
     }
-    final urls = <String>[];
     final trimmed = primary.trim();
-    if (trimmed.isNotEmpty) urls.add(trimmed);
+    if (trimmed.isEmpty) return const [];
+
+    // 自定义清单（如本地 mock）只用单一 URL，避免 CDN 回退掩盖 mock 失败或抢先返回正式版。
+    if (!_isKnownProductionManifestUrl(trimmed)) {
+      return [trimmed];
+    }
+
+    final urls = <String>[trimmed];
     if (trimmed != rawGithubManifestUrl) {
       urls.add(rawGithubManifestUrl);
     }
@@ -71,6 +77,12 @@ class UpdateCheckService {
       urls.add(jsDelivrManifestUrl);
     }
     return urls;
+  }
+
+  static bool _isKnownProductionManifestUrl(String url) {
+    final normalized = url.trim();
+    return normalized == rawGithubManifestUrl ||
+        normalized == jsDelivrManifestUrl;
   }
 
   Future<AppUpdateManifest> fetchManifest() async {
@@ -180,7 +192,10 @@ class UpdateCheckService {
     'wwwa.lanzoui.com',
   };
 
-  /// 根据当前 CPU 架构 (arm64-v8a / armeabi-v7a / x86_64) 解析 Android 最优 APK 链接。
+  /// 根据当前 CPU 架构 (arm64-v8a / armeabi-v7a / x86_64) 解析 Android APK 直链。
+  ///
+  /// 优先 [AppUpdateChannels.androidArm64V8aApk] 等分架构字段（见 `latest.json`）；
+  /// 缺失、非法主机或 [currentAbi] 为 null 时回退 [AppUpdateChannels.androidApk]（universal）。
   static String? resolveAndroidApkUrl(
     AppUpdateChannels channels, {
     String? abiOverride,

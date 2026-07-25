@@ -83,7 +83,7 @@ class AppUpdateChannels {
 
   final String github;
 
-  /// Android 通用 (universal) 安装包链接。
+  /// Android 通用 (universal) 安装包链接；分架构字段不可用时的回退。
   final String? androidApk;
 
   /// Android arm64-v8a 专属精简安装包链接（优先于 [androidApk]）。

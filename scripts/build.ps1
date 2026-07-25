@@ -73,10 +73,10 @@ function Show-Menu {
     Write-Host ""
     
     Write-Host "  [1] Universal APK" -ForegroundColor Green
-    Write-Host "      -> One APK, all ABIs (also used by release.ps1 + in-app update)"
+    Write-Host "      -> All ABIs in one file (manual sideload / universal fallback in latest.json)"
     Write-Host ""
     Write-Host "  [2] Split APKs (per-ABI)" -ForegroundColor Green
-    Write-Host "      -> Smaller files; release.ps1 ships these alongside [1]"
+    Write-Host "      -> Smaller downloads; in-app update prefers these (release.ps1 ships [1]+[2])"
     Write-Host ""
     Write-Host "  [3] Android App Bundle (AAB)" -ForegroundColor Yellow
     Write-Host "      -> For Google Play Store"
@@ -240,7 +240,7 @@ function Verify-Signature {
     # Find APK to verify
     $apkPath = $null
     
-    # Prefer universal APK (GitHub / sideload default)
+    # Prefer universal APK for signature check; else any split APK from option [2].
     $singleApk = Get-ChildItem build\app\outputs\flutter-apk\app-release.apk -ErrorAction SilentlyContinue
     if ($singleApk) {
         $apkPath = $singleApk.FullName

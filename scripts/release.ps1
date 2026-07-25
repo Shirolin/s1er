@@ -108,7 +108,7 @@ S1er release.ps1 - step-by-step (preferred)
   build        fat APK + per-ABI APKs + windows -> dist\  (NO upload)
   create       gh release create TAG with notes only; opens browser + dist\
   upload       gh release upload dist artifacts (SLOW on some networks)
-  manifest     Rewrite docs/release/latest.json (androidApk = fat universal)
+  manifest     Rewrite docs/release/latest.json (all APK + Windows direct links)
   open         Open the GitHub Release page for current tag
 
 Examples:
@@ -242,12 +242,14 @@ Build ``$($v.Label)``（关于页：``$($v.Name) ($($v.Build))``）
 
 ### 下哪个包？（Android）
 
+应用内「立即更新」会按设备 ABI 自动选分架构包；下表面向**浏览器手动下载**。
+
 | 文件 | 选谁 |
 |:---|:---|
-| ``$(Split-Path $arts.Apk -Leaf)`` | **不确定就下这个**（universal，含全部架构，体积最大） |
 | ``$(Split-Path $arts.ApkArm64 -Leaf)`` | 近 5 年大多数真机（arm64） |
 | ``$(Split-Path $arts.ApkArmeabi -Leaf)`` | 较老的 32 位 ARM 机 |
 | ``$(Split-Path $arts.ApkX64 -Leaf)`` | 模拟器 / 少数 x86 平板 |
+| ``$(Split-Path $arts.Apk -Leaf)`` | **不确定就下这个**（universal，含全部架构，体积最大） |
 
 装错架构会提示解析包失败或无法安装，换对应 ABI 或改下 universal 即可。
 
@@ -326,15 +328,45 @@ function Step-Upload {
     Write-Host "Upload finished. Next: .\scripts\release.ps1 manifest" -ForegroundColor Green
 }
 
+function Get-GithubReleaseAssetUrl([string]$Tag, [string]$FileName) {
+    return "https://github.com/$RepoSlug/releases/download/$Tag/$([uri]::EscapeDataString($FileName))"
+}
+
+function Assert-ManifestAndroidChannels($channels) {
+    $required = @(
+        'androidApk',
+        'androidArm64V8aApk',
+        'androidArmeabiV7aApk',
+        'androidX8664Apk'
+    )
+    foreach ($key in $required) {
+        $value = $channels.$key
+        if ([string]::IsNullOrWhiteSpace($value)) {
+            throw "latest.json channels.$key is missing or empty after manifest step"
+        }
+        if ($value -notmatch '^https://github\.com/') {
+            throw "latest.json channels.$key must be a github.com https URL"
+        }
+    }
+}
+
 function Step-Manifest {
     $v = Get-PubspecVersion
     if (-not (Test-Path $Manifest)) { throw "Missing $Manifest" }
 
-    # In-app update CTA uses the universal fat APK (no ABI pick needed).
-    $apkFile = "s1er-$($v.Label)-android-universal.apk"
+    # 应用内更新按 ABI 选包；四个 APK 直链都必须写入（勿只改 latest.json 而不改本函数——
+    # v0.3.4 发版时 manifest 曾覆盖掉手写的 androidArm64V8aApk）。
+
+    $apkUniversal = "s1er-$($v.Label)-android-universal.apk"
+    $apkArm64 = "s1er-$($v.Label)-android-arm64-v8a.apk"
+    $apkArmeabi = "s1er-$($v.Label)-android-armeabi-v7a.apk"
+    $apkX64 = "s1er-$($v.Label)-android-x86_64.apk"
     $zipFile = "s1er-$($v.Label)-windows-x64.zip"
-    $apkUrl = "https://github.com/$RepoSlug/releases/download/$($v.Tag)/$([uri]::EscapeDataString($apkFile))"
-    $zipUrl = "https://github.com/$RepoSlug/releases/download/$($v.Tag)/$([uri]::EscapeDataString($zipFile))"
+    $apkUrl = Get-GithubReleaseAssetUrl $v.Tag $apkUniversal
+    $apkArm64Url = Get-GithubReleaseAssetUrl $v.Tag $apkArm64
+    $apkArmeabiUrl = Get-GithubReleaseAssetUrl $v.Tag $apkArmeabi
+    $apkX64Url = Get-GithubReleaseAssetUrl $v.Tag $apkX64
+    $zipUrl = Get-GithubReleaseAssetUrl $v.Tag $zipFile
     $today = Get-Date -Format 'yyyy-MM-dd'
 
     $json = Get-Content $Manifest -Raw | ConvertFrom-Json
@@ -346,6 +378,9 @@ function Step-Manifest {
     }
     $json.channels.github = "https://github.com/$RepoSlug/releases/latest"
     $json.channels.androidApk = $apkUrl
+    $json.channels.androidArm64V8aApk = $apkArm64Url
+    $json.channels.androidArmeabiV7aApk = $apkArmeabiUrl
+    $json.channels.androidX8664Apk = $apkX64Url
     $json.channels.windows = $zipUrl
     # Preserve netdisk fields if already set (manual); ensure keys exist.
     if (-not ($json.channels.PSObject.Properties.Name -contains 'androidNetdisk')) {
@@ -363,8 +398,13 @@ function Step-Manifest {
     # Prefer stable 2-space JSON without BOM
     $utf8 = New-Object System.Text.UTF8Encoding $false
     [System.IO.File]::WriteAllText($Manifest, ($out.Trim() + "`n"), $utf8)
+
+    $written = Get-Content $Manifest -Raw | ConvertFrom-Json
+    Assert-ManifestAndroidChannels $written.channels
+
     Write-Host "Updated $Manifest" -ForegroundColor Green
-    Write-Host "  latest=$($v.Name)  androidApk=universal fat; split APKs only on GitHub Release page"
+    Write-Host "  latest=$($v.Name)" -ForegroundColor Green
+    Write-Host "  channels: androidApk (universal fallback) + per-ABI URLs for in-app update"
     if ($nameChanged) {
         Write-Host "Name changed vs previous latest.json - commit pubspec.yaml + latest.json to main." -ForegroundColor Yellow
     } else {

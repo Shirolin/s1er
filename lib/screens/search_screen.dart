@@ -10,8 +10,10 @@ import '../providers/user_profile_provider.dart';
 import '../theme/app_theme.dart';
 import '../theme/s1_haptics.dart';
 import '../utils/boundary_feedback.dart';
+import '../utils/s1_snack_bar.dart';
 import '../utils/thread_navigation.dart';
 import '../widgets/s1_error_view.dart';
+import '../widgets/s1_fab_layout.dart';
 import '../widgets/s1_list_boundary_footer.dart';
 import '../widgets/s1_scroll_boundary_listener.dart';
 import '../widgets/forum_search_advanced_sheet.dart';
@@ -364,7 +366,27 @@ class _SearchBody extends ConsumerWidget {
               totalPages: state.totalPages,
               onPageChanged: (page) async {
                 boundaryFeedback.reset();
-                await ref.read(searchProvider.notifier).goToPage(page);
+                final outcome =
+                    await ref.read(searchProvider.notifier).goToPage(page);
+                if (!context.mounted) return;
+                switch (outcome) {
+                  case SearchGoToPageSuccess():
+                    break;
+                  case SearchGoToPageFailure(
+                      :final message,
+                      :final loginRequired,
+                    ):
+                    S1SnackBar.show(
+                      context,
+                      message: message,
+                      feedback: S1SnackBarFeedback.error,
+                      actionLabel: loginRequired ? '登录' : null,
+                      onAction: loginRequired
+                          ? () => context.push('/login')
+                          : null,
+                      bottomClearance: S1FabLayout.snackBarClearance,
+                    );
+                }
               },
               sheetSubtitle: state.query,
             ),

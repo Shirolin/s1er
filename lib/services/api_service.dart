@@ -3595,10 +3595,14 @@ class ApiService {
       return ForumSearchPage(error: validationError);
     }
 
+    if (page > 1 && (pageHref == null || pageHref.isEmpty)) {
+      return const ForumSearchPage(error: '无法翻页，请重新搜索');
+    }
+
     try {
       final String body;
-      if (page > 1 && pageHref != null && pageHref.isNotEmpty) {
-        final url = _resolveSearchPageUrl(pageHref, page);
+      if (page > 1) {
+        final url = _resolveSearchPageUrl(pageHref!, page);
         final response = await _httpClient.get(
           url,
           options: _searchHtmlGetOptions(),

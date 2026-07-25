@@ -127,11 +127,16 @@ class _ForumSearchAdvancedSheetState
   }
 
   Future<void> _pickForums() async {
-    final categories = ref.read(forumListProvider).asData?.value;
-    if (categories == null) {
+    final forumsAsync = ref.read(forumListProvider);
+    if (forumsAsync.isLoading) {
       setState(() => _error = '版块列表加载中，请稍后再试');
       return;
     }
+    if (forumsAsync.hasError) {
+      setState(() => _error = '版块列表加载失败，请稍后重试');
+      return;
+    }
+    final categories = forumsAsync.requireValue;
     final picked = await showS1AdaptiveSheet<Set<String>>(
       context: context,
       isScrollControlled: true,

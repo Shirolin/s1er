@@ -65,6 +65,24 @@ void main() {
     expect(data?['srchfid'], ['4', '6']);
   });
 
+  test('翻页缺少 pageHref 时返回错误且不发起 POST', () async {
+    final container = ProviderContainer();
+    addTearDown(container.dispose);
+    final adapter = _SearchRedirectAdapter();
+    final dio = Dio()..httpClientAdapter = adapter;
+    final api = ApiService(S1HttpClient.test(container, dio));
+
+    final page = await api.searchForum(
+      query: const ForumSearchQuery(keyword: 'switch'),
+      page: 2,
+    );
+
+    expect(page.hasError, isTrue);
+    expect(page.error, '无法翻页，请重新搜索');
+    expect(adapter.lastSearchPostData, isNull);
+    expect(adapter.requestedSearchResult, isFalse);
+  });
+
   test('用户搜索跟随 forcemobile 桌面模板', () async {
     final container = ProviderContainer();
     addTearDown(container.dispose);

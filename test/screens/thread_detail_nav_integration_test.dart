@@ -172,6 +172,50 @@ void main() {
     expect(router.state.uri.queryParameters.containsKey('pid'), isFalse);
   });
 
+  testWidgets(
+      'going to next page after page bottom does not inflate lastReadFloor to page end',
+      (tester) async {
+    tester.view.physicalSize = const Size(800, 1200);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.resetPhysicalSize);
+
+    adapter.postsPerPage = 8;
+    adapter.totalReplies = 20;
+
+    await pumpThread(
+      tester: tester,
+      location: '/thread/100?page=1',
+    );
+
+    final listFinder = find.descendant(
+      of: find.byType(ThreadDetailScreen),
+      matching: find.byType(ListView),
+    );
+    final controller = tester.widget<ListView>(listFinder).controller!;
+    await tester.runAsync(
+      () => Future<void>.delayed(const Duration(milliseconds: 450)),
+    );
+    controller.jumpTo(controller.position.maxScrollExtent);
+    await _pumpFrames(tester, 15);
+    await tester.runAsync(
+      () => Future<void>.delayed(const Duration(milliseconds: 450)),
+    );
+    controller.jumpTo(controller.position.maxScrollExtent);
+    await _pumpFrames(tester, 15);
+
+    final beforePageTurn =
+        rootContainer!.read(readingHistoryServiceProvider).getRecord('100')!;
+    expect(beforePageTurn.lastReadFloor, adapter.postsPerPage);
+
+    await tester.tap(find.byIcon(Icons.chevron_right));
+    await _pumpFrames(tester, 40);
+
+    final afterPageTurn =
+        rootContainer!.read(readingHistoryServiceProvider).getRecord('100')!;
+    expect(afterPageTurn.lastReadFloor, adapter.postsPerPage + 1);
+    expect(afterPageTurn.lastReadFloor, isNot(adapter.postsPerPage * 2));
+  });
+
   testWidgets('route-scoped page intent opens the selected list page',
       (tester) async {
     tester.view.physicalSize = const Size(800, 1200);

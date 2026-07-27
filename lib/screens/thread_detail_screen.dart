@@ -169,6 +169,9 @@ class _ThreadDetailScreenState extends ConsumerState<ThreadDetailScreen> {
   bool _pageSearchOpen = false;
   String _pageSearchQuery = '';
 
+  /// 本次进入详情后的页内阅读位（页码 → 页内 1-based 楼层），翻回该页时恢复。
+  final Map<int, int> _pageFloorMemory = {};
+
   void _enterShareSelectMode(Post post, int displayFloor) {
     setState(() {
       _shareSelectMode = true;
@@ -263,6 +266,8 @@ class _ThreadDetailScreenState extends ConsumerState<ThreadDetailScreen> {
 
   /// 记录阅读进度：写库 + 刷新历史列表（使列表卡片/历史页/资料计数实时更新）。
   /// readCount 只在本次进入详情页首帧 +1（isNewVisit 由 _hasRecordedInitialVisit 守卫）。
+  ///
+  /// 写回当前视口页内楼层；绝对进度高水位由 [ReadingHistoryService.updateProgress] 保证只增不减。
   void _recordProgress(PostListState state, {int? floorInPage}) {
     if (_pendingInitialNavigation) {
       return;
@@ -274,29 +279,7 @@ class _ThreadDetailScreenState extends ConsumerState<ThreadDetailScreen> {
     }
     // Prefer the caller-provided / last visible floor. Never fall back to
     // `posts.length` (that permanently wrote "page end" as fake progress).
-    var resolvedFloor = floorInPage ?? _lastRecordedFloorInPage ?? 1;
-    final ppp =
-        state.perPage > 0 ? state.perPage : S1Constants.postsPerPageFallback;
-    var absoluteFloor = (state.currentPage - 1) * ppp + resolvedFloor;
-
-    final persisted =
-        ref.read(readingHistoryServiceProvider).getRecord(widget.tid);
-    if (persisted != null) {
-      absoluteFloor = absoluteFloor > persisted.lastReadFloor
-          ? absoluteFloor
-          : persisted.lastReadFloor;
-    }
-    if (_lastRecordedPage == state.currentPage &&
-        _lastRecordedFloorInPage != null) {
-      final sessionAbsolute =
-          (state.currentPage - 1) * ppp + _lastRecordedFloorInPage!;
-      if (sessionAbsolute > absoluteFloor) {
-        absoluteFloor = sessionAbsolute;
-      }
-    }
-
-    resolvedFloor = (absoluteFloor - (state.currentPage - 1) * ppp)
-        .clamp(1, state.posts.isEmpty ? 1 : state.posts.length);
+    final resolvedFloor = floorInPage ?? _lastRecordedFloorInPage ?? 1;
     if (!shouldWriteReadingProgressUpdate(
       hasRecordedInitialVisit: _hasRecordedInitialVisit,
       lastRecordedPage: _lastRecordedPage,
@@ -339,6 +322,10 @@ class _ThreadDetailScreenState extends ConsumerState<ThreadDetailScreen> {
       }
       _lastFloorProgressAt = now;
     }
+    final viewportFloor = _resolveViewportFloorInPage(state);
+    if (viewportFloor != null) {
+      _pageFloorMemory[state.currentPage] = viewportFloor;
+    }
     final floorInPage = _resolveVisibleFloorInPage(state);
     if (floorInPage == null) return;
     if (!force) {
@@ -351,6 +338,21 @@ class _ThreadDetailScreenState extends ConsumerState<ThreadDetailScreen> {
     final state = ref.read(postProvider(widget.tid)).asData?.value;
     if (state == null) return;
     _maybeRecordVisibleFloor(state, force: true);
+  }
+
+  /// 当前视口页内楼层（1-based），不含进度高水位抬升；供翻页记忆用。
+  int? _resolveViewportFloorInPage(PostListState state) {
+    if (state.posts.isEmpty) return null;
+    final leading = ScrollFloorNavigator.findLeadingVisiblePostIndex(
+      postKeys: _postKeys,
+    );
+    final atBottom = _scrollFabVisibility.value.atPageBottom;
+    if (leading == null && !atBottom) return null;
+    return resolveFloorInPageForProgress(
+      leadingIndex: leading ?? 0,
+      postCount: state.posts.length,
+      atPageBottom: atBottom,
+    );
   }
 
   int? _resolveVisibleFloorInPage(PostListState state) {
@@ -563,15 +565,56 @@ class _ThreadDetailScreenState extends ConsumerState<ThreadDetailScreen> {
   }
 
   Future<void> _goToPage(int page, {bool scrollToBottom = false}) async {
+    final before = ref.read(postProvider(widget.tid)).asData?.value;
+    if (before != null &&
+        before.posts.isNotEmpty &&
+        before.currentPage != page) {
+      final floor = _resolveViewportFloorInPage(before) ??
+          _pageFloorMemory[before.currentPage] ??
+          (_lastRecordedPage == before.currentPage
+              ? _lastRecordedFloorInPage
+              : null) ??
+          1;
+      _pageFloorMemory[before.currentPage] = floor;
+    }
+
+    final hasPageQuery = PageSearch.normalizeQuery(_pageSearchQuery).isNotEmpty;
+    final rememberedFloor =
+        (scrollToBottom || hasPageQuery) ? null : _pageFloorMemory[page];
+    final ppp = (before != null && before.perPage > 0)
+        ? before.perPage
+        : S1Constants.postsPerPageFallback;
+
+    // 作废上一页 FAB 状态，避免残留 atPageBottom 在新页误记末楼。
     _scrollFabVisibility.value = const _ScrollFabVisibility();
+
     setState(() {
-      _manualPageChange = true;
-      _openScrollConsumed = true;
+      _manualPageChange = rememberedFloor == null;
+      _openScrollConsumed = rememberedFloor == null;
       _highlightPid = null;
       _postKeys = [];
     });
-    await ref.read(postProvider(widget.tid).notifier).goToPage(page);
+    if (rememberedFloor != null) {
+      _resetOpenScrollConsumption();
+      final ok =
+          await ref.read(postProvider(widget.tid).notifier).restoreToFloor(
+                page: page,
+                absoluteFloor: (page - 1) * ppp + rememberedFloor,
+              );
+      if (!ok) {
+        if (!mounted) return;
+        setState(() {
+          _manualPageChange = true;
+          _openScrollConsumed = true;
+          _pendingInitialNavigation = false;
+        });
+        return;
+      }
+    } else {
+      await ref.read(postProvider(widget.tid).notifier).goToPage(page);
+    }
     if (!mounted) return;
+    _swipeKey.currentState?.syncAfterExternalPageChange();
     final destination = ThreadPage(widget.tid, page);
     if (widget.onDestinationChanged != null) {
       widget.onDestinationChanged!(destination);
@@ -580,11 +623,15 @@ class _ThreadDetailScreenState extends ConsumerState<ThreadDetailScreen> {
     }
     final loaded = ref.read(postProvider(widget.tid)).asData?.value;
     if (loaded != null) {
-      // Page changes land at top unless scrollToBottom is true; keys rebuild after next frame.
-      _recordProgress(
-        loaded,
-        floorInPage: scrollToBottom ? loaded.posts.length : 1,
-      );
+      final maxFloor = loaded.posts.isEmpty ? 1 : loaded.posts.length;
+      final floorInPage =
+          scrollToBottom ? maxFloor : (rememberedFloor ?? 1).clamp(1, maxFloor);
+      if (scrollToBottom && loaded.posts.isNotEmpty) {
+        _pageFloorMemory[page] = maxFloor;
+      } else if (rememberedFloor != null) {
+        _pageFloorMemory[page] = floorInPage;
+      }
+      _recordProgress(loaded, floorInPage: floorInPage);
     }
     if (scrollToBottom) {
       await WidgetsBinding.instance.endOfFrame;
@@ -817,6 +864,7 @@ class _ThreadDetailScreenState extends ConsumerState<ThreadDetailScreen> {
         setState(() => _expandedBlockedPids.add(post.pid));
       },
       onFilterByAuthor: () {
+        _pageFloorMemory.clear();
         ref.read(postProvider(widget.tid).notifier).filterByAuthor(
               post.authorId,
               post.author,
@@ -942,6 +990,7 @@ class _ThreadDetailScreenState extends ConsumerState<ThreadDetailScreen> {
               );
       if (!ok || !mounted) return;
       stack.pop();
+      _swipeKey.currentState?.syncAfterExternalPageChange();
       final destination = ThreadPage(widget.tid, snap.page);
       if (widget.onDestinationChanged != null) {
         widget.onDestinationChanged!(destination);
@@ -1174,9 +1223,12 @@ class _ThreadDetailScreenState extends ConsumerState<ThreadDetailScreen> {
                         ),
                       ),
                       TextButton.icon(
-                        onPressed: () => ref
-                            .read(postProvider(widget.tid).notifier)
-                            .clearFilter(),
+                        onPressed: () {
+                          _pageFloorMemory.clear();
+                          ref
+                              .read(postProvider(widget.tid).notifier)
+                              .clearFilter();
+                        },
                         icon: Icon(
                           Icons.close,
                           size: 18,

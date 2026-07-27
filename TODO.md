@@ -77,3 +77,47 @@
 - **测试**:
   - 新增无限模式单元测试（`loadNextPage` append、`totalPages` 边界、filter 重置）
   - 阅读历史 / 路由恢复（`?page=N`、`resume=1`）双模式回归
+
+### 5. 手动阅读书签 (Manual Read Progress Bookmark)
+*状态: 规划中 (Planned)*
+
+**功能描述:**
+对标 S1-NEXT 菜单「保存进度 / 读取进度」：用户可主动钉住当前阅读位置，与自动 `recordReadingHistory` 并存。
+
+**实现要点:**
+- 详情页 AppBar 菜单：保存当前进度、读取已保存进度
+- 存储可复用 `reading_histories` 或独立书签表（需定案）；与自动续读高水位逻辑解耦
+- 设置项：是否显示菜单入口（可选）
+
+**依赖:** 现有 `lastReadFloor` + `ScrollToFloor` 楼级恢复已可用；书签是显式用户动作，不替代自动记录。
+
+### 6. 帖内 QuickSideBar (In-Page Floor Quick Jump)
+*状态: 规划中 (Planned)*
+
+**难度:** 中等（非 trivial）
+
+**功能描述:**
+右侧贴边楼层快跳条，作用域为**当前页**内（非跨页）；对标 S1-NEXT `QuickSideBarView`。
+
+**实现要点:**
+- 新 widget（如 `lib/widgets/quick_side_bar.dart`）：右侧窄条 + 拖拽时楼层 Tips
+- 采样：前 10 楼全显示，之后隔楼显示，避免过密
+- 拖拽 → `ScrollFloorNavigator.scrollToIndex`（复用 `_postKeys`）
+- 设置开关（`browsing_settings_section`）；默认关
+- **手势隔离**：与 `S1SwipePagination` 横滑、`S1FabLayout` 底栏 FAB 避让（窄 hit 区、仅纵向拖拽）
+
+**不做:** 跨页楼层索引、第三方 alphabet 库硬套。
+
+### 7. Offset 级页内恢复 (Pixel-Offset Scroll Restore)
+*状态: 暂不做 (Deferred — 风险高于收益)*
+
+**背景:**
+S1-NEXT 用 `position + offset` 恢复视口内像素位置；S1er 当前为楼级 `ScrollToFloor` + Plan B `_pageFloorMemory`，已覆盖跨会话续读与会话内翻页回看。
+
+**暂不做的原因:**
+- 图异步加载、字体、黑名单展开、投票卡等导致 item 高度变化，持久化 offset 易恢复到错误位置
+- 懒列表 `scrollToIndex` 已有多轮估算；叠加 offset 微调易出现二次跳动
+- `lastReadFloor` 为高水位语义，与「离开时视口 offset」纠缠，边界解释成本高
+- 需动 Drift schema、备份格式、多条恢复路径，回归面大
+
+**若未来重评:** 优先仅会话内 `_pageFloorMemory` 带 offset、**不落库**；跨会话仍用楼级对齐。

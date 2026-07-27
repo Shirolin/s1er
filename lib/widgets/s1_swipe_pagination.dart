@@ -77,7 +77,7 @@ class S1SwipePaginationState extends State<S1SwipePagination> {
     _scrollController = _createScrollController();
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (!mounted) return;
-      _notifyScrollMetrics();
+      _scheduleScrollMetricsNotification();
     });
   }
 
@@ -127,25 +127,45 @@ class S1SwipePaginationState extends State<S1SwipePagination> {
           }
         }
       }
-      _notifyScrollMetrics();
-      if (_pageController.hasClients &&
-          _pageController.page?.round() != _centerSlot) {
-        _pageController.jumpToPage(_centerSlot);
-      }
+      _realignPageViewToCenter();
+      _scheduleScrollMetricsNotification();
     });
   }
 
-  void _notifyScrollMetrics() {
+  /// 外部分页栏 / 跳转最新等不经 [_requestPage] 的换页后，复位中心槽。
+  /// 滑动翻页由 [_requestPage] 自行收尾，此处直接跳过，避免重复复位。
+  void syncAfterExternalPageChange() {
+    if (_isPaging) return;
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) return;
+      _realignPageViewToCenter();
+      _scheduleScrollMetricsNotification();
+    });
+  }
+
+  void _realignPageViewToCenter() {
+    if (_pageController.hasClients &&
+        _pageController.page?.round() != _centerSlot) {
+      _pageController.jumpToPage(_centerSlot);
+    }
+  }
+
+  void _scheduleScrollMetricsNotification() {
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) return;
+      if (_notifyScrollMetrics()) return;
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (!mounted) return;
+        _notifyScrollMetrics();
+      });
+    });
+  }
+
+  /// 返回 `true` 表示已上报有效 metrics。
+  bool _notifyScrollMetrics() {
     if (!_scrollController.hasClients ||
         !_scrollController.position.hasContentDimensions) {
-      widget.onScrollMetricsChanged?.call(
-        const S1ScrollMetrics(
-          offset: 0,
-          viewportDimension: 0,
-          maxScrollExtent: 0,
-        ),
-      );
-      return;
+      return false;
     }
     final position = _scrollController.position;
     widget.onScrollMetricsChanged?.call(
@@ -155,6 +175,7 @@ class S1SwipePaginationState extends State<S1SwipePagination> {
         maxScrollExtent: position.maxScrollExtent,
       ),
     );
+    return true;
   }
 
   void _onScroll() => _notifyScrollMetrics();

@@ -31,7 +31,8 @@ class ReadingHistoryService {
   }) {
     if (tid.isEmpty) return;
     final now = DateTime.now().millisecondsSinceEpoch;
-    final absoluteFloor = (page - 1) * perPage + floorInPage;
+    final ppp = perPage > 0 ? perPage : 1;
+    final computedFloor = (page - 1) * ppp + floorInPage;
     final key = _key(tid);
     final existing = _local.readingHistory[key];
     final firstReadAt = existing != null
@@ -39,13 +40,20 @@ class ReadingHistoryService {
         : now;
     final prevCount =
         existing != null ? ((existing['readCount'] as num?)?.toInt() ?? 0) : 0;
+    final existingFloor = existing != null
+        ? ((existing['lastReadFloor'] as num?)?.toInt() ?? 0)
+        : 0;
+    // 进度只增不减：回到更早页写回时不得压低续读楼层。
+    final absoluteFloor =
+        computedFloor > existingFloor ? computedFloor : existingFloor;
+    final lastReadPage = pageForFloor(absoluteFloor, perPage: ppp);
 
     final record = ReadingRecord(
       tid: tid,
       subject: subject,
       author: author,
       fid: fid,
-      lastReadPage: page,
+      lastReadPage: lastReadPage,
       lastReadFloor: absoluteFloor,
       totalPages: totalPages,
       totalReplies: totalReplies,

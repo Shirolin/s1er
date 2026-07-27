@@ -54,6 +54,70 @@ void main() {
     expect(r.readCount, 1);
   });
 
+  test('回到更早页写回时不压低 lastReadFloor', () {
+    final s = service('u1');
+    s.updateProgress(
+      tid: '100',
+      page: 4,
+      floorInPage: 10,
+      subject: '主题',
+      author: 'a',
+      fid: '4',
+      totalPages: 10,
+      totalReplies: 300,
+      perPage: 30,
+      isNewVisit: true,
+    );
+    expect(s.getRecord('100')!.lastReadFloor, 100);
+
+    s.updateProgress(
+      tid: '100',
+      page: 1,
+      floorInPage: 1,
+      subject: '主题',
+      author: 'a',
+      fid: '4',
+      totalPages: 10,
+      totalReplies: 300,
+      perPage: 30,
+      isNewVisit: false,
+    );
+    final r = s.getRecord('100')!;
+    expect(r.lastReadFloor, 100);
+    expect(r.lastReadPage, 4);
+  });
+
+  test('前进写回时仍抬高 lastReadFloor', () {
+    final s = service('u1');
+    s.updateProgress(
+      tid: '100',
+      page: 1,
+      floorInPage: 5,
+      subject: '主题',
+      author: 'a',
+      fid: '4',
+      totalPages: 5,
+      totalReplies: 100,
+      perPage: 30,
+      isNewVisit: true,
+    );
+    s.updateProgress(
+      tid: '100',
+      page: 2,
+      floorInPage: 3,
+      subject: '主题',
+      author: 'a',
+      fid: '4',
+      totalPages: 5,
+      totalReplies: 100,
+      perPage: 30,
+      isNewVisit: false,
+    );
+    final r = s.getRecord('100')!;
+    expect(r.lastReadFloor, 33);
+    expect(r.lastReadPage, 2);
+  });
+
   test('readCount 仅在 isNewVisit 时递增（翻页不计）', () {
     final s = service('u1');
     record(s, '100', page: 1, isNewVisit: true);

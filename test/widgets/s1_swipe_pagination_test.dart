@@ -294,6 +294,39 @@ void main() {
   });
 
   testWidgets(
+      'syncAfterExternalPageChange during swipe paging does not clear loading bar',
+      (tester) async {
+    final completer = Completer<void>();
+    final key = GlobalKey<S1SwipePaginationState>();
+
+    await tester.pumpWidget(
+      buildHarness(
+        key: key,
+        currentPage: 2,
+        totalPages: 5,
+        onPageChanged: (_) async {
+          key.currentState!.syncAfterExternalPageChange();
+          return completer.future;
+        },
+      ),
+    );
+    await tester.pump();
+
+    final size = tester.view.physicalSize / tester.view.devicePixelRatio;
+    await tester.fling(
+      find.byType(PageView),
+      Offset(-size.width, 0),
+      2500,
+    );
+    await tester.pump();
+
+    expect(find.byType(LinearProgressIndicator), findsOneWidget);
+
+    completer.complete();
+    await tester.pump();
+  });
+
+  testWidgets(
       'S1SwipePagination resets scroll when currentPage changes externally',
       (tester) async {
     final key = GlobalKey<S1SwipePaginationState>();
@@ -417,5 +450,101 @@ void main() {
 
     expect(lastMetrics!.offset, 200);
     expect(lastMetrics!.maxScrollExtent, controller.position.maxScrollExtent);
+  });
+
+  testWidgets(
+      'S1SwipePagination external jump to last page still allows previous swipe',
+      (tester) async {
+    final key = GlobalKey<S1SwipePaginationState>();
+    var currentPage = 1;
+    int? requestedPage;
+
+    Widget build() {
+      return MaterialApp(
+        theme: AppTheme.lightTheme('purple'),
+        home: Scaffold(
+          body: S1SwipePagination(
+            key: key,
+            currentPage: currentPage,
+            totalPages: 5,
+            onPageChanged: (page) async {
+              requestedPage = page;
+              currentPage = page;
+            },
+            pageBuilder: (context, scrollController) => ListView(
+              controller: scrollController,
+              children: [
+                SizedBox(
+                  height: 800,
+                  child: Center(child: Text('Page $currentPage')),
+                ),
+              ],
+            ),
+          ),
+        ),
+      );
+    }
+
+    await tester.pumpWidget(build());
+    await tester.pumpAndSettle();
+
+    currentPage = 5;
+    await tester.pumpWidget(build());
+    await tester.pumpAndSettle();
+    key.currentState!.syncAfterExternalPageChange();
+    await tester.pumpAndSettle();
+
+    expect(find.text('Page 5'), findsOneWidget);
+
+    requestedPage = null;
+    await swipeToPreviousPage(tester);
+    expect(requestedPage, 4);
+  });
+
+  testWidgets(
+      'S1SwipePagination does not emit zero metrics after external page change',
+      (tester) async {
+    final key = GlobalKey<S1SwipePaginationState>();
+    var currentPage = 1;
+    final metrics = <S1ScrollMetrics>[];
+
+    Widget build() {
+      return MaterialApp(
+        theme: AppTheme.lightTheme('purple'),
+        home: Scaffold(
+          body: S1SwipePagination(
+            key: key,
+            currentPage: currentPage,
+            totalPages: 5,
+            onPageChanged: (_) async {},
+            onScrollMetricsChanged: metrics.add,
+            pageBuilder: (context, scrollController) => ListView.builder(
+              controller: scrollController,
+              itemCount: 30,
+              itemBuilder: (context, index) => SizedBox(
+                height: 50,
+                child: Text('P$currentPage-$index'),
+              ),
+            ),
+          ),
+        ),
+      );
+    }
+
+    await tester.pumpWidget(build());
+    await tester.pumpAndSettle();
+    metrics.clear();
+
+    currentPage = 2;
+    await tester.pumpWidget(build());
+    await tester.pumpAndSettle();
+    key.currentState!.syncAfterExternalPageChange();
+    await tester.pumpAndSettle();
+
+    expect(metrics, isNotEmpty);
+    expect(
+      metrics.any((m) => m.viewportDimension > 0 && m.maxScrollExtent > 0),
+      isTrue,
+    );
   });
 }

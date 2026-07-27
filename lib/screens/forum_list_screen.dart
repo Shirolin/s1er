@@ -23,6 +23,8 @@ import '../widgets/s1_list_boundary_footer.dart';
 import '../widgets/s1_local_search_bar.dart';
 import '../widgets/s1_swipe_pagination.dart';
 import '../widgets/thread_card.dart';
+import '../widgets/skeleton/s1_async_list_loading.dart';
+import '../widgets/skeleton/thread_card_skeleton.dart';
 import '../utils/page_search.dart';
 import '../utils/s1_snack_bar.dart';
 import '../utils/forum_list_layout.dart';
@@ -195,11 +197,8 @@ class _ForumListScreenState extends ConsumerState<ForumListScreen> {
                           ),
                         Expanded(
                           child: threadsAsync.when(
-                            loading: () => const Column(
-                              children: [
-                                LinearProgressIndicator(),
-                                Expanded(child: SizedBox()),
-                              ],
+                            loading: () => const S1AsyncListLoading(
+                              child: ThreadCardSkeletonList(),
                             ),
                             error: (e, st) => S1ErrorView(
                               error: e,
@@ -256,11 +255,8 @@ class _ForumListScreenState extends ConsumerState<ForumListScreen> {
                             ),
                           Expanded(
                             child: threadsAsync.when(
-                              loading: () => const Column(
-                                children: [
-                                  LinearProgressIndicator(),
-                                  Expanded(child: SizedBox()),
-                                ],
+                              loading: () => const S1AsyncListLoading(
+                                child: ThreadCardSkeletonList(),
                               ),
                               error: (e, st) => S1ErrorView(
                                 error: e,

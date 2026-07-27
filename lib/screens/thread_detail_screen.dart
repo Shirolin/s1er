@@ -47,6 +47,8 @@ import '../widgets/s1_adaptive_sheet.dart';
 import '../widgets/s1_click_region.dart';
 import '../widgets/s1_local_search_bar.dart';
 import '../widgets/thread_locate_skeleton.dart';
+import '../widgets/skeleton/s1_async_list_loading.dart';
+import '../widgets/skeleton/post_item_skeleton.dart';
 import '../utils/s1_snack_bar.dart';
 import '../utils/thread_navigation.dart';
 import '../providers/post_share_provider.dart';
@@ -896,11 +898,8 @@ class _ThreadDetailScreenState extends ConsumerState<ThreadDetailScreen> {
   }
 
   Widget _buildLoadingBody() {
-    return const Column(
-      children: [
-        LinearProgressIndicator(),
-        Expanded(child: SizedBox()),
-      ],
+    return const S1AsyncListLoading(
+      child: PostItemSkeletonList(),
     );
   }
 

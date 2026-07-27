@@ -15,6 +15,8 @@ import '../widgets/pm_list_tile.dart';
 import '../widgets/s1_error_view.dart';
 import '../widgets/s1_list_boundary_footer.dart';
 import '../widgets/s1_swipe_pagination.dart';
+import '../widgets/skeleton/s1_async_list_loading.dart';
+import '../widgets/skeleton/list_row_skeleton.dart';
 
 class MessagesScreen extends ConsumerStatefulWidget {
   const MessagesScreen({super.key});
@@ -74,11 +76,8 @@ class _PmListBody extends ConsumerWidget {
     final async = ref.watch(pmListProvider);
 
     return async.when(
-      loading: () => const Column(
-        children: [
-          LinearProgressIndicator(),
-          Expanded(child: SizedBox()),
-        ],
+      loading: () => const S1AsyncListLoading(
+        child: ListRowSkeletonList(),
       ),
       error: (e, st) => S1ErrorView(
         error: e,
@@ -137,11 +136,8 @@ class _NoticeListBody extends ConsumerWidget {
     final async = ref.watch(noticeListProvider);
 
     return async.when(
-      loading: () => const Column(
-        children: [
-          LinearProgressIndicator(),
-          Expanded(child: SizedBox()),
-        ],
+      loading: () => const S1AsyncListLoading(
+        child: ListRowSkeletonList(),
       ),
       error: (e, st) => S1ErrorView(
         error: e,

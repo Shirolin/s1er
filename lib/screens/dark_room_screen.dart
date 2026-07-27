@@ -14,6 +14,8 @@ import '../widgets/s1_list_boundary_footer.dart';
 import '../widgets/s1_scroll_boundary_listener.dart';
 import '../widgets/web_avatar.dart';
 import '../widgets/s1_desktop_scaffold.dart';
+import '../widgets/skeleton/s1_async_list_loading.dart';
+import '../widgets/skeleton/list_row_skeleton.dart';
 
 class DarkRoomScreen extends ConsumerStatefulWidget {
   const DarkRoomScreen({super.key});
@@ -43,11 +45,8 @@ class _DarkRoomScreenState extends ConsumerState<DarkRoomScreen> {
           ],
         ),
         body: async.when(
-          loading: () => const Column(
-            children: [
-              LinearProgressIndicator(),
-              Expanded(child: SizedBox()),
-            ],
+          loading: () => const S1AsyncListLoading(
+            child: ListRowSkeletonList(),
           ),
           error: (error, stack) => S1ErrorView(
             error: error,

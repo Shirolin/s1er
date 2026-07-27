@@ -23,6 +23,8 @@ import '../widgets/favorite_confirm_dialog.dart';
 import '../widgets/hide_forum_confirm_dialog.dart';
 import '../widgets/s1_error_view.dart';
 import '../widgets/s1_content_width.dart';
+import '../widgets/skeleton/s1_async_list_loading.dart';
+import '../widgets/skeleton/forum_index_skeleton.dart';
 import '../widgets/s1_desktop_scaffold.dart';
 import '../widgets/s1_menu.dart';
 import '../utils/compact_label.dart';
@@ -276,11 +278,8 @@ class _ForumTabState extends ConsumerState<_ForumTab> {
         ref.watch(favoriteForumPinsProvider).asData?.value ?? const [];
 
     return forumsAsync.when(
-      loading: () => const Column(
-        children: [
-          LinearProgressIndicator(),
-          Expanded(child: SizedBox()),
-        ],
+      loading: () => const S1AsyncListLoading(
+        child: ForumIndexSkeleton(),
       ),
       error: (e, st) => S1ErrorView(
         error: e,

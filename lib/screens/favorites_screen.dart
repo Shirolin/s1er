@@ -19,6 +19,8 @@ import '../widgets/pagination_bar.dart';
 import '../widgets/s1_error_view.dart';
 import '../widgets/s1_list_boundary_footer.dart';
 import '../widgets/s1_swipe_pagination.dart';
+import '../widgets/skeleton/s1_async_list_loading.dart';
+import '../widgets/skeleton/thread_card_skeleton.dart';
 import '../widgets/s1_desktop_scaffold.dart';
 
 class FavoritesScreen extends ConsumerStatefulWidget {
@@ -171,11 +173,8 @@ class _FavoriteListBody extends ConsumerWidget {
     final async = ref.watch(favoriteListProvider(segment));
 
     return async.when(
-      loading: () => const Column(
-        children: [
-          LinearProgressIndicator(),
-          Expanded(child: SizedBox()),
-        ],
+      loading: () => const S1AsyncListLoading(
+        child: ThreadCardSkeletonList(),
       ),
       error: (e, st) => S1ErrorView(
         error: e,

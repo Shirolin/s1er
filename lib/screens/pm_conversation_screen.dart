@@ -16,6 +16,8 @@ import '../widgets/pm_message_bubble.dart';
 import '../widgets/s1_error_view.dart';
 import '../widgets/s1_list_boundary_footer.dart';
 import '../widgets/s1_swipe_pagination.dart';
+import '../widgets/skeleton/s1_async_list_loading.dart';
+import '../widgets/skeleton/pm_bubble_skeleton.dart';
 import '../utils/pm_draft_store.dart';
 import '../utils/s1_snack_bar.dart';
 import '../widgets/s1_confirm_dialog.dart';
@@ -323,11 +325,8 @@ class _PmConversationScreenState extends ConsumerState<PmConversationScreen> {
           ],
         ),
         body: async.when(
-          loading: () => const Column(
-            children: [
-              LinearProgressIndicator(),
-              Expanded(child: SizedBox()),
-            ],
+          loading: () => const S1AsyncListLoading(
+            child: PmBubbleSkeletonList(),
           ),
           error: (error, stack) => S1ErrorView(
             error: error,

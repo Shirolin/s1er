@@ -11,6 +11,8 @@ import '../widgets/app_bar_more_menu.dart';
 import '../widgets/s1_error_view.dart';
 import '../widgets/web_avatar.dart';
 import '../widgets/s1_desktop_scaffold.dart';
+import '../widgets/skeleton/s1_async_list_loading.dart';
+import '../widgets/skeleton/list_row_skeleton.dart';
 
 class FriendsScreen extends ConsumerWidget {
   const FriendsScreen({super.key});
@@ -37,11 +39,8 @@ class FriendsScreen extends ConsumerWidget {
           ],
         ),
         body: async.when(
-          loading: () => const Column(
-            children: [
-              LinearProgressIndicator(),
-              Expanded(child: SizedBox()),
-            ],
+          loading: () => const S1AsyncListLoading(
+            child: ListRowSkeletonList(),
           ),
           error: (error, stack) => S1ErrorView(
             error: error,

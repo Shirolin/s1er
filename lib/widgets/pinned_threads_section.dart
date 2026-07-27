@@ -1,0 +1,223 @@
+import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
+
+import '../models/pinned_thread.dart';
+import '../providers/pinned_threads_provider.dart';
+import '../theme/s1_haptics.dart';
+import '../utils/s1_snack_bar.dart';
+
+class PinnedThreadsSection extends ConsumerStatefulWidget {
+  const PinnedThreadsSection({
+    super.key,
+    required this.threads,
+    this.margin = const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+  });
+
+  final List<PinnedThread> threads;
+  final EdgeInsetsGeometry margin;
+
+  @override
+  ConsumerState<PinnedThreadsSection> createState() =>
+      _PinnedThreadsSectionState();
+}
+
+class _PinnedThreadsSectionState extends ConsumerState<PinnedThreadsSection> {
+  bool _expanded = false;
+  bool _editing = false;
+
+  void _showPinActions(BuildContext context, PinnedThread thread) {
+    S1Haptics.selection();
+    final scheme = Theme.of(context).colorScheme;
+    final textTheme = Theme.of(context).textTheme;
+
+    showModalBottomSheet<void>(
+      context: context,
+      builder: (sheetContext) {
+        return SafeArea(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Padding(
+                padding: const EdgeInsets.fromLTRB(16, 16, 16, 8),
+                child: Text(
+                  thread.title,
+                  style: textTheme.titleMedium?.copyWith(
+                    fontWeight: FontWeight.bold,
+                  ),
+                  maxLines: 2,
+                  overflow: TextOverflow.ellipsis,
+                ),
+              ),
+              const Divider(),
+              ListTile(
+                leading: Icon(Icons.push_pin_outlined, color: scheme.error),
+                title: Text(
+                  '取消置顶',
+                  style: textTheme.bodyLarge?.copyWith(color: scheme.error),
+                ),
+                onTap: () {
+                  Navigator.pop(sheetContext);
+                  ref.read(pinnedThreadsProvider.notifier).unpin(thread.tid);
+                  if (mounted) {
+                    S1SnackBar.show(context, message: '已取消置顶');
+                  }
+                },
+              ),
+            ],
+          ),
+        );
+      },
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    if (widget.threads.isEmpty) return const SizedBox.shrink();
+
+    final scheme = Theme.of(context).colorScheme;
+    final textTheme = Theme.of(context).textTheme;
+    final threads = widget.threads;
+    final displayCount =
+        _expanded ? threads.length : threads.length.clamp(0, 3);
+    final visibleThreads = threads.take(displayCount).toList();
+
+    return Card(
+      elevation: 0,
+      shadowColor: Colors.transparent,
+      surfaceTintColor: Colors.transparent,
+      margin: widget.margin,
+      clipBehavior: Clip.antiAlias,
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Padding(
+            padding: const EdgeInsets.fromLTRB(16, 10, 8, 4),
+            child: Row(
+              children: [
+                Icon(
+                  Icons.push_pin,
+                  size: 18,
+                  color: scheme.primary,
+                ),
+                const SizedBox(width: 8),
+                Expanded(
+                  child: Text(
+                    '置顶帖子',
+                    style: textTheme.titleSmall?.copyWith(
+                      color: scheme.primary,
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
+                ),
+                if (threads.length > 1)
+                  TextButton(
+                    onPressed: () {
+                      S1Haptics.selection();
+                      setState(() {
+                        _editing = !_editing;
+                        if (_editing) _expanded = true;
+                      });
+                    },
+                    child: Text(_editing ? '完成' : '编辑'),
+                  ),
+                if (threads.length > 3 && !_editing)
+                  IconButton(
+                    icon: Icon(
+                      _expanded ? Icons.expand_less : Icons.expand_more,
+                      size: 20,
+                    ),
+                    tooltip: _expanded ? '收起' : '展开',
+                    onPressed: () {
+                      S1Haptics.selection();
+                      setState(() => _expanded = !_expanded);
+                    },
+                  ),
+              ],
+            ),
+          ),
+          if (_editing)
+            ReorderableListView.builder(
+              shrinkWrap: true,
+              physics: const NeverScrollableScrollPhysics(),
+              itemCount: threads.length,
+              onReorderItem: (oldIndex, newIndex) {
+                final list = List<PinnedThread>.from(threads);
+                final item = list.removeAt(oldIndex);
+                list.insert(newIndex, item);
+                ref.read(pinnedThreadsProvider.notifier).reorder(list);
+              },
+              itemBuilder: (context, index) {
+                final thread = threads[index];
+                return ListTile(
+                  key: ValueKey(thread.tid),
+                  dense: true,
+                  title: Text(
+                    thread.title,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                  trailing: const Icon(Icons.drag_handle),
+                );
+              },
+            )
+          else
+            Column(
+              children: [
+                for (final thread in visibleThreads)
+                  InkWell(
+                    onTap: () {
+                      S1Haptics.selection();
+                      context.push('/thread/${thread.tid}');
+                    },
+                    onLongPress: () => _showPinActions(context, thread),
+                    child: Padding(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 16,
+                        vertical: 10,
+                      ),
+                      child: Row(
+                        children: [
+                          Expanded(
+                            child: Text(
+                              thread.title,
+                              style: textTheme.bodyMedium,
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                            ),
+                          ),
+                          const SizedBox(width: 8),
+                          Icon(
+                            Icons.chevron_right,
+                            size: 16,
+                            color: scheme.onSurfaceVariant,
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+                if (threads.length > 3 && !_expanded)
+                  InkWell(
+                    onTap: () {
+                      S1Haptics.selection();
+                      setState(() => _expanded = true);
+                    },
+                    child: Padding(
+                      padding: const EdgeInsets.symmetric(vertical: 8),
+                      child: Center(
+                        child: Text(
+                          '展开更多 (${threads.length - 3} 条)',
+                          style: textTheme.labelMedium?.copyWith(
+                            color: scheme.primary,
+                          ),
+                        ),
+                      ),
+                    ),
+                  ),
+              ],
+            ),
+        ],
+      ),
+    );
+  }
+}

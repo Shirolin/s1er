@@ -26,6 +26,7 @@ class S1BackupPayload {
     this.readingHistory = const [],
     this.blacklist = const [],
     this.pollVotes = const [],
+    this.pinnedThreads = const [],
   });
 
   final Map<String, dynamic> manifest;
@@ -33,6 +34,7 @@ class S1BackupPayload {
   final List<Map<String, dynamic>> readingHistory;
   final List<Map<String, dynamic>> blacklist;
   final List<Map<String, dynamic>> pollVotes;
+  final List<Map<String, dynamic>> pinnedThreads;
 
   List<String> get contents {
     final raw = manifest['contents'];
@@ -81,6 +83,10 @@ class S1BackupCodec {
     if (payload.contents.contains('poll_votes') ||
         payload.pollVotes.isNotEmpty) {
       addJson('poll_votes.json', payload.pollVotes);
+    }
+    if (payload.contents.contains('pinned_threads') ||
+        payload.pinnedThreads.isNotEmpty) {
+      addJson('pinned_threads.json', payload.pinnedThreads);
     }
 
     return ZipEncoder().encodeBytes(archive);
@@ -156,6 +162,7 @@ class S1BackupCodec {
       readingHistory: readJsonArray('reading_history.json'),
       blacklist: readJsonArray('blacklist.json'),
       pollVotes: readJsonArray('poll_votes.json'),
+      pinnedThreads: readJsonArray('pinned_threads.json'),
     );
   }
 

@@ -134,11 +134,14 @@ class S1BackupService {
       });
     }
 
+    final pinnedThreads = _local.pinnedThreads;
+
     const contents = <String>[
       'settings',
       'reading_history',
       'blacklist',
       'poll_votes',
+      'pinned_threads',
     ];
 
     final exportedAt = DateTime.now().toUtc();
@@ -157,6 +160,7 @@ class S1BackupService {
         'reading_history': history.length,
         'blacklist': blacklist.length,
         'poll_votes': votes.length,
+        'pinned_threads': pinnedThreads.length,
       },
     };
 
@@ -166,6 +170,7 @@ class S1BackupService {
       readingHistory: history,
       blacklist: blacklist,
       pollVotes: votes,
+      pinnedThreads: pinnedThreads,
     );
 
     final bytes = S1BackupCodec.encode(payload);
@@ -274,6 +279,10 @@ class S1BackupService {
               ),
             );
         blacklistUpserts++;
+      }
+
+      if (payload.pinnedThreads.isNotEmpty) {
+        await _local.db.setSetting('pinnedThreads', payload.pinnedThreads);
       }
     });
 

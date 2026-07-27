@@ -11,6 +11,7 @@ import '../providers/auth_provider.dart';
 import '../providers/settings_provider.dart';
 import '../providers/thread_list_provider.dart';
 import '../widgets/app_bar_more_menu.dart';
+import '../providers/pinned_threads_provider.dart';
 import '../widgets/favorite_bookmark_button.dart';
 import '../widgets/hide_forum_confirm_dialog.dart';
 import '../models/favorite_item.dart';
@@ -446,11 +447,107 @@ class _ForumThreadList extends ConsumerWidget {
                                 final thread = threads[index];
                                 return RepaintBoundary(
                                   key: ValueKey('thread_card_${thread.tid}'),
-                                  child: ThreadCard(
-                                    key: ValueKey(thread.tid),
-                                    thread: thread,
-                                    selected: thread.tid == selectedThreadId,
-                                    onOpenThread: onOpenThread,
+                                  child: GestureDetector(
+                                    onLongPress: () {
+                                      S1Haptics.selection();
+                                      final isPinned = ref
+                                          .read(pinnedThreadsProvider.notifier)
+                                          .isPinned(thread.tid);
+                                      showModalBottomSheet<void>(
+                                        context: context,
+                                        builder: (sheetContext) {
+                                          return SafeArea(
+                                            child: Column(
+                                              mainAxisSize: MainAxisSize.min,
+                                              children: [
+                                                Padding(
+                                                  padding:
+                                                      const EdgeInsets.fromLTRB(
+                                                    16,
+                                                    16,
+                                                    16,
+                                                    8,
+                                                  ),
+                                                  child: Text(
+                                                    thread.subject,
+                                                    style: Theme.of(context)
+                                                        .textTheme
+                                                        .titleMedium
+                                                        ?.copyWith(
+                                                          fontWeight:
+                                                              FontWeight.bold,
+                                                        ),
+                                                    maxLines: 2,
+                                                    overflow:
+                                                        TextOverflow.ellipsis,
+                                                  ),
+                                                ),
+                                                Divider(
+                                                  color: Theme.of(context)
+                                                      .colorScheme
+                                                      .outlineVariant,
+                                                ),
+                                                ListTile(
+                                                  leading: Icon(
+                                                    isPinned
+                                                        ? Icons
+                                                            .push_pin_outlined
+                                                        : Icons.push_pin,
+                                                  ),
+                                                  title: Text(
+                                                    isPinned ? '取消置顶' : '钉在首页',
+                                                  ),
+                                                  onTap: () {
+                                                    Navigator.pop(sheetContext);
+                                                    if (isPinned) {
+                                                      ref
+                                                          .read(
+                                                            pinnedThreadsProvider
+                                                                .notifier,
+                                                          )
+                                                          .unpin(thread.tid);
+                                                      S1SnackBar.show(
+                                                        context,
+                                                        message: '已取消置顶',
+                                                      );
+                                                    } else {
+                                                      final ok = ref
+                                                          .read(
+                                                            pinnedThreadsProvider
+                                                                .notifier,
+                                                          )
+                                                          .pin(
+                                                            tid: thread.tid,
+                                                            title:
+                                                                thread.subject,
+                                                          );
+                                                      if (ok) {
+                                                        S1SnackBar.show(
+                                                          context,
+                                                          message: '已钉在首页',
+                                                        );
+                                                      } else {
+                                                        S1SnackBar.show(
+                                                          context,
+                                                          message:
+                                                              '首页置顶已满（10 条），请先移除一条',
+                                                        );
+                                                      }
+                                                    }
+                                                  },
+                                                ),
+                                              ],
+                                            ),
+                                          );
+                                        },
+                                      );
+                                    },
+                                    child: ThreadCard(
+                                      key: ValueKey(thread.tid),
+                                      thread: thread,
+                                      selected: thread.tid == selectedThreadId,
+                                      onOpenThread: onOpenThread,
+                                    ),
                                   ),
                                 );
                               },

@@ -20,6 +20,7 @@ import '../providers/thread_open_intent_provider.dart';
 import '../utils/compose_img_tags.dart';
 import '../utils/quote_snapshot_store.dart';
 import '../widgets/app_bar_more_menu.dart';
+import '../providers/pinned_threads_provider.dart';
 import '../widgets/favorite_bookmark_button.dart';
 import '../widgets/in_thread_jump_capture.dart';
 import '../models/favorite_item.dart';
@@ -55,6 +56,7 @@ import '../providers/post_share_provider.dart';
 import '../models/share_floor_data.dart';
 import '../utils/share_floor_selection.dart';
 import '../theme/app_theme.dart';
+import '../theme/s1_haptics.dart';
 
 bool shouldRecordReadingProgress(AppSettings settings, AuthState auth) {
   if (!settings.recordReadingHistory) {
@@ -1133,6 +1135,10 @@ class _ThreadDetailScreenState extends ConsumerState<ThreadDetailScreen> {
                   type: FavoriteType.thread,
                   id: widget.tid,
                 ),
+                _PinAppBarButton(
+                  tid: widget.tid,
+                  subject: postsAsync.asData?.value.threadSubject,
+                ),
                 AppBarMoreMenu(
                   onRefresh: () =>
                       ref.read(postProvider(widget.tid).notifier).refresh(),
@@ -1616,6 +1622,51 @@ class _ShareSelectBottomBar extends StatelessWidget {
           ),
         ),
       ),
+    );
+  }
+}
+
+class _PinAppBarButton extends ConsumerWidget {
+  const _PinAppBarButton({
+    required this.tid,
+    required this.subject,
+  });
+
+  final String tid;
+  final String? subject;
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final isPinned = ref.watch(
+      pinnedThreadsProvider.select(
+        (list) => list.any((t) => t.tid == tid),
+      ),
+    );
+
+    return IconButton(
+      tooltip: isPinned ? '取消置顶' : '钉在首页',
+      icon: Icon(
+        isPinned ? Icons.push_pin : Icons.push_pin_outlined,
+      ),
+      onPressed: () {
+        S1Haptics.selection();
+        final notifier = ref.read(pinnedThreadsProvider.notifier);
+        if (isPinned) {
+          notifier.unpin(tid);
+          S1SnackBar.show(context, message: '已取消置顶');
+        } else {
+          final title = subject ?? '帖子 $tid';
+          final ok = notifier.pin(tid: tid, title: title);
+          if (ok) {
+            S1SnackBar.show(context, message: '已钉在首页');
+          } else {
+            S1SnackBar.show(
+              context,
+              message: '首页置顶已满（10 条），请先移除一条',
+            );
+          }
+        }
+      },
     );
   }
 }

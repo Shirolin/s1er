@@ -27,6 +27,9 @@ class AppLocalData {
   /// key = blocked user uid → entry
   final Map<String, BlacklistRecord> blacklist = {};
 
+  /// Pinned threads list
+  List<Map<String, dynamic>> pinnedThreads = [];
+
   bool _readingHistoryLoaded = false;
   bool _pollVotesLoaded = false;
   bool _blacklistLoaded = false;
@@ -40,6 +43,7 @@ class AppLocalData {
   /// Settings only — used at cold start.
   Future<void> loadEssentials() async {
     await settings.load();
+    _loadPinnedThreads();
   }
 
   /// Test helper: essentials + all lazy tables (always reloads from DB).
@@ -274,5 +278,24 @@ class AppLocalData {
       pollVotes.remove(key);
     }
     await (db.delete(db.pollVotes)..where((t) => t.uid.equals(uid))).go();
+  }
+
+  void _loadPinnedThreads() {
+    pinnedThreads.clear();
+    final raw = settings.get<dynamic>('pinnedThreads');
+    if (raw is List) {
+      for (final item in raw) {
+        if (item is Map<String, dynamic>) {
+          pinnedThreads.add(item);
+        } else if (item is Map) {
+          pinnedThreads.add(Map<String, dynamic>.from(item));
+        }
+      }
+    }
+  }
+
+  void savePinnedThreads(List<Map<String, dynamic>> items) {
+    pinnedThreads = List.from(items);
+    settings.put('pinnedThreads', pinnedThreads);
   }
 }

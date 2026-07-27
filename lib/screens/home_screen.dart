@@ -22,6 +22,8 @@ import '../widgets/app_bar_more_menu.dart';
 import '../widgets/favorite_confirm_dialog.dart';
 import '../widgets/hide_forum_confirm_dialog.dart';
 import '../widgets/s1_error_view.dart';
+import '../providers/pinned_threads_provider.dart';
+import '../widgets/pinned_threads_section.dart';
 import '../widgets/s1_content_width.dart';
 import '../widgets/skeleton/s1_async_list_loading.dart';
 import '../widgets/skeleton/forum_index_skeleton.dart';
@@ -368,6 +370,10 @@ class _ForumTabState extends ConsumerState<_ForumTab> {
                     primary: true,
                     padding: const EdgeInsets.only(bottom: 16),
                     children: [
+                      if (ref.watch(pinnedThreadsProvider).isNotEmpty)
+                        PinnedThreadsSection(
+                          threads: ref.watch(pinnedThreadsProvider),
+                        ),
                       if (view.pinned.isNotEmpty)
                         _FavoriteForumsSection(forums: view.pinned),
                       for (final category in view.categories)
@@ -437,15 +443,16 @@ class _FavoriteForumsSection extends StatelessWidget {
   }
 }
 
-class _ForumCategoryGrid extends StatelessWidget {
+class _ForumCategoryGrid extends ConsumerWidget {
   const _ForumCategoryGrid({required this.view});
 
   final ForumIndexView view;
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
     final categories = view.categories;
-    if (categories.isEmpty && view.pinned.isEmpty) {
+    final pinnedThreads = ref.watch(pinnedThreadsProvider);
+    if (categories.isEmpty && view.pinned.isEmpty && pinnedThreads.isEmpty) {
       return ListView(primary: true, children: const []);
     }
 
@@ -454,6 +461,8 @@ class _ForumCategoryGrid extends StatelessWidget {
         primary: true,
         padding: const EdgeInsets.only(bottom: 16),
         children: [
+          if (pinnedThreads.isNotEmpty)
+            PinnedThreadsSection(threads: pinnedThreads),
           if (view.pinned.isNotEmpty)
             _FavoriteForumsSection(forums: view.pinned),
           if (categories.length == 1)
@@ -472,6 +481,11 @@ class _ForumCategoryGrid extends StatelessWidget {
       primary: true,
       padding: const EdgeInsets.fromLTRB(16, 8, 16, 16),
       children: [
+        if (pinnedThreads.isNotEmpty)
+          PinnedThreadsSection(
+            threads: pinnedThreads,
+            margin: const EdgeInsets.only(bottom: 16),
+          ),
         if (view.pinned.isNotEmpty)
           _FavoriteForumsSection(
             forums: view.pinned,

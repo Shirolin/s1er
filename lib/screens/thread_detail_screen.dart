@@ -449,10 +449,11 @@ class _ThreadDetailScreenState extends ConsumerState<ThreadDetailScreen> {
         if (index < 0) return true;
         _scheduleEnsurePostKeys(state.posts.length);
         await WidgetsBinding.instance.endOfFrame;
+        // 与 findLeadingVisiblePostIndex / 下一楼共用 revealAlignment，
+        // 避免恢复后抓拍 leading 楼偏低、翻页记忆被写低。
         return ScrollFloorNavigator.scrollToIndex(
           postKeys: _postKeys,
           index: index,
-          alignment: 0.15,
         );
       case ScrollToFloor(:final absoluteFloor):
         final index = floorToPageIndex(
@@ -466,7 +467,6 @@ class _ThreadDetailScreenState extends ConsumerState<ThreadDetailScreen> {
         return ScrollFloorNavigator.scrollToIndex(
           postKeys: _postKeys,
           index: index,
-          alignment: 0.15,
         );
     }
   }

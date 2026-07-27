@@ -387,7 +387,7 @@ class _ForumTabState extends ConsumerState<_ForumTab> {
   }
 }
 
-class _FavoriteForumsSection extends StatelessWidget {
+class _FavoriteForumsSection extends StatefulWidget {
   const _FavoriteForumsSection({
     required this.forums,
     this.margin = const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
@@ -395,6 +395,13 @@ class _FavoriteForumsSection extends StatelessWidget {
 
   final List<ForumCategory> forums;
   final EdgeInsetsGeometry margin;
+
+  @override
+  State<_FavoriteForumsSection> createState() => _FavoriteForumsSectionState();
+}
+
+class _FavoriteForumsSectionState extends State<_FavoriteForumsSection> {
+  bool _expanded = true;
 
   @override
   Widget build(BuildContext context) {
@@ -405,13 +412,13 @@ class _FavoriteForumsSection extends StatelessWidget {
       elevation: 0,
       shadowColor: Colors.transparent,
       surfaceTintColor: Colors.transparent,
-      margin: margin,
+      margin: widget.margin,
       clipBehavior: Clip.antiAlias,
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Padding(
-            padding: const EdgeInsets.fromLTRB(16, 12, 8, 4),
+            padding: const EdgeInsets.fromLTRB(16, 10, 8, 4),
             child: Row(
               children: [
                 Icon(
@@ -433,10 +440,23 @@ class _FavoriteForumsSection extends StatelessWidget {
                   onPressed: () => context.push('/favorites?segment=forum'),
                   child: const Text('管理'),
                 ),
+                IconButton(
+                  icon: Icon(
+                    _expanded ? Icons.expand_less : Icons.expand_more,
+                    size: 20,
+                  ),
+                  tooltip: _expanded ? '收起' : '展开',
+                  onPressed: () {
+                    S1Haptics.selection();
+                    setState(() => _expanded = !_expanded);
+                  },
+                ),
               ],
             ),
           ),
-          for (final forum in forums) _ForumTile(forum: forum, compact: true),
+          if (_expanded)
+            for (final forum in widget.forums)
+              _ForumTile(forum: forum, compact: true),
         ],
       ),
     );

@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../providers/auth_provider.dart';
 import '../providers/blacklist_provider.dart';
+import '../providers/pinned_threads_provider.dart';
 import '../providers/reading_history_provider.dart';
 import '../providers/settings_provider.dart';
 import '../providers/talker_provider.dart';
@@ -43,6 +44,7 @@ Future<S1BackupImportResult?> importS1Backup(WidgetRef ref) async {
   ref.invalidate(settingsProvider);
   ref.invalidate(readingHistoryProvider);
   ref.invalidate(blacklistProvider);
+  ref.invalidate(pinnedThreadsProvider);
   await ref.read(settingsProvider.notifier).syncAppIconWithNative();
   return result;
 }

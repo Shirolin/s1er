@@ -6,6 +6,7 @@ import '../models/pinned_thread.dart';
 import '../providers/pinned_threads_provider.dart';
 import '../theme/s1_haptics.dart';
 import '../utils/s1_snack_bar.dart';
+import 's1_adaptive_sheet.dart';
 
 class PinnedThreadsSection extends ConsumerStatefulWidget {
   const PinnedThreadsSection({
@@ -23,15 +24,15 @@ class PinnedThreadsSection extends ConsumerStatefulWidget {
 }
 
 class _PinnedThreadsSectionState extends ConsumerState<PinnedThreadsSection> {
-  bool _expanded = false;
-  bool _editing = false;
+  bool _expanded = true;
+  bool _managing = false;
 
   void _showPinActions(BuildContext context, PinnedThread thread) {
     S1Haptics.selection();
     final scheme = Theme.of(context).colorScheme;
     final textTheme = Theme.of(context).textTheme;
 
-    showModalBottomSheet<void>(
+    showS1AdaptiveSheet<void>(
       context: context,
       builder: (sheetContext) {
         return SafeArea(
@@ -78,9 +79,6 @@ class _PinnedThreadsSectionState extends ConsumerState<PinnedThreadsSection> {
     final scheme = Theme.of(context).colorScheme;
     final textTheme = Theme.of(context).textTheme;
     final threads = widget.threads;
-    final displayCount =
-        _expanded ? threads.length : threads.length.clamp(0, 3);
-    final visibleThreads = threads.take(displayCount).toList();
 
     return Card(
       elevation: 0,
@@ -110,33 +108,34 @@ class _PinnedThreadsSectionState extends ConsumerState<PinnedThreadsSection> {
                     ),
                   ),
                 ),
-                if (threads.length > 1)
-                  TextButton(
-                    onPressed: () {
-                      S1Haptics.selection();
-                      setState(() {
-                        _editing = !_editing;
-                        if (_editing) _expanded = true;
-                      });
-                    },
-                    child: Text(_editing ? '完成' : '编辑'),
+                TextButton(
+                  onPressed: () {
+                    S1Haptics.selection();
+                    setState(() {
+                      _managing = !_managing;
+                      if (_managing) _expanded = true;
+                    });
+                  },
+                  child: Text(_managing ? '完成' : '管理'),
+                ),
+                IconButton(
+                  icon: Icon(
+                    _expanded ? Icons.expand_less : Icons.expand_more,
+                    size: 20,
                   ),
-                if (threads.length > 3 && !_editing)
-                  IconButton(
-                    icon: Icon(
-                      _expanded ? Icons.expand_less : Icons.expand_more,
-                      size: 20,
-                    ),
-                    tooltip: _expanded ? '收起' : '展开',
-                    onPressed: () {
-                      S1Haptics.selection();
-                      setState(() => _expanded = !_expanded);
-                    },
-                  ),
+                  tooltip: _expanded ? '收起' : '展开',
+                  onPressed: () {
+                    S1Haptics.selection();
+                    setState(() {
+                      _expanded = !_expanded;
+                      if (!_expanded) _managing = false;
+                    });
+                  },
+                ),
               ],
             ),
           ),
-          if (_editing)
+          if (_expanded && _managing)
             ReorderableListView.builder(
               shrinkWrap: true,
               physics: const NeverScrollableScrollPhysics(),
@@ -161,10 +160,10 @@ class _PinnedThreadsSectionState extends ConsumerState<PinnedThreadsSection> {
                 );
               },
             )
-          else
+          else if (_expanded)
             Column(
               children: [
-                for (final thread in visibleThreads)
+                for (final thread in threads)
                   InkWell(
                     onTap: () {
                       S1Haptics.selection();
@@ -193,24 +192,6 @@ class _PinnedThreadsSectionState extends ConsumerState<PinnedThreadsSection> {
                             color: scheme.onSurfaceVariant,
                           ),
                         ],
-                      ),
-                    ),
-                  ),
-                if (threads.length > 3 && !_expanded)
-                  InkWell(
-                    onTap: () {
-                      S1Haptics.selection();
-                      setState(() => _expanded = true);
-                    },
-                    child: Padding(
-                      padding: const EdgeInsets.symmetric(vertical: 8),
-                      child: Center(
-                        child: Text(
-                          '展开更多 (${threads.length - 3} 条)',
-                          style: textTheme.labelMedium?.copyWith(
-                            color: scheme.primary,
-                          ),
-                        ),
                       ),
                     ),
                   ),

@@ -657,6 +657,29 @@ class _ThreadDetailScreenState extends ConsumerState<ThreadDetailScreen> {
     }
   }
 
+  void _toggleThreadPin(BuildContext context, {String? subject}) {
+    S1Haptics.selection();
+    final notifier = ref.read(pinnedThreadsProvider.notifier);
+    final isPinned = notifier.isPinned(widget.tid);
+    if (isPinned) {
+      notifier.unpin(widget.tid);
+      S1SnackBar.show(context, message: '已取消置顶');
+      return;
+    }
+    final title = subject?.trim().isNotEmpty == true
+        ? subject!.trim()
+        : '帖子 ${widget.tid}';
+    final ok = notifier.pin(tid: widget.tid, title: title);
+    if (ok) {
+      S1SnackBar.show(context, message: '已钉在首页');
+    } else {
+      S1SnackBar.show(
+        context,
+        message: '首页置顶已满（10 条），请先移除一条',
+      );
+    }
+  }
+
   bool _showsPollOnPage(PostListState state) =>
       state.currentPage == 1 &&
       state.poll != null &&
@@ -1135,10 +1158,6 @@ class _ThreadDetailScreenState extends ConsumerState<ThreadDetailScreen> {
                   type: FavoriteType.thread,
                   id: widget.tid,
                 ),
-                _PinAppBarButton(
-                  tid: widget.tid,
-                  subject: postsAsync.asData?.value.threadSubject,
-                ),
                 AppBarMoreMenu(
                   onRefresh: () =>
                       ref.read(postProvider(widget.tid).notifier).refresh(),
@@ -1150,6 +1169,15 @@ class _ThreadDetailScreenState extends ConsumerState<ThreadDetailScreen> {
                   },
                   pageSearchOpen: _pageSearchOpen,
                   onGoToLatest: _goToLatest,
+                  isPinned: ref.watch(
+                    pinnedThreadsProvider.select(
+                      (list) => list.any((t) => t.tid == widget.tid),
+                    ),
+                  ),
+                  onTogglePin: () => _toggleThreadPin(
+                    context,
+                    subject: postsAsync.asData?.value.threadSubject,
+                  ),
                   browserUrl: ApiConfig.threadBrowserUrl(
                     tid: widget.tid,
                     page: postsAsync.asData?.value.currentPage ?? 1,
@@ -1622,51 +1650,6 @@ class _ShareSelectBottomBar extends StatelessWidget {
           ),
         ),
       ),
-    );
-  }
-}
-
-class _PinAppBarButton extends ConsumerWidget {
-  const _PinAppBarButton({
-    required this.tid,
-    required this.subject,
-  });
-
-  final String tid;
-  final String? subject;
-
-  @override
-  Widget build(BuildContext context, WidgetRef ref) {
-    final isPinned = ref.watch(
-      pinnedThreadsProvider.select(
-        (list) => list.any((t) => t.tid == tid),
-      ),
-    );
-
-    return IconButton(
-      tooltip: isPinned ? '取消置顶' : '钉在首页',
-      icon: Icon(
-        isPinned ? Icons.push_pin : Icons.push_pin_outlined,
-      ),
-      onPressed: () {
-        S1Haptics.selection();
-        final notifier = ref.read(pinnedThreadsProvider.notifier);
-        if (isPinned) {
-          notifier.unpin(tid);
-          S1SnackBar.show(context, message: '已取消置顶');
-        } else {
-          final title = subject ?? '帖子 $tid';
-          final ok = notifier.pin(tid: tid, title: title);
-          if (ok) {
-            S1SnackBar.show(context, message: '已钉在首页');
-          } else {
-            S1SnackBar.show(
-              context,
-              message: '首页置顶已满（10 条），请先移除一条',
-            );
-          }
-        }
-      },
     );
   }
 }

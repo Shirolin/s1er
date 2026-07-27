@@ -22,6 +22,8 @@ class AppBarMoreMenu extends StatelessWidget {
     this.onHideForum,
     this.onPageSearch,
     this.pageSearchOpen = false,
+    this.isPinned,
+    this.onTogglePin,
     required this.browserUrl,
     this.launcher = launchUrl,
     this.showOpenLink = true,
@@ -38,6 +40,10 @@ class AppBarMoreMenu extends StatelessWidget {
   /// 本页本地搜索；非 null 时在菜单中显示开关项。
   final VoidCallback? onPageSearch;
   final bool pageSearchOpen;
+
+  /// 首页置顶；非 null 时显示钉/取消钉菜单项。
+  final bool? isPinned;
+  final VoidCallback? onTogglePin;
 
   final String browserUrl;
   final BrowserUrlLauncher launcher;
@@ -56,6 +62,8 @@ class AppBarMoreMenu extends StatelessWidget {
 
   bool get _showPostListDensity =>
       postListDensity != null && onPostListDensityChanged != null;
+
+  bool get _showPinToggle => isPinned != null && onTogglePin != null;
 
   Future<void> _copyPageLink(BuildContext context) async {
     try {
@@ -192,6 +200,15 @@ class AppBarMoreMenu extends StatelessWidget {
             },
             icon: Icons.last_page,
             label: '跳转到最新',
+          ),
+        if (_showPinToggle)
+          s1MenuItem(
+            onPressed: () {
+              S1Haptics.selection();
+              onTogglePin!();
+            },
+            icon: isPinned! ? Icons.push_pin : Icons.push_pin_outlined,
+            label: isPinned! ? '取消置顶' : '钉在首页',
           ),
         if (onHideForum != null)
           s1MenuItem(

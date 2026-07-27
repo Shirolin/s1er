@@ -2,6 +2,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../models/pinned_thread.dart';
 import '../providers/settings_provider.dart';
+import '../providers/talker_provider.dart';
 
 const int kMaxPinnedThreadsCount = 10;
 
@@ -15,8 +16,12 @@ class PinnedThreadsNotifier extends Notifier<List<PinnedThread>> {
           .where((t) => t.tid.isNotEmpty)
           .toList();
       list.sort((a, b) => a.displayOrder.compareTo(b.displayOrder));
+      if (list.length > kMaxPinnedThreadsCount) {
+        return list.take(kMaxPinnedThreadsCount).toList();
+      }
       return list;
-    } catch (_) {
+    } catch (e, st) {
+      ref.read(talkerProvider).handle(e, st, 'pinnedThreads build failed');
       return const [];
     }
   }

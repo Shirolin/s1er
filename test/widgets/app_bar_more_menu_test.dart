@@ -15,6 +15,8 @@ void main() {
     VoidCallback? onHideForum,
     VoidCallback? onPageSearch,
     bool pageSearchOpen = false,
+    bool? isPinned,
+    VoidCallback? onTogglePin,
     ListDensity? threadListDensity,
     ValueChanged<ListDensity>? onThreadListDensityChanged,
     ListDensity? postListDensity,
@@ -34,6 +36,8 @@ void main() {
                 onHideForum: onHideForum,
                 onPageSearch: onPageSearch,
                 pageSearchOpen: pageSearchOpen,
+                isPinned: isPinned,
+                onTogglePin: onTogglePin,
                 threadListDensity: threadListDensity,
                 onThreadListDensityChanged: onThreadListDensityChanged,
                 postListDensity: postListDensity,
@@ -86,6 +90,37 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(goToLatestCalled, isTrue);
+  });
+
+  testWidgets('shows and triggers pin toggle when provided', (tester) async {
+    var pinToggled = false;
+    await pumpMenu(
+      tester,
+      launcher: (url, {mode = LaunchMode.platformDefault}) async => true,
+      isPinned: false,
+      onTogglePin: () => pinToggled = true,
+    );
+
+    await openMoreMenu(tester);
+
+    expect(find.text('钉在首页'), findsOneWidget);
+    await tester.tap(find.text('钉在首页'));
+    await tester.pumpAndSettle();
+
+    expect(pinToggled, isTrue);
+  });
+
+  testWidgets('shows unpin label when pinned', (tester) async {
+    await pumpMenu(
+      tester,
+      launcher: (url, {mode = LaunchMode.platformDefault}) async => true,
+      isPinned: true,
+      onTogglePin: () {},
+    );
+
+    await openMoreMenu(tester);
+
+    expect(find.text('取消置顶'), findsOneWidget);
   });
 
   testWidgets('shows and triggers page search menu item when provided',

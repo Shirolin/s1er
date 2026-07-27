@@ -511,6 +511,13 @@ class _ForumThreadList extends ConsumerWidget {
                                                         message: '已取消置顶',
                                                       );
                                                     } else {
+                                                      final title = thread
+                                                              .subject
+                                                              .trim()
+                                                              .isNotEmpty
+                                                          ? thread.subject
+                                                              .trim()
+                                                          : '帖子 ${thread.tid}';
                                                       final ok = ref
                                                           .read(
                                                             pinnedThreadsProvider
@@ -518,8 +525,7 @@ class _ForumThreadList extends ConsumerWidget {
                                                           )
                                                           .pin(
                                                             tid: thread.tid,
-                                                            title:
-                                                                thread.subject,
+                                                            title: title,
                                                           );
                                                       if (ok) {
                                                         S1SnackBar.show(

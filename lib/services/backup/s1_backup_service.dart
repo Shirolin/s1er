@@ -281,7 +281,7 @@ class S1BackupService {
         blacklistUpserts++;
       }
 
-      if (payload.pinnedThreads.isNotEmpty) {
+      if (payload.contents.contains('pinned_threads')) {
         await _local.db.setSetting('pinnedThreads', payload.pinnedThreads);
       }
     });

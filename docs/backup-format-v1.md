@@ -36,6 +36,7 @@
 ├── reading_history.json    # 可选；JSON 数组
 ├── blacklist.json          # 可选；JSON 数组
 ├── poll_votes.json         # 可选；JSON 数组
+├── pinned_threads.json     # 可选；JSON 数组（首页置顶帖）
 └── native/                 # 可选；默认导出不包含
     └── s1er.db           # 仅本客户端高级选项
 ```
@@ -57,10 +58,12 @@ v1 **不使用** JSONL；列表一律为 JSON 数组。
     "platform": "android"
   },
   "uid": "123456",
-  "contents": ["settings", "reading_history", "blacklist"],
+  "contents": ["settings", "reading_history", "blacklist", "poll_votes", "pinned_threads"],
   "counts": {
     "reading_history": 128,
-    "blacklist": 12
+    "blacklist": 12,
+    "poll_votes": 4,
+    "pinned_threads": 2
   }
 }
 ```
@@ -166,6 +169,21 @@ v1 **不使用** JSONL；列表一律为 JSON 数组。
   "option_ids": ["82381"]
 }
 ```
+
+### 5.5 `pinned_threads.json`
+
+数组；元素示例：
+
+```json
+{
+  "tid": "2285124",
+  "title": "标题",
+  "pinned_at": 1710000000,
+  "display_order": 0
+}
+```
+
+设备级本地置顶（非论坛官方置顶）；`display_order` 升序。导入时若 `contents` 含 `pinned_threads`，空数组表示清空本地置顶列表。
 
 ---
 

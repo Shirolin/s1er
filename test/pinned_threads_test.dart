@@ -6,6 +6,7 @@ import 'package:s1er/providers/pinned_threads_provider.dart';
 import 'package:s1er/providers/settings_provider.dart';
 import 'package:s1er/services/app_database.dart';
 import 'package:s1er/services/app_local_data.dart';
+import 'package:s1er/services/backup/s1_backup_codec.dart';
 import 'package:s1er/services/backup/s1_backup_service.dart';
 import 'package:package_info_plus/package_info_plus.dart';
 
@@ -101,6 +102,24 @@ void main() {
       expect(updated[1].tid, equals('A'));
       expect(updated[1].displayOrder, equals(1));
     });
+
+    test('build trims over-limit entries from storage', () async {
+      final overLimit = List.generate(
+        12,
+        (i) => {
+          'tid': '$i',
+          'title': '帖 $i',
+          'pinned_at': 1,
+          'display_order': i,
+        },
+      );
+      localData.savePinnedThreads(overLimit);
+      await localData.load();
+
+      final container = createContainer();
+      expect(container.read(pinnedThreadsProvider).length, equals(10));
+      expect(container.read(pinnedThreadsProvider).first.tid, equals('0'));
+    });
   });
 
   group('S1Backup integration', () {
@@ -135,6 +154,62 @@ void main() {
       expect(newLocalData.pinnedThreads.first['title'], equals('备份测试帖'));
 
       await newDb.close();
+    });
+
+    test('import empty pinned_threads clears existing pins', () async {
+      localData.savePinnedThreads([
+        {
+          'tid': '111',
+          'title': '旧置顶',
+          'pinned_at': 1,
+          'display_order': 0,
+        },
+      ]);
+      await localData.load();
+
+      final backupService = S1BackupService(localData);
+      await backupService.importPayload(
+        S1BackupPayload(
+          manifest: {
+            'format': s1BackupFormatId,
+            'format_version': s1BackupFormatVersion,
+            'contents': ['pinned_threads'],
+          },
+          pinnedThreads: const [],
+        ),
+      );
+
+      expect(localData.pinnedThreads, isEmpty);
+    });
+
+    test('invalidate provider after import reflects new pins', () async {
+      final container = createContainer();
+      final notifier = container.read(pinnedThreadsProvider.notifier);
+      notifier.pin(tid: 'old', title: '旧帖');
+
+      final backupService = S1BackupService(localData);
+      await backupService.importPayload(
+        S1BackupPayload(
+          manifest: {
+            'format': s1BackupFormatId,
+            'format_version': s1BackupFormatVersion,
+            'contents': ['pinned_threads'],
+          },
+          pinnedThreads: [
+            {
+              'tid': 'new',
+              'title': '新帖',
+              'pinned_at': 2,
+              'display_order': 0,
+            },
+          ],
+        ),
+      );
+      container.invalidate(pinnedThreadsProvider);
+
+      final threads = container.read(pinnedThreadsProvider);
+      expect(threads.length, equals(1));
+      expect(threads.first.tid, equals('new'));
     });
   });
 }

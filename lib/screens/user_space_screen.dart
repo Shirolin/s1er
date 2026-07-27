@@ -18,6 +18,9 @@ import '../widgets/s1_error_view.dart';
 import '../widgets/s1_list_boundary_footer.dart';
 import '../widgets/s1_swipe_pagination.dart';
 import '../widgets/s1_content_width.dart';
+import '../widgets/skeleton/s1_async_list_loading.dart';
+import '../widgets/skeleton/list_row_skeleton.dart';
+import '../widgets/skeleton/thread_card_skeleton.dart';
 import '../widgets/s1_desktop_scaffold.dart';
 
 class UserSpaceScreen extends ConsumerStatefulWidget {
@@ -180,7 +183,9 @@ class _ThreadList extends ConsumerWidget {
     final params = (uid, isSelf);
     final async = ref.watch(userSpaceThreadsProvider(params));
     return async.when(
-      loading: () => const Center(child: CircularProgressIndicator()),
+      loading: () => const S1AsyncListLoading(
+        child: ThreadCardSkeletonList(),
+      ),
       error: (e, st) => S1ErrorView(
         error: e,
         onRetry: () =>
@@ -252,7 +257,9 @@ class _ReplyList extends ConsumerWidget {
     final params = (uid, isSelf);
     final async = ref.watch(userSpaceRepliesProvider(params));
     return async.when(
-      loading: () => const Center(child: CircularProgressIndicator()),
+      loading: () => const S1AsyncListLoading(
+        child: ListRowSkeletonList(),
+      ),
       error: (e, st) => S1ErrorView(
         error: e,
         onRetry: () =>

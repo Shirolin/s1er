@@ -17,6 +17,9 @@ import '../widgets/s1_scroll_boundary_listener.dart';
 import '../widgets/pagination_bar.dart';
 import '../widgets/user_profile_sheet.dart';
 import '../widgets/web_avatar.dart';
+import '../widgets/skeleton/s1_async_list_loading.dart';
+import '../widgets/skeleton/list_row_skeleton.dart';
+import '../widgets/skeleton/thread_card_skeleton.dart';
 
 class SearchScreen extends ConsumerStatefulWidget {
   const SearchScreen({super.key});
@@ -163,8 +166,15 @@ class _SearchBody extends ConsumerWidget {
     final scheme = Theme.of(context).colorScheme;
     final textTheme = Theme.of(context).textTheme;
 
-    if (state.isLoading && !state.hasSearched) {
-      return const Center(child: CircularProgressIndicator());
+    if (state.isLoading &&
+        state.forumHits.isEmpty &&
+        state.userHits.isEmpty &&
+        state.error == null) {
+      return S1AsyncListLoading(
+        child: state.type == SearchType.forum
+            ? const ThreadCardSkeletonList()
+            : const ListRowSkeletonList(),
+      );
     }
 
     if (state.error != null &&

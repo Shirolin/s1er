@@ -9,6 +9,8 @@ import 'package:s1er/screens/search_screen.dart';
 import 'package:s1er/services/api_service.dart';
 import 'package:s1er/services/http_client.dart';
 import 'package:s1er/theme/app_theme.dart';
+import 'package:s1er/widgets/skeleton/s1_async_list_loading.dart';
+import 'package:s1er/widgets/skeleton/thread_card_skeleton.dart';
 
 class _SeededSearchNotifier extends SearchNotifier {
   @override
@@ -26,6 +28,15 @@ class _SeededSearchNotifier extends SearchNotifier {
           ),
         ],
         count: 1,
+      );
+}
+
+class _SlowSearchNotifier extends SearchNotifier {
+  @override
+  SearchUiState build() => const SearchUiState(
+        isLoading: true,
+        query: 'switch',
+        type: SearchType.forum,
       );
 }
 
@@ -109,6 +120,27 @@ void main() {
     expect(find.textContaining('游戏论坛'), findsOneWidget);
     expect(find.byType(Card), findsOneWidget);
     expect(find.byType(Chip), findsOneWidget);
+  });
+
+  testWidgets('SearchScreen first load shows skeleton instead of empty state',
+      (tester) async {
+    await tester.pumpWidget(
+      ProviderScope(
+        overrides: [
+          searchProvider.overrideWith(_SlowSearchNotifier.new),
+        ],
+        child: MaterialApp(
+          theme: AppTheme.lightTheme('purple'),
+          home: const Scaffold(body: SearchScreen()),
+        ),
+      ),
+    );
+
+    await tester.pump();
+
+    expect(find.byType(S1AsyncListLoading), findsOneWidget);
+    expect(find.byType(ThreadCardSkeletonList), findsOneWidget);
+    expect(find.textContaining('未找到'), findsNothing);
   });
 
   testWidgets('SearchScreen cooldown countdown updates every second',

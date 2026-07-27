@@ -72,6 +72,7 @@ class S1BackupService {
     appSettings.putIfAbsent('hiddenForums', () => <String>[]);
     appSettings.putIfAbsent('shareImageFormat', () => 'webp');
     appSettings.putIfAbsent('sharePixelRatio', () => 1.5);
+    appSettings.putIfAbsent('shareAdvancedExport', () => false);
     appSettings.putIfAbsent('postSignatureEnabled', () => true);
     appSettings.putIfAbsent('postSignatureShowDevice', () => true);
     appSettings.putIfAbsent('postSignatureCustom', () => '');

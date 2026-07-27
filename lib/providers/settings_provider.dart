@@ -37,6 +37,7 @@ class AppSettings {
     this.hiddenForums = const {},
     this.shareImageFormat = ShareImageFormat.webp,
     this.sharePixelRatio = SharePixelRatio.defaultValue,
+    this.shareAdvancedExport = false,
     this.postSignatureEnabled = true,
     this.postSignatureShowDevice = true,
     this.postSignatureCustom = '',
@@ -60,6 +61,7 @@ class AppSettings {
   final Set<String> hiddenForums;
   final ShareImageFormat shareImageFormat;
   final double sharePixelRatio;
+  final bool shareAdvancedExport;
   final bool postSignatureEnabled;
   final bool postSignatureShowDevice;
   final String postSignatureCustom;
@@ -85,6 +87,7 @@ class AppSettings {
     Set<String>? hiddenForums,
     ShareImageFormat? shareImageFormat,
     double? sharePixelRatio,
+    bool? shareAdvancedExport,
     bool? postSignatureEnabled,
     bool? postSignatureShowDevice,
     String? postSignatureCustom,
@@ -108,6 +111,7 @@ class AppSettings {
       hiddenForums: hiddenForums ?? this.hiddenForums,
       shareImageFormat: shareImageFormat ?? this.shareImageFormat,
       sharePixelRatio: sharePixelRatio ?? this.sharePixelRatio,
+      shareAdvancedExport: shareAdvancedExport ?? this.shareAdvancedExport,
       postSignatureEnabled: postSignatureEnabled ?? this.postSignatureEnabled,
       postSignatureShowDevice:
           postSignatureShowDevice ?? this.postSignatureShowDevice,
@@ -138,6 +142,7 @@ class AppSettings {
         _setEquals(other.hiddenForums, hiddenForums) &&
         other.shareImageFormat == shareImageFormat &&
         other.sharePixelRatio == sharePixelRatio &&
+        other.shareAdvancedExport == shareAdvancedExport &&
         other.postSignatureEnabled == postSignatureEnabled &&
         other.postSignatureShowDevice == postSignatureShowDevice &&
         other.postSignatureCustom == postSignatureCustom &&
@@ -166,6 +171,7 @@ class AppSettings {
         Object.hashAllUnordered(hiddenForums),
         shareImageFormat,
         sharePixelRatio,
+        shareAdvancedExport,
         Object.hash(
           postSignatureEnabled,
           postSignatureShowDevice,
@@ -334,6 +340,11 @@ class SettingsNotifier extends Notifier<AppSettings> {
       sharePixelRatio: SharePixelRatio.normalize(
         settingsStore.get<Object>('sharePixelRatio'),
       ),
+      shareAdvancedExport: settingsStore.get<bool>(
+            'shareAdvancedExport',
+            defaultValue: false,
+          ) ??
+          false,
       collapsedForums: Set<String>.from(
         (settingsStore.get<List<dynamic>>('collapsedForums'))?.cast<String>() ??
             [],
@@ -488,6 +499,11 @@ class SettingsNotifier extends Notifier<AppSettings> {
     _persist('sharePixelRatio', snapped);
   }
 
+  void setShareAdvancedExport(bool value) {
+    _commit(state.copyWith(shareAdvancedExport: value));
+    _persist('shareAdvancedExport', value);
+  }
+
   void setPostSignatureEnabled(bool value) {
     _commit(state.copyWith(postSignatureEnabled: value));
     _persist('postSignatureEnabled', value);
@@ -552,6 +568,7 @@ class SettingsNotifier extends Notifier<AppSettings> {
       fontSize: defaults.fontSize,
       shareImageFormat: defaults.shareImageFormat,
       sharePixelRatio: defaults.sharePixelRatio,
+      shareAdvancedExport: defaults.shareAdvancedExport,
       customFontFileName: null,
     );
     _commit(next);
@@ -572,6 +589,7 @@ class SettingsNotifier extends Notifier<AppSettings> {
     _persist('fontSize', defaults.fontSize);
     _persist('shareImageFormat', defaults.shareImageFormat.storageKey);
     _persist('sharePixelRatio', defaults.sharePixelRatio);
+    _persist('shareAdvancedExport', defaults.shareAdvancedExport);
     _persist('customFontFileName', null);
     // Best-effort native align; failures are logged inside sync.
     // ignore: discarded_futures

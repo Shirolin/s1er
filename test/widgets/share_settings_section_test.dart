@@ -47,4 +47,51 @@ void main() {
     expect(tester.takeException(), isNull);
     expect(tester.getSize(card).width, lessThanOrEqualTo(360));
   });
+
+  testWidgets('advanced export switch shows confirm dialog before enabling',
+      (tester) async {
+    await tester.pumpWidget(
+      ProviderScope(
+        overrides: [
+          settingsProvider.overrideWith(
+            () => SettingsNotifier(initial: const AppSettings()),
+          ),
+        ],
+        child: wrapWithAppTheme(
+          const Scaffold(body: ShareSettingsSection()),
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    expect(find.text('高级导出'), findsOneWidget);
+    expect(find.byType(SwitchListTile), findsOneWidget);
+
+    final switchWidget = tester.widget<SwitchListTile>(
+      find.byType(SwitchListTile),
+    );
+    expect(switchWidget.value, isFalse);
+
+    await tester.tap(find.byType(SwitchListTile));
+    await tester.pumpAndSettle();
+
+    expect(find.text('开启高级导出'), findsOneWidget);
+    await tester.tap(find.text('取消'));
+    await tester.pumpAndSettle();
+
+    expect(
+      tester.widget<SwitchListTile>(find.byType(SwitchListTile)).value,
+      isFalse,
+    );
+
+    await tester.tap(find.byType(SwitchListTile));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('开启'));
+    await tester.pumpAndSettle();
+
+    expect(
+      tester.widget<SwitchListTile>(find.byType(SwitchListTile)).value,
+      isTrue,
+    );
+  });
 }

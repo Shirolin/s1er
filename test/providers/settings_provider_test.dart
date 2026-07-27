@@ -68,6 +68,7 @@ void main() {
     expect(state.hiddenForums, const {'7'});
     expect(state.shareImageFormat, ShareImageFormat.webp);
     expect(state.sharePixelRatio, 1.5);
+    expect(state.shareAdvancedExport, isFalse);
     expect(state.threadListDensity, ListDensity.standard);
     expect(state.postListDensity, ListDensity.standard);
   });
@@ -339,6 +340,23 @@ void main() {
 
     await Future<void>.delayed(const Duration(milliseconds: 50));
     expect(store.get<Object>('sharePixelRatio'), 2.0);
+  });
+
+  test('setShareAdvancedExport persists to settings store', () async {
+    final container = ProviderContainer(
+      overrides: [
+        settingsProvider.overrideWith(
+          () => SettingsNotifier(store: store, initial: const AppSettings()),
+        ),
+      ],
+    );
+    addTearDown(container.dispose);
+
+    container.read(settingsProvider.notifier).setShareAdvancedExport(true);
+
+    expect(container.read(settingsProvider).shareAdvancedExport, isTrue);
+    await Future<void>.delayed(const Duration(milliseconds: 50));
+    expect(store.get<bool>('shareAdvancedExport'), isTrue);
   });
 
   test('setPostSignatureCustom persists to settings store', () async {

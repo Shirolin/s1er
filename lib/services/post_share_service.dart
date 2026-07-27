@@ -20,6 +20,7 @@ import '../providers/settings_provider.dart';
 import '../utils/bbcode_parser.dart';
 import '../utils/gallery_image_saver.dart';
 import '../utils/share_capture_policy.dart';
+import '../utils/share_floor_strip_capture.dart';
 import '../utils/share_image_stitch.dart';
 import '../utils/share_native_image_encoder.dart';
 import '../utils/share_rgba_flatten.dart';
@@ -125,11 +126,15 @@ enum _FooterState { idle, capturing, error }
 class _SharePreviewSheetState extends ConsumerState<_SharePreviewSheet> {
   late final ShareCaptureKeys _captureKeys =
       ShareCaptureKeys(floorCount: widget.floors.length);
+  final GlobalKey _inFloorCaptureKey = GlobalKey();
+  final ScrollController _inFloorScrollController = ScrollController();
+  int? _inFloorCaptureFloorIndex;
   _FooterState _state = _FooterState.idle;
   String _statusMessage = '';
 
   late ShareImageFormat _shareImageFormat;
   late double _sharePixelRatio;
+  late bool _shareAdvancedExport;
 
   @override
   void initState() {
@@ -137,6 +142,34 @@ class _SharePreviewSheetState extends ConsumerState<_SharePreviewSheet> {
     final settings = ref.read(settingsProvider);
     _shareImageFormat = settings.shareImageFormat;
     _sharePixelRatio = settings.sharePixelRatio;
+    _shareAdvancedExport = settings.shareAdvancedExport;
+  }
+
+  @override
+  void dispose() {
+    _inFloorScrollController.dispose();
+    super.dispose();
+  }
+
+  ThreadPoll? _pollForFloor(ShareFloorData floor) {
+    if (widget.poll == null) return null;
+    if (floor.displayFloor != 1) return null;
+    return widget.poll;
+  }
+
+  void _showHeightCapError() {
+    if (_shareAdvancedExport) {
+      _showStatus(
+        '内容仍超出设备能力，请减少楼层或图片',
+        isError: true,
+      );
+    } else {
+      _showStatus(
+        '内容过高无法生成，请少选几层或降低分享清晰度。'
+        '可在 设置 → 分享 → 高级导出 中开启',
+        isError: true,
+      );
+    }
   }
 
   String _fileNameFor(ShareImageFormat format) => PostShareService.fileNameFor(
@@ -281,11 +314,11 @@ class _SharePreviewSheetState extends ConsumerState<_SharePreviewSheet> {
       pixelRatio: _sharePixelRatio,
     );
 
-    if (exceedsShareCaptureHardCap(estimatedCapturePixels: estimated)) {
-      _showStatus(
-        '内容过高无法生成，请少选几层或降低分享清晰度',
-        isError: true,
-      );
+    if (exceedsShareCaptureHardCap(
+      estimatedCapturePixels: estimated,
+      advanced: _shareAdvancedExport,
+    )) {
+      _showHeightCapError();
       return null;
     }
 
@@ -301,32 +334,92 @@ class _SharePreviewSheetState extends ConsumerState<_SharePreviewSheet> {
     return _captureChunkedAndEncode();
   }
 
+  Future<List<ShareRgbaStrip>> _captureInFloorStrips({
+    required int floorIndex,
+    required double totalLogicalHeight,
+  }) async {
+    if (!mounted) return [];
+    setState(() => _inFloorCaptureFloorIndex = floorIndex);
+    await WidgetsBinding.instance.endOfFrame;
+    await WidgetsBinding.instance.endOfFrame;
+
+    final boundary = _inFloorCaptureKey.currentContext?.findRenderObject()
+        as RenderRepaintBoundary?;
+    if (boundary == null) {
+      if (mounted) setState(() => _inFloorCaptureFloorIndex = null);
+      return [];
+    }
+
+    final strips = await captureBoundaryAsStrips(
+      boundary,
+      pixelRatio: _sharePixelRatio,
+      inFloorChunking: true,
+      scrollController: _inFloorScrollController,
+      totalLogicalHeight: totalLogicalHeight,
+    );
+
+    if (mounted) setState(() => _inFloorCaptureFloorIndex = null);
+    return strips;
+  }
+
   Future<_EncodedShareImage?> _captureChunkedAndEncode() async {
-    final keys = <GlobalKey>[
-      _captureKeys.header,
-      ..._captureKeys.floors,
-      _captureKeys.footer,
-    ];
     final strips = <ShareRgbaStrip>[];
 
     try {
-      for (final key in keys) {
+      final headerBoundary = _captureKeys.header.currentContext?.findRenderObject()
+          as RenderRepaintBoundary?;
+      if (headerBoundary == null) return null;
+      strips.addAll(
+        await captureBoundaryAsStrips(
+          headerBoundary,
+          pixelRatio: _sharePixelRatio,
+          inFloorChunking: false,
+        ),
+      );
+      if (strips.isEmpty) return null;
+
+      for (var i = 0; i < _captureKeys.floors.length; i++) {
+        final floorKey = _captureKeys.floors[i];
         final boundary =
-            key.currentContext?.findRenderObject() as RenderRepaintBoundary?;
+            floorKey.currentContext?.findRenderObject() as RenderRepaintBoundary?;
         if (boundary == null) return null;
-        final strip = await _rgbaStripFromBoundary(boundary, _sharePixelRatio);
-        if (strip == null) return null;
-        strips.add(strip);
+        final floorLogicalHeight = boundary.size.height;
+        final inFloor = shouldUseInFloorChunking(
+          advancedEnabled: _shareAdvancedExport,
+          floorLogicalHeight: floorLogicalHeight,
+          pixelRatio: _sharePixelRatio,
+        );
+        final floorStrips = inFloor
+            ? await _captureInFloorStrips(
+                floorIndex: i,
+                totalLogicalHeight: floorLogicalHeight,
+              )
+            : await captureBoundaryAsStrips(
+                boundary,
+                pixelRatio: _sharePixelRatio,
+                inFloorChunking: false,
+              );
+        if (floorStrips.isEmpty) return null;
+        strips.addAll(floorStrips);
       }
+
+      final footerBoundary = _captureKeys.footer.currentContext?.findRenderObject()
+          as RenderRepaintBoundary?;
+      if (footerBoundary == null) return null;
+      final footerStrips = await captureBoundaryAsStrips(
+        footerBoundary,
+        pixelRatio: _sharePixelRatio,
+        inFloorChunking: false,
+      );
+      if (footerStrips.isEmpty) return null;
+      strips.addAll(footerStrips);
 
       final stitched = await stitchRgbaVerticallyAsync(strips);
       if (exceedsShareCaptureHardCap(
         estimatedCapturePixels: stitched.width * stitched.height,
+        advanced: _shareAdvancedExport,
       )) {
-        _showStatus(
-          '内容过高无法生成，请少选几层或降低分享清晰度',
-          isError: true,
-        );
+        _showHeightCapError();
         return null;
       }
 
@@ -338,52 +431,6 @@ class _SharePreviewSheetState extends ConsumerState<_SharePreviewSheet> {
       }
     } on Object {
       return null;
-    }
-  }
-
-  Future<ShareRgbaStrip?> _rgbaStripFromBoundary(
-    RenderRepaintBoundary boundary,
-    double pixelRatio,
-  ) async {
-    ui.Image? image;
-    try {
-      image = await boundary.toImage(pixelRatio: pixelRatio);
-      final byteData =
-          await image.toByteData(format: ui.ImageByteFormat.rawRgba);
-      if (byteData == null) return null;
-      final bytes = byteData.buffer.asUint8List(
-        byteData.offsetInBytes,
-        byteData.lengthInBytes,
-      );
-      // Copy so we can dispose the GPU image immediately.
-      return ShareRgbaStrip(
-        bytes: Uint8List.fromList(bytes),
-        width: image.width,
-        height: image.height,
-      );
-    } on Object {
-      await WidgetsBinding.instance.endOfFrame;
-      image?.dispose();
-      image = null;
-      try {
-        image = await boundary.toImage(pixelRatio: pixelRatio);
-        final byteData =
-            await image.toByteData(format: ui.ImageByteFormat.rawRgba);
-        if (byteData == null) return null;
-        final bytes = byteData.buffer.asUint8List(
-          byteData.offsetInBytes,
-          byteData.lengthInBytes,
-        );
-        return ShareRgbaStrip(
-          bytes: Uint8List.fromList(bytes),
-          width: image.width,
-          height: image.height,
-        );
-      } on Object {
-        return null;
-      }
-    } finally {
-      image?.dispose();
     }
   }
 
@@ -561,47 +608,76 @@ class _SharePreviewSheetState extends ConsumerState<_SharePreviewSheet> {
     final title =
         widget.floors.length > 1 ? '分享 ${widget.floors.length} 个楼层' : '分享帖子';
 
-    return SafeArea(
-      child: ConstrainedBox(
-        constraints: BoxConstraints(maxHeight: maxHeight),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Padding(
-              padding: const EdgeInsets.fromLTRB(16, 8, 16, 8),
-              child: Text(
-                title,
-                textAlign: TextAlign.center,
-                style: textTheme.titleMedium?.copyWith(
-                  fontWeight: FontWeight.bold,
-                ),
-              ),
-            ),
-            Flexible(
-              child: SingleChildScrollView(
-                padding: const EdgeInsets.symmetric(horizontal: 12),
-                child: Padding(
-                  padding: const EdgeInsets.only(bottom: 12),
-                  child: FittedBox(
-                    fit: BoxFit.fitWidth,
-                    clipBehavior: Clip.hardEdge,
-                    child: ShareCard(
-                      captureKeys: _captureKeys,
-                      floors: widget.floors,
-                      threadSubject: widget.threadSubject,
-                      poll: widget.poll,
+    return Stack(
+      clipBehavior: Clip.none,
+      children: [
+        SafeArea(
+          child: ConstrainedBox(
+            constraints: BoxConstraints(maxHeight: maxHeight),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Padding(
+                  padding: const EdgeInsets.fromLTRB(16, 8, 16, 8),
+                  child: Text(
+                    title,
+                    textAlign: TextAlign.center,
+                    style: textTheme.titleMedium?.copyWith(
+                      fontWeight: FontWeight.bold,
                     ),
                   ),
                 ),
+                Flexible(
+                  child: SingleChildScrollView(
+                    padding: const EdgeInsets.symmetric(horizontal: 12),
+                    child: Padding(
+                      padding: const EdgeInsets.only(bottom: 12),
+                      child: FittedBox(
+                        fit: BoxFit.fitWidth,
+                        clipBehavior: Clip.hardEdge,
+                        child: ShareCard(
+                          captureKeys: _captureKeys,
+                          floors: widget.floors,
+                          threadSubject: widget.threadSubject,
+                          poll: widget.poll,
+                        ),
+                      ),
+                    ),
+                  ),
+                ),
+                AnimatedSwitcher(
+                  duration: S1Motion.short,
+                  child: _buildFooter(scheme, textTheme),
+                ),
+              ],
+            ),
+          ),
+        ),
+        if (_inFloorCaptureFloorIndex != null)
+          Positioned(
+            left: -30000,
+            top: 0,
+            child: MediaQuery(
+              data: MediaQuery.of(context).copyWith(
+                textScaler: const TextScaler.linear(1.0),
+              ),
+              child: Theme(
+                data: Theme.of(context),
+                child: ShareFloorBlock(
+                  floor: widget.floors[_inFloorCaptureFloorIndex!],
+                  poll: _pollForFloor(widget.floors[_inFloorCaptureFloorIndex!]),
+                  showLeadingDivider: _inFloorCaptureFloorIndex! > 0,
+                  captureKey: _inFloorCaptureKey,
+                  inFloorSliceCapture: true,
+                  sliceScrollController: _inFloorScrollController,
+                  sliceViewportLogicalHeight:
+                      shareInFloorChunkLogicalSliceHeight(_sharePixelRatio)
+                          .toDouble(),
+                ),
               ),
             ),
-            AnimatedSwitcher(
-              duration: S1Motion.short,
-              child: _buildFooter(scheme, textTheme),
-            ),
-          ],
-        ),
-      ),
+          ),
+      ],
     );
   }
 

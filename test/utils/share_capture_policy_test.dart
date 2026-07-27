@@ -48,6 +48,79 @@ void main() {
     );
   });
 
+  test('advanced hard cap is higher than normal', () {
+    const overNormal = S1Constants.shareCaptureMaxPixels + 1;
+    expect(
+      exceedsShareCaptureHardCap(
+        estimatedCapturePixels: overNormal,
+        advanced: false,
+      ),
+      isTrue,
+    );
+    expect(
+      exceedsShareCaptureHardCap(
+        estimatedCapturePixels: overNormal,
+        advanced: true,
+      ),
+      isFalse,
+    );
+    expect(
+      exceedsShareCaptureHardCap(
+        estimatedCapturePixels: S1Constants.shareCaptureMaxPixelsAdvanced + 1,
+        advanced: true,
+      ),
+      isTrue,
+    );
+  });
+
+  test('in-floor chunking requires advanced mode and tall floor', () {
+    expect(
+      shouldUseInFloorChunking(
+        advancedEnabled: false,
+        floorLogicalHeight: 10000,
+        pixelRatio: 1.5,
+      ),
+      isFalse,
+    );
+    expect(
+      shouldUseInFloorChunking(
+        advancedEnabled: true,
+        floorLogicalHeight: 1000,
+        pixelRatio: 1.5,
+      ),
+      isFalse,
+    );
+    expect(
+      shouldUseInFloorChunking(
+        advancedEnabled: true,
+        floorLogicalHeight: 5000,
+        pixelRatio: 1.5,
+      ),
+      isTrue,
+    );
+  });
+
+  test('in-floor slice height stays within GPU strip budget', () {
+    expect(shareInFloorChunkLogicalSliceHeight(1.5), 2730);
+    expect(shareInFloorChunkLogicalSliceHeight(2), 2048);
+    expect(shareInFloorChunkLogicalSliceHeight(3), 1365);
+  });
+
+  test('in-floor slice count for tall floors', () {
+    expect(
+      inFloorChunkSliceCount(floorLogicalHeight: 5000, pixelRatio: 1.5),
+      2,
+    );
+    expect(
+      inFloorChunkSliceCount(floorLogicalHeight: 2730, pixelRatio: 1.5),
+      1,
+    );
+    expect(
+      inFloorChunkSliceCount(floorLogicalHeight: 2731, pixelRatio: 1.5),
+      2,
+    );
+  });
+
   test('soft floor cap', () {
     expect(
       canAddShareFloor(currentCount: S1Constants.shareMaxSelectedFloors - 1),

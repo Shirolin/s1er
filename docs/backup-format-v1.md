@@ -105,6 +105,7 @@ v1 **不使用** JSONL；列表一律为 JSON 数组。
 | `hidden_forums` | string[] | 本机屏蔽的版块 id（仅影响首页版块列表；不影响收藏与深链） |
 | `share_image_format` | string | `webp` / `jpeg` / `png`；分享卡片导出图片格式（默认 `webp`） |
 | `share_pixel_ratio` | number | `1.5` / `2` / `3`；分享卡片截图清晰度（默认 `1.5`） |
+| `share_advanced_export` | bool | 高级导出：楼内切块 + 放宽高度限制（默认 `false`） |
 | `post_signature_enabled` | bool | 发帖/回复是否追加小尾巴（默认 `true`） |
 | `post_signature_show_device` | bool | 小尾巴是否显示机型（默认 `true`） |
 | `post_signature_custom` | string | 小尾巴自定义前缀（单行，客户端限制长度） |

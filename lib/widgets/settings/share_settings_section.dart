@@ -5,10 +5,15 @@ import '../../models/share_image_format.dart';
 import '../../models/share_pixel_ratio.dart';
 import '../../providers/settings_provider.dart';
 import '../../theme/s1_haptics.dart';
+import '../s1_confirm_dialog.dart';
 import 'settings_section_header.dart';
 
 class ShareSettingsSection extends ConsumerWidget {
   const ShareSettingsSection({super.key});
+
+  static const _advancedExportConfirmContent =
+      '适用于单楼图片极多的长帖。导出会更慢、更耗内存，低端设备可能失败或卡顿；'
+      '极罕见情况下拼接处可能出现细微接缝。不保证 100% 成功。';
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -106,6 +111,31 @@ class ShareSettingsSection extends ConsumerWidget {
                     ),
                   ],
                 ),
+              ),
+              const SizedBox(height: 8),
+              SwitchListTile(
+                contentPadding: const EdgeInsets.symmetric(horizontal: 8),
+                title: Text('高级导出', style: textTheme.titleSmall),
+                subtitle: Text(
+                  '单楼图片极多时使用楼内切块，放宽高度限制；更慢且可能失败',
+                  style: textTheme.bodySmall?.copyWith(
+                    color: scheme.onSurfaceVariant,
+                  ),
+                ),
+                value: settings.shareAdvancedExport,
+                onChanged: (value) async {
+                  S1Haptics.selection();
+                  if (value) {
+                    final confirmed = await showS1ConfirmDialog(
+                      context,
+                      title: '开启高级导出',
+                      content: _advancedExportConfirmContent,
+                      confirmLabel: '开启',
+                    );
+                    if (!context.mounted || !confirmed) return;
+                  }
+                  notifier.setShareAdvancedExport(value);
+                },
               ),
             ],
           ),

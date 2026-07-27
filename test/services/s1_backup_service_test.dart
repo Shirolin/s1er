@@ -111,6 +111,7 @@ void main() {
         'imageCacheLimitMb': 512,
         'shareImageFormat': 'webp',
         'sharePixelRatio': 2,
+        'shareAdvancedExport': true,
         'threadListDensity': 'compact',
         'postListDensity': 'standard',
       });
@@ -124,6 +125,7 @@ void main() {
       expect(backup['image_cache_limit_mb'], 512);
       expect(backup['share_image_format'], 'webp');
       expect(backup['share_pixel_ratio'], 2);
+      expect(backup['share_advanced_export'], isTrue);
       expect(backup['thread_list_density'], 'compact');
       expect(backup['post_list_density'], 'standard');
       expect(backup.containsKey('use_dynamic_color'), isFalse);
@@ -143,6 +145,7 @@ void main() {
       expect(app['imageCacheLimitMb'], 512);
       expect(app['shareImageFormat'], 'webp');
       expect(app['sharePixelRatio'], 2);
+      expect(app['shareAdvancedExport'], isTrue);
       expect(app['hiddenForums'], ['75', '6']);
       expect(app.containsKey('useDynamicColor'), isFalse);
       expect(app.containsKey('simulateDynamic'), isFalse);

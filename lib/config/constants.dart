@@ -54,6 +54,12 @@ class S1Constants {
   /// 分享卡导出像素硬顶（宽×高）。约等于常见 GPU 纹理高 8192 × 导出宽 1800（3×）。
   static const int shareCaptureMaxPixels = 8192 * 1800;
 
+  /// 高级导出模式下的像素硬顶（2× 高度预算）。
+  static const int shareCaptureMaxPixelsAdvanced = 8192 * 3600;
+
+  /// 楼内切块时单条 [RepaintBoundary.toImage] 的最大物理高度（留 8192 纹理余量）。
+  static const int shareInFloorChunkMaxStripPhysicalPx = 4096;
+
   /// 低于此像素且仅 1 楼时走单次 [RepaintBoundary.toImage]；否则按楼分块拼接。
   /// 取常见 4096 纹理高 × 默认导出宽 900（1.5×）。
   static const int shareCaptureChunkThresholdPixels = 4096 * 900;

@@ -250,12 +250,18 @@ class ShareFloorBlock extends StatelessWidget {
     this.poll,
     this.captureKey,
     this.showLeadingDivider = false,
+    this.inFloorSliceCapture = false,
+    this.sliceScrollController,
+    this.sliceViewportLogicalHeight,
   });
 
   final ShareFloorData floor;
   final ThreadPoll? poll;
   final GlobalKey? captureKey;
   final bool showLeadingDivider;
+  final bool inFloorSliceCapture;
+  final ScrollController? sliceScrollController;
+  final double? sliceViewportLogicalHeight;
 
   @override
   Widget build(BuildContext context) {
@@ -297,6 +303,30 @@ class ShareFloorBlock extends StatelessWidget {
     );
 
     if (captureKey == null) return content;
+
+    if (inFloorSliceCapture &&
+        sliceScrollController != null &&
+        sliceViewportLogicalHeight != null) {
+      return RepaintBoundary(
+        key: captureKey,
+        child: ColoredBox(
+          color: S1Surface.card(scheme),
+          child: SizedBox(
+            width: ShareCard.cardWidth,
+            height: sliceViewportLogicalHeight,
+            child: SingleChildScrollView(
+              controller: sliceScrollController,
+              physics: const NeverScrollableScrollPhysics(),
+              child: SizedBox(
+                width: ShareCard.cardWidth,
+                child: content,
+              ),
+            ),
+          ),
+        ),
+      );
+    }
+
     return RepaintBoundary(
       key: captureKey,
       child: ColoredBox(

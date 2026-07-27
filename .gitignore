@@ -117,10 +117,18 @@ app.*.map.json
 
 # CORS 代理日志
 proxy_server.log
+/logs/
 
 
-# Cloudflare Wrangler 本地缓存
+# Cloudflare Wrangler 本地缓存与密钥
 .wrangler/
+.dev.vars
+
+# FVM (Flutter Version Manager)
+.fvm/
+
+# Flutter 本地依赖覆盖
+pubspec_overrides.yaml
 
 # ── 项目特有 ──────────────────────────────────────────
 # 临时脚本（对话中自动生成的提取/调试工具，非项目正式代码）
@@ -154,7 +162,6 @@ scripts/maven-proxy.js
 *.key
 *.pem
 *.crt
-
 # Android 签名
 *.jks
 *.keystore

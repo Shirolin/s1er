@@ -28,7 +28,7 @@ void main() {
     expect(find.text('floor-0'), findsOneWidget);
     expect(find.text('floor-25'), findsNothing);
 
-    // Estimate passes jump instantly; final align still animates — pump to settle.
+    // Estimate and final align both jump instantly.
     final future = ScrollFloorNavigator.scrollToIndex(
       postKeys: keys,
       index: 25,

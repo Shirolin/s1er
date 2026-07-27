@@ -224,7 +224,7 @@ abstract class ScrollFloorNavigator {
 
     final delta = (targetScroll - position.pixels).abs();
     if (delta > alignSkipTolerance) {
-      await S1ScrollMotion.animateTo(position, targetScroll);
+      S1ScrollMotion.jumpTo(position, targetScroll);
     }
     return true;
   }

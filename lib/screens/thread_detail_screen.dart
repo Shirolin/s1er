@@ -46,6 +46,7 @@ import '../utils/scroll_floor.dart';
 import '../widgets/s1_adaptive_sheet.dart';
 import '../widgets/s1_click_region.dart';
 import '../widgets/s1_local_search_bar.dart';
+import '../widgets/thread_locate_skeleton.dart';
 import '../utils/s1_snack_bar.dart';
 import '../utils/thread_navigation.dart';
 import '../providers/post_share_provider.dart';
@@ -125,6 +126,9 @@ class ThreadDetailScreen extends ConsumerStatefulWidget {
 }
 
 class _ThreadDetailScreenState extends ConsumerState<ThreadDetailScreen> {
+  static const _maxOpenScrollRetries = 12;
+  static const _locateOverlayTimeout = Duration(seconds: 2);
+
   final _swipeKey = GlobalKey<S1SwipePaginationState>();
   final _scrollFabVisibility = ValueNotifier(const _ScrollFabVisibility());
   bool _hasRecordedInitialVisit = false;
@@ -132,6 +136,8 @@ class _ThreadDetailScreenState extends ConsumerState<ThreadDetailScreen> {
   int? _lastRecordedFloorInPage;
   bool _pendingInitialNavigation = false;
   bool _openScrollConsumed = false;
+  int _openScrollRetryCount = 0;
+  Timer? _locateOverlayTimer;
   String? _highlightPid;
   String? _shownLocateError;
 
@@ -210,8 +216,47 @@ class _ThreadDetailScreenState extends ConsumerState<ThreadDetailScreen> {
 
   @override
   void dispose() {
+    _locateOverlayTimer?.cancel();
     _scrollFabVisibility.dispose();
     super.dispose();
+  }
+
+  void _clearLocateOverlayTimer() {
+    _locateOverlayTimer?.cancel();
+    _locateOverlayTimer = null;
+  }
+
+  void _resetOpenScrollConsumption() {
+    _clearLocateOverlayTimer();
+    _openScrollRetryCount = 0;
+    _openScrollConsumed = false;
+  }
+
+  void _beginLocateOverlayIfNeeded() {
+    _locateOverlayTimer ??= Timer(_locateOverlayTimeout, () {
+      if (!mounted) return;
+      _forceRevealLocateOverlay();
+    });
+  }
+
+  void _forceRevealLocateOverlay() {
+    if (!mounted || _openScrollConsumed) return;
+    _clearLocateOverlayTimer();
+    setState(() {
+      _openScrollConsumed = true;
+      _pendingInitialNavigation = false;
+      _openScrollRetryCount = 0;
+    });
+    ref.read(postProvider(widget.tid).notifier).clearOpenScrollTarget();
+    final state = ref.read(postProvider(widget.tid)).asData?.value;
+    if (state != null) {
+      _maybeRecordVisibleFloor(state);
+    }
+  }
+
+  bool _showLocateOverlay(PostListState state) {
+    return !_openScrollConsumed &&
+        (state.openScrollTarget != null || _pendingInitialNavigation);
   }
 
   /// 记录阅读进度：写库 + 刷新历史列表（使列表卡片/历史页/资料计数实时更新）。
@@ -348,6 +393,7 @@ class _ThreadDetailScreenState extends ConsumerState<ThreadDetailScreen> {
     if (target == null) return;
 
     _pendingInitialNavigation = true;
+    _beginLocateOverlayIfNeeded();
     if (_postKeys.length != state.posts.length) {
       setState(() {
         _postKeys = List.generate(state.posts.length, (_) => GlobalKey());
@@ -364,10 +410,17 @@ class _ThreadDetailScreenState extends ConsumerState<ThreadDetailScreen> {
       _openScrollConsumed = true;
       // Clear the progress gate before notifying listeners (clearOpenScrollTarget).
       _pendingInitialNavigation = false;
+      _openScrollRetryCount = 0;
+      _clearLocateOverlayTimer();
       if (mounted) setState(() {});
       ref.read(postProvider(widget.tid).notifier).clearOpenScrollTarget();
       _maybeRecordVisibleFloor(state);
     } else {
+      _openScrollRetryCount++;
+      if (_openScrollRetryCount >= _maxOpenScrollRetries) {
+        _forceRevealLocateOverlay();
+        return;
+      }
       // 懒列表尚未构建目标楼：短暂等待后重试。
       WidgetsBinding.instance.addPostFrameCallback((_) {
         if (!mounted || _openScrollConsumed) return;
@@ -697,8 +750,8 @@ class _ThreadDetailScreenState extends ConsumerState<ThreadDetailScreen> {
     final notifier = ref.read(postProvider(widget.tid).notifier);
     setState(() {
       _manualPageChange = false;
-      _openScrollConsumed = false;
     });
+    _resetOpenScrollConsumption();
     if (result.pid != null && result.pid!.isNotEmpty) {
       await notifier.locatePid(result.pid!);
     } else {
@@ -879,9 +932,9 @@ class _ThreadDetailScreenState extends ConsumerState<ThreadDetailScreen> {
     setState(() {
       _restoringJump = true;
       _manualPageChange = false;
-      _openScrollConsumed = false;
       _highlightPid = null;
     });
+    _resetOpenScrollConsumption();
     try {
       final ok =
           await ref.read(postProvider(widget.tid).notifier).restoreToFloor(
@@ -937,9 +990,9 @@ class _ThreadDetailScreenState extends ConsumerState<ThreadDetailScreen> {
       if (!mounted) return;
       setState(() {
         _manualPageChange = false;
-        _openScrollConsumed = false;
         _highlightPid = null;
       });
+      _resetOpenScrollConsumption();
       unawaited(ref.read(postProvider(widget.tid).notifier).locatePid(pid));
     });
   }
@@ -1086,6 +1139,7 @@ class _ThreadDetailScreenState extends ConsumerState<ThreadDetailScreen> {
           final visible = _visiblePosts(state);
           final hasPageQuery =
               PageSearch.normalizeQuery(_pageSearchQuery).isNotEmpty;
+          final showLocateOverlay = _showLocateOverlay(state);
 
           return Column(
             children: [
@@ -1189,44 +1243,53 @@ class _ThreadDetailScreenState extends ConsumerState<ThreadDetailScreen> {
                               );
                             },
                           ),
-                    child: S1SwipePagination(
-                      key: _swipeKey,
-                      currentPage: state.currentPage,
-                      totalPages: state.totalPages,
-                      onScrollMetricsChanged: _onScrollMetricsChanged,
-                      onPageChanged: _goToPage,
-                      pageBuilder: (context, scrollController) =>
-                          ScrollPointerGateHost(
-                        child: Scrollbar(
-                          controller: scrollController,
-                          child: state.posts.isEmpty
-                              ? const Center(child: Text('暂无回复'))
-                              : visible.isEmpty && hasPageQuery
-                                  ? ListView(
-                                      controller: scrollController,
-                                      children: const [
-                                        SizedBox(height: 48),
-                                        Center(child: Text('本页无匹配回复')),
-                                      ],
-                                    )
-                                  : ListView.builder(
-                                      controller: scrollController,
-                                      scrollCacheExtent: S1FabLayout
-                                          .threadDetailScrollCacheExtent,
-                                      padding: S1FabLayout
-                                          .threadDetailScrollBottomPadding,
-                                      itemCount:
-                                          _detailItemCount(state, visible),
-                                      itemBuilder: (context, index) =>
-                                          _buildDetailItem(
-                                        context,
-                                        state,
-                                        visible,
-                                        index,
-                                      ),
-                                    ),
+                    child: Stack(
+                      fit: StackFit.expand,
+                      children: [
+                        S1SwipePagination(
+                          key: _swipeKey,
+                          currentPage: state.currentPage,
+                          totalPages: state.totalPages,
+                          onScrollMetricsChanged: _onScrollMetricsChanged,
+                          onPageChanged: _goToPage,
+                          pageBuilder: (context, scrollController) =>
+                              ScrollPointerGateHost(
+                            child: Scrollbar(
+                              controller: scrollController,
+                              child: state.posts.isEmpty
+                                  ? const Center(child: Text('暂无回复'))
+                                  : visible.isEmpty && hasPageQuery
+                                      ? ListView(
+                                          controller: scrollController,
+                                          children: const [
+                                            SizedBox(height: 48),
+                                            Center(child: Text('本页无匹配回复')),
+                                          ],
+                                        )
+                                      : ListView.builder(
+                                          controller: scrollController,
+                                          scrollCacheExtent: S1FabLayout
+                                              .threadDetailScrollCacheExtent,
+                                          padding: S1FabLayout
+                                              .threadDetailScrollBottomPadding,
+                                          itemCount:
+                                              _detailItemCount(state, visible),
+                                          itemBuilder: (context, index) =>
+                                              _buildDetailItem(
+                                            context,
+                                            state,
+                                            visible,
+                                            index,
+                                          ),
+                                        ),
+                            ),
+                          ),
                         ),
-                      ),
+                        if (showLocateOverlay)
+                          const Positioned.fill(
+                            child: ThreadLocateSkeleton(),
+                          ),
+                      ],
                     ),
                   ),
                 ),

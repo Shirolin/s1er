@@ -37,6 +37,24 @@ abstract class S1ScrollMotion {
         : Curves.easeInOutCubic;
   }
 
+  /// 瞬时跳至固定目标；仅用于估算阶段拉入懒列表构建窗口。
+  ///
+  /// 最终对齐仍用 [animateTo]；勿在 layout 中作静默校正（可能引发布局断言）。
+  static void jumpTo(
+    ScrollPosition position,
+    double target, {
+    double tolerance = settleTolerance,
+  }) {
+    if (!position.hasPixels) return;
+
+    final clamped =
+        target.clamp(position.minScrollExtent, position.maxScrollExtent);
+    final delta = (clamped - position.pixels).abs();
+    if (delta <= tolerance) return;
+
+    position.jumpTo(clamped);
+  }
+
   /// 滚至固定目标；已到位则跳过。
   static Future<void> animateTo(
     ScrollPosition position,

@@ -95,7 +95,7 @@ abstract class ScrollFloorNavigator {
       if (currentTop == null) return;
       if (currentRender is! RenderBox || !currentRender.hasSize) return;
 
-      // 下一楼可能尚未被 ListView.builder 构建：先一次主滚拉入视口，再静默校正。
+      // 下一楼可能尚未被 ListView.builder 构建：先瞬时估算拉入视口，再静默校正。
       final estimatedTarget = currentTop +
           currentRender.size.height -
           viewportDimension * revealAlignment;
@@ -104,7 +104,7 @@ abstract class ScrollFloorNavigator {
         position.minScrollExtent,
         position.maxScrollExtent,
       );
-      await S1ScrollMotion.animateTo(position, revealTarget);
+      S1ScrollMotion.jumpTo(position, revealTarget);
       await WidgetsBinding.instance.endOfFrame;
       nextContext = postKeys[nextIndex].currentContext;
 
@@ -205,7 +205,7 @@ abstract class ScrollFloorNavigator {
               viewportDimension * alignment)
           .clamp(position.minScrollExtent, position.maxScrollExtent);
 
-      await S1ScrollMotion.animateTo(position, estimated);
+      S1ScrollMotion.jumpTo(position, estimated);
       await WidgetsBinding.instance.endOfFrame;
       targetContext = postKeys[index].currentContext;
     }

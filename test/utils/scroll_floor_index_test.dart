@@ -28,7 +28,7 @@ void main() {
     expect(find.text('floor-0'), findsOneWidget);
     expect(find.text('floor-25'), findsNothing);
 
-    // Must pump while animateTo runs; awaiting first would deadlock the ticker.
+    // Estimate passes jump instantly; final align still animates — pump to settle.
     final future = ScrollFloorNavigator.scrollToIndex(
       postKeys: keys,
       index: 25,

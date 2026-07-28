@@ -167,4 +167,32 @@ void main() {
     );
     expect(at2, at1 * 4);
   });
+
+  test('shareCaptureSizeFromLogical rounds physical dimensions', () {
+    final size = shareCaptureSizeFromLogical(
+      logicalWidth: 600.4,
+      logicalHeight: 1000.6,
+      pixelRatio: 1.5,
+      maxPixels: S1Constants.shareCaptureMaxPixels,
+    );
+    expect(size.physicalWidth, 901);
+    expect(size.physicalHeight, 1501);
+    expect(size.totalPixels, 901 * 1501);
+  });
+
+  test('formatShareCaptureSizeDetail includes cap', () {
+    final size = shareCaptureSizeFromPhysical(
+      physicalWidth: 1350,
+      physicalHeight: 28400,
+      maxPixels: S1Constants.shareCaptureMaxPixels,
+    );
+    expect(
+      formatShareCaptureSizeDetail(size),
+      '约 1350×28400 px（38.3M 像素，上限 14.7M 像素）',
+    );
+    expect(
+      formatShareCaptureSizeShort(size),
+      '（约 1350×28400 px）',
+    );
+  });
 }

@@ -21,6 +21,7 @@ import '../utils/bbcode_parser.dart';
 import '../utils/gallery_image_saver.dart';
 import '../utils/share_capture_limits.dart';
 import '../utils/share_capture_policy.dart';
+import 'talker.dart';
 import '../utils/share_floor_strip_capture.dart';
 import '../utils/share_image_stitch.dart';
 import '../utils/share_native_image_encoder.dart';
@@ -161,19 +162,37 @@ class _SharePreviewSheetState extends ConsumerState<_SharePreviewSheet> {
   ShareCaptureLimits get _shareCaptureLimits =>
       ShareCaptureLimits.forCurrentPlatform(advanced: _shareAdvancedExport);
 
-  void _showHeightCapError() {
+  ShareCaptureSizeInfo? _lastCaptureSize;
+
+  void _rememberCaptureSize(ShareCaptureSizeInfo size) {
+    _lastCaptureSize = size;
+  }
+
+  void _showHeightCapError(ShareCaptureSizeInfo size) {
+    final detail = formatShareCaptureSizeDetail(size);
+    talker.warning('Share capture exceeded cap: $detail');
     if (_shareAdvancedExport) {
       _showStatus(
-        '内容仍超出设备能力，请减少楼层或图片',
+        '内容仍超出设备能力：$detail。请减少楼层或图片',
         isError: true,
       );
     } else {
       _showStatus(
-        '内容过高无法生成，请少选几层或降低分享清晰度。'
+        '内容过高无法生成：$detail。'
+        '请少选几层或降低分享清晰度。'
         '可在 设置 → 分享 → 高级导出 中开启',
         isError: true,
       );
     }
+  }
+
+  void _showCaptureFailure(String message) {
+    final suffix = _lastCaptureSize == null
+        ? ''
+        : formatShareCaptureSizeShort(_lastCaptureSize!);
+    final full = '$message$suffix';
+    talker.warning('Share capture failed: $full');
+    _showStatus(full, isError: true);
   }
 
   String _fileNameFor(ShareImageFormat format) => PostShareService.fileNameFor(
@@ -192,7 +211,7 @@ class _SharePreviewSheetState extends ConsumerState<_SharePreviewSheet> {
 
     if (encoded == null) {
       if (_state != _FooterState.error) {
-        _showStatus('生成图片失败，请稍后重试', isError: true);
+        _showCaptureFailure('生成图片失败，请稍后重试');
       }
       return;
     }
@@ -229,7 +248,7 @@ class _SharePreviewSheetState extends ConsumerState<_SharePreviewSheet> {
 
     if (encoded == null) {
       if (_state != _FooterState.error) {
-        _showStatus('生成图片失败，请稍后重试', isError: true);
+        _showCaptureFailure('生成图片失败，请稍后重试');
       }
       return;
     }
@@ -312,18 +331,22 @@ class _SharePreviewSheetState extends ConsumerState<_SharePreviewSheet> {
     if (fullBoundary == null) return null;
 
     final logicalSize = fullBoundary.size;
-    final estimated = estimateShareCapturePixels(
+    final limits = _shareCaptureLimits;
+    final captureSize = shareCaptureSizeFromLogical(
       logicalWidth: logicalSize.width,
       logicalHeight: logicalSize.height,
       pixelRatio: _sharePixelRatio,
+      maxPixels: limits.maxPixels,
     );
+    _rememberCaptureSize(captureSize);
+    final estimated = captureSize.totalPixels;
 
     if (exceedsShareCaptureHardCap(
       estimatedCapturePixels: estimated,
       advanced: _shareAdvancedExport,
-      limits: _shareCaptureLimits,
+      limits: limits,
     )) {
-      _showHeightCapError();
+      _showHeightCapError(captureSize);
       return null;
     }
 
@@ -446,12 +469,18 @@ class _SharePreviewSheetState extends ConsumerState<_SharePreviewSheet> {
         }
 
         final stitched = composer.build();
+        final stitchedSize = shareCaptureSizeFromPhysical(
+          physicalWidth: stitched.width,
+          physicalHeight: stitched.height,
+          maxPixels: limits.maxPixels,
+        );
+        _rememberCaptureSize(stitchedSize);
         if (exceedsShareCaptureHardCap(
-          estimatedCapturePixels: stitched.width * stitched.height,
+          estimatedCapturePixels: stitchedSize.totalPixels,
           advanced: true,
           limits: limits,
         )) {
-          _showHeightCapError();
+          _showHeightCapError(stitchedSize);
           return null;
         }
 
@@ -485,12 +514,18 @@ class _SharePreviewSheetState extends ConsumerState<_SharePreviewSheet> {
       strips.addAll(footerStrips);
 
       final stitched = await stitchRgbaVerticallyAsync(strips);
+      final stitchedSize = shareCaptureSizeFromPhysical(
+        physicalWidth: stitched.width,
+        physicalHeight: stitched.height,
+        maxPixels: limits.maxPixels,
+      );
+      _rememberCaptureSize(stitchedSize);
       if (exceedsShareCaptureHardCap(
-        estimatedCapturePixels: stitched.width * stitched.height,
+        estimatedCapturePixels: stitchedSize.totalPixels,
         advanced: false,
         limits: limits,
       )) {
-        _showHeightCapError();
+        _showHeightCapError(stitchedSize);
         return null;
       }
 
@@ -500,7 +535,9 @@ class _SharePreviewSheetState extends ConsumerState<_SharePreviewSheet> {
       } finally {
         image.dispose();
       }
-    } on Object {
+    } on Object catch (e, st) {
+      talker.handle(e, st, 'Share chunked capture failed');
+      _showCaptureFailure('生成图片失败，请稍后重试');
       return null;
     }
   }

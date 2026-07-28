@@ -37,9 +37,77 @@ int estimateShareCapturePixels({
   required double logicalHeight,
   required double pixelRatio,
 }) {
+  return shareCaptureSizeFromLogical(
+    logicalWidth: logicalWidth,
+    logicalHeight: logicalHeight,
+    pixelRatio: pixelRatio,
+    maxPixels: 0,
+  ).totalPixels;
+}
+
+/// Physical export dimensions for user-facing / debug messages.
+class ShareCaptureSizeInfo {
+  const ShareCaptureSizeInfo({
+    required this.physicalWidth,
+    required this.physicalHeight,
+    required this.maxPixels,
+  });
+
+  final int physicalWidth;
+  final int physicalHeight;
+  final int maxPixels;
+
+  int get totalPixels => physicalWidth * physicalHeight;
+
+  @override
+  String toString() => formatShareCaptureSizeDetail(this);
+}
+
+ShareCaptureSizeInfo shareCaptureSizeFromLogical({
+  required double logicalWidth,
+  required double logicalHeight,
+  required double pixelRatio,
+  required int maxPixels,
+}) {
   final w = (logicalWidth * pixelRatio).round().clamp(1, 1 << 30);
   final h = (logicalHeight * pixelRatio).round().clamp(1, 1 << 30);
-  return w * h;
+  return ShareCaptureSizeInfo(
+    physicalWidth: w,
+    physicalHeight: h,
+    maxPixels: maxPixels,
+  );
+}
+
+ShareCaptureSizeInfo shareCaptureSizeFromPhysical({
+  required int physicalWidth,
+  required int physicalHeight,
+  required int maxPixels,
+}) {
+  return ShareCaptureSizeInfo(
+    physicalWidth: physicalWidth,
+    physicalHeight: physicalHeight,
+    maxPixels: maxPixels,
+  );
+}
+
+String _formatMegapixels(int pixels) {
+  final mp = pixels / 1000000;
+  if (mp >= 100) return mp.round().toString();
+  return mp.toStringAsFixed(1);
+}
+
+/// Full size detail for cap / failure toasts.
+String formatShareCaptureSizeDetail(ShareCaptureSizeInfo size) {
+  final capSuffix = size.maxPixels > 0
+      ? '，上限 ${_formatMegapixels(size.maxPixels)}M 像素'
+      : '';
+  return '约 ${size.physicalWidth}×${size.physicalHeight} px'
+      '（${_formatMegapixels(size.totalPixels)}M 像素$capSuffix）';
+}
+
+/// Short size hint appended to generic capture failures.
+String formatShareCaptureSizeShort(ShareCaptureSizeInfo size) {
+  return '（约 ${size.physicalWidth}×${size.physicalHeight} px）';
 }
 
 /// Soft-cap check before adding another floor to the selection.

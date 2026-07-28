@@ -135,9 +135,8 @@ class VerticalRgbaComposer {
 
     if (_width == null) {
       _width = strip.width;
-      final capacityRows = _initialCapacityHeight > 0
-          ? _initialCapacityHeight
-          : strip.height;
+      final capacityRows =
+          _initialCapacityHeight > 0 ? _initialCapacityHeight : strip.height;
       _buffer = Uint8List(strip.width * capacityRows * 4);
     } else if (strip.width != _width) {
       throw ArgumentError(

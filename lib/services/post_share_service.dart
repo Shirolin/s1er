@@ -744,9 +744,9 @@ class _SharePreviewSheetState extends ConsumerState<_SharePreviewSheet> {
                   sliceScrollController: _inFloorScrollController,
                   sliceViewportLogicalHeight:
                       shareInFloorChunkLogicalSliceHeight(
-                        _sharePixelRatio,
-                        limits: _shareCaptureLimits,
-                      ).toDouble(),
+                    _sharePixelRatio,
+                    limits: _shareCaptureLimits,
+                  ).toDouble(),
                 ),
               ),
             ),

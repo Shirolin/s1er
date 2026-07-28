@@ -46,7 +46,8 @@ Future<List<ShareRgbaStrip>> captureBoundaryWithScrollSlices({
   if (totalLogicalHeight <= 0) return [];
 
   final sliceLogicalHeight =
-      shareInFloorChunkLogicalSliceHeight(pixelRatio, limits: limits).toDouble();
+      shareInFloorChunkLogicalSliceHeight(pixelRatio, limits: limits)
+          .toDouble();
   final strips = <ShareRgbaStrip>[];
   var y = 0.0;
   while (y < totalLogicalHeight) {

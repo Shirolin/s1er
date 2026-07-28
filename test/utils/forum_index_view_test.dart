@@ -46,6 +46,26 @@ void main() {
     expect(filtered.single.subforums.map((f) => f.fid), ['1']);
   });
 
+  test('mergeFavoriteForumOrder returns api order when saved order empty', () {
+    expect(
+      mergeFavoriteForumOrder(
+        apiFids: ['2', '1', '3'],
+        savedOrder: const [],
+      ),
+      ['2', '1', '3'],
+    );
+  });
+
+  test('mergeFavoriteForumOrder keeps saved order and prepends new fids', () {
+    expect(
+      mergeFavoriteForumOrder(
+        apiFids: ['4', '2', '1'],
+        savedOrder: ['1', '2', '9'],
+      ),
+      ['4', '1', '2'],
+    );
+  });
+
   test('buildForumIndexView pins favorites and skips hidden', () {
     final view = buildForumIndexView(
       categories: categories,

@@ -40,7 +40,7 @@ void main() {
 
     expect(find.text('外野'), findsOneWidget);
     expect(find.text('动漫论坛'), findsNothing);
-    expect(find.text('已收藏'), findsNothing);
+    expect(find.text('已收藏板块'), findsNothing);
   });
 
   testWidgets('logged-in home shows favorite pin section', (tester) async {
@@ -65,11 +65,18 @@ void main() {
 
     await tester.pumpAndSettle();
 
-    expect(find.text('已收藏'), findsOneWidget);
-    expect(find.text('管理'), findsOneWidget);
+    expect(find.text('已收藏板块'), findsOneWidget);
+    expect(find.byTooltip('管理'), findsOneWidget);
+    expect(find.byIcon(Icons.reorder), findsOneWidget);
     // Pinned + category list both show 外野.
     expect(find.text('外野'), findsNWidgets(2));
     expect(find.text('动漫论坛'), findsOneWidget);
+
+    await tester.tap(find.byTooltip('管理'));
+    await tester.pumpAndSettle();
+
+    expect(find.byIcon(Icons.drag_handle), findsOneWidget);
+    expect(find.byIcon(Icons.check), findsOneWidget);
   });
 }
 

@@ -4,6 +4,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:s1er/theme/app_theme.dart';
 import 'package:s1er/services/api_service.dart';
 import 'package:s1er/widgets/s1_error_view.dart';
+import 'package:url_launcher/url_launcher.dart';
 
 void main() {
   Widget wrap(Widget child) => MaterialApp(
@@ -26,6 +27,28 @@ void main() {
       expect(find.text('姨妈一会，太卡了'), findsOneWidget);
       expect(find.text('请稍后再试'), findsOneWidget);
       expect(find.text('重试'), findsOneWidget);
+      expect(find.text('打开网页版论坛'), findsOneWidget);
+    });
+
+    testWidgets('维护异常可打开网页版论坛', (tester) async {
+      Uri? openedUri;
+      await tester.pumpWidget(
+        wrap(
+          S1ErrorView(
+            error: ServerMaintenanceException('姨妈一会，太卡了'),
+            forumWebUrl: 'https://stage1st.com/2b',
+            forumWebLauncher: (uri, {mode = LaunchMode.platformDefault}) async {
+              openedUri = uri;
+              return true;
+            },
+          ),
+        ),
+      );
+
+      await tester.tap(find.text('打开网页版论坛'));
+      await tester.pumpAndSettle();
+
+      expect(openedUri, Uri.parse('https://stage1st.com/2b'));
     });
 
     testWidgets('登录异常显示锁图标、上游限制说明和去登录按钮', (tester) async {

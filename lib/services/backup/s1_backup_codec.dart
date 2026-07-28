@@ -206,6 +206,7 @@ class S1BackupSettingsMapper {
     'fontSize': 'font_size',
     'collapsedForums': 'collapsed_forums',
     'hiddenForums': 'hidden_forums',
+    'favoriteForumOrder': 'favorite_forum_order',
     'shareImageFormat': 'share_image_format',
     'sharePixelRatio': 'share_pixel_ratio',
     'shareAdvancedExport': 'share_advanced_export',
@@ -242,7 +243,9 @@ class S1BackupSettingsMapper {
       final appKey = reverse[entry.key];
       if (appKey == null) continue; // unknown field: ignore
       final value = entry.value;
-      if ((appKey == 'collapsedForums' || appKey == 'hiddenForums') &&
+      if ((appKey == 'collapsedForums' ||
+              appKey == 'hiddenForums' ||
+              appKey == 'favoriteForumOrder') &&
           value is List) {
         out[appKey] = value.map((e) => e.toString()).toList();
       } else if (appKey == 'imageLoadPolicy' && value is String) {

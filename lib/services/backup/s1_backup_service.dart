@@ -70,6 +70,7 @@ class S1BackupService {
     appSettings.putIfAbsent('fontSize', () => 14);
     appSettings.putIfAbsent('collapsedForums', () => <String>[]);
     appSettings.putIfAbsent('hiddenForums', () => <String>[]);
+    appSettings.putIfAbsent('favoriteForumOrder', () => <String>[]);
     appSettings.putIfAbsent('shareImageFormat', () => 'webp');
     appSettings.putIfAbsent('sharePixelRatio', () => 1.5);
     appSettings.putIfAbsent('shareAdvancedExport', () => false);

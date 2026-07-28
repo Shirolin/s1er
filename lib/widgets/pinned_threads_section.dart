@@ -108,7 +108,16 @@ class _PinnedThreadsSectionState extends ConsumerState<PinnedThreadsSection> {
                     ),
                   ),
                 ),
-                TextButton(
+                IconButton(
+                  icon: Icon(
+                    _managing ? Icons.check : Icons.reorder,
+                    size: 20,
+                    color: _managing
+                        ? scheme.primary
+                        : scheme.onSurfaceVariant,
+                  ),
+                  tooltip: _managing ? '完成' : '管理',
+                  visualDensity: VisualDensity.compact,
                   onPressed: () {
                     S1Haptics.selection();
                     setState(() {
@@ -116,12 +125,12 @@ class _PinnedThreadsSectionState extends ConsumerState<PinnedThreadsSection> {
                       if (_managing) _expanded = true;
                     });
                   },
-                  child: Text(_managing ? '完成' : '管理'),
                 ),
                 IconButton(
                   icon: Icon(
                     _expanded ? Icons.expand_less : Icons.expand_more,
                     size: 20,
+                    color: scheme.onSurfaceVariant,
                   ),
                   tooltip: _expanded ? '收起' : '展开',
                   onPressed: () {

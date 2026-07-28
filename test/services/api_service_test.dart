@@ -1,6 +1,12 @@
+import 'dart:convert';
+import 'dart:typed_data';
+
+import 'package:dio/dio.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:s1er/models/rate_form.dart';
 import 'package:s1er/services/api_service.dart';
+import 'package:s1er/services/http_client.dart';
 
 void main() {
   group('ApiService', () {
@@ -803,6 +809,45 @@ void main() {
           '服务器维护中，请稍后再试',
         );
       });
+
+      test('extractApiErrorMessage reads maintenance announcement from JSON',
+          () {
+        final json = {
+          'error': '维护公告 \n \n 又被爬了，休息会',
+        };
+        expect(
+          ApiService.extractApiErrorMessage(json),
+          '维护公告 \n \n 又被爬了，休息会',
+        );
+      });
+
+      test('extractApiErrorMessage ignores to_login', () {
+        expect(
+          ApiService.extractApiErrorMessage({'error': 'to_login'}),
+          isNull,
+        );
+      });
+
+      test('getForumList throws maintenance when forumindex returns error only',
+          () async {
+        final container = ProviderContainer();
+        addTearDown(container.dispose);
+        final adapter = _ForumIndexMaintenanceAdapter();
+        final dio = Dio()..httpClientAdapter = adapter;
+        final client = S1HttpClient.test(container, dio);
+        final api = ApiService(client);
+
+        expect(
+          () => api.getForumList(),
+          throwsA(
+            isA<ServerMaintenanceException>().having(
+              (e) => e.message,
+              'message',
+              '维护公告 \n \n 又被爬了，休息会',
+            ),
+          ),
+        );
+      });
     });
 
     group('pageFromFindpostLocation', () {
@@ -950,4 +995,24 @@ void main() {
       });
     });
   });
+}
+
+class _ForumIndexMaintenanceAdapter implements HttpClientAdapter {
+  @override
+  void close({bool force = false}) {}
+
+  @override
+  Future<ResponseBody> fetch(
+    RequestOptions options,
+    Stream<Uint8List>? requestStream,
+    Future<void>? cancelFuture,
+  ) async {
+    return ResponseBody.fromString(
+      jsonEncode({'error': '维护公告 \n \n 又被爬了，休息会'}),
+      200,
+      headers: {
+        Headers.contentTypeHeader: [Headers.jsonContentType],
+      },
+    );
+  }
 }

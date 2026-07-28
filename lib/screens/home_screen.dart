@@ -276,6 +276,9 @@ class _ForumTabState extends ConsumerState<_ForumTab> {
     final hiddenForums = ref.watch(
       settingsProvider.select((s) => s.hiddenForums),
     );
+    final favoriteForumOrder = ref.watch(
+      settingsProvider.select((s) => s.favoriteForumOrder),
+    );
     final pinItems =
         ref.watch(favoriteForumPinsProvider).asData?.value ?? const [];
 
@@ -303,9 +306,10 @@ class _ForumTabState extends ConsumerState<_ForumTab> {
         };
         final view = buildForumIndexView(
           categories: categories,
-          favoriteFidsOrdered: [
-            for (final item in pinItems) item.id,
-          ],
+          favoriteFidsOrdered: mergeFavoriteForumOrder(
+            apiFids: [for (final item in pinItems) item.id],
+            savedOrder: favoriteForumOrder,
+          ),
           favoriteTitleFor: (fid) => pinTitles[fid] ?? fid,
           hiddenForums: hiddenForums,
         );
@@ -387,7 +391,7 @@ class _ForumTabState extends ConsumerState<_ForumTab> {
   }
 }
 
-class _FavoriteForumsSection extends StatefulWidget {
+class _FavoriteForumsSection extends ConsumerStatefulWidget {
   const _FavoriteForumsSection({
     required this.forums,
     this.margin = const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
@@ -397,16 +401,19 @@ class _FavoriteForumsSection extends StatefulWidget {
   final EdgeInsetsGeometry margin;
 
   @override
-  State<_FavoriteForumsSection> createState() => _FavoriteForumsSectionState();
+  ConsumerState<_FavoriteForumsSection> createState() =>
+      _FavoriteForumsSectionState();
 }
 
-class _FavoriteForumsSectionState extends State<_FavoriteForumsSection> {
+class _FavoriteForumsSectionState extends ConsumerState<_FavoriteForumsSection> {
   bool _expanded = true;
+  bool _managing = false;
 
   @override
   Widget build(BuildContext context) {
     final scheme = Theme.of(context).colorScheme;
     final textTheme = Theme.of(context).textTheme;
+    final forums = widget.forums;
 
     return Card(
       elevation: 0,
@@ -429,33 +436,78 @@ class _FavoriteForumsSectionState extends State<_FavoriteForumsSection> {
                 const SizedBox(width: 8),
                 Expanded(
                   child: Text(
-                    '已收藏',
+                    '已收藏板块',
                     style: textTheme.titleSmall?.copyWith(
                       color: scheme.primary,
                       fontWeight: FontWeight.w600,
                     ),
                   ),
                 ),
-                TextButton(
-                  onPressed: () => context.push('/favorites?segment=forum'),
-                  child: const Text('管理'),
+                IconButton(
+                  icon: Icon(
+                    _managing ? Icons.check : Icons.reorder,
+                    size: 20,
+                    color: _managing
+                        ? scheme.primary
+                        : scheme.onSurfaceVariant,
+                  ),
+                  tooltip: _managing ? '完成' : '管理',
+                  visualDensity: VisualDensity.compact,
+                  onPressed: () {
+                    S1Haptics.selection();
+                    setState(() {
+                      _managing = !_managing;
+                      if (_managing) _expanded = true;
+                    });
+                  },
                 ),
                 IconButton(
                   icon: Icon(
                     _expanded ? Icons.expand_less : Icons.expand_more,
                     size: 20,
+                    color: scheme.onSurfaceVariant,
                   ),
                   tooltip: _expanded ? '收起' : '展开',
                   onPressed: () {
                     S1Haptics.selection();
-                    setState(() => _expanded = !_expanded);
+                    setState(() {
+                      _expanded = !_expanded;
+                      if (!_expanded) _managing = false;
+                    });
                   },
                 ),
               ],
             ),
           ),
-          if (_expanded)
-            for (final forum in widget.forums)
+          if (_expanded && _managing)
+            ReorderableListView.builder(
+              shrinkWrap: true,
+              physics: const NeverScrollableScrollPhysics(),
+              itemCount: forums.length,
+              onReorderItem: (oldIndex, newIndex) {
+                final list = List<ForumCategory>.from(forums);
+                final item = list.removeAt(oldIndex);
+                list.insert(newIndex, item);
+                ref.read(settingsProvider.notifier).reorderFavoriteForums(
+                      list.map((forum) => forum.fid).toList(),
+                    );
+              },
+              itemBuilder: (context, index) {
+                final forum = forums[index];
+                return ListTile(
+                  key: ValueKey(forum.fid),
+                  dense: true,
+                  title: Text(
+                    forum.name,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                  trailing: const Icon(Icons.drag_handle),
+                );
+              },
+            )
+          else if (_expanded)
+            for (final forum in forums)
               _ForumTile(forum: forum, compact: true),
         ],
       ),
@@ -615,14 +667,12 @@ class _ForumCategoryTile extends ConsumerWidget {
                       ),
                       if (hasSubs) ...[
                         const SizedBox(width: 4),
-                        AnimatedRotation(
-                          turns: isCollapsed ? -0.25 : 0,
-                          duration: const Duration(milliseconds: 200),
-                          child: Icon(
-                            Icons.expand_more,
-                            size: 20,
-                            color: scheme.primary,
-                          ),
+                        Icon(
+                          isCollapsed
+                              ? Icons.expand_more
+                              : Icons.expand_less,
+                          size: 20,
+                          color: scheme.onSurfaceVariant,
                         ),
                       ],
                     ],
@@ -718,6 +768,11 @@ class _ForumTile extends ConsumerWidget {
       S1SnackBar.error(context, message: error);
       return;
     }
+    if (wasFavorited) {
+      ref.read(settingsProvider.notifier).removeFavoriteForumFromOrder(
+            forum.fid,
+          );
+    }
     S1SnackBar.show(
       context,
       message: wasFavorited ? '已取消收藏' : '已收藏',
@@ -805,7 +860,7 @@ class _ForumTile extends ConsumerWidget {
                               overflow: TextOverflow.ellipsis,
                             ),
                           ),
-                          if (isFavorited) ...[
+                          if (isFavorited && !compact) ...[
                             const SizedBox(width: 4),
                             Icon(
                               Icons.star,

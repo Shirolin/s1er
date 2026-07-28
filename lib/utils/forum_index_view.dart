@@ -14,6 +14,28 @@ class ForumIndexView {
 /// Fallback title when a favorited fid is missing from [forumindex].
 typedef ForumPinTitleLookup = String Function(String fid);
 
+/// Merges API favorite order with a locally saved order.
+///
+/// When [savedOrder] is empty, returns [apiFids] as-is (newest-first from API).
+/// Otherwise keeps the user's order and inserts newly favorited fids at the head.
+List<String> mergeFavoriteForumOrder({
+  required List<String> apiFids,
+  required List<String> savedOrder,
+}) {
+  if (savedOrder.isEmpty) {
+    return List<String>.from(apiFids);
+  }
+
+  final apiSet = apiFids.toSet();
+  final ordered = savedOrder.where(apiSet.contains).toList();
+  for (final fid in apiFids) {
+    if (!ordered.contains(fid)) {
+      ordered.insert(0, fid);
+    }
+  }
+  return ordered;
+}
+
 /// Builds the home board-index view.
 ///
 /// - [favoriteFidsOrdered]: favorited forum ids, newest-first.

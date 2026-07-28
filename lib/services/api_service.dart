@@ -117,12 +117,26 @@ class ApiService {
     return null;
   }
 
-  static void _throwIfLoginRequiredWithNoData(
+  /// Mobile API 在无业务数据时返回的 `error` 文案（如维护公告）。
+  static String? extractApiErrorMessage(Map<String, dynamic> json) {
+    final error = json['error'];
+    if (error == null) return null;
+    final message = error.toString().trim();
+    if (message.isEmpty || message == 'to_login') return null;
+    return message;
+  }
+
+  static void _throwIfNoDataBlocked(
     Map<String, dynamic> json,
     bool hasData,
   ) {
-    if (!hasData && isLoginRequiredResponse(json)) {
+    if (hasData) return;
+    if (isLoginRequiredResponse(json)) {
       throw LoginRequiredException();
+    }
+    final apiError = extractApiErrorMessage(json);
+    if (apiError != null) {
+      throw ServerMaintenanceException(apiError);
     }
   }
 
@@ -838,7 +852,7 @@ class ApiService {
       json = await _fetchJson(url);
       forums = parseForumList(json);
     }
-    _throwIfLoginRequiredWithNoData(json, forums.isNotEmpty);
+    _throwIfNoDataBlocked(json, forums.isNotEmpty);
     return forums;
   }
 
@@ -891,7 +905,7 @@ class ApiService {
     final url = buildThreadListUrl(fid, page: page, typeId: typeId);
     final response = await _httpClient.get(url);
     final json = ensureJson(response.data);
-    _throwIfLoginRequiredWithNoData(json, parseThreadList(json).isNotEmpty);
+    _throwIfNoDataBlocked(json, parseThreadList(json).isNotEmpty);
     return json;
   }
 
@@ -913,7 +927,7 @@ class ApiService {
     );
     final response = await _httpClient.get(url);
     final json = ensureJson(response.data);
-    _throwIfLoginRequiredWithNoData(json, _hasThreadDetailData(json));
+    _throwIfNoDataBlocked(json, _hasThreadDetailData(json));
     return json;
   }
 

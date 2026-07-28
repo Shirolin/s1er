@@ -1,6 +1,7 @@
 import 'dart:async';
 
 import 'package:file_selector/file_selector.dart';
+import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../config/app_icon_catalog.dart';
@@ -35,6 +36,7 @@ class AppSettings {
     this.fontSize = S1Typography.defaultBodySize,
     this.collapsedForums = const {},
     this.hiddenForums = const {},
+    this.favoriteForumOrder = const [],
     this.shareImageFormat = ShareImageFormat.webp,
     this.sharePixelRatio = SharePixelRatio.defaultValue,
     this.shareAdvancedExport = false,
@@ -59,6 +61,7 @@ class AppSettings {
   final int fontSize;
   final Set<String> collapsedForums;
   final Set<String> hiddenForums;
+  final List<String> favoriteForumOrder;
   final ShareImageFormat shareImageFormat;
   final double sharePixelRatio;
   final bool shareAdvancedExport;
@@ -85,6 +88,7 @@ class AppSettings {
     int? fontSize,
     Set<String>? collapsedForums,
     Set<String>? hiddenForums,
+    List<String>? favoriteForumOrder,
     ShareImageFormat? shareImageFormat,
     double? sharePixelRatio,
     bool? shareAdvancedExport,
@@ -109,6 +113,7 @@ class AppSettings {
       fontSize: fontSize ?? this.fontSize,
       collapsedForums: collapsedForums ?? this.collapsedForums,
       hiddenForums: hiddenForums ?? this.hiddenForums,
+      favoriteForumOrder: favoriteForumOrder ?? this.favoriteForumOrder,
       shareImageFormat: shareImageFormat ?? this.shareImageFormat,
       sharePixelRatio: sharePixelRatio ?? this.sharePixelRatio,
       shareAdvancedExport: shareAdvancedExport ?? this.shareAdvancedExport,
@@ -140,6 +145,7 @@ class AppSettings {
         other.fontSize == fontSize &&
         _setEquals(other.collapsedForums, collapsedForums) &&
         _setEquals(other.hiddenForums, hiddenForums) &&
+        listEquals(other.favoriteForumOrder, favoriteForumOrder) &&
         other.shareImageFormat == shareImageFormat &&
         other.sharePixelRatio == sharePixelRatio &&
         other.shareAdvancedExport == shareAdvancedExport &&
@@ -169,6 +175,7 @@ class AppSettings {
         fontSize,
         Object.hashAllUnordered(collapsedForums),
         Object.hashAllUnordered(hiddenForums),
+        Object.hashAll(favoriteForumOrder),
         shareImageFormat,
         sharePixelRatio,
         shareAdvancedExport,
@@ -351,6 +358,11 @@ class SettingsNotifier extends Notifier<AppSettings> {
       ),
       hiddenForums: Set<String>.from(
         (settingsStore.get<List<dynamic>>('hiddenForums'))?.cast<String>() ??
+            [],
+      ),
+      favoriteForumOrder: List<String>.from(
+        (settingsStore.get<List<dynamic>>('favoriteForumOrder'))
+                ?.cast<String>() ??
             [],
       ),
       postSignatureEnabled: settingsStore.get<bool>(
@@ -548,6 +560,22 @@ class SettingsNotifier extends Notifier<AppSettings> {
     if (state.hiddenForums.isEmpty) return;
     _commit(state.copyWith(hiddenForums: const {}));
     _persist('hiddenForums', <String>[]);
+  }
+
+  void reorderFavoriteForums(List<String> orderedFids) {
+    final cleaned = [
+      for (final fid in orderedFids)
+        if (fid.isNotEmpty) fid,
+    ];
+    _commit(state.copyWith(favoriteForumOrder: cleaned));
+    _persist('favoriteForumOrder', cleaned);
+  }
+
+  void removeFavoriteForumFromOrder(String fid) {
+    if (fid.isEmpty || !state.favoriteForumOrder.contains(fid)) return;
+    final order = List<String>.from(state.favoriteForumOrder)..remove(fid);
+    _commit(state.copyWith(favoriteForumOrder: order));
+    _persist('favoriteForumOrder', order);
   }
 
   void resetAppearanceSettings() {

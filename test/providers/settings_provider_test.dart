@@ -118,6 +118,34 @@ void main() {
     expect(store.get<List>('hiddenForums'), isEmpty);
   });
 
+  test('reorderFavoriteForums persists to settings store', () async {
+    final container = ProviderContainer(
+      overrides: [
+        settingsProvider.overrideWith(
+          () => SettingsNotifier(store: store, initial: const AppSettings()),
+        ),
+      ],
+    );
+    addTearDown(container.dispose);
+
+    final notifier = container.read(settingsProvider.notifier);
+    notifier.reorderFavoriteForums(['3', '1', '2']);
+    expect(
+      container.read(settingsProvider).favoriteForumOrder,
+      ['3', '1', '2'],
+    );
+    await Future<void>.delayed(const Duration(milliseconds: 50));
+    expect(store.get<List>('favoriteForumOrder'), ['3', '1', '2']);
+
+    notifier.removeFavoriteForumFromOrder('1');
+    expect(
+      container.read(settingsProvider).favoriteForumOrder,
+      ['3', '2'],
+    );
+    await Future<void>.delayed(const Duration(milliseconds: 50));
+    expect(store.get<List>('favoriteForumOrder'), ['3', '2']);
+  });
+
   test('setHapticsEnabled persists and syncs S1Haptics.enabled', () async {
     S1Haptics.enabled = true;
     final container = ProviderContainer(

@@ -82,6 +82,7 @@ void main() {
       ),
     );
 
-    expect(find.text('管理'), findsOneWidget);
+    expect(find.byTooltip('管理'), findsOneWidget);
+    expect(find.byIcon(Icons.reorder), findsOneWidget);
   });
 }

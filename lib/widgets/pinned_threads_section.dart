@@ -112,9 +112,7 @@ class _PinnedThreadsSectionState extends ConsumerState<PinnedThreadsSection> {
                   icon: Icon(
                     _managing ? Icons.check : Icons.reorder,
                     size: 20,
-                    color: _managing
-                        ? scheme.primary
-                        : scheme.onSurfaceVariant,
+                    color: _managing ? scheme.primary : scheme.onSurfaceVariant,
                   ),
                   tooltip: _managing ? '完成' : '管理',
                   visualDensity: VisualDensity.compact,

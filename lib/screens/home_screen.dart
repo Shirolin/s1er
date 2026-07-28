@@ -405,7 +405,8 @@ class _FavoriteForumsSection extends ConsumerStatefulWidget {
       _FavoriteForumsSectionState();
 }
 
-class _FavoriteForumsSectionState extends ConsumerState<_FavoriteForumsSection> {
+class _FavoriteForumsSectionState
+    extends ConsumerState<_FavoriteForumsSection> {
   bool _expanded = true;
   bool _managing = false;
 
@@ -447,9 +448,7 @@ class _FavoriteForumsSectionState extends ConsumerState<_FavoriteForumsSection> 
                   icon: Icon(
                     _managing ? Icons.check : Icons.reorder,
                     size: 20,
-                    color: _managing
-                        ? scheme.primary
-                        : scheme.onSurfaceVariant,
+                    color: _managing ? scheme.primary : scheme.onSurfaceVariant,
                   ),
                   tooltip: _managing ? '完成' : '管理',
                   visualDensity: VisualDensity.compact,
@@ -507,8 +506,7 @@ class _FavoriteForumsSectionState extends ConsumerState<_FavoriteForumsSection> 
               },
             )
           else if (_expanded)
-            for (final forum in forums)
-              _ForumTile(forum: forum, compact: true),
+            for (final forum in forums) _ForumTile(forum: forum, compact: true),
         ],
       ),
     );
@@ -668,9 +666,7 @@ class _ForumCategoryTile extends ConsumerWidget {
                       if (hasSubs) ...[
                         const SizedBox(width: 4),
                         Icon(
-                          isCollapsed
-                              ? Icons.expand_more
-                              : Icons.expand_less,
+                          isCollapsed ? Icons.expand_more : Icons.expand_less,
                           size: 20,
                           color: scheme.onSurfaceVariant,
                         ),

@@ -19,6 +19,7 @@ import '../providers/image_bytes_provider.dart';
 import '../providers/settings_provider.dart';
 import '../utils/bbcode_parser.dart';
 import '../utils/gallery_image_saver.dart';
+import '../utils/share_capture_limits.dart';
 import '../utils/share_capture_policy.dart';
 import '../utils/share_floor_strip_capture.dart';
 import '../utils/share_image_stitch.dart';
@@ -156,6 +157,9 @@ class _SharePreviewSheetState extends ConsumerState<_SharePreviewSheet> {
     if (floor.displayFloor != 1) return null;
     return widget.poll;
   }
+
+  ShareCaptureLimits get _shareCaptureLimits =>
+      ShareCaptureLimits.forCurrentPlatform(advanced: _shareAdvancedExport);
 
   void _showHeightCapError() {
     if (_shareAdvancedExport) {
@@ -317,6 +321,7 @@ class _SharePreviewSheetState extends ConsumerState<_SharePreviewSheet> {
     if (exceedsShareCaptureHardCap(
       estimatedCapturePixels: estimated,
       advanced: _shareAdvancedExport,
+      limits: _shareCaptureLimits,
     )) {
       _showHeightCapError();
       return null;
@@ -331,7 +336,11 @@ class _SharePreviewSheetState extends ConsumerState<_SharePreviewSheet> {
       return _captureFromRepaint(fullBoundary, _sharePixelRatio);
     }
 
-    return _captureChunkedAndEncode();
+    final physicalWidth = (logicalSize.width * _sharePixelRatio).round();
+    return _captureChunkedAndEncode(
+      estimatedCapturePixels: estimated,
+      physicalWidth: physicalWidth,
+    );
   }
 
   Future<List<ShareRgbaStrip>> _captureInFloorStrips({
@@ -356,68 +365,130 @@ class _SharePreviewSheetState extends ConsumerState<_SharePreviewSheet> {
       inFloorChunking: true,
       scrollController: _inFloorScrollController,
       totalLogicalHeight: totalLogicalHeight,
+      limits: _shareCaptureLimits,
     );
 
     if (mounted) setState(() => _inFloorCaptureFloorIndex = null);
     return strips;
   }
 
-  Future<_EncodedShareImage?> _captureChunkedAndEncode() async {
-    final strips = <ShareRgbaStrip>[];
+  Future<_EncodedShareImage?> _captureChunkedAndEncode({
+    required int estimatedCapturePixels,
+    required int physicalWidth,
+  }) async {
+    final limits = _shareCaptureLimits;
+
+    Future<List<ShareRgbaStrip>> captureSection(
+      RenderRepaintBoundary boundary, {
+      bool inFloorChunking = false,
+      ScrollController? scrollController,
+      double? totalLogicalHeight,
+    }) {
+      return captureBoundaryAsStrips(
+        boundary,
+        pixelRatio: _sharePixelRatio,
+        inFloorChunking: inFloorChunking,
+        scrollController: scrollController,
+        totalLogicalHeight: totalLogicalHeight,
+        limits: limits,
+      );
+    }
 
     try {
-      final headerBoundary = _captureKeys.header.currentContext?.findRenderObject()
-          as RenderRepaintBoundary?;
+      final headerBoundary = _captureKeys.header.currentContext
+          ?.findRenderObject() as RenderRepaintBoundary?;
       if (headerBoundary == null) return null;
-      strips.addAll(
-        await captureBoundaryAsStrips(
-          headerBoundary,
-          pixelRatio: _sharePixelRatio,
-          inFloorChunking: false,
-        ),
-      );
+
+      if (_shareAdvancedExport) {
+        final estimatedPhysicalHeight =
+            (estimatedCapturePixels / physicalWidth).ceil();
+        final composer = VerticalRgbaComposer.fromEstimatedPhysicalSize(
+          estimatedPhysicalHeight: estimatedPhysicalHeight,
+        );
+
+        final headerStrips = await captureSection(headerBoundary);
+        if (headerStrips.isEmpty) return null;
+        for (final strip in headerStrips) {
+          composer.appendStrip(strip);
+        }
+
+        for (var i = 0; i < _captureKeys.floors.length; i++) {
+          final floorKey = _captureKeys.floors[i];
+          final boundary = floorKey.currentContext?.findRenderObject()
+              as RenderRepaintBoundary?;
+          if (boundary == null) return null;
+          final floorLogicalHeight = boundary.size.height;
+          final inFloor = shouldUseInFloorChunking(
+            advancedEnabled: _shareAdvancedExport,
+            floorLogicalHeight: floorLogicalHeight,
+            pixelRatio: _sharePixelRatio,
+            limits: limits,
+          );
+          final floorStrips = inFloor
+              ? await _captureInFloorStrips(
+                  floorIndex: i,
+                  totalLogicalHeight: floorLogicalHeight,
+                )
+              : await captureSection(boundary);
+          if (floorStrips.isEmpty) return null;
+          for (final strip in floorStrips) {
+            composer.appendStrip(strip);
+          }
+        }
+
+        final footerBoundary = _captureKeys.footer.currentContext
+            ?.findRenderObject() as RenderRepaintBoundary?;
+        if (footerBoundary == null) return null;
+        final footerStrips = await captureSection(footerBoundary);
+        if (footerStrips.isEmpty) return null;
+        for (final strip in footerStrips) {
+          composer.appendStrip(strip);
+        }
+
+        final stitched = composer.build();
+        if (exceedsShareCaptureHardCap(
+          estimatedCapturePixels: stitched.width * stitched.height,
+          advanced: true,
+          limits: limits,
+        )) {
+          _showHeightCapError();
+          return null;
+        }
+
+        final image = await _imageFromRgba(stitched);
+        try {
+          return await _encode(image);
+        } finally {
+          image.dispose();
+        }
+      }
+
+      final strips = <ShareRgbaStrip>[];
+      strips.addAll(await captureSection(headerBoundary));
       if (strips.isEmpty) return null;
 
       for (var i = 0; i < _captureKeys.floors.length; i++) {
         final floorKey = _captureKeys.floors[i];
-        final boundary =
-            floorKey.currentContext?.findRenderObject() as RenderRepaintBoundary?;
+        final boundary = floorKey.currentContext?.findRenderObject()
+            as RenderRepaintBoundary?;
         if (boundary == null) return null;
-        final floorLogicalHeight = boundary.size.height;
-        final inFloor = shouldUseInFloorChunking(
-          advancedEnabled: _shareAdvancedExport,
-          floorLogicalHeight: floorLogicalHeight,
-          pixelRatio: _sharePixelRatio,
-        );
-        final floorStrips = inFloor
-            ? await _captureInFloorStrips(
-                floorIndex: i,
-                totalLogicalHeight: floorLogicalHeight,
-              )
-            : await captureBoundaryAsStrips(
-                boundary,
-                pixelRatio: _sharePixelRatio,
-                inFloorChunking: false,
-              );
+        final floorStrips = await captureSection(boundary);
         if (floorStrips.isEmpty) return null;
         strips.addAll(floorStrips);
       }
 
-      final footerBoundary = _captureKeys.footer.currentContext?.findRenderObject()
-          as RenderRepaintBoundary?;
+      final footerBoundary = _captureKeys.footer.currentContext
+          ?.findRenderObject() as RenderRepaintBoundary?;
       if (footerBoundary == null) return null;
-      final footerStrips = await captureBoundaryAsStrips(
-        footerBoundary,
-        pixelRatio: _sharePixelRatio,
-        inFloorChunking: false,
-      );
+      final footerStrips = await captureSection(footerBoundary);
       if (footerStrips.isEmpty) return null;
       strips.addAll(footerStrips);
 
       final stitched = await stitchRgbaVerticallyAsync(strips);
       if (exceedsShareCaptureHardCap(
         estimatedCapturePixels: stitched.width * stitched.height,
-        advanced: _shareAdvancedExport,
+        advanced: false,
+        limits: limits,
       )) {
         _showHeightCapError();
         return null;
@@ -665,14 +736,17 @@ class _SharePreviewSheetState extends ConsumerState<_SharePreviewSheet> {
                 data: Theme.of(context),
                 child: ShareFloorBlock(
                   floor: widget.floors[_inFloorCaptureFloorIndex!],
-                  poll: _pollForFloor(widget.floors[_inFloorCaptureFloorIndex!]),
+                  poll:
+                      _pollForFloor(widget.floors[_inFloorCaptureFloorIndex!]),
                   showLeadingDivider: _inFloorCaptureFloorIndex! > 0,
                   captureKey: _inFloorCaptureKey,
                   inFloorSliceCapture: true,
                   sliceScrollController: _inFloorScrollController,
                   sliceViewportLogicalHeight:
-                      shareInFloorChunkLogicalSliceHeight(_sharePixelRatio)
-                          .toDouble(),
+                      shareInFloorChunkLogicalSliceHeight(
+                        _sharePixelRatio,
+                        limits: _shareCaptureLimits,
+                      ).toDouble(),
                 ),
               ),
             ),

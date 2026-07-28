@@ -5,6 +5,7 @@ import 'package:flutter/rendering.dart';
 import 'package:flutter/scheduler.dart';
 import 'package:flutter/widgets.dart';
 
+import 'share_capture_limits.dart';
 import 'share_capture_policy.dart';
 import 'share_image_stitch.dart';
 
@@ -15,6 +16,7 @@ Future<List<ShareRgbaStrip>> captureBoundaryAsStrips(
   required bool inFloorChunking,
   ScrollController? scrollController,
   double? totalLogicalHeight,
+  ShareCaptureLimits? limits,
 }) async {
   if (!inFloorChunking) {
     final strip = await rgbaStripFromBoundary(boundary, pixelRatio);
@@ -29,6 +31,7 @@ Future<List<ShareRgbaStrip>> captureBoundaryAsStrips(
     scrollController: scrollController,
     totalLogicalHeight: totalLogicalHeight,
     pixelRatio: pixelRatio,
+    limits: limits,
   );
 }
 
@@ -38,11 +41,12 @@ Future<List<ShareRgbaStrip>> captureBoundaryWithScrollSlices({
   required ScrollController scrollController,
   required double totalLogicalHeight,
   required double pixelRatio,
+  ShareCaptureLimits? limits,
 }) async {
   if (totalLogicalHeight <= 0) return [];
 
   final sliceLogicalHeight =
-      shareInFloorChunkLogicalSliceHeight(pixelRatio).toDouble();
+      shareInFloorChunkLogicalSliceHeight(pixelRatio, limits: limits).toDouble();
   final strips = <ShareRgbaStrip>[];
   var y = 0.0;
   while (y < totalLogicalHeight) {
@@ -54,7 +58,9 @@ Future<List<ShareRgbaStrip>> captureBoundaryWithScrollSlices({
     await SchedulerBinding.instance.endOfFrame;
     final strip = await rgbaStripFromBoundary(boundary, pixelRatio);
     if (strip == null) return [];
-    strips.add(strip);
+    final maxPhysicalHeight =
+        (remaining * pixelRatio).round().clamp(1, strip.height);
+    strips.add(cropStripToPhysicalHeight(strip, maxPhysicalHeight));
     y += sliceHeight;
   }
   return strips;

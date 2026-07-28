@@ -1,5 +1,6 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:s1er/config/constants.dart';
+import 'package:s1er/utils/share_capture_limits.dart';
 import 'package:s1er/utils/share_capture_policy.dart';
 
 void main() {
@@ -48,8 +49,10 @@ void main() {
     );
   });
 
-  test('advanced hard cap is higher than normal', () {
+  test('advanced hard cap uses injected platform limits', () {
     const overNormal = S1Constants.shareCaptureMaxPixels + 1;
+    final mobileLimits = ShareCaptureLimits.mobileAdvanced();
+
     expect(
       exceedsShareCaptureHardCap(
         estimatedCapturePixels: overNormal,
@@ -61,15 +64,34 @@ void main() {
       exceedsShareCaptureHardCap(
         estimatedCapturePixels: overNormal,
         advanced: true,
+        limits: mobileLimits,
       ),
       isFalse,
     );
     expect(
       exceedsShareCaptureHardCap(
-        estimatedCapturePixels: S1Constants.shareCaptureMaxPixelsAdvanced + 1,
+        estimatedCapturePixels: mobileLimits.maxPixels + 1,
         advanced: true,
+        limits: mobileLimits,
       ),
       isTrue,
+    );
+  });
+
+  test('desktop advanced allows taller strip slices', () {
+    final desktopLimits = ShareCaptureLimits.desktopAdvanced();
+    expect(
+      shareInFloorChunkLogicalSliceHeight(1.5, limits: desktopLimits),
+      5461,
+    );
+    expect(
+      shouldUseInFloorChunking(
+        advancedEnabled: true,
+        floorLogicalHeight: 5000,
+        pixelRatio: 1.5,
+        limits: desktopLimits,
+      ),
+      isFalse,
     );
   });
 

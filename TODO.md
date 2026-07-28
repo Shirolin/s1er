@@ -13,7 +13,8 @@
 - 排序：按 `displayFloor` 升序；含 `#1` 时附带 poll
 
 **长期优化 (视用户反馈):**
-- 单楼仍超 GPU 纹理时，探索楼内按高度再切块
+- ~~单楼仍超 GPU 纹理时，探索楼内按高度再切块~~ → 已实现「设置 → 分享 → 高级导出」（楼内滚动视口切片 + 放宽像素硬顶；默认关）
+- ~~PC / 桌面端进一步提高分享限制~~ → 已实现 **仅高级模式** 平台分级：`ShareCaptureLimits`（mobile / desktop / web 不同硬顶与 strip 高度）+ `VerticalRgbaComposer` 增量拼接降 RAM 峰值；普通分享不变
 
 ### 2. 富文本编辑功能完善 (Rich Text Editor Enhancements)
 *状态: 进行中 (In Progress)*

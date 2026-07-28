@@ -3,6 +3,7 @@ import 'dart:math' as math;
 import 'package:flutter/foundation.dart' show visibleForTesting;
 
 import '../config/constants.dart';
+import 'share_capture_limits.dart';
 
 /// Whether a capture should use per-floor chunking + stitch instead of one shot.
 bool shouldUseChunkedShareCapture({
@@ -20,8 +21,10 @@ bool exceedsShareCaptureHardCap({
   required int estimatedCapturePixels,
   bool advanced = false,
   int? maxPixels,
+  ShareCaptureLimits? limits,
 }) {
   final cap = maxPixels ??
+      limits?.maxPixels ??
       (advanced
           ? S1Constants.shareCaptureMaxPixelsAdvanced
           : S1Constants.shareCaptureMaxPixels);
@@ -47,27 +50,35 @@ bool canAddShareFloor({
   return currentCount < maxFloors;
 }
 
-/// Logical slice height for in-floor [RepaintBoundary.toImage] rect capture.
-int shareInFloorChunkLogicalSliceHeight(double pixelRatio) {
+int _maxStripPhysicalPx(ShareCaptureLimits? limits) {
+  return limits?.maxStripPhysicalPx ??
+      S1Constants.shareInFloorChunkMaxStripPhysicalPx;
+}
+
+/// Logical slice height for in-floor scroll-viewport capture.
+int shareInFloorChunkLogicalSliceHeight(
+  double pixelRatio, {
+  ShareCaptureLimits? limits,
+}) {
   if (pixelRatio <= 0) return 1;
   return math.max(
     1,
-    (S1Constants.shareInFloorChunkMaxStripPhysicalPx / pixelRatio).floor(),
+    (_maxStripPhysicalPx(limits) / pixelRatio).floor(),
   );
 }
 
-/// Whether a single floor strip should be split with in-floor rect slicing.
+/// Whether a single floor strip should be split with in-floor slicing.
 bool shouldUseInFloorChunking({
   required bool advancedEnabled,
   required double floorLogicalHeight,
   required double pixelRatio,
+  ShareCaptureLimits? limits,
 }) {
   if (!advancedEnabled || floorLogicalHeight <= 0 || pixelRatio <= 0) {
     return false;
   }
   final floorPhysicalHeight = floorLogicalHeight * pixelRatio;
-  return floorPhysicalHeight >
-      S1Constants.shareInFloorChunkMaxStripPhysicalPx;
+  return floorPhysicalHeight > _maxStripPhysicalPx(limits);
 }
 
 /// Number of in-floor rect slices for a laid-out floor height.
@@ -75,8 +86,12 @@ bool shouldUseInFloorChunking({
 int inFloorChunkSliceCount({
   required double floorLogicalHeight,
   required double pixelRatio,
+  ShareCaptureLimits? limits,
 }) {
   if (floorLogicalHeight <= 0) return 0;
-  final sliceHeight = shareInFloorChunkLogicalSliceHeight(pixelRatio);
+  final sliceHeight = shareInFloorChunkLogicalSliceHeight(
+    pixelRatio,
+    limits: limits,
+  );
   return (floorLogicalHeight / sliceHeight).ceil();
 }

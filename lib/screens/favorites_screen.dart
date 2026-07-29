@@ -237,14 +237,12 @@ class _FavoriteListBody extends ConsumerWidget {
               ),
             ),
           ),
-          if (state.totalPages > 1)
-            PaginationBar(
-              currentPage: state.currentPage,
-              totalPages: state.totalPages,
-              onPageChanged: (page) => ref
-                  .read(favoriteListProvider(segment).notifier)
-                  .goToPage(page),
-            ),
+          PaginationBar(
+            currentPage: state.currentPage,
+            totalPages: state.totalPages,
+            onPageChanged: (page) =>
+                ref.read(favoriteListProvider(segment).notifier).goToPage(page),
+          ),
         ],
       ),
     );

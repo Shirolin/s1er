@@ -412,6 +412,8 @@ class _PmConversationScreenState extends ConsumerState<PmConversationScreen> {
                     child: PaginationBar(
                       currentPage: state.currentPage,
                       totalPages: state.totalPages,
+                      reserveSystemBottomInset: false,
+                      applyBottomSafeArea: false,
                       onPageChanged: (page) =>
                           ref.read(provider.notifier).goToPage(page),
                     ),

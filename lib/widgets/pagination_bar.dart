@@ -4,6 +4,7 @@ import '../theme/app_theme.dart';
 import '../theme/s1_haptics.dart';
 import '../utils/compact_label.dart';
 import 'page_picker_sheet.dart';
+import 's1_system_bottom_inset.dart';
 
 export 'page_picker_sheet.dart' show PageItemLabelBuilder, showPagePickerSheet;
 
@@ -19,6 +20,8 @@ class PaginationBar extends StatefulWidget {
     this.sheetTitle = '选择页码',
     this.sheetSubtitle,
     this.pageItemLabelBuilder,
+    this.reserveSystemBottomInset = true,
+    this.applyBottomSafeArea = true,
   });
 
   final int currentPage;
@@ -27,6 +30,16 @@ class PaginationBar extends StatefulWidget {
   final String sheetTitle;
   final String? sheetSubtitle;
   final PageItemLabelBuilder? pageItemLabelBuilder;
+
+  /// 单页时是否保留系统底栏占位（传统三键 / 手势条）。
+  ///
+  /// 底栏下方另有带 [SafeArea] 的输入区（如私信）时应设为 `false`，避免双倍 inset。
+  final bool reserveSystemBottomInset;
+
+  /// 多页控件是否自行应用底部 [SafeArea]。
+  ///
+  /// 底栏下方另有带 [SafeArea] 的输入区时应设为 `false`。
+  final bool applyBottomSafeArea;
 
   @override
   State<PaginationBar> createState() => _PaginationBarState();
@@ -114,7 +127,11 @@ class _PaginationBarState extends State<PaginationBar> {
 
   @override
   Widget build(BuildContext context) {
-    if (widget.totalPages <= 1) return const SizedBox.shrink();
+    if (widget.totalPages <= 1) {
+      return widget.reserveSystemBottomInset
+          ? const S1SystemBottomInset()
+          : const SizedBox.shrink();
+    }
 
     final scheme = Theme.of(context).colorScheme;
     final textTheme = Theme.of(context).textTheme;
@@ -124,57 +141,60 @@ class _PaginationBarState extends State<PaginationBar> {
     final canNext = page < total && !_isLoading;
     final showEdgeButtons = MediaQuery.sizeOf(context).width >= 400;
 
+    final bar = Column(
+      mainAxisSize: MainAxisSize.min,
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        if (_isLoading)
+          LinearProgressIndicator(
+            minHeight: 2,
+            backgroundColor: scheme.surfaceContainer,
+            color: scheme.primary,
+          ),
+        Padding(
+          padding: const EdgeInsets.symmetric(
+            horizontal: 8,
+            vertical: S1BottomBarStyle.barVerticalPadding,
+          ),
+          child: LayoutBuilder(
+            builder: (context, constraints) {
+              final controls = _controls(
+                showEdgeButtons: showEdgeButtons,
+                canPrev: canPrev,
+                canNext: canNext,
+                page: page,
+                total: total,
+                textTheme: textTheme,
+                scheme: scheme,
+              );
+              return SingleChildScrollView(
+                scrollDirection: Axis.horizontal,
+                child: ConstrainedBox(
+                  constraints: BoxConstraints(minWidth: constraints.maxWidth),
+                  child: Row(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: controls,
+                  ),
+                ),
+              );
+            },
+          ),
+        ),
+      ],
+    );
+
     return SizedBox(
       width: double.infinity,
       child: DecoratedBox(
         decoration: S1BottomBarStyle.decoration(scheme),
-        child: SafeArea(
-          top: false,
-          left: false,
-          right: false,
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
-              if (_isLoading)
-                LinearProgressIndicator(
-                  minHeight: 2,
-                  backgroundColor: scheme.surfaceContainer,
-                  color: scheme.primary,
-                ),
-              Padding(
-                padding: const EdgeInsets.symmetric(
-                  horizontal: 8,
-                  vertical: S1BottomBarStyle.barVerticalPadding,
-                ),
-                child: LayoutBuilder(
-                  builder: (context, constraints) {
-                    final controls = _controls(
-                      showEdgeButtons: showEdgeButtons,
-                      canPrev: canPrev,
-                      canNext: canNext,
-                      page: page,
-                      total: total,
-                      textTheme: textTheme,
-                      scheme: scheme,
-                    );
-                    return SingleChildScrollView(
-                      scrollDirection: Axis.horizontal,
-                      child: ConstrainedBox(
-                        constraints:
-                            BoxConstraints(minWidth: constraints.maxWidth),
-                        child: Row(
-                          mainAxisAlignment: MainAxisAlignment.center,
-                          children: controls,
-                        ),
-                      ),
-                    );
-                  },
-                ),
-              ),
-            ],
-          ),
-        ),
+        child: widget.applyBottomSafeArea
+            ? SafeArea(
+                top: false,
+                left: false,
+                right: false,
+                child: bar,
+              )
+            : bar,
       ),
     );
   }

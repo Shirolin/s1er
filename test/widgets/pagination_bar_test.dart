@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:s1er/theme/app_theme.dart';
 import 'package:s1er/widgets/pagination_bar.dart';
+import 'package:s1er/widgets/s1_system_bottom_inset.dart';
 
 void main() {
   testWidgets('PaginationBar hidden when only one page', (tester) async {
@@ -20,6 +21,53 @@ void main() {
 
     expect(find.byType(PaginationBar), findsOneWidget);
     expect(find.byIcon(Icons.chevron_left), findsNothing);
+  });
+
+  testWidgets('PaginationBar single page reserves system bottom inset',
+      (tester) async {
+    const inset = 48.0;
+    await tester.pumpWidget(
+      MaterialApp(
+        theme: AppTheme.lightTheme('purple'),
+        home: MediaQuery(
+          data: const MediaQueryData(padding: EdgeInsets.only(bottom: inset)),
+          child: Scaffold(
+            body: PaginationBar(
+              currentPage: 1,
+              totalPages: 1,
+              onPageChanged: (_) async {},
+            ),
+          ),
+        ),
+      ),
+    );
+
+    expect(find.byType(S1SystemBottomInset), findsOneWidget);
+    expect(tester.getSize(find.byType(S1SystemBottomInset)).height, inset);
+    expect(find.byIcon(Icons.chevron_left), findsNothing);
+  });
+
+  testWidgets('PaginationBar can skip system inset when bottom chrome exists',
+      (tester) async {
+    const inset = 48.0;
+    await tester.pumpWidget(
+      MaterialApp(
+        theme: AppTheme.lightTheme('purple'),
+        home: MediaQuery(
+          data: const MediaQueryData(padding: EdgeInsets.only(bottom: inset)),
+          child: Scaffold(
+            body: PaginationBar(
+              currentPage: 1,
+              totalPages: 1,
+              reserveSystemBottomInset: false,
+              onPageChanged: (_) async {},
+            ),
+          ),
+        ),
+      ),
+    );
+
+    expect(find.byType(S1SystemBottomInset), findsNothing);
   });
 
   testWidgets('PaginationBar shows controls for multiple pages',

@@ -27,6 +27,7 @@ import '../widgets/pinned_threads_section.dart';
 import '../widgets/s1_content_width.dart';
 import '../widgets/skeleton/s1_async_list_loading.dart';
 import '../widgets/skeleton/forum_index_skeleton.dart';
+import '../widgets/s1_home_nav_chrome.dart';
 import '../widgets/s1_desktop_scaffold.dart';
 import '../widgets/s1_menu.dart';
 import '../utils/compact_label.dart';
@@ -189,55 +190,57 @@ class _HomeScreenBodyState extends ConsumerState<_HomeScreenBody> {
       ),
       bottomNavigationBar: router != null && context.isMediumOrAbove
           ? null
-          : NavigationBar(
-              selectedIndex: selectedTab,
-              onDestinationSelected: (index) {
-                S1Haptics.selection();
-                if (selectedTab == 2 && index != 2) {
-                  ref.read(messagesSegmentProvider.notifier).select(0);
-                }
-                if (router == null) {
-                  setState(() => _fallbackTab = index);
-                  return;
-                }
-                final tab = isLoggedIn
-                    ? const ['forum', 'search', 'messages', 'profile'][index]
-                    : const ['forum', 'profile'][index];
-                context.go(tab == 'forum' ? '/' : '/?tab=$tab');
-              },
-              destinations: isLoggedIn
-                  ? [
-                      const NavigationDestination(
-                        icon: Icon(Icons.forum),
-                        label: '论坛',
-                      ),
-                      const NavigationDestination(
-                        icon: Icon(Icons.search),
-                        label: '搜索',
-                      ),
-                      NavigationDestination(
-                        icon: Badge(
-                          label: Text(unreadDisplay),
-                          isLabelVisible: unreadTotal > 0,
-                          child: const Icon(Icons.message),
+          : S1HomeNavChrome(
+              child: NavigationBar(
+                selectedIndex: selectedTab,
+                onDestinationSelected: (index) {
+                  S1Haptics.selection();
+                  if (selectedTab == 2 && index != 2) {
+                    ref.read(messagesSegmentProvider.notifier).select(0);
+                  }
+                  if (router == null) {
+                    setState(() => _fallbackTab = index);
+                    return;
+                  }
+                  final tab = isLoggedIn
+                      ? const ['forum', 'search', 'messages', 'profile'][index]
+                      : const ['forum', 'profile'][index];
+                  context.go(tab == 'forum' ? '/' : '/?tab=$tab');
+                },
+                destinations: isLoggedIn
+                    ? [
+                        const NavigationDestination(
+                          icon: Icon(Icons.forum),
+                          label: '论坛',
                         ),
-                        label: '消息',
-                      ),
-                      const NavigationDestination(
-                        icon: Icon(Icons.person),
-                        label: '我的',
-                      ),
-                    ]
-                  : const [
-                      NavigationDestination(
-                        icon: Icon(Icons.forum),
-                        label: '论坛',
-                      ),
-                      NavigationDestination(
-                        icon: Icon(Icons.person),
-                        label: '我的',
-                      ),
-                    ],
+                        const NavigationDestination(
+                          icon: Icon(Icons.search),
+                          label: '搜索',
+                        ),
+                        NavigationDestination(
+                          icon: Badge(
+                            label: Text(unreadDisplay),
+                            isLabelVisible: unreadTotal > 0,
+                            child: const Icon(Icons.message),
+                          ),
+                          label: '消息',
+                        ),
+                        const NavigationDestination(
+                          icon: Icon(Icons.person),
+                          label: '我的',
+                        ),
+                      ]
+                    : const [
+                        NavigationDestination(
+                          icon: Icon(Icons.forum),
+                          label: '论坛',
+                        ),
+                        NavigationDestination(
+                          icon: Icon(Icons.person),
+                          label: '我的',
+                        ),
+                      ],
+              ),
             ),
     );
   }

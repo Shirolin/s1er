@@ -425,57 +425,72 @@ class _FavoriteForumsSectionState
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Padding(
-            padding: const EdgeInsets.fromLTRB(16, 10, 8, 4),
-            child: Row(
-              children: [
-                Icon(
-                  Icons.bookmark_outlined,
-                  size: 18,
-                  color: scheme.primary,
-                ),
-                const SizedBox(width: 8),
-                Expanded(
-                  child: Text(
-                    '已收藏板块',
-                    style: textTheme.titleSmall?.copyWith(
-                      color: scheme.primary,
-                      fontWeight: FontWeight.w600,
+          ConstrainedBox(
+            constraints: const BoxConstraints(minHeight: 48),
+            child: Padding(
+              padding: const EdgeInsets.fromLTRB(16, 12, 4, 12),
+              child: Row(
+                children: [
+                  Icon(
+                    Icons.bookmark_outlined,
+                    size: 18,
+                    color: scheme.primary,
+                  ),
+                  const SizedBox(width: 8),
+                  Expanded(
+                    child: Text(
+                      '已收藏板块',
+                      style: textTheme.titleSmall?.copyWith(
+                        color: scheme.primary,
+                        fontWeight: FontWeight.w600,
+                      ),
                     ),
                   ),
-                ),
-                IconButton(
-                  icon: Icon(
-                    _managing ? Icons.check : Icons.reorder,
-                    size: 20,
-                    color: _managing ? scheme.primary : scheme.onSurfaceVariant,
+                  IconButton(
+                    icon: Icon(
+                      _managing ? Icons.check : Icons.reorder,
+                      size: 20,
+                      color:
+                          _managing ? scheme.primary : scheme.onSurfaceVariant,
+                    ),
+                    tooltip: _managing ? '完成' : '管理',
+                    style: IconButton.styleFrom(
+                      tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                      minimumSize: const Size(32, 32),
+                      padding: EdgeInsets.zero,
+                      visualDensity: VisualDensity.compact,
+                    ),
+                    onPressed: () {
+                      S1Haptics.selection();
+                      setState(() {
+                        _managing = !_managing;
+                        if (_managing) _expanded = true;
+                      });
+                    },
                   ),
-                  tooltip: _managing ? '完成' : '管理',
-                  visualDensity: VisualDensity.compact,
-                  onPressed: () {
-                    S1Haptics.selection();
-                    setState(() {
-                      _managing = !_managing;
-                      if (_managing) _expanded = true;
-                    });
-                  },
-                ),
-                IconButton(
-                  icon: Icon(
-                    _expanded ? Icons.expand_less : Icons.expand_more,
-                    size: 20,
-                    color: scheme.onSurfaceVariant,
+                  IconButton(
+                    icon: Icon(
+                      _expanded ? Icons.expand_less : Icons.expand_more,
+                      size: 20,
+                      color: scheme.onSurfaceVariant,
+                    ),
+                    tooltip: _expanded ? '收起' : '展开',
+                    style: IconButton.styleFrom(
+                      tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                      minimumSize: const Size(32, 32),
+                      padding: EdgeInsets.zero,
+                      visualDensity: VisualDensity.compact,
+                    ),
+                    onPressed: () {
+                      S1Haptics.selection();
+                      setState(() {
+                        _expanded = !_expanded;
+                        if (!_expanded) _managing = false;
+                      });
+                    },
                   ),
-                  tooltip: _expanded ? '收起' : '展开',
-                  onPressed: () {
-                    S1Haptics.selection();
-                    setState(() {
-                      _expanded = !_expanded;
-                      if (!_expanded) _managing = false;
-                    });
-                  },
-                ),
-              ],
+                ],
+              ),
             ),
           ),
           if (_expanded && _managing)

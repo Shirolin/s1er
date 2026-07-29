@@ -4,7 +4,9 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../models/share_image_format.dart';
 import '../../models/share_pixel_ratio.dart';
 import '../../providers/settings_provider.dart';
+import '../../theme/app_theme.dart';
 import '../../theme/s1_haptics.dart';
+import '../../utils/compact_label.dart';
 import '../s1_confirm_dialog.dart';
 import 'settings_section_header.dart';
 
@@ -75,46 +77,9 @@ class ShareSettingsSection extends ConsumerWidget {
               const SizedBox(height: 16),
               Padding(
                 padding: const EdgeInsets.symmetric(horizontal: 8),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text('清晰度', style: textTheme.titleSmall),
-                    const SizedBox(height: 4),
-                    Text(
-                      '导出宽 ≈ 600×倍率；1.25x≈750px 省流，1.5x≈900px 默认均衡，'
-                      '2x≈1200px，3x 更清晰但更大',
-                      style: textTheme.bodySmall?.copyWith(
-                        color: scheme.onSurfaceVariant,
-                      ),
-                    ),
-                    const SizedBox(height: 12),
-                    SegmentedButton<double>(
-                      segments: const [
-                        ButtonSegment(
-                          value: SharePixelRatio.compact,
-                          label: Text('省流 1.25x'),
-                        ),
-                        ButtonSegment(
-                          value: SharePixelRatio.balanced,
-                          label: Text('均衡 1.5x'),
-                        ),
-                        ButtonSegment(
-                          value: SharePixelRatio.standard,
-                          label: Text('标准 2x'),
-                        ),
-                        ButtonSegment(
-                          value: SharePixelRatio.high,
-                          label: Text('高清 3x'),
-                        ),
-                      ],
-                      selected: {settings.sharePixelRatio},
-                      showSelectedIcon: false,
-                      onSelectionChanged: (selection) {
-                        S1Haptics.selection();
-                        notifier.setSharePixelRatio(selection.first);
-                      },
-                    ),
-                  ],
+                child: SharePixelRatioSelector(
+                  selected: settings.sharePixelRatio,
+                  onChanged: notifier.setSharePixelRatio,
                 ),
               ),
               const SizedBox(height: 8),
@@ -146,6 +111,176 @@ class ShareSettingsSection extends ConsumerWidget {
           ),
         ),
       ),
+    );
+  }
+}
+
+class SharePixelRatioSelector extends StatelessWidget {
+  const SharePixelRatioSelector({
+    super.key,
+    required this.selected,
+    required this.onChanged,
+  });
+
+  final double selected;
+  final ValueChanged<double> onChanged;
+
+  static const _compactBreakpoint = 360.0;
+
+  @override
+  Widget build(BuildContext context) {
+    final scheme = Theme.of(context).colorScheme;
+    final textTheme = Theme.of(context).textTheme;
+    final subtitleStyle = textTheme.bodySmall?.copyWith(
+      color: scheme.onSurfaceVariant,
+    );
+    final compact = MediaQuery.sizeOf(context).width < _compactBreakpoint;
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text('清晰度', style: textTheme.titleSmall),
+        const SizedBox(height: 4),
+        Text(
+          SharePixelRatio.subtitleFor(selected),
+          style: subtitleStyle,
+        ),
+        const SizedBox(height: 12),
+        if (compact)
+          _SharePixelRatioDropdown(
+            selected: selected,
+            onChanged: onChanged,
+          )
+        else
+          _SharePixelRatioSegments(
+            selected: selected,
+            onChanged: onChanged,
+          ),
+      ],
+    );
+  }
+}
+
+class _SharePixelRatioSegmentLabel extends StatelessWidget {
+  const _SharePixelRatioSegmentLabel({required this.option});
+
+  final SharePixelRatioOption option;
+
+  @override
+  Widget build(BuildContext context) {
+    final textTheme = Theme.of(context).textTheme;
+    final scheme = Theme.of(context).colorScheme;
+
+    return Column(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        CompactLabel.text(
+          option.name,
+          style: CompactLabel.style(
+            context,
+            base: textTheme.labelMedium,
+          ),
+        ),
+        CompactLabel.text(
+          SharePixelRatio.multiplierLabel(option.ratio),
+          style: CompactLabel.style(
+            context,
+            base: textTheme.bodySmall,
+            color: scheme.onSurfaceVariant,
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+class _SharePixelRatioSegments extends StatelessWidget {
+  const _SharePixelRatioSegments({
+    required this.selected,
+    required this.onChanged,
+  });
+
+  final double selected;
+  final ValueChanged<double> onChanged;
+
+  @override
+  Widget build(BuildContext context) {
+    final scheme = Theme.of(context).colorScheme;
+
+    return SizedBox(
+      width: double.infinity,
+      child: SegmentedButton<double>(
+        segments: [
+          for (final option in SharePixelRatio.optionMeta)
+            ButtonSegment<double>(
+              value: option.ratio,
+              label: _SharePixelRatioSegmentLabel(option: option),
+            ),
+        ],
+        selected: {SharePixelRatio.normalize(selected)},
+        showSelectedIcon: false,
+        style: S1SegmentedButtonStyle.forScheme(scheme).merge(
+          ButtonStyle(
+            padding: WidgetStateProperty.all(
+              const EdgeInsets.symmetric(horizontal: 8, vertical: 10),
+            ),
+          ),
+        ),
+        onSelectionChanged: (selection) {
+          S1Haptics.selection();
+          onChanged(selection.first);
+        },
+      ),
+    );
+  }
+}
+
+class _SharePixelRatioDropdown extends StatelessWidget {
+  const _SharePixelRatioDropdown({
+    required this.selected,
+    required this.onChanged,
+  });
+
+  final double selected;
+  final ValueChanged<double> onChanged;
+
+  @override
+  Widget build(BuildContext context) {
+    final scheme = Theme.of(context).colorScheme;
+    final normalized = SharePixelRatio.normalize(selected);
+
+    return DropdownMenu<double>(
+      key: ValueKey('share-pixel-ratio-$normalized'),
+      initialSelection: normalized,
+      label: const Text('清晰度'),
+      expandedInsets: EdgeInsets.zero,
+      inputDecorationTheme: const InputDecorationTheme(filled: true),
+      menuStyle: MenuStyle(
+        backgroundColor: WidgetStatePropertyAll(scheme.surfaceContainer),
+        elevation: const WidgetStatePropertyAll(3),
+        shadowColor: WidgetStatePropertyAll(scheme.shadow),
+        surfaceTintColor: const WidgetStatePropertyAll(Colors.transparent),
+        shape: const WidgetStatePropertyAll(
+          RoundedRectangleBorder(borderRadius: S1Shape.small),
+        ),
+      ),
+      dropdownMenuEntries: [
+        for (final option in SharePixelRatio.optionMeta)
+          DropdownMenuEntry<double>(
+            value: option.ratio,
+            label: SharePixelRatio.menuLabelFor(option.ratio),
+            style: const ButtonStyle(
+              maximumSize: WidgetStatePropertyAll(
+                Size(double.infinity, double.infinity),
+              ),
+            ),
+          ),
+      ],
+      onSelected: (value) {
+        if (value == null) return;
+        S1Haptics.selection();
+        onChanged(value);
+      },
     );
   }
 }

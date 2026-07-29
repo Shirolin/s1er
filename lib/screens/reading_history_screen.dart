@@ -10,6 +10,7 @@ import '../utils/format_utils.dart';
 import '../utils/thread_navigation.dart';
 import '../widgets/s1_confirm_dialog.dart';
 import '../widgets/s1_desktop_scaffold.dart';
+import '../widgets/s1_system_bottom_inset.dart';
 
 class ReadingHistoryScreen extends ConsumerWidget {
   const ReadingHistoryScreen({super.key});
@@ -34,16 +35,18 @@ class ReadingHistoryScreen extends ConsumerWidget {
               ),
           ],
         ),
-        body: records.isEmpty
-            ? const _EmptyState()
-            : ListView.builder(
-                padding: const EdgeInsets.symmetric(vertical: 8),
-                itemCount: records.length,
-                itemBuilder: (context, index) => _HistoryTile(
-                  record: records[index],
-                  forumName: fidToForumName[records[index].fid],
+        body: S1PageBody(
+          child: records.isEmpty
+              ? const _EmptyState()
+              : ListView.builder(
+                  padding: const EdgeInsets.symmetric(vertical: 8),
+                  itemCount: records.length,
+                  itemBuilder: (context, index) => _HistoryTile(
+                    record: records[index],
+                    forumName: fidToForumName[records[index].fid],
+                  ),
                 ),
-              ),
+        ),
       ),
     );
   }

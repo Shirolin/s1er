@@ -9,6 +9,7 @@ import '../theme/s1_haptics.dart';
 import '../utils/s1_snack_bar.dart';
 import '../widgets/s1_confirm_dialog.dart';
 import '../widgets/s1_desktop_scaffold.dart';
+import '../widgets/s1_system_bottom_inset.dart';
 
 class BlacklistScreen extends ConsumerWidget {
   const BlacklistScreen({super.key});
@@ -57,20 +58,22 @@ class BlacklistScreen extends ConsumerWidget {
           icon: const Icon(Icons.person_add_disabled_outlined),
           label: const Text('添加'),
         ),
-        body: entries.isEmpty
-            ? const _EmptyState()
-            : ListView.builder(
-                padding: const EdgeInsets.fromLTRB(8, 8, 8, 88),
-                itemCount: entries.length,
-                itemBuilder: (context, index) {
-                  final entry = entries[index];
-                  return _BlacklistTile(
-                    entry: entry,
-                    onEdit: () => _showEditor(context, ref, existing: entry),
-                    onDelete: () => _confirmDelete(context, ref, entry),
-                  );
-                },
-              ),
+        body: S1PageBody(
+          child: entries.isEmpty
+              ? const _EmptyState()
+              : ListView.builder(
+                  padding: const EdgeInsets.fromLTRB(8, 8, 8, 88),
+                  itemCount: entries.length,
+                  itemBuilder: (context, index) {
+                    final entry = entries[index];
+                    return _BlacklistTile(
+                      entry: entry,
+                      onEdit: () => _showEditor(context, ref, existing: entry),
+                      onDelete: () => _confirmDelete(context, ref, entry),
+                    );
+                  },
+                ),
+        ),
       ),
     );
   }

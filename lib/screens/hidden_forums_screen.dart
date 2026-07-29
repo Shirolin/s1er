@@ -8,6 +8,7 @@ import '../theme/s1_haptics.dart';
 import '../utils/s1_snack_bar.dart';
 import '../widgets/s1_confirm_dialog.dart';
 import '../widgets/s1_desktop_scaffold.dart';
+import '../widgets/s1_system_bottom_inset.dart';
 
 class HiddenForumsScreen extends ConsumerWidget {
   const HiddenForumsScreen({super.key});
@@ -49,7 +50,8 @@ class HiddenForumsScreen extends ConsumerWidget {
               ),
           ],
         ),
-        body: fids.isEmpty
+        body: S1PageBody(
+          child: fids.isEmpty
             ? Center(
                 child: Padding(
                   padding: const EdgeInsets.all(32),
@@ -116,6 +118,7 @@ class HiddenForumsScreen extends ConsumerWidget {
                   );
                 },
               ),
+        ),
       ),
     );
   }

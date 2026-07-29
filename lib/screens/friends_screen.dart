@@ -11,6 +11,7 @@ import '../widgets/app_bar_more_menu.dart';
 import '../widgets/s1_error_view.dart';
 import '../widgets/web_avatar.dart';
 import '../widgets/s1_desktop_scaffold.dart';
+import '../widgets/s1_system_bottom_inset.dart';
 import '../widgets/skeleton/s1_async_list_loading.dart';
 import '../widgets/skeleton/list_row_skeleton.dart';
 
@@ -38,7 +39,8 @@ class FriendsScreen extends ConsumerWidget {
             ),
           ],
         ),
-        body: async.when(
+        body: S1PageBody(
+          child: async.when(
           loading: () => const S1AsyncListLoading(
             child: ListRowSkeletonList(),
           ),
@@ -70,6 +72,7 @@ class FriendsScreen extends ConsumerWidget {
               ),
             );
           },
+        ),
         ),
       ),
     );

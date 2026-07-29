@@ -4,6 +4,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../models/whats_new_entry.dart';
 import '../providers/whats_new_provider.dart';
 import '../widgets/s1_content_width.dart';
+import '../widgets/s1_system_bottom_inset.dart';
 import '../widgets/whats_new_entry_list.dart';
 
 /// 完整更新日志时间线（设置 / Dialog「查看全部」）。
@@ -33,8 +34,9 @@ class _WhatsNewScreenState extends ConsumerState<WhatsNewScreen> {
         elevation: 0,
         title: const Text('更新日志'),
       ),
-      body: S1ContentWidth(
-        child: FutureBuilder<List<WhatsNewEntry>>(
+      body: S1PageBody(
+        child: S1ContentWidth(
+          child: FutureBuilder<List<WhatsNewEntry>>(
           future: _load,
           builder: (context, snapshot) {
             if (snapshot.connectionState != ConnectionState.done) {
@@ -72,6 +74,7 @@ class _WhatsNewScreenState extends ConsumerState<WhatsNewScreen> {
               ],
             );
           },
+        ),
         ),
       ),
     );

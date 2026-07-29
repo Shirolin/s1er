@@ -17,6 +17,7 @@ import '../widgets/daily_sign_card.dart';
 import '../widgets/web_avatar.dart';
 import '../widgets/s1_confirm_dialog.dart';
 import '../widgets/s1_desktop_scaffold.dart';
+import '../widgets/s1_system_bottom_inset.dart';
 import '../utils/s1_snack_bar.dart';
 
 class ProfileScreen extends ConsumerWidget {
@@ -45,7 +46,9 @@ class ProfileScreen extends ConsumerWidget {
               ),
           ],
         ),
-        body: ProfileBody(externalUrlLauncher: externalUrlLauncher),
+        body: S1PageBody(
+          child: ProfileBody(externalUrlLauncher: externalUrlLauncher),
+        ),
       ),
     );
   }

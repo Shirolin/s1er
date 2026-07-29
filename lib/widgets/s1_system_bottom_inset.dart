@@ -21,3 +21,24 @@ class S1SystemBottomInset extends StatelessWidget {
     );
   }
 }
+
+/// 全屏页 [Scaffold.body]：主内容 + 系统底栏占位。
+///
+/// 用于无首页 [NavigationBar]、无 [PaginationBar] 的独立路由（设置、阅读历史等）。
+/// 首页 Tab 内嵌内容请勿使用，以免与底栏重复留白。
+class S1PageBody extends StatelessWidget {
+  const S1PageBody({super.key, required this.child});
+
+  final Widget child;
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        Expanded(child: child),
+        const S1SystemBottomInset(),
+      ],
+    );
+  }
+}

@@ -5,6 +5,7 @@ import '../config/login_security_questions.dart';
 import '../providers/auth_provider.dart';
 import '../theme/app_theme.dart';
 import '../theme/s1_haptics.dart';
+import '../widgets/s1_system_bottom_inset.dart';
 
 class LoginScreen extends ConsumerStatefulWidget {
   const LoginScreen({super.key});
@@ -94,8 +95,9 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
         elevation: 0,
         title: const Text('登录 Stage1st'),
       ),
-      body: Center(
-        child: SingleChildScrollView(
+      body: S1PageBody(
+        child: Center(
+          child: SingleChildScrollView(
           padding: const EdgeInsets.all(24),
           child: ConstrainedBox(
             constraints: const BoxConstraints(maxWidth: 400),
@@ -248,6 +250,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
               ),
             ),
           ),
+        ),
         ),
       ),
     );

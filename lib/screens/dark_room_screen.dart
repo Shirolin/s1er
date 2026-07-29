@@ -14,6 +14,7 @@ import '../widgets/s1_list_boundary_footer.dart';
 import '../widgets/s1_scroll_boundary_listener.dart';
 import '../widgets/web_avatar.dart';
 import '../widgets/s1_desktop_scaffold.dart';
+import '../widgets/s1_system_bottom_inset.dart';
 import '../widgets/skeleton/s1_async_list_loading.dart';
 import '../widgets/skeleton/list_row_skeleton.dart';
 
@@ -44,7 +45,8 @@ class _DarkRoomScreenState extends ConsumerState<DarkRoomScreen> {
             ),
           ],
         ),
-        body: async.when(
+        body: S1PageBody(
+          child: async.when(
           loading: () => const S1AsyncListLoading(
             child: ListRowSkeletonList(),
           ),
@@ -106,6 +108,7 @@ class _DarkRoomScreenState extends ConsumerState<DarkRoomScreen> {
               ),
             );
           },
+        ),
         ),
       ),
     );

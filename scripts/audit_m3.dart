@@ -2,7 +2,7 @@
 //
 // Material Design 3 compliance audit.
 // Scans lib/ (P0/P1/WARN) and test/ (WARN for missing AppTheme).
-// Allowed patterns: see AGENTS.md「M3 允许模式」
+// Allowed patterns: see AGENTS.md「M3 允许模式」and「系统底栏允许模式」
 //
 // Usage: dart run scripts/audit_m3.dart [--fail-on-error] [--output=path]
 
@@ -142,6 +142,100 @@ final _libRules = <AuditRule>[
   ),
 ];
 
+/// Whole-file exempt from [screen-missing-bottom-chrome] (see AGENTS.md).
+const _bottomInsetExemptScreens = {
+  'lib/screens/home_screen.dart', // Tab shell; S1HomeNavChrome on bottomNavigationBar
+  'lib/screens/compose_screen.dart', // Bottom toolbar uses SafeArea
+  'lib/screens/search_screen.dart', // Home tab only; home Nav handles inset
+  'lib/screens/messages_screen.dart', // Home tab only
+  'lib/screens/image_viewer_screen.dart', // Manual MediaQuery.paddingOf bottom inset
+};
+
+/// May gate [PaginationBar] behind `totalPages > 1` (home tabs).
+const _conditionalPaginationAllowedScreens = {
+  'lib/screens/search_screen.dart',
+  'lib/screens/messages_screen.dart',
+};
+
+const _bottomChromeMarkers = [
+  'S1PageBody',
+  'PaginationBar',
+  'S1HomeNavChrome',
+  'MediaQuery.paddingOf(context).bottom',
+];
+
+final _conditionalPaginationPattern = RegExp(
+  r'if\s*\([^)]*totalPages\s*>\s*1[^)]*\)[\s\S]*?PaginationBar\s*\(',
+  multiLine: true,
+);
+
+void _checkBottomInsetCompliance(
+  String path,
+  List<String> lines,
+  List<AuditFinding> findings,
+) {
+  if (!path.startsWith('lib/screens/') || !path.endsWith('.dart')) return;
+
+  final content = lines.join('\n');
+  if (!content.contains('Scaffold(')) return;
+
+  if (!_bottomInsetExemptScreens.contains(path)) {
+    final hasMarker =
+        _bottomChromeMarkers.any((marker) => content.contains(marker));
+    if (!hasMarker) {
+      final scaffoldLine = lines.indexWhere((l) => l.contains('Scaffold(')) + 1;
+      findings.add(
+        AuditFinding(
+          ruleId: 'screen-missing-bottom-chrome',
+          severity: AuditSeverity.p0,
+          file: path,
+          line: scaffoldLine > 0 ? scaffoldLine : 1,
+          message:
+              'Screen with Scaffold lacks bottom chrome (S1PageBody / PaginationBar / S1HomeNavChrome / manual bottom inset)',
+          snippet: lines[scaffoldLine > 0 ? scaffoldLine - 1 : 0].trim(),
+        ),
+      );
+    }
+  }
+
+  if (!_conditionalPaginationAllowedScreens.contains(path) &&
+      _conditionalPaginationPattern.hasMatch(content)) {
+    final match = _conditionalPaginationPattern.matchAsPrefix(content);
+    final lineNo = match == null
+        ? 1
+        : content.substring(0, match.start).split('\n').length;
+    findings.add(
+      AuditFinding(
+        ruleId: 'conditional-pagination-bar',
+        severity: AuditSeverity.p0,
+        file: path,
+        line: lineNo,
+        message:
+            'PaginationBar must not be gated on totalPages > 1 on full-screen routes (use always-on PaginationBar)',
+        snippet: lines[lineNo - 1].trim(),
+      ),
+    );
+  }
+
+  if (path == 'lib/screens/home_screen.dart' &&
+      content.contains('bottomNavigationBar:') &&
+      !content.contains('S1HomeNavChrome')) {
+    final lineNo =
+        lines.indexWhere((l) => l.contains('bottomNavigationBar:')) + 1;
+    findings.add(
+      AuditFinding(
+        ruleId: 'home-nav-missing-chrome',
+        severity: AuditSeverity.p0,
+        file: path,
+        line: lineNo > 0 ? lineNo : 1,
+        message:
+            'Home bottomNavigationBar must wrap NavigationBar in S1HomeNavChrome',
+        snippet: lines[lineNo > 0 ? lineNo - 1 : 0].trim(),
+      ),
+    );
+  }
+}
+
 List<String> _collectDartFiles(Directory root) {
   final files = <String>[];
   if (!root.existsSync()) return files;
@@ -218,6 +312,7 @@ List<AuditFinding> _auditLibFile(String path) {
 
   _checkMissingExplicitElevation(path, lines, findings);
   _checkDividerColor(path, lines, findings);
+  _checkBottomInsetCompliance(path, lines, findings);
 
   for (var i = 0; i < lines.length; i++) {
     final line = lines[i];
@@ -354,7 +449,9 @@ String _formatReport(
     }
   }
 
-  buffer.writeln('See AGENTS.md「M3 允许模式」for documented allowed patterns.');
+  buffer.writeln(
+    'See AGENTS.md「M3 允许模式」and「系统底栏允许模式」for documented allowed patterns.',
+  );
   return buffer.toString();
 }
 

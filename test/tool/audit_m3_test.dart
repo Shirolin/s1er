@@ -91,4 +91,48 @@ void main() {
       isFalse,
     );
   });
+
+  test('conditional-pagination-bar rule detects gated PaginationBar', () {
+    final pattern = RegExp(
+      r'if\s*\([^)]*totalPages\s*>\s*1[^)]*\)[\s\S]*?PaginationBar\s*\(',
+      multiLine: true,
+    );
+
+    expect(
+      pattern.hasMatch('''
+        if (state.totalPages > 1)
+          PaginationBar(
+            currentPage: state.currentPage,
+          ),
+      '''),
+      isTrue,
+    );
+
+    expect(
+      pattern.hasMatch('''
+        PaginationBar(
+          currentPage: state.currentPage,
+        ),
+      '''),
+      isFalse,
+    );
+  });
+
+  test('bottom chrome markers include S1PageBody and PaginationBar', () {
+    const markers = [
+      'S1PageBody',
+      'PaginationBar',
+      'S1HomeNavChrome',
+      'MediaQuery.paddingOf(context).bottom',
+    ];
+
+    expect(
+      markers.any((m) => 'body: S1PageBody('.contains(m)),
+      isTrue,
+    );
+    expect(
+      markers.any((m) => 'PaginationBar('.contains(m)),
+      isTrue,
+    );
+  });
 }

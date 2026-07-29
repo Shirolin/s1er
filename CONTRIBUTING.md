@@ -29,7 +29,7 @@
 dart format --output=none --set-exit-if-changed lib test scripts
 flutter analyze
 flutter test
-dart run scripts/audit_m3.dart --fail-on-error
+dart run scripts/audit_m3.dart --fail-on-error  # M3 + 系统底栏 inset 合规
 ```
 
 涉及平台或依赖变更时，再执行对应构建：
@@ -51,7 +51,7 @@ flutter build apk --release
 
 | 模式 | 用法 | 检查项 |
 |------|------|--------|
-| **full**（默认） | `git commit -m "..."` | format + analyze + test + M3 |
+| **full**（默认） | `git commit -m "..."` | format + analyze + test + M3 / 底栏审计 |
 | **lite** | `$env:S1_PRECOMMIT="lite"; git commit -m "..."` | 仅 format + analyze（小改小修） |
 | **skip** | `$env:S1_PRECOMMIT="skip"; git commit -m "..."` 或 `git commit --no-verify` | 跳过全部 |
 

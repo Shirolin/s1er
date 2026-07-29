@@ -210,7 +210,9 @@ void main() {
 
       await notifier().submit('switch');
       notifier().updateForumQuery(
-        state().forumQuery.copyWith(author: 'alice', filter: ForumSearchFilter.digest),
+        state()
+            .forumQuery
+            .copyWith(author: 'alice', filter: ForumSearchFilter.digest),
       );
 
       notifier().clearAdvancedFilters();

@@ -185,23 +185,37 @@ class _ForumSearchAdvancedSheetState
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.stretch,
                   children: [
-                    TextField(
-                      controller: _keywordController,
-                      maxLength: ForumSearchQuery.maxTextLength,
-                      decoration: const InputDecoration(
-                        labelText: '关键词',
-                        hintText: '请输入搜索内容',
-                        counterText: '',
+                    _SectionLabel(text: '关键词', textTheme: textTheme),
+                    const SizedBox(height: 8),
+                    Theme(
+                      data: Theme.of(context).copyWith(
+                        inputDecorationTheme:
+                            _searchAdvancedInputTheme(scheme),
+                      ),
+                      child: TextField(
+                        controller: _keywordController,
+                        maxLength: ForumSearchQuery.maxTextLength,
+                        decoration: const InputDecoration(
+                          hintText: '请输入搜索内容',
+                          counterText: '',
+                        ),
                       ),
                     ),
+                    const SizedBox(height: 16),
+                    _SectionLabel(text: '作者', textTheme: textTheme),
                     const SizedBox(height: 8),
-                    TextField(
-                      controller: _authorController,
-                      maxLength: ForumSearchQuery.maxTextLength,
-                      decoration: const InputDecoration(
-                        labelText: '作者',
-                        hintText: '按用户名筛选',
-                        counterText: '',
+                    Theme(
+                      data: Theme.of(context).copyWith(
+                        inputDecorationTheme:
+                            _searchAdvancedInputTheme(scheme),
+                      ),
+                      child: TextField(
+                        controller: _authorController,
+                        maxLength: ForumSearchQuery.maxTextLength,
+                        decoration: const InputDecoration(
+                          hintText: '按用户名筛选',
+                          counterText: '',
+                        ),
                       ),
                     ),
                     const SizedBox(height: 16),

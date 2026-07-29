@@ -391,9 +391,8 @@ class _SearchBody extends ConsumerWidget {
                       message: message,
                       feedback: S1SnackBarFeedback.error,
                       actionLabel: loginRequired ? '登录' : null,
-                      onAction: loginRequired
-                          ? () => context.push('/login')
-                          : null,
+                      onAction:
+                          loginRequired ? () => context.push('/login') : null,
                       bottomClearance: S1FabLayout.snackBarClearance,
                     );
                 }

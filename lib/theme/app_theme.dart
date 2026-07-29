@@ -1,6 +1,8 @@
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 
+import 's1_mouse_cursors.dart';
+
 /// M3 Shape tokens — 统一圆角半径
 abstract class S1Shape {
   static const extraSmall = BorderRadius.all(Radius.circular(4));
@@ -107,6 +109,8 @@ abstract class S1SegmentedButtonStyle {
       visualDensity: VisualDensity.standard,
       // 保留 M3 视觉高度之外的 48dp 触控目标，避免紧凑布局牺牲可访问性。
       tapTargetSize: MaterialTapTargetSize.padded,
+      // 覆盖 adaptiveClickable（桌面默认箭头）；方案：跟网页习惯用手型。
+      mouseCursor: S1MouseCursors.clickable,
       backgroundColor: WidgetStateProperty.resolveWith((states) {
         if (states.contains(WidgetState.selected)) {
           return scheme.secondaryContainer;
@@ -386,6 +390,7 @@ class AppTheme {
           alignment: AlignmentDirectional.centerStart,
           iconSize: WidgetStatePropertyAll(24),
           tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+          mouseCursor: S1MouseCursors.clickable,
         ),
       ),
       snackBarTheme: SnackBarThemeData(
@@ -438,28 +443,38 @@ class AppTheme {
         // elevation 不覆写，沿用 Flutter M3 浮层默认阴影。
         backgroundColor: colorScheme.tertiaryContainer,
         foregroundColor: colorScheme.onTertiaryContainer,
+        mouseCursor: S1MouseCursors.clickable,
       ),
       filledButtonTheme: FilledButtonThemeData(
-        style: FilledButton.styleFrom(elevation: 0),
+        style: FilledButton.styleFrom(elevation: 0).copyWith(
+          mouseCursor: S1MouseCursors.clickable,
+        ),
       ),
       textButtonTheme: TextButtonThemeData(
-        style: TextButton.styleFrom(elevation: 0),
+        style: TextButton.styleFrom(elevation: 0).copyWith(
+          mouseCursor: S1MouseCursors.clickable,
+        ),
       ),
       outlinedButtonTheme: OutlinedButtonThemeData(
-        style: OutlinedButton.styleFrom(elevation: 0),
+        style: OutlinedButton.styleFrom(elevation: 0).copyWith(
+          mouseCursor: S1MouseCursors.clickable,
+        ),
       ),
       listTileTheme: const ListTileThemeData(
         shape: RoundedRectangleBorder(borderRadius: S1Shape.small),
         contentPadding: EdgeInsets.symmetric(horizontal: 8),
+        mouseCursor: S1MouseCursors.clickable,
       ),
       iconButtonTheme: IconButtonThemeData(
-        style: IconButton.styleFrom(visualDensity: VisualDensity.standard),
+        style: IconButton.styleFrom(visualDensity: VisualDensity.standard)
+            .copyWith(mouseCursor: S1MouseCursors.clickable),
       ),
       badgeTheme: BadgeThemeData(
         backgroundColor: colorScheme.secondaryContainer,
         textColor: colorScheme.onSecondaryContainer,
       ),
       checkboxTheme: CheckboxThemeData(
+        mouseCursor: S1MouseCursors.clickable,
         fillColor: WidgetStateProperty.resolveWith((states) {
           if (states.contains(WidgetState.selected)) {
             return colorScheme.primary;
@@ -469,6 +484,7 @@ class AppTheme {
         checkColor: WidgetStateProperty.all(colorScheme.onPrimary),
       ),
       switchTheme: SwitchThemeData(
+        mouseCursor: S1MouseCursors.clickable,
         thumbColor: WidgetStateProperty.resolveWith((states) {
           if (states.contains(WidgetState.selected)) {
             return colorScheme.onPrimary;

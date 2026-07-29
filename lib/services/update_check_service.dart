@@ -180,7 +180,10 @@ class UpdateCheckService {
     'wwwa.lanzoui.com',
   };
 
-  /// 根据当前 CPU 架构 (arm64-v8a / armeabi-v7a / x86_64) 解析 Android 最优 APK 链接。
+  /// 根据当前 CPU 架构 (arm64-v8a / armeabi-v7a / x86_64) 解析 Android APK 直链。
+  ///
+  /// 优先 [AppUpdateChannels.androidArm64V8aApk] 等分架构字段（见 `latest.json`）；
+  /// 缺失、非法主机或 [currentAbi] 为 null 时回退 [AppUpdateChannels.androidApk]（universal）。
   static String? resolveAndroidApkUrl(
     AppUpdateChannels channels, {
     String? abiOverride,

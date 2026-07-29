@@ -2,6 +2,7 @@ import 'package:dio/dio.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:s1er/models/forum_search_query.dart';
 import 'package:s1er/models/search_result.dart';
 import 'package:s1er/providers/api_service_provider.dart';
 import 'package:s1er/providers/search_provider.dart';
@@ -46,7 +47,7 @@ class _FakeSearchApiService extends ApiService {
 
   @override
   Future<ForumSearchPage> searchForum({
-    required String query,
+    required ForumSearchQuery query,
     int page = 1,
     String? pageHref,
   }) async {
@@ -79,7 +80,8 @@ void main() {
     expect(find.text('搜索主题与帖子'), findsOneWidget);
     expect(find.text('主题'), findsOneWidget);
     expect(find.text('用户'), findsOneWidget);
-    expect(find.byTooltip('请输入搜索关键词'), findsOneWidget);
+    expect(find.text('高级'), findsOneWidget);
+    expect(find.byTooltip('请输入关键词或作者'), findsOneWidget);
   });
 
   testWidgets('SearchScreen empty query keeps submit disabled', (tester) async {
@@ -94,7 +96,7 @@ void main() {
 
     await tester.enterText(find.byType(SearchBar), '   ');
     await tester.pump();
-    expect(find.byTooltip('请输入搜索关键词'), findsOneWidget);
+    expect(find.byTooltip('请输入关键词或作者'), findsOneWidget);
 
     await tester.enterText(find.byType(SearchBar), 'switch');
     await tester.pump();
@@ -162,13 +164,13 @@ void main() {
     await tester.tap(find.byTooltip('搜索'));
     await tester.pump();
 
-    expect(find.text('搜索间隔中，30 秒后可再搜索'), findsOneWidget);
+    expect(find.text('搜索间隔中，60 秒后可再搜索'), findsOneWidget);
     expect(find.byTooltip('搜索间隔中'), findsOneWidget);
 
     await tester.pump(const Duration(seconds: 1));
-    expect(find.text('搜索间隔中，29 秒后可再搜索'), findsOneWidget);
+    expect(find.text('搜索间隔中，59 秒后可再搜索'), findsOneWidget);
 
-    await tester.pump(const Duration(seconds: 29));
+    await tester.pump(const Duration(seconds: 59));
     expect(find.textContaining('搜索间隔中'), findsNothing);
     expect(find.byTooltip('搜索'), findsOneWidget);
   });

@@ -8,6 +8,7 @@ import '../models/compose_image_upload_result.dart';
 import '../models/forum_attachment_upload_info.dart';
 import '../utils/forum_attachment_upload_info_parser.dart';
 import 'http_client.dart';
+import 's1_image_cache.dart';
 import 'talker.dart';
 
 /// Discuz 论坛附件上传（`misc.php?mod=swfupload` → aid → imagelist）。
@@ -107,6 +108,13 @@ class ForumAttachmentUploadService {
         ajaxTarget: uploadId,
       );
       previewUrl ??= parseForumAttachmentUploadPreviewUrl(body);
+
+      // 刚上传的附件 CDN 常需会话才能拉；先把本地字节写入同 key 缓存，
+      // Chip / 预览 / ImageViewer 可免二次鉴权请求。
+      final preview = previewUrl?.trim();
+      if (preview != null && preview.isNotEmpty) {
+        await S1ImageCache.putBytes(preview, bytes);
+      }
 
       return ComposeImageUploadResult(
         insertTag: '[attachimg]$aid[/attachimg]',

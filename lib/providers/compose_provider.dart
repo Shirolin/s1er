@@ -58,10 +58,14 @@ class ComposeController {
   }) async {
     if (seed != null && seed.isValid) {
       _cacheUploadInfo(fid: fid, tid: tid, editPid: editPid, info: seed);
+      _syncFormhashFromUploadInfo(seed);
       return seed;
     }
     final cached = _cachedFor(fid: fid, tid: tid, editPid: editPid);
-    if (cached != null) return cached;
+    if (cached != null) {
+      _syncFormhashFromUploadInfo(cached);
+      return cached;
+    }
     final info =
         await _ref.read(apiServiceProvider).fetchForumAttachmentUploadInfo(
               fid: fid,
@@ -70,8 +74,16 @@ class ComposeController {
             );
     if (info != null && info.isValid) {
       _cacheUploadInfo(fid: fid, tid: tid, editPid: editPid, info: info);
+      _syncFormhashFromUploadInfo(info);
     }
     return info;
+  }
+
+  /// 网页 `attachnew` 提交与上传页共用 formhash，优先用编辑页刮到的。
+  void _syncFormhashFromUploadInfo(ForumAttachmentUploadInfo info) {
+    final token = info.formhash?.trim();
+    if (token == null || token.isEmpty) return;
+    _ref.read(httpClientProvider).updateFormhash(token);
   }
 
   /// [message] 只含用户正文（可含 `[img]` / `[attachimg]`），不含客户端拼的 `[quote]`。

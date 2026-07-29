@@ -7,6 +7,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../config/app_icon_catalog.dart';
 import '../models/image_load_policy.dart';
 import '../models/list_density.dart';
+import '../models/share_save_mode.dart';
 import '../models/share_image_format.dart';
 import '../models/share_pixel_ratio.dart';
 import '../config/constants.dart';
@@ -40,6 +41,8 @@ class AppSettings {
     this.shareImageFormat = ShareImageFormat.webp,
     this.sharePixelRatio = SharePixelRatio.defaultValue,
     this.shareAdvancedExport = false,
+    this.shareSaveMode = ShareSaveMode.autoDir,
+    this.customExportPath,
     this.postSignatureEnabled = true,
     this.postSignatureShowDevice = true,
     this.postSignatureCustom = '',
@@ -65,6 +68,8 @@ class AppSettings {
   final ShareImageFormat shareImageFormat;
   final double sharePixelRatio;
   final bool shareAdvancedExport;
+  final ShareSaveMode shareSaveMode;
+  final String? customExportPath;
   final bool postSignatureEnabled;
   final bool postSignatureShowDevice;
   final String postSignatureCustom;
@@ -92,6 +97,8 @@ class AppSettings {
     ShareImageFormat? shareImageFormat,
     double? sharePixelRatio,
     bool? shareAdvancedExport,
+    ShareSaveMode? shareSaveMode,
+    Object? customExportPath = _Sentinel.value,
     bool? postSignatureEnabled,
     bool? postSignatureShowDevice,
     String? postSignatureCustom,
@@ -117,6 +124,10 @@ class AppSettings {
       shareImageFormat: shareImageFormat ?? this.shareImageFormat,
       sharePixelRatio: sharePixelRatio ?? this.sharePixelRatio,
       shareAdvancedExport: shareAdvancedExport ?? this.shareAdvancedExport,
+      shareSaveMode: shareSaveMode ?? this.shareSaveMode,
+      customExportPath: customExportPath == _Sentinel.value
+          ? this.customExportPath
+          : customExportPath as String?,
       postSignatureEnabled: postSignatureEnabled ?? this.postSignatureEnabled,
       postSignatureShowDevice:
           postSignatureShowDevice ?? this.postSignatureShowDevice,
@@ -149,6 +160,8 @@ class AppSettings {
         other.shareImageFormat == shareImageFormat &&
         other.sharePixelRatio == sharePixelRatio &&
         other.shareAdvancedExport == shareAdvancedExport &&
+        other.shareSaveMode == shareSaveMode &&
+        other.customExportPath == customExportPath &&
         other.postSignatureEnabled == postSignatureEnabled &&
         other.postSignatureShowDevice == postSignatureShowDevice &&
         other.postSignatureCustom == postSignatureCustom &&
@@ -178,7 +191,11 @@ class AppSettings {
         Object.hashAll(favoriteForumOrder),
         shareImageFormat,
         sharePixelRatio,
-        shareAdvancedExport,
+        Object.hash(
+          shareAdvancedExport,
+          shareSaveMode,
+          customExportPath,
+        ),
         Object.hash(
           postSignatureEnabled,
           postSignatureShowDevice,
@@ -352,6 +369,11 @@ class SettingsNotifier extends Notifier<AppSettings> {
             defaultValue: false,
           ) ??
           false,
+      shareSaveMode: ShareSaveMode.values.firstWhere(
+        (e) => e.name == settingsStore.get<String>('shareSaveMode'),
+        orElse: () => ShareSaveMode.autoDir,
+      ),
+      customExportPath: settingsStore.get<String>('customExportPath'),
       collapsedForums: Set<String>.from(
         (settingsStore.get<List<dynamic>>('collapsedForums'))?.cast<String>() ??
             [],
@@ -382,6 +404,16 @@ class SettingsNotifier extends Notifier<AppSettings> {
           '',
       customFontFileName: settingsStore.get<String>('customFontFileName'),
     );
+  }
+
+  void setShareSaveMode(ShareSaveMode value) {
+    _commit(state.copyWith(shareSaveMode: value));
+    _persist('shareSaveMode', value.name);
+  }
+
+  void setCustomExportPath(String? path) {
+    _commit(state.copyWith(customExportPath: path));
+    _persist('customExportPath', path);
   }
 
   Future<String> importCustomFont(XFile file) async {
@@ -597,6 +629,8 @@ class SettingsNotifier extends Notifier<AppSettings> {
       shareImageFormat: defaults.shareImageFormat,
       sharePixelRatio: defaults.sharePixelRatio,
       shareAdvancedExport: defaults.shareAdvancedExport,
+      shareSaveMode: defaults.shareSaveMode,
+      customExportPath: defaults.customExportPath,
       customFontFileName: null,
     );
     _commit(next);
@@ -618,6 +652,8 @@ class SettingsNotifier extends Notifier<AppSettings> {
     _persist('shareImageFormat', defaults.shareImageFormat.storageKey);
     _persist('sharePixelRatio', defaults.sharePixelRatio);
     _persist('shareAdvancedExport', defaults.shareAdvancedExport);
+    _persist('shareSaveMode', defaults.shareSaveMode.name);
+    _persist('customExportPath', defaults.customExportPath);
     _persist('customFontFileName', null);
     // Best-effort native align; failures are logged inside sync.
     // ignore: discarded_futures

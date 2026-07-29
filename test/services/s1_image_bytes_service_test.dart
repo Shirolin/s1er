@@ -29,6 +29,19 @@ void main() {
     );
     expect(bytes, isNull);
   });
+
+  test('fetchBytes returns null on 403 without throwing', () async {
+    final dio = Dio()..httpClientAdapter = _StatusAdapter(403);
+    final container = ProviderContainer();
+    addTearDown(container.dispose);
+    final client = S1HttpClient.test(container, dio);
+    final service = S1ImageBytesService(client);
+
+    final bytes = await service.fetchBytes(
+      'https://img.stage1st.com/forum/202607/25/085644hdozxjkxmi5gma7f.png',
+    );
+    expect(bytes, isNull);
+  });
 }
 
 class _EmptyCacheManager implements CacheManager {

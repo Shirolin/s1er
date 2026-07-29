@@ -23,6 +23,7 @@ import '../models/message_list_result.dart';
 import '../models/pm_send_result.dart';
 import '../models/rate_form.dart';
 import '../models/report_form.dart';
+import '../models/forum_search_query.dart';
 import '../models/search_result.dart';
 import '../models/app_exceptions.dart';
 import '../utils/compose_img_tags.dart';
@@ -31,6 +32,8 @@ import '../utils/discuz_message.dart';
 import '../utils/discuz_submit_response.dart';
 import '../utils/forum_attachment_submit.dart';
 import '../utils/forum_attachment_upload_info_parser.dart';
+import '../utils/new_thread_form_parser.dart';
+import '../utils/read_perm_options.dart';
 import '../models/forum_attachment_upload_info.dart';
 import 'formhash_service.dart';
 import 'http_client.dart';
@@ -191,6 +194,9 @@ class ApiService {
   }
 
   /// 只读预检新主题权限，并缓存响应中的 formhash。
+  ///
+  /// 主题分类优先从网页发帖助手 (`forum.php?mod=post&action=newthread`) 解析，
+  /// 与 S1-Next 对齐；Mobile API 的 `threadtypes` 仅作回退。
   Future<NewThreadFormInfo> fetchNewThreadForm({required String fid}) async {
     try {
       final response = await _httpClient.get(
@@ -198,22 +204,51 @@ class ApiService {
       );
       _httpClient.cacheFormhashFromResponse(response.data);
       final json = ensureJson(response.data);
-      final result = parseNewThreadForm(json);
-      if (result.formhash == null || result.formhash!.isEmpty) {
+      final apiResult = parseNewThreadForm(json);
+      if (apiResult.error != null) return apiResult;
+
+      var threadTypes = apiResult.threadTypes;
+      var typeRequired = apiResult.typeRequired;
+      try {
+        final webResponse = await _httpClient.get(
+          ApiConfig.newThreadEditorUrl(fid: fid),
+          options: Options(
+            responseType: ResponseType.plain,
+            extra: const {'s1DesktopUa': true},
+          ),
+        );
+        final webForm = parseNewThreadFormHtml(
+          webResponse.data?.toString() ?? '',
+        );
+        if (webForm.threadTypes.isNotEmpty) {
+          threadTypes = webForm.threadTypes;
+        }
+        if (webForm.typeRequired != null) {
+          typeRequired = webForm.typeRequired!;
+        }
+      } catch (e, st) {
+        talker.handle(e, st, 'fetchNewThreadForm web types fallback');
+      }
+
+      if (apiResult.formhash == null || apiResult.formhash!.isEmpty) {
         return NewThreadFormInfo(
-          threadTypes: result.threadTypes,
-          typeRequired: result.typeRequired,
-          error: result.error ?? '无法获取发帖表单验证串，请稍后重试',
+          threadTypes: threadTypes,
+          typeRequired: typeRequired,
+          error: '无法获取发帖表单验证串，请稍后重试',
         );
       }
-      if (result.typeRequired && result.threadTypes.isEmpty) {
+      if (typeRequired && threadTypes.isEmpty) {
         return NewThreadFormInfo(
-          formhash: result.formhash,
+          formhash: apiResult.formhash,
           typeRequired: true,
           error: '服务器未返回必需的主题分类，请稍后重试',
         );
       }
-      return result;
+      return NewThreadFormInfo(
+        threadTypes: threadTypes,
+        typeRequired: typeRequired,
+        formhash: apiResult.formhash,
+      );
     } catch (e, st) {
       return NewThreadFormInfo(error: friendlyError(e, '加载发帖表单', st));
     }
@@ -416,16 +451,16 @@ class ApiService {
         if (option.attributes.containsKey('selected')) selectedTypeId = value;
       }
       final permissionSelect = document.querySelector('select#readperm');
-      final permissions = <String>[];
+      final permissionOptions = <({String value, String label})>[];
       String? selectedPermission;
       for (final option in permissionSelect?.querySelectorAll('option') ?? []) {
         final value = option.attributes['value']?.trim() ?? '';
-        if (value.isEmpty) continue;
-        permissions.add(value);
+        permissionOptions.add((value: value, label: option.text.trim()));
         if (option.attributes.containsKey('selected')) {
-          selectedPermission = value;
+          selectedPermission = normalizeReadPermValue(value);
         }
       }
+      final permissions = mergeReadPermOptions(permissionOptions);
       final special = int.tryParse(
             document
                     .querySelector('input[name="special"]')
@@ -487,6 +522,7 @@ class ApiService {
     String? readPerm,
     required EditPostFormInfo baseline,
   }) async {
+    final normalizedReadPerm = normalizeSelectedReadPerm(readPerm);
     final latest = await fetchEditPostForm(
       fid: fid,
       tid: tid,
@@ -517,8 +553,8 @@ class ApiService {
       'usesig': '1',
     };
     if (typeId != null && typeId.trim().isNotEmpty) data['typeid'] = typeId;
-    if (readPerm != null && readPerm.trim().isNotEmpty) {
-      data['readperm'] = readPerm;
+    if (normalizedReadPerm != null && normalizedReadPerm.isNotEmpty) {
+      data['readperm'] = normalizedReadPerm;
     }
     appendAttachNewFields(
       data,
@@ -552,7 +588,7 @@ class ApiService {
         subject: submittedSubject,
         message: submittedMessage,
         typeId: typeId,
-        readPerm: readPerm,
+        readPerm: normalizedReadPerm,
       );
       if (verified) {
         return const EditPostSubmitResult.success(message: '编辑成功');
@@ -568,7 +604,7 @@ class ApiService {
         subject: submittedSubject,
         message: submittedMessage,
         typeId: typeId,
-        readPerm: readPerm,
+        readPerm: normalizedReadPerm,
       );
       if (verified) {
         return const EditPostSubmitResult.success(message: '编辑成功');
@@ -605,10 +641,12 @@ class ApiService {
           latest.selectedTypeId != typeId) {
         return false;
       }
-      if (readPerm != null &&
-          readPerm.trim().isNotEmpty &&
-          latest.selectedReadPermission != readPerm) {
-        return false;
+      if (readPerm != null && readPerm.isNotEmpty) {
+        final latestReadPerm =
+            normalizeReadPermValue(latest.selectedReadPermission ?? '');
+        if (latestReadPerm != readPerm) {
+          return false;
+        }
       }
       return true;
     } catch (e, st) {
@@ -3454,59 +3492,43 @@ class ApiService {
 
   /// 主题搜索（`search.php?mod=forum`）。
   ///
-  /// 首页：POST `formhash` + `srchtxt`。翻页：优先 GET [pageHref] 模板。
+  /// 桌面 UA POST `formhash` + [ForumSearchQuery.toPostFields]；跟随 302；
+  /// 若返回触屏「无手机页面」提示则继续 GET `forcemobile=1` 桌面结果。
+  /// 翻页：GET [pageHref] 模板。
   Future<ForumSearchPage> searchForum({
-    required String query,
+    required ForumSearchQuery query,
     int page = 1,
     String? pageHref,
   }) async {
-    final trimmed = query.trim();
-    if (trimmed.isEmpty) {
-      return const ForumSearchPage(error: '请输入搜索关键词');
+    final validationError = query.validate();
+    if (validationError != null) {
+      return ForumSearchPage(error: validationError);
+    }
+
+    if (page > 1 && (pageHref == null || pageHref.isEmpty)) {
+      return const ForumSearchPage(error: '无法翻页，请重新搜索');
     }
 
     try {
       final String body;
-      if (page > 1 && pageHref != null && pageHref.isNotEmpty) {
-        final url = _resolveSearchPageUrl(pageHref, page);
+      if (page > 1) {
+        final url = _resolveSearchPageUrl(pageHref!, page);
         final response = await _httpClient.get(
           url,
-          options: Options(responseType: ResponseType.plain),
+          options: _searchHtmlGetOptions(),
         );
-        body = response.data?.toString() ?? '';
+        body = await _followDesktopSearchTemplateIfNeeded(
+          response.data?.toString() ?? '',
+        );
       } else {
-        final hasFormhash = await _httpClient.ensureFormhash(force: true);
-        if (!hasFormhash) {
-          return const ForumSearchPage(error: '无法获取表单验证串，请刷新后重试');
-        }
-        var response = await _httpClient.post(
-          ApiConfig.searchForumUrl(),
-          data: <String, String>{'srchtxt': trimmed},
-          options: Options(
-            contentType: Headers.formUrlEncodedContentType,
-            responseType: ResponseType.plain,
-            followRedirects: false,
-            validateStatus: (status) =>
-                status != null && status >= 200 && status < 400,
-          ),
+        body = await _submitDiscuzSearch(
+          url: ApiConfig.searchForumUrl(),
+          fields: query.toPostFields(),
         );
-        if (response.statusCode != null &&
-            response.statusCode! >= 300 &&
-            response.statusCode! < 400) {
-          final redirectUrl = _resolveSearchRedirectUrl(
-            response.headers.value('location'),
-          );
-          if (redirectUrl == null) {
-            return const ForumSearchPage(error: '搜索结果跳转地址无效，请稍后重试');
-          }
-          response = await _httpClient.get(
-            redirectUrl,
-            options: Options(responseType: ResponseType.plain),
-          );
-        }
-        body = response.data?.toString() ?? '';
       }
       return parseForumSearchHtml(body);
+    } on _SearchRequestException catch (e) {
+      return ForumSearchPage(error: e.message);
     } on LoginRequiredException {
       rethrow;
     } catch (e, st) {
@@ -3515,6 +3537,8 @@ class ApiService {
   }
 
   /// 用户搜索（`search.php?mod=user`）。
+  ///
+  /// 与 S1-Next 对齐：桌面 UA + `formhash`/`srchtxt`；触屏跳转页继续桌面模板。
   Future<UserSearchPage> searchUser({required String query}) async {
     final trimmed = query.trim();
     if (trimmed.isEmpty) {
@@ -3522,33 +3546,92 @@ class ApiService {
     }
 
     try {
-      final hasFormhash = await _httpClient.ensureFormhash(force: true);
-      if (!hasFormhash) {
-        return const UserSearchPage(error: '无法获取表单验证串，请刷新后重试');
-      }
-      final response = await _httpClient.post(
-        ApiConfig.searchUserUrl(),
-        data: <String, String>{'srchtxt': trimmed},
-        options: Options(
-          contentType: Headers.formUrlEncodedContentType,
-          responseType: ResponseType.plain,
-        ),
+      final body = await _submitDiscuzSearch(
+        url: ApiConfig.searchUserUrl(),
+        fields: {
+          'srchtxt': trimmed,
+          'searchsubmit': 'yes',
+        },
       );
-      var body = response.data?.toString() ?? '';
-      final forcedDesktopUrl = extractForcedDesktopUrl(body);
-      if (forcedDesktopUrl != null) {
-        final forcedResponse = await _httpClient.get(
-          forcedDesktopUrl,
-          options: Options(responseType: ResponseType.plain),
-        );
-        body = forcedResponse.data?.toString() ?? '';
-      }
       return parseUserSearchHtml(body);
+    } on _SearchRequestException catch (e) {
+      return UserSearchPage(error: e.message);
     } on LoginRequiredException {
       rethrow;
     } catch (e, st) {
       return UserSearchPage(error: friendlyError(e, '搜索用户', st));
     }
+  }
+
+  static Options _searchHtmlPostOptions() => Options(
+        contentType: Headers.formUrlEncodedContentType,
+        responseType: ResponseType.plain,
+        followRedirects: false,
+        validateStatus: (status) =>
+            status != null && status >= 200 && status < 400,
+        listFormat: ListFormat.multiCompatible,
+        extra: const {'s1DesktopUa': true},
+      );
+
+  static Options _searchHtmlGetOptions() => Options(
+        responseType: ResponseType.plain,
+        extra: const {'s1DesktopUa': true},
+      );
+
+  Future<String> _submitDiscuzSearch({
+    required String url,
+    required Map<String, dynamic> fields,
+  }) async {
+    final formhash = await _prepareSearchFormhash();
+    if (formhash == null) {
+      throw const _SearchRequestException('无法获取表单验证串，请刷新后重试');
+    }
+    final response = await _httpClient.post(
+      url,
+      data: <String, dynamic>{
+        'formhash': formhash,
+        ...fields,
+      },
+      options: _searchHtmlPostOptions(),
+    );
+    var body = await _fetchSearchHtmlBody(response);
+    return _followDesktopSearchTemplateIfNeeded(body);
+  }
+
+  Future<String?> _prepareSearchFormhash() async {
+    final hasFormhash = await _httpClient.ensureFormhash(force: true);
+    if (!hasFormhash) return null;
+    final formhash = _httpClient.currentFormhash;
+    return formhash.isEmpty ? null : formhash;
+  }
+
+  Future<String> _fetchSearchHtmlBody(Response<dynamic> response) async {
+    if (response.statusCode != null &&
+        response.statusCode! >= 300 &&
+        response.statusCode! < 400) {
+      final redirectUrl = _resolveSearchRedirectUrl(
+        response.headers.value('location'),
+      );
+      if (redirectUrl == null) {
+        throw const _SearchRequestException('搜索结果跳转地址无效，请稍后重试');
+      }
+      final redirectResponse = await _httpClient.get(
+        redirectUrl,
+        options: _searchHtmlGetOptions(),
+      );
+      return redirectResponse.data?.toString() ?? '';
+    }
+    return response.data?.toString() ?? '';
+  }
+
+  Future<String> _followDesktopSearchTemplateIfNeeded(String body) async {
+    final forcedDesktopUrl = extractForcedDesktopUrl(body);
+    if (forcedDesktopUrl == null) return body;
+    final forcedResponse = await _httpClient.get(
+      forcedDesktopUrl,
+      options: _searchHtmlGetOptions(),
+    );
+    return forcedResponse.data?.toString() ?? body;
   }
 
   static String _resolveSearchPageUrl(String pageHref, int page) {
@@ -3820,6 +3903,11 @@ class ApiService {
     if (name.isEmpty) return null;
     return UserSearchHit(uid: uid, name: name);
   }
+}
+
+class _SearchRequestException implements Exception {
+  const _SearchRequestException(this.message);
+  final String message;
 }
 
 class UserSpaceListResult {

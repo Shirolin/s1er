@@ -108,7 +108,7 @@ S1er release.ps1 - step-by-step (preferred)
   build        fat APK + per-ABI APKs + windows -> dist\  (NO upload)
   create       gh release create TAG with notes only; opens browser + dist\
   upload       gh release upload dist artifacts (SLOW on some networks)
-  manifest     Rewrite docs/release/latest.json (androidApk = fat universal)
+  manifest     Rewrite docs/release/latest.json (all APK + Windows direct links)
   open         Open the GitHub Release page for current tag
 
 Examples:
@@ -242,12 +242,14 @@ Build ``$($v.Label)``（关于页：``$($v.Name) ($($v.Build))``）
 
 ### 下哪个包？（Android）
 
+应用内「立即更新」会按设备 ABI 自动选分架构包；下表面向**浏览器手动下载**。
+
 | 文件 | 选谁 |
 |:---|:---|
-| ``$(Split-Path $arts.Apk -Leaf)`` | **不确定就下这个**（universal，含全部架构，体积最大） |
 | ``$(Split-Path $arts.ApkArm64 -Leaf)`` | 近 5 年大多数真机（arm64） |
 | ``$(Split-Path $arts.ApkArmeabi -Leaf)`` | 较老的 32 位 ARM 机 |
 | ``$(Split-Path $arts.ApkX64 -Leaf)`` | 模拟器 / 少数 x86 平板 |
+| ``$(Split-Path $arts.Apk -Leaf)`` | **不确定就下这个**（universal，含全部架构，体积最大） |
 
 装错架构会提示解析包失败或无法安装，换对应 ABI 或改下 universal 即可。
 
@@ -326,6 +328,28 @@ function Step-Upload {
     Write-Host "Upload finished. Next: .\scripts\release.ps1 manifest" -ForegroundColor Green
 }
 
+function Get-GithubReleaseAssetUrl([string]$Tag, [string]$FileName) {
+    return "https://github.com/$RepoSlug/releases/download/$Tag/$([uri]::EscapeDataString($FileName))"
+}
+
+function Assert-ManifestAndroidChannels($channels) {
+    $required = @(
+        'androidApk',
+        'androidArm64V8aApk',
+        'androidArmeabiV7aApk',
+        'androidX8664Apk'
+    )
+    foreach ($key in $required) {
+        $value = $channels.$key
+        if ([string]::IsNullOrWhiteSpace($value)) {
+            throw "latest.json channels.$key is missing or empty after manifest step"
+        }
+        if ($value -notmatch '^https://github\.com/') {
+            throw "latest.json channels.$key must be a github.com https URL"
+        }
+    }
+}
+
 function Step-Manifest {
     $v = Get-PubspecVersion
     if (-not (Test-Path $Manifest)) { throw "Missing $Manifest" }
@@ -373,6 +397,10 @@ function Step-Manifest {
     # Prefer stable 2-space JSON without BOM
     $utf8 = New-Object System.Text.UTF8Encoding $false
     [System.IO.File]::WriteAllText($Manifest, ($out.Trim() + "`n"), $utf8)
+
+    $written = Get-Content $Manifest -Raw | ConvertFrom-Json
+    Assert-ManifestAndroidChannels $written.channels
+
     Write-Host "Updated $Manifest" -ForegroundColor Green
     Write-Host "  latest=$($v.Name)  androidApk=universal  androidArm64V8aApk=arm64-v8a  androidArmeabiV7aApk=armeabi-v7a  androidX8664Apk=x86_64"
     if ($nameChanged) {

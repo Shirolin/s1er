@@ -209,6 +209,17 @@ flutter run -d chrome --dart-define=TALKER_LOG_LEVEL=all --dart-define=TALKER_MA
 
 ---
 
+## 发版与升级清单
+
+> 完整流程见 [docs/release/README.md](docs/release/README.md)。下列为 AI **必须遵守**的硬规则，避免发版脚本与 `latest.json` 再次脱节。
+
+- **发版走 `scripts/release.ps1`**：`build` → 上传 Release 附件 → **`manifest`**（写 `docs/release/latest.json` 直链）。禁止只手改 `latest.json` 而跳过 `manifest`。
+- **Android 应用内更新按 ABI 选包**：`UpdateCheckService.resolveAndroidApkUrl` 优先 `androidArm64V8aApk` / `androidArmeabiV7aApk` / `androidX8664Apk`；`androidApk`（universal）仅为回退。**禁止**把应用内更新「简化」为只下 universal，或让 `manifest` 只写 `androidApk`。
+- **`manifest` 必须写入四个 APK 直链**（`release.ps1` 已内置校验，缺字段会抛错）。改发版逻辑时须同步 `docs/release/README.md` 与相关测试。
+- **版本比较只看 `pubspec` name**（如 `0.3.5`），忽略 `+build`；仅抬 build 不必改 `latest`。
+
+---
+
 ## 当前已知约束
 
 > 记录项目中已知的技术债或暂时妥协，避免 AI 重复提出或错误优化。

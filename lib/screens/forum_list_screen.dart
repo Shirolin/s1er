@@ -86,6 +86,11 @@ class _ForumListScreenState extends ConsumerState<ForumListScreen> {
       '/forum/${widget.fid}/new-thread',
     );
     if (!mounted || result == null || !result.isSuccess) return;
+    S1SnackBar.show(
+      context,
+      message: '发帖成功',
+      feedback: S1SnackBarFeedback.success,
+    );
     await ref.read(threadListProvider(widget.fid).notifier).refresh();
     if (mounted) unawaited(context.push('/thread/${result.tid}'));
   }

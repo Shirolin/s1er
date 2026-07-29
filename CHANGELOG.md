@@ -7,6 +7,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [Unreleased]
+
+### Added
+
+- **高级搜索**：补回按版块、作者、时间范围筛选的论坛高级搜索（0.3.6 说明中已列但未随包发布）
+- **发帖/编辑完善**：补回阅读权限解析、编辑页表单与相关 UI
+- **桌面端导出**：补回固定目录保存与每次另存为选项
+
 ## [0.4.0] - 2026-07-29
 
 ### Added

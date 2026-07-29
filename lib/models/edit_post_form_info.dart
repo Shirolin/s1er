@@ -6,7 +6,7 @@ class EditPostFormInfo {
     this.message = '',
     this.threadTypes = const {},
     this.selectedTypeId,
-    this.readPermissions = const [],
+    this.readPermissions = const {},
     this.selectedReadPermission,
     this.formhash,
     this.isFirst = false,
@@ -20,7 +20,7 @@ class EditPostFormInfo {
   final String message;
   final Map<String, String> threadTypes;
   final String? selectedTypeId;
-  final List<String> readPermissions;
+  final Map<String, String> readPermissions;
   final String? selectedReadPermission;
   final String? formhash;
   final bool isFirst;

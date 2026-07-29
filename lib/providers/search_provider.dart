@@ -2,18 +2,38 @@ import 'dart:async';
 
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../models/forum_search_query.dart';
 import '../models/search_result.dart';
 import '../services/api_service.dart';
 import '../utils/error_handler.dart';
 import 'api_service_provider.dart';
 
 /// Discuz `allowsearch` 常见间隔；客户端提交冷却，降低连点触发限流。
-const searchSubmitCooldown = Duration(seconds: 30);
+const searchSubmitCooldown = Duration(seconds: 60);
+
+sealed class SearchGoToPageResult {
+  const SearchGoToPageResult();
+}
+
+final class SearchGoToPageSuccess extends SearchGoToPageResult {
+  const SearchGoToPageSuccess();
+}
+
+final class SearchGoToPageFailure extends SearchGoToPageResult {
+  const SearchGoToPageFailure(
+    this.message, {
+    this.loginRequired = false,
+  });
+
+  final String message;
+  final bool loginRequired;
+}
 
 class SearchUiState {
   const SearchUiState({
     this.type = SearchType.forum,
     this.query = '',
+    this.forumQuery = ForumSearchQuery.empty,
     this.forumHits = const [],
     this.userHits = const [],
     this.count = 0,
@@ -28,6 +48,7 @@ class SearchUiState {
 
   final SearchType type;
   final String query;
+  final ForumSearchQuery forumQuery;
   final List<ForumSearchHit> forumHits;
   final List<UserSearchHit> userHits;
   final int count;
@@ -41,9 +62,12 @@ class SearchUiState {
 
   bool get isCoolingDown => cooldownRemainingSeconds > 0;
 
+  bool get hasAdvancedFilters => !forumQuery.isDefault;
+
   SearchUiState copyWith({
     SearchType? type,
     String? query,
+    ForumSearchQuery? forumQuery,
     List<ForumSearchHit>? forumHits,
     List<UserSearchHit>? userHits,
     int? count,
@@ -60,6 +84,7 @@ class SearchUiState {
     return SearchUiState(
       type: type ?? this.type,
       query: query ?? this.query,
+      forumQuery: forumQuery ?? this.forumQuery,
       forumHits: forumHits ?? this.forumHits,
       userHits: userHits ?? this.userHits,
       count: count ?? this.count,
@@ -95,12 +120,33 @@ class SearchNotifier extends Notifier<SearchUiState> {
     );
   }
 
-  Future<void> submit(String rawQuery) async {
-    final query = rawQuery.trim();
-    if (query.isEmpty) {
-      state = state.copyWith(error: '请输入搜索关键词', hasSearched: false);
-      return;
-    }
+  void updateForumQuery(ForumSearchQuery query) {
+    state = state.copyWith(forumQuery: query);
+  }
+
+  void clearAdvancedFilters() {
+    state = state.copyWith(
+      forumQuery: state.forumQuery.copyWith(
+        author: '',
+        filter: ForumSearchFilter.all,
+        specials: const {},
+        srchfromSeconds: 0,
+        before: false,
+        orderby: 'lastpost',
+        ascending: false,
+        forumIds: const {},
+      ),
+      forumHits: const [],
+      count: 0,
+      currentPage: 1,
+      totalPages: 1,
+      pageHref: '',
+      hasSearched: false,
+      clearError: true,
+    );
+  }
+
+  Future<void> submit(String rawKeyword) async {
     if (state.isLoading) return;
     if (state.isCoolingDown) {
       final sec = state.cooldownRemainingSeconds;
@@ -110,19 +156,55 @@ class SearchNotifier extends Notifier<SearchUiState> {
       return;
     }
 
+    if (state.type == SearchType.user) {
+      final query = rawKeyword.trim();
+      if (query.isEmpty) {
+        state = state.copyWith(error: '请输入搜索关键词', hasSearched: false);
+        return;
+      }
+      await _runSearch(
+        query: query,
+        forumQuery: null,
+        userQuery: query,
+      );
+      return;
+    }
+
+    final forumQuery = state.forumQuery.copyWith(keyword: rawKeyword);
+    final validationError = forumQuery.validate();
+    if (validationError != null) {
+      state = state.copyWith(error: validationError, hasSearched: false);
+      return;
+    }
+
+    await _runSearch(
+      query: forumQuery.trimmedKeyword.isNotEmpty
+          ? forumQuery.trimmedKeyword
+          : forumQuery.trimmedAuthor,
+      forumQuery: forumQuery,
+      userQuery: null,
+    );
+  }
+
+  Future<void> _runSearch({
+    required String query,
+    required ForumSearchQuery? forumQuery,
+    required String? userQuery,
+  }) async {
     state = state.copyWith(
       isLoading: true,
       clearError: true,
       query: query,
+      forumQuery: forumQuery ?? state.forumQuery,
       hasSearched: true,
     );
 
     try {
       if (state.type == SearchType.forum) {
-        final page = await _api.searchForum(query: query);
-        _applyForumPage(page, query: query);
+        final page = await _api.searchForum(query: forumQuery!);
+        _applyForumPage(page, query: query, startCooldown: true);
       } else {
-        final page = await _api.searchUser(query: query);
+        final page = await _api.searchUser(query: userQuery!);
         _applyUserPage(page, query: query);
       }
     } on LoginRequiredException catch (e) {
@@ -142,30 +224,42 @@ class SearchNotifier extends Notifier<SearchUiState> {
     }
   }
 
-  Future<void> goToPage(int page) async {
-    if (state.type != SearchType.forum) return;
+  Future<SearchGoToPageResult> goToPage(int page) async {
+    if (state.type != SearchType.forum) return const SearchGoToPageSuccess();
     if (page < 1 || page > state.totalPages || page == state.currentPage) {
-      return;
+      return const SearchGoToPageSuccess();
     }
-    if (state.isLoading) return;
+    if (state.isLoading) return const SearchGoToPageSuccess();
     final query = state.query;
-    if (query.isEmpty) return;
+    if (query.isEmpty) return const SearchGoToPageSuccess();
 
+    if (page > 1 && state.pageHref.isEmpty) {
+      return const SearchGoToPageFailure('无法翻页，请重新搜索');
+    }
+
+    final previous = state;
     state = state.copyWith(isLoading: true, clearError: true);
     try {
       final result = await _api.searchForum(
-        query: query,
+        query: state.forumQuery,
         page: page,
         pageHref: state.pageHref.isEmpty ? null : state.pageHref,
       );
+      if (result.hasError) {
+        state = previous.copyWith(isLoading: false);
+        return SearchGoToPageFailure(result.error!);
+      }
       _applyForumPage(result, query: query, startCooldown: false);
-    } on LoginRequiredException catch (e) {
-      state = state.copyWith(isLoading: false, error: e);
-    } catch (e, st) {
-      state = state.copyWith(
-        isLoading: false,
-        error: friendlyError(e, '搜索翻页', st),
+      return const SearchGoToPageSuccess();
+    } on LoginRequiredException {
+      state = previous.copyWith(isLoading: false);
+      return const SearchGoToPageFailure(
+        '请先登录后重试',
+        loginRequired: true,
       );
+    } catch (e, st) {
+      state = previous.copyWith(isLoading: false);
+      return SearchGoToPageFailure(friendlyError(e, '搜索翻页', st));
     }
   }
 
@@ -174,6 +268,22 @@ class SearchNotifier extends Notifier<SearchUiState> {
     required String query,
     bool startCooldown = true,
   }) {
+    if (page.hasError) {
+      state = state.copyWith(
+        isLoading: false,
+        query: query,
+        hasSearched: true,
+        forumHits: const [],
+        userHits: const [],
+        count: 0,
+        currentPage: 1,
+        totalPages: 1,
+        pageHref: '',
+        error: page.error,
+      );
+      return;
+    }
+
     state = state.copyWith(
       isLoading: false,
       query: query,
@@ -184,13 +294,28 @@ class SearchNotifier extends Notifier<SearchUiState> {
       currentPage: page.currentPage,
       totalPages: page.totalPages < 1 ? 1 : page.totalPages,
       pageHref: page.pageHref,
-      error: page.error,
-      clearError: !page.hasError,
+      clearError: true,
     );
     if (startCooldown) _startCooldown();
   }
 
   void _applyUserPage(UserSearchPage page, {required String query}) {
+    if (page.hasError) {
+      state = state.copyWith(
+        isLoading: false,
+        query: query,
+        hasSearched: true,
+        userHits: const [],
+        forumHits: const [],
+        count: 0,
+        currentPage: 1,
+        totalPages: 1,
+        pageHref: '',
+        error: page.error,
+      );
+      return;
+    }
+
     state = state.copyWith(
       isLoading: false,
       query: query,
@@ -201,8 +326,7 @@ class SearchNotifier extends Notifier<SearchUiState> {
       currentPage: 1,
       totalPages: 1,
       pageHref: '',
-      error: page.error,
-      clearError: !page.hasError,
+      clearError: true,
     );
     _startCooldown();
   }

@@ -10,6 +10,7 @@ import 'package:go_router/go_router.dart';
 
 import '../config/resource_domains.dart';
 import '../providers/image_bytes_provider.dart';
+import '../providers/settings_provider.dart';
 import '../theme/app_theme.dart';
 import '../utils/gallery_image_saver.dart';
 import '../utils/s1_snack_bar.dart';
@@ -280,17 +281,33 @@ class _ImageViewerScreenState extends ConsumerState<ImageViewerScreen> {
         bytes = fetched;
       }
 
+      String successMessage = '已保存到相册';
       if (kIsWeb) {
         await downloadImageWeb(bytes, _fileName);
+        successMessage = '下载已开始';
       } else {
-        await saveImageBytesToGallery(bytes: bytes, fileName: _fileName);
+        final settings = ref.read(settingsProvider);
+        final result = await saveImageBytesToGallery(
+          bytes: bytes,
+          fileName: _fileName,
+          customDirectory: settings.customExportPath,
+          saveMode: settings.shareSaveMode,
+        );
+        if (result == SaveImageResultStatus.cancelled) {
+          return;
+        } else if (result == SaveImageResultStatus.fallbackSuccess) {
+          successMessage = '原目录不可用，已自动保存至系统图片文件夹';
+        } else if (settings.customExportPath != null &&
+            settings.customExportPath!.isNotEmpty) {
+          successMessage = '已保存至自定义目录';
+        }
       }
 
       if (context.mounted) {
         messenger.clearSnackBars();
         S1SnackBar.show(
           context,
-          message: kIsWeb ? '下载已开始' : '已保存到相册',
+          message: successMessage,
           bottomClearance: 16,
         );
       }

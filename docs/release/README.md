@@ -1,6 +1,6 @@
 # 应用升级与版本管理
 
-客户端通过 `EnvConfig.updateManifestUrl`（默认本目录 [`latest.json`](latest.json) 的 GitHub raw URL）拉取版本信息，用于应用内升级提醒。
+客户端通过 `EnvConfig.updateManifestUrl`（默认 jsDelivr CDN：`cdn.jsdelivr.net/gh/Shirolin/s1er@main/docs/release/latest.json`，与本目录 [`latest.json`](latest.json) 同源）拉取版本信息，用于应用内升级提醒。
 
 ## 版本号格式（`pubspec.yaml`）
 
@@ -63,7 +63,7 @@ version: 0.1.0+1
    - Release 正文由 `release.ps1 create` 自动写入「下哪个包」选型表。
    - **别忘了在 Release 正文里加上「更新内容」section**（`release.ps1 create` 生成的模板只有下载表，需要手动补更新要点）。
    - **Windows**：`s1er-…-windows-x64.zip`。
-6. 将 `pubspec.yaml` + `latest.json` + `whats_new.json` + `CHANGELOG.md` 等改动提交到 `main`（raw URL 指向 main）。
+6. 将 `pubspec.yaml` + `latest.json` + `whats_new.json` + `CHANGELOG.md` 等改动提交到 `main`（推送到 main 后 CDN / raw 镜像即可拉取）。
 
 ## 半自动分步脚本（推荐）
 
@@ -118,7 +118,12 @@ flutter run --dart-define=DISTRIBUTION=play
 
 ### 国内访问与网盘
 
-客户端拉取清单时按序尝试：`UPDATE_MANIFEST_URL`（默认 GitHub raw）→ jsDelivr（`cdn.jsdelivr.net/gh/Shirolin/s1er@main/docs/release/latest.json`）。
+客户端拉取清单时**并发竞速**（Fastest-Wins，单源超时 5 秒）：
+
+1. `UPDATE_MANIFEST_URL`（默认 jsDelivr：`cdn.jsdelivr.net/gh/Shirolin/s1er@main/docs/release/latest.json`）
+2. GitHub raw 备用（`raw.githubusercontent.com/Shirolin/s1er/main/docs/release/latest.json`）
+
+任一源先返回合法 JSON 即采用；备用源超时可能打出 warning 日志，不影响主源已成功时的检查结果。
 
 Android（非 Play）升级 Dialog：
 

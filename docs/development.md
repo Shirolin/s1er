@@ -83,7 +83,7 @@ flutter run -d chrome --dart-define=PROXY_AUTH_TOKEN=replace_with_a_random_value
 | `RECEIVE_TIMEOUT` | `30` | 响应超时，单位为秒 |
 | `SEND_TIMEOUT` | `30` | 发送超时，单位为秒 |
 | `IMAGE_UPLOAD_TIMEOUT` | `120` | 外链图床上传超时（Web `/ext-upload` 同步），单位为秒 |
-| `UPDATE_MANIFEST_URL` | GitHub raw `docs/release/latest.json` | 应用升级清单 URL（须可公开访问） |
+| `UPDATE_MANIFEST_URL` | jsDelivr CDN `docs/release/latest.json` | 应用升级清单主 URL（须可公开访问；并发备用 GitHub raw） |
 | `DISTRIBUTION` | `github` | 分发渠道：`github` / `play`（影响升级 CTA） |
 | `SENTRY_DSN` | 空 | 非空时启用 Sentry；详见 [Sentry 设置](sentry-setup.md) |
 | `SENTRY_TRACES_SAMPLE_RATE` | `0` | 性能采样 0–1；默认仅错误 |

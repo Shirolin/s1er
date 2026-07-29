@@ -1,4 +1,5 @@
 import 'dart:convert';
+import 'dart:io';
 
 import 'package:dio/dio.dart';
 import 'package:flutter/foundation.dart';
@@ -405,6 +406,20 @@ void main() {
 
       final manifest = await service.fetchManifest();
       expect(manifest.latest, '2.0.0-fast');
+    });
+
+    test('static docs/release/latest.json contains valid per-ABI APK URLs', () {
+      final file = File('docs/release/latest.json');
+      expect(file.existsSync(), isTrue);
+      final json = jsonDecode(file.readAsStringSync()) as Map<String, dynamic>;
+      final manifest = AppUpdateManifest.fromJson(json);
+
+      expect(manifest.channels.androidArm64V8aApk, isNotNull);
+      expect(manifest.channels.androidArm64V8aApk, contains('arm64-v8a'));
+      expect(manifest.channels.androidArmeabiV7aApk, isNotNull);
+      expect(manifest.channels.androidArmeabiV7aApk, contains('armeabi-v7a'));
+      expect(manifest.channels.androidX8664Apk, isNotNull);
+      expect(manifest.channels.androidX8664Apk, contains('x86_64'));
     });
   });
 }

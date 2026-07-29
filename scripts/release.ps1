@@ -330,11 +330,18 @@ function Step-Manifest {
     $v = Get-PubspecVersion
     if (-not (Test-Path $Manifest)) { throw "Missing $Manifest" }
 
-    # In-app update CTA uses the universal fat APK (no ABI pick needed).
-    $apkFile = "s1er-$($v.Label)-android-universal.apk"
+    $apkUniversalFile = "s1er-$($v.Label)-android-universal.apk"
+    $apkArm64File = "s1er-$($v.Label)-android-arm64-v8a.apk"
+    $apkArmeabiFile = "s1er-$($v.Label)-android-armeabi-v7a.apk"
+    $apkX64File = "s1er-$($v.Label)-android-x86_64.apk"
     $zipFile = "s1er-$($v.Label)-windows-x64.zip"
-    $apkUrl = "https://github.com/$RepoSlug/releases/download/$($v.Tag)/$([uri]::EscapeDataString($apkFile))"
-    $zipUrl = "https://github.com/$RepoSlug/releases/download/$($v.Tag)/$([uri]::EscapeDataString($zipFile))"
+
+    $baseUrl = "https://github.com/$RepoSlug/releases/download/$($v.Tag)"
+    $apkUrl = "$baseUrl/$([uri]::EscapeDataString($apkUniversalFile))"
+    $apkArm64Url = "$baseUrl/$([uri]::EscapeDataString($apkArm64File))"
+    $apkArmeabiUrl = "$baseUrl/$([uri]::EscapeDataString($apkArmeabiFile))"
+    $apkX64Url = "$baseUrl/$([uri]::EscapeDataString($apkX64File))"
+    $zipUrl = "$baseUrl/$([uri]::EscapeDataString($zipFile))"
     $today = Get-Date -Format 'yyyy-MM-dd'
 
     $json = Get-Content $Manifest -Raw | ConvertFrom-Json
@@ -346,6 +353,9 @@ function Step-Manifest {
     }
     $json.channels.github = "https://github.com/$RepoSlug/releases/latest"
     $json.channels.androidApk = $apkUrl
+    $json.channels.androidArm64V8aApk = $apkArm64Url
+    $json.channels.androidArmeabiV7aApk = $apkArmeabiUrl
+    $json.channels.androidX8664Apk = $apkX64Url
     $json.channels.windows = $zipUrl
     # Preserve netdisk fields if already set (manual); ensure keys exist.
     if (-not ($json.channels.PSObject.Properties.Name -contains 'androidNetdisk')) {
@@ -364,7 +374,7 @@ function Step-Manifest {
     $utf8 = New-Object System.Text.UTF8Encoding $false
     [System.IO.File]::WriteAllText($Manifest, ($out.Trim() + "`n"), $utf8)
     Write-Host "Updated $Manifest" -ForegroundColor Green
-    Write-Host "  latest=$($v.Name)  androidApk=universal fat; split APKs only on GitHub Release page"
+    Write-Host "  latest=$($v.Name)  androidApk=universal  androidArm64V8aApk=arm64-v8a  androidArmeabiV7aApk=armeabi-v7a  androidX8664Apk=x86_64"
     if ($nameChanged) {
         Write-Host "Name changed vs previous latest.json - commit pubspec.yaml + latest.json to main." -ForegroundColor Yellow
     } else {

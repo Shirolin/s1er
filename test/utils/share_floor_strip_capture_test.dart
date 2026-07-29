@@ -1,33 +1,44 @@
-import 'dart:typed_data';
-
 import 'package:flutter_test/flutter_test.dart';
+import 'package:s1er/utils/share_capture_helpers.dart';
 import 'package:s1er/utils/share_capture_policy.dart';
-import 'package:s1er/utils/share_image_stitch.dart';
-
-ShareRgbaStrip _strip({
-  required int width,
-  required int height,
-  required int fill,
-}) {
-  final bytes = Uint8List(width * height * 4);
-  if (fill != 0) {
-    bytes.fillRange(0, bytes.length, fill);
-  }
-  return ShareRgbaStrip(bytes: bytes, width: width, height: height);
-}
+import 'package:s1er/utils/share_floor_strip_capture.dart';
 
 void main() {
-  group('cropStripToPhysicalHeight', () {
-    test('clamps to remaining logical height in physical pixels', () {
-      const pixelRatio = 2.0;
-      const remaining = 3.0;
-      final strip = _strip(width: 4, height: 10, fill: 1);
-      final maxPhysicalHeight =
-          (remaining * pixelRatio).round().clamp(1, strip.height);
+  group('scroll capture helpers', () {
+    test('effectiveScrollCaptureHeight prefers measured height', () {
+      expect(
+        effectiveScrollCaptureHeight(
+          estimatedHeight: 5000,
+          measuredHeight: 4200,
+        ),
+        4200,
+      );
+      expect(
+        effectiveScrollCaptureHeight(
+          estimatedHeight: 5000,
+          measuredHeight: 0,
+        ),
+        5000,
+      );
+    });
 
-      final cropped = cropStripToPhysicalHeight(strip, maxPhysicalHeight);
-      expect(cropped.height, 6);
-      expect(cropped.width, 4);
+    test('shouldStopScrollCapture detects repeated offset', () {
+      expect(
+        shouldStopScrollCapture(actualOffset: 100, lastCapturedOffset: 100),
+        isTrue,
+      );
+      expect(
+        shouldStopScrollCapture(actualOffset: 100, lastCapturedOffset: 50),
+        isFalse,
+      );
+    });
+
+    test('scrollCaptureLogicalHeightFromStrips sums physical heights', () {
+      final logical = scrollCaptureLogicalHeightFromStrips(
+        [300, 150],
+        pixelRatio: 1.5,
+      );
+      expect(logical, 300);
     });
   });
 

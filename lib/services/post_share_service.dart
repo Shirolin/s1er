@@ -17,18 +17,20 @@ import '../models/share_floor_data.dart';
 import '../models/share_image_format.dart';
 import '../providers/image_bytes_provider.dart';
 import '../providers/settings_provider.dart';
-import '../utils/bbcode_parser.dart';
 import '../utils/gallery_image_saver.dart';
 import '../utils/share_capture_limits.dart';
 import '../utils/share_capture_policy.dart';
 import 'talker.dart';
+import '../utils/share_capture_helpers.dart';
 import '../utils/share_floor_strip_capture.dart';
 import '../utils/share_image_stitch.dart';
 import '../utils/share_native_image_encoder.dart';
+import '../utils/share_rgba_encoder.dart';
 import '../utils/share_rgba_flatten.dart';
 import '../theme/app_theme.dart';
 import '../theme/s1_haptics.dart';
 import '../utils/s1_snack_bar.dart';
+import '../widgets/image_viewer.dart';
 import '../widgets/share_card.dart';
 import '../widgets/s1_click_region.dart';
 import '../widgets/web_image_stub.dart'
@@ -133,6 +135,8 @@ class _SharePreviewSheetState extends ConsumerState<_SharePreviewSheet> {
   int? _inFloorCaptureFloorIndex;
   _FooterState _state = _FooterState.idle;
   String _statusMessage = '';
+  String _captureProgressMessage = '';
+  String? _scaleExportNotice;
 
   late ShareImageFormat _shareImageFormat;
   late double _sharePixelRatio;
@@ -195,6 +199,11 @@ class _SharePreviewSheetState extends ConsumerState<_SharePreviewSheet> {
     _showStatus(full, isError: true);
   }
 
+  void _setCaptureProgress(String message) {
+    if (!mounted || _state != _FooterState.capturing) return;
+    setState(() => _captureProgressMessage = message);
+  }
+
   String _fileNameFor(ShareImageFormat format) => PostShareService.fileNameFor(
         floors: widget.floors,
         format: format,
@@ -204,6 +213,8 @@ class _SharePreviewSheetState extends ConsumerState<_SharePreviewSheet> {
   Future<void> _captureAndShare() async {
     if (_state != _FooterState.idle) return;
     S1Haptics.medium();
+    _scaleExportNotice = null;
+    _captureProgressMessage = '';
     setState(() => _state = _FooterState.capturing);
 
     final encoded = await _captureBytes();
@@ -220,7 +231,7 @@ class _SharePreviewSheetState extends ConsumerState<_SharePreviewSheet> {
       if (kIsWeb) {
         await downloadImageWeb(encoded.bytes, _fileNameFor(encoded.format));
         if (!mounted) return;
-        _finishWithMessage('下载已开始');
+        _finishWithMessage(_scaleExportNotice ?? '下载已开始');
         return;
       }
 
@@ -230,7 +241,9 @@ class _SharePreviewSheetState extends ConsumerState<_SharePreviewSheet> {
       if (toast == null) {
         _finishQuietly();
       } else {
-        _finishWithMessage(toast);
+        final message =
+            _scaleExportNotice == null ? toast : '$toast；$_scaleExportNotice';
+        _finishWithMessage(message);
       }
     } catch (e) {
       if (!mounted) return;
@@ -241,6 +254,8 @@ class _SharePreviewSheetState extends ConsumerState<_SharePreviewSheet> {
   Future<void> _captureAndSave() async {
     if (_state != _FooterState.idle) return;
     S1Haptics.medium();
+    _scaleExportNotice = null;
+    _captureProgressMessage = '';
     setState(() => _state = _FooterState.capturing);
 
     final encoded = await _captureBytes();
@@ -269,7 +284,9 @@ class _SharePreviewSheetState extends ConsumerState<_SharePreviewSheet> {
     }
 
     if (!mounted) return;
-    _finishWithMessage(kIsWeb ? '下载已开始' : '已保存到相册');
+    _finishWithMessage(
+      _scaleExportNotice ?? (kIsWeb ? '下载已开始' : '已保存到相册'),
+    );
   }
 
   void _showStatus(String message, {required bool isError}) {
@@ -292,33 +309,117 @@ class _SharePreviewSheetState extends ConsumerState<_SharePreviewSheet> {
     setState(() => _state = _FooterState.idle);
   }
 
-  Future<void> _waitUntilReady() async {
-    final urls = <String>{};
-    for (final floor in widget.floors) {
-      final html = BbcodeParser.parse(floor.post.message);
-      urls.addAll(BbcodeParser.extractImages(html));
-      final avatar = floor.post.avatar;
-      if (avatar != null && avatar.isNotEmpty) {
-        urls.add(avatar);
+  Future<bool> _waitUntilReady() async {
+    if (!mounted) return false;
+    _setCaptureProgress('正在准备图片…');
+    final urls = collectShareImageUrls(widget.floors);
+    if (urls.isEmpty) return true;
+
+    var failedUrls = 0;
+    final bytesByUrl = <String, Uint8List>{};
+    await forEachConcurrent(urls, (url) async {
+      final bytes = await _fetchImageBytes(url);
+      if (bytes == null) {
+        failedUrls++;
+      } else {
+        bytesByUrl[url] = bytes;
       }
+    });
+
+    if (shouldAbortSharePreload(
+      totalUrls: urls.length,
+      failedUrls: failedUrls,
+    )) {
+      talker.warning(
+        'Share preload failed for $failedUrls/${urls.length} images',
+      );
+      _showCaptureFailure('图片加载失败过多，请检查网络后重试');
+      return false;
     }
-    if (urls.isEmpty) return;
-    await Future.wait(urls.map(_fetchImageBytes));
+    if (failedUrls > 0) {
+      talker.warning(
+        'Share preload missing $failedUrls/${urls.length} images',
+      );
+    }
+
+    if (!mounted) return false;
+    final entries = bytesByUrl.entries.toList();
+    await forEachConcurrent(entries, (entry) async {
+      ImageViewer.primeMemoryCache(entry.key, entry.value);
+      if (!mounted) return;
+      final captureContext = context;
+      if (!captureContext.mounted) return;
+      await precacheImage(MemoryImage(entry.value), captureContext);
+    });
+    await WidgetsBinding.instance.endOfFrame;
+    await WidgetsBinding.instance.endOfFrame;
+    return true;
   }
 
-  Future<void> _fetchImageBytes(String url) async {
+  Future<Uint8List?> _fetchImageBytes(String url) async {
     try {
-      await ref
+      return await ref
           .read(imageBytesProvider(url).future)
-          .timeout(const Duration(seconds: 5));
+          .timeout(const Duration(seconds: 15));
     } on Object {
       // Image fetch failure is non-fatal for the screenshot.
+      return null;
     }
+  }
+
+  Future<bool> _waitForOffscreenFloorLayout() async {
+    double? lastHeight;
+    var stableFrames = 0;
+
+    for (var i = 0; i < shareLayoutMaxAttempts; i++) {
+      await WidgetsBinding.instance.endOfFrame;
+      if (!mounted) return false;
+
+      final height = _inFloorScrollController.hasClients
+          ? measureScrollableLogicalHeight(_inFloorScrollController)
+          : 0.0;
+      stableFrames = advanceLayoutStability(
+        lastHeight: lastHeight,
+        currentHeight: height,
+        stableFrames: stableFrames,
+      );
+      if (isLayoutStabilityReached(stableFrames: stableFrames)) {
+        return true;
+      }
+      if (height > 0) {
+        lastHeight = height;
+      }
+      await Future<void>.delayed(const Duration(milliseconds: 50));
+    }
+    return false;
+  }
+
+  Future<bool> _waitForOffscreenImagesReady() async {
+    const maxAttempts = 40;
+    var readyFrames = 0;
+
+    for (var i = 0; i < maxAttempts; i++) {
+      await WidgetsBinding.instance.endOfFrame;
+      if (!mounted) return false;
+
+      final element = _inFloorCaptureKey.currentContext as Element?;
+      if (!subtreeHasLoadingIndicator(element)) {
+        readyFrames++;
+        if (readyFrames >= shareLayoutStableFramesRequired) {
+          return true;
+        }
+      } else {
+        readyFrames = 0;
+      }
+      await Future<void>.delayed(const Duration(milliseconds: 50));
+    }
+    return false;
   }
 
   Future<_EncodedShareImage?> _captureBytes() async {
-    await _waitUntilReady();
+    if (!await _waitUntilReady()) return null;
     if (!mounted) return null;
+    _setCaptureProgress('正在生成图片…');
     setState(() {});
     await WidgetsBinding.instance.endOfFrame;
     await WidgetsBinding.instance.endOfFrame;
@@ -368,16 +469,41 @@ class _SharePreviewSheetState extends ConsumerState<_SharePreviewSheet> {
 
   Future<List<ShareRgbaStrip>> _captureInFloorStrips({
     required int floorIndex,
-    required double totalLogicalHeight,
   }) async {
     if (!mounted) return [];
     setState(() => _inFloorCaptureFloorIndex = floorIndex);
     await WidgetsBinding.instance.endOfFrame;
     await WidgetsBinding.instance.endOfFrame;
 
+    if (_inFloorScrollController.hasClients) {
+      _inFloorScrollController.jumpTo(0);
+    }
+
+    final layoutReady = await _waitForOffscreenFloorLayout();
+    if (!layoutReady) {
+      if (mounted) setState(() => _inFloorCaptureFloorIndex = null);
+      _showCaptureFailure('楼层布局未稳定，请稍后重试');
+      return [];
+    }
+
+    final imagesReady = await _waitForOffscreenImagesReady();
+    if (!imagesReady) {
+      if (mounted) setState(() => _inFloorCaptureFloorIndex = null);
+      _showCaptureFailure('图片未加载完成，请稍后重试');
+      return [];
+    }
+
     final boundary = _inFloorCaptureKey.currentContext?.findRenderObject()
         as RenderRepaintBoundary?;
     if (boundary == null) {
+      if (mounted) setState(() => _inFloorCaptureFloorIndex = null);
+      return [];
+    }
+
+    final measuredHeight = _inFloorScrollController.hasClients
+        ? measureScrollableLogicalHeight(_inFloorScrollController)
+        : 0.0;
+    if (measuredHeight <= 0) {
       if (mounted) setState(() => _inFloorCaptureFloorIndex = null);
       return [];
     }
@@ -387,11 +513,14 @@ class _SharePreviewSheetState extends ConsumerState<_SharePreviewSheet> {
       pixelRatio: _sharePixelRatio,
       inFloorChunking: true,
       scrollController: _inFloorScrollController,
-      totalLogicalHeight: totalLogicalHeight,
+      totalLogicalHeight: measuredHeight,
       limits: _shareCaptureLimits,
     );
 
     if (mounted) setState(() => _inFloorCaptureFloorIndex = null);
+    if (strips.isEmpty && mounted) {
+      _showCaptureFailure('楼层截取不完整，请稍后重试');
+    }
     return strips;
   }
 
@@ -429,13 +558,16 @@ class _SharePreviewSheetState extends ConsumerState<_SharePreviewSheet> {
           estimatedPhysicalHeight: estimatedPhysicalHeight,
         );
 
+        _setCaptureProgress('正在截取页眉…');
         final headerStrips = await captureSection(headerBoundary);
         if (headerStrips.isEmpty) return null;
         for (final strip in headerStrips) {
           composer.appendStrip(strip);
         }
 
-        for (var i = 0; i < _captureKeys.floors.length; i++) {
+        final floorCount = _captureKeys.floors.length;
+        for (var i = 0; i < floorCount; i++) {
+          _setCaptureProgress('正在截取第 ${i + 1}/$floorCount 层…');
           final floorKey = _captureKeys.floors[i];
           final boundary = floorKey.currentContext?.findRenderObject()
               as RenderRepaintBoundary?;
@@ -448,10 +580,7 @@ class _SharePreviewSheetState extends ConsumerState<_SharePreviewSheet> {
             limits: limits,
           );
           final floorStrips = inFloor
-              ? await _captureInFloorStrips(
-                  floorIndex: i,
-                  totalLogicalHeight: floorLogicalHeight,
-                )
+              ? await _captureInFloorStrips(floorIndex: i)
               : await captureSection(boundary);
           if (floorStrips.isEmpty) return null;
           for (final strip in floorStrips) {
@@ -462,34 +591,40 @@ class _SharePreviewSheetState extends ConsumerState<_SharePreviewSheet> {
         final footerBoundary = _captureKeys.footer.currentContext
             ?.findRenderObject() as RenderRepaintBoundary?;
         if (footerBoundary == null) return null;
+        _setCaptureProgress('正在截取页脚…');
         final footerStrips = await captureSection(footerBoundary);
         if (footerStrips.isEmpty) return null;
         for (final strip in footerStrips) {
           composer.appendStrip(strip);
         }
 
-        final stitched = composer.build();
-        final stitchedSize = shareCaptureSizeFromPhysical(
+        _setCaptureProgress('正在拼接…');
+        var stitched = composer.build();
+        var stitchedSize = shareCaptureSizeFromPhysical(
           physicalWidth: stitched.width,
           physicalHeight: stitched.height,
           maxPixels: limits.maxPixels,
         );
         _rememberCaptureSize(stitchedSize);
+
         if (exceedsShareCaptureHardCap(
           estimatedCapturePixels: stitchedSize.totalPixels,
           advanced: true,
           limits: limits,
         )) {
-          _showHeightCapError(stitchedSize);
-          return null;
+          stitched = await scaleRgbaStripToFitPixelsAsync(
+            stitched,
+            maxPixels: limits.maxPixels,
+          );
+          stitchedSize = shareCaptureSizeFromPhysical(
+            physicalWidth: stitched.width,
+            physicalHeight: stitched.height,
+            maxPixels: limits.maxPixels,
+          );
+          _rememberCaptureSize(stitchedSize);
+          _scaleExportNotice = formatScaledExportNotice(stitchedSize);
         }
-
-        final image = await _imageFromRgba(stitched);
-        try {
-          return await _encode(image);
-        } finally {
-          image.dispose();
-        }
+        return await _encodeFromRgba(stitched);
       }
 
       final strips = <ShareRgbaStrip>[];
@@ -529,12 +664,7 @@ class _SharePreviewSheetState extends ConsumerState<_SharePreviewSheet> {
         return null;
       }
 
-      final image = await _imageFromRgba(stitched);
-      try {
-        return await _encode(image);
-      } finally {
-        image.dispose();
-      }
+      return await _encodeFromRgba(stitched);
     } on Object catch (e, st) {
       talker.handle(e, st, 'Share chunked capture failed');
       _showCaptureFailure('生成图片失败，请稍后重试');
@@ -542,16 +672,79 @@ class _SharePreviewSheetState extends ConsumerState<_SharePreviewSheet> {
     }
   }
 
-  Future<ui.Image> _imageFromRgba(ShareRgbaStrip strip) {
-    final completer = Completer<ui.Image>();
-    ui.decodeImageFromPixels(
-      strip.bytes,
-      strip.width,
-      strip.height,
-      ui.PixelFormat.rgba8888,
-      completer.complete,
-    );
-    return completer.future;
+  Future<_EncodedShareImage> _encodeFromRgba(ShareRgbaStrip strip) {
+    switch (_shareImageFormat) {
+      case ShareImageFormat.png:
+        return _encodePngFromRgba(strip);
+      case ShareImageFormat.jpeg:
+        return _encodeJpegFromRgba(strip);
+      case ShareImageFormat.webp:
+        return _encodeWebpFromRgba(strip);
+    }
+  }
+
+  Future<_EncodedShareImage> _encodePngFromRgba(ShareRgbaStrip strip) async {
+    final png = await encodePngFromRgbaStrip(strip);
+    if (kIsWeb) {
+      return _EncodedShareImage(png, ShareImageFormat.png);
+    }
+
+    final optimized = await encodeSharePngOptimized(png);
+    return _EncodedShareImage(optimized ?? png, ShareImageFormat.png);
+  }
+
+  Future<_EncodedShareImage> _encodeJpegFromRgba(ShareRgbaStrip strip) async {
+    if (kIsWeb) {
+      final opaque = await _opaqueRgbaFromStrip(strip);
+      final browserBytes = await browser_encode.encodeRgbaWithBrowser(
+        rgbaBytes: opaque.bytes,
+        width: opaque.width,
+        height: opaque.height,
+        mimeType: 'image/jpeg',
+        quality: 0.85,
+      );
+      if (browserBytes != null) {
+        return _EncodedShareImage(browserBytes, ShareImageFormat.jpeg);
+      }
+      final png = await encodePngFromRgbaStrip(strip);
+      return _EncodedShareImage(png, ShareImageFormat.png);
+    }
+
+    final png = await encodePngFromRgbaStrip(strip);
+    final jpeg = await encodeShareJpegFromPng(png);
+    if (jpeg != null) {
+      return _EncodedShareImage(jpeg, ShareImageFormat.jpeg);
+    }
+
+    final optimized = await encodeSharePngOptimized(png);
+    return _EncodedShareImage(optimized ?? png, ShareImageFormat.png);
+  }
+
+  Future<_EncodedShareImage> _encodeWebpFromRgba(ShareRgbaStrip strip) async {
+    if (kIsWeb) {
+      final opaque = await _opaqueRgbaFromStrip(strip);
+      final browserBytes = await browser_encode.encodeRgbaWithBrowser(
+        rgbaBytes: opaque.bytes,
+        width: opaque.width,
+        height: opaque.height,
+        mimeType: 'image/webp',
+        quality: 0.85,
+      );
+      if (browserBytes != null) {
+        return _EncodedShareImage(browserBytes, ShareImageFormat.webp);
+      }
+      final png = await encodePngFromRgbaStrip(strip);
+      return _EncodedShareImage(png, ShareImageFormat.png);
+    }
+
+    final png = await encodePngFromRgbaStrip(strip);
+    final webp = await encodeShareWebpFromPng(png);
+    if (webp != null) {
+      return _EncodedShareImage(webp, ShareImageFormat.webp);
+    }
+
+    final optimized = await encodeSharePngOptimized(png);
+    return _EncodedShareImage(optimized ?? png, ShareImageFormat.png);
   }
 
   Future<_EncodedShareImage?> _captureFromRepaint(
@@ -661,6 +854,30 @@ class _SharePreviewSheetState extends ConsumerState<_SharePreviewSheet> {
     return _EncodedShareImage(optimized ?? skiaPng, ShareImageFormat.png);
   }
 
+  Future<({Uint8List bytes, int width, int height})> _opaqueRgbaFromStrip(
+    ShareRgbaStrip strip,
+  ) async {
+    final scheme = Theme.of(context).colorScheme;
+    final card = S1Surface.card(scheme);
+    final bgR = (card.r * 255).round();
+    final bgG = (card.g * 255).round();
+    final bgB = (card.b * 255).round();
+    final expected = strip.width * strip.height * 4;
+    final rgbaBytes = strip.bytes.length == expected
+        ? strip.bytes
+        : Uint8List.sublistView(strip.bytes, 0, expected);
+
+    final opaque = await flattenRgbaOntoOpaqueRgbaAsync(
+      rgba: rgbaBytes,
+      width: strip.width,
+      height: strip.height,
+      bgR: bgR,
+      bgG: bgG,
+      bgB: bgB,
+    );
+    return (bytes: opaque, width: strip.width, height: strip.height);
+  }
+
   Future<({Uint8List bytes, int width, int height})> _opaqueRgbaFromImage(
     ui.Image image,
   ) async {
@@ -768,9 +985,14 @@ class _SharePreviewSheetState extends ConsumerState<_SharePreviewSheet> {
             child: MediaQuery(
               data: MediaQuery.of(context).copyWith(
                 textScaler: const TextScaler.linear(1.0),
+                devicePixelRatio: _sharePixelRatio,
               ),
               child: Theme(
-                data: Theme.of(context),
+                data: Theme.of(context).copyWith(
+                  textTheme: ShareCard.shareTextTheme(
+                    Theme.of(context).textTheme,
+                  ),
+                ),
                 child: ShareFloorBlock(
                   floor: widget.floors[_inFloorCaptureFloorIndex!],
                   poll:
@@ -873,7 +1095,9 @@ class _SharePreviewSheetState extends ConsumerState<_SharePreviewSheet> {
           ),
           const SizedBox(width: 12),
           Text(
-            '正在生成图片...',
+            _captureProgressMessage.isEmpty
+                ? '正在生成图片...'
+                : _captureProgressMessage,
             style: textTheme.bodyMedium?.copyWith(
               color: scheme.onSurfaceVariant,
             ),

@@ -8,6 +8,34 @@ import 'package:flutter/widgets.dart';
 import 'share_capture_limits.dart';
 import 'share_capture_policy.dart';
 import 'share_image_stitch.dart';
+import 'share_capture_helpers.dart';
+
+/// Logical scrollable height for a [ScrollController] (extent + viewport).
+double measureScrollableLogicalHeight(ScrollController controller) {
+  if (!controller.hasClients) return 0;
+  final position = controller.position;
+  return position.maxScrollExtent + position.viewportDimension;
+}
+
+/// Picks capture height: prefer live scroll metrics over a stale estimate.
+@visibleForTesting
+double effectiveScrollCaptureHeight({
+  required double estimatedHeight,
+  required double measuredHeight,
+}) {
+  if (measuredHeight > 0) return measuredHeight;
+  return estimatedHeight;
+}
+
+/// Returns true when the next slice would repeat the same scroll offset.
+@visibleForTesting
+bool shouldStopScrollCapture({
+  required double actualOffset,
+  required double? lastCapturedOffset,
+}) {
+  return lastCapturedOffset != null &&
+      (actualOffset - lastCapturedOffset).abs() < 0.5;
+}
 
 /// Captures a [RenderRepaintBoundary] as one or more RGBA strips.
 Future<List<ShareRgbaStrip>> captureBoundaryAsStrips(
@@ -45,18 +73,37 @@ Future<List<ShareRgbaStrip>> captureBoundaryWithScrollSlices({
 }) async {
   if (totalLogicalHeight <= 0) return [];
 
+  var effectiveHeight = totalLogicalHeight;
+  if (scrollController.hasClients) {
+    effectiveHeight = effectiveScrollCaptureHeight(
+      estimatedHeight: totalLogicalHeight,
+      measuredHeight: measureScrollableLogicalHeight(scrollController),
+    );
+  }
+  if (effectiveHeight <= 0) return [];
+
   final sliceLogicalHeight =
       shareInFloorChunkLogicalSliceHeight(pixelRatio, limits: limits)
           .toDouble();
   final strips = <ShareRgbaStrip>[];
   var y = 0.0;
-  while (y < totalLogicalHeight) {
-    final remaining = totalLogicalHeight - y;
+  double? lastCapturedOffset;
+  while (y < effectiveHeight - 0.5) {
+    final remaining = effectiveHeight - y;
     final sliceHeight =
         remaining < sliceLogicalHeight ? remaining : sliceLogicalHeight;
     scrollController.jumpTo(y);
     await SchedulerBinding.instance.endOfFrame;
     await SchedulerBinding.instance.endOfFrame;
+    if (!scrollController.hasClients) break;
+    final actualOffset = scrollController.offset;
+    if (shouldStopScrollCapture(
+      actualOffset: actualOffset,
+      lastCapturedOffset: lastCapturedOffset,
+    )) {
+      break;
+    }
+    lastCapturedOffset = actualOffset;
     final strip = await rgbaStripFromBoundary(boundary, pixelRatio);
     if (strip == null) return [];
     final maxPhysicalHeight =
@@ -64,6 +111,18 @@ Future<List<ShareRgbaStrip>> captureBoundaryWithScrollSlices({
     strips.add(cropStripToPhysicalHeight(strip, maxPhysicalHeight));
     y += sliceHeight;
   }
+
+  final capturedLogical = scrollCaptureLogicalHeightFromStrips(
+    strips.map((strip) => strip.height),
+    pixelRatio: pixelRatio,
+  );
+  if (!scrollCaptureCoverageOk(
+    expectedLogicalHeight: effectiveHeight,
+    capturedLogicalHeight: capturedLogical,
+  )) {
+    return [];
+  }
+
   return strips;
 }
 
@@ -99,7 +158,7 @@ Future<ShareRgbaStrip?> _rgbaStripFromImage(ui.Image image) async {
     byteData.lengthInBytes,
   );
   return ShareRgbaStrip(
-    bytes: Uint8List.fromList(bytes),
+    bytes: Uint8List.sublistView(bytes),
     width: image.width,
     height: image.height,
   );

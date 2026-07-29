@@ -48,6 +48,11 @@ class ImageViewer extends ConsumerStatefulWidget {
     _ImageViewerState._cacheBytes = 0;
   }
 
+  /// Seed byte cache before share capture so new [ImageViewer] instances load sync.
+  static void primeMemoryCache(String url, Uint8List bytes) {
+    _ImageViewerState._primeMemoryCache(url, bytes);
+  }
+
   @override
   ConsumerState<ImageViewer> createState() => _ImageViewerState();
 }
@@ -225,6 +230,10 @@ class _ImageViewerState extends ConsumerState<ImageViewer> {
   }
 
   void _putInMemoryCache(String url, Uint8List data) {
+    _primeMemoryCache(url, data);
+  }
+
+  static void _primeMemoryCache(String url, Uint8List data) {
     if (_cache.containsKey(url)) {
       _cacheBytes -= _cache[url]!.length;
       _cache.remove(url);

@@ -98,9 +98,8 @@ String _formatMegapixels(int pixels) {
 
 /// Full size detail for cap / failure toasts.
 String formatShareCaptureSizeDetail(ShareCaptureSizeInfo size) {
-  final capSuffix = size.maxPixels > 0
-      ? '，上限 ${_formatMegapixels(size.maxPixels)}M 像素'
-      : '';
+  final capSuffix =
+      size.maxPixels > 0 ? '，上限 ${_formatMegapixels(size.maxPixels)}M 像素' : '';
   return '约 ${size.physicalWidth}×${size.physicalHeight} px'
       '（${_formatMegapixels(size.totalPixels)}M 像素$capSuffix）';
 }

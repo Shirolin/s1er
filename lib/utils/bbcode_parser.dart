@@ -333,6 +333,17 @@ class BbcodeParser {
     return regex.allMatches(html).map((m) => m.group(1)!).toList();
   }
 
+  /// Preview + full URLs for share-card preload (deduped, stable order).
+  static List<String> extractShareImageUrls(String html) {
+    final urls = <String>{};
+    urls.addAll(extractImages(html));
+    final fullRegex = RegExp(r'data-full="([^"]+)"');
+    for (final match in fullRegex.allMatches(html)) {
+      urls.add(match.group(1)!);
+    }
+    return urls.toList();
+  }
+
   static String stripTags(String html) {
     return html.replaceAll(RegExp(r'<[^>]*>'), '');
   }

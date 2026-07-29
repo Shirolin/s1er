@@ -347,7 +347,7 @@ void main() {
     expect(store.get<String>('shareImageFormat'), 'png');
   });
 
-  test('setSharePixelRatio snaps to 1.5/2/3 and persists', () async {
+  test('setSharePixelRatio snaps to 1.25/1.5/2/3 and persists', () async {
     final container = ProviderContainer(
       overrides: [
         settingsProvider.overrideWith(
@@ -361,7 +361,7 @@ void main() {
     expect(container.read(settingsProvider).sharePixelRatio, 3.0);
 
     container.read(settingsProvider.notifier).setSharePixelRatio(1);
-    expect(container.read(settingsProvider).sharePixelRatio, 1.5);
+    expect(container.read(settingsProvider).sharePixelRatio, 1.25);
 
     container.read(settingsProvider.notifier).setSharePixelRatio(2);
     expect(container.read(settingsProvider).sharePixelRatio, 2.0);

@@ -63,6 +63,15 @@ void main() {
       expect(BbcodeParser.extractImages(html), ['https://a/p.jpg']);
     });
 
+    test('extractShareImageUrls includes preview and full URLs', () {
+      const html =
+          '<span class="post-image" data-preview="https://a/p.jpg" data-full="https://a/f.jpg"></span>';
+      expect(
+        BbcodeParser.extractShareImageUrls(html),
+        ['https://a/p.jpg', 'https://a/f.jpg'],
+      );
+    });
+
     test('assigns sequential data-image-index per post floor', () {
       final counter = PostImageIndexCounter();
       final parsed = BbcodeParser.parse(

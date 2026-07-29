@@ -9,13 +9,14 @@ void main() {
     });
 
     test('keeps allowed values', () {
+      expect(SharePixelRatio.normalize(1.25), 1.25);
       expect(SharePixelRatio.normalize(1.5), 1.5);
       expect(SharePixelRatio.normalize(2), 2.0);
       expect(SharePixelRatio.normalize(3.0), 3.0);
     });
 
     test('snaps legacy ints and nearby values', () {
-      expect(SharePixelRatio.normalize(1), 1.5);
+      expect(SharePixelRatio.normalize(1), 1.25);
       expect(SharePixelRatio.normalize(2.2), 2.0);
       expect(SharePixelRatio.normalize(2.8), 3.0);
     });

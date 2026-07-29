@@ -81,7 +81,8 @@ class ShareSettingsSection extends ConsumerWidget {
                     Text('清晰度', style: textTheme.titleSmall),
                     const SizedBox(height: 4),
                     Text(
-                      '导出宽 ≈ 600×倍率；1.5x≈900px 默认均衡，2x≈1200px，3x 更清晰但更大',
+                      '导出宽 ≈ 600×倍率；1.25x≈750px 省流，1.5x≈900px 默认均衡，'
+                      '2x≈1200px，3x 更清晰但更大',
                       style: textTheme.bodySmall?.copyWith(
                         color: scheme.onSurfaceVariant,
                       ),
@@ -89,6 +90,10 @@ class ShareSettingsSection extends ConsumerWidget {
                     const SizedBox(height: 12),
                     SegmentedButton<double>(
                       segments: const [
+                        ButtonSegment(
+                          value: SharePixelRatio.compact,
+                          label: Text('省流 1.25x'),
+                        ),
                         ButtonSegment(
                           value: SharePixelRatio.balanced,
                           label: Text('均衡 1.5x'),

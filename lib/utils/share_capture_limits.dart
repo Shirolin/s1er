@@ -16,7 +16,7 @@ class ShareCaptureLimits {
   final int maxPixels;
   final int maxStripPhysicalPx;
 
-  static const int advancedMaxPixelsMobile = 8192 * 5400;
+  static const int advancedMaxPixelsMobile = 60000000;
   static const int advancedMaxPixelsDesktop = 16384 * 3600;
   static const int advancedMaxPixelsWeb = 8192 * 3600;
 

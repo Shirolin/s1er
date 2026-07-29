@@ -17,7 +17,7 @@ void main() {
   group('advanced tier constants', () {
     test('mobile advanced', () {
       final limits = ShareCaptureLimits.mobileAdvanced();
-      expect(limits.maxPixels, 8192 * 5400);
+      expect(limits.maxPixels, 60000000);
       expect(limits.maxStripPhysicalPx, 4096);
     });
 

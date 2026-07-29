@@ -8,7 +8,7 @@
     "androidApk": "https://github.com/Shirolin/s1er/releases/download/v0.4.0/s1er-0.4.0%2B1-android-universal.apk",
     "androidNetdisk": "https://pan.quark.cn/s/c05196e3c06a",
     "netdiskHint": "夸克网盘（GitHub 下载慢时可走这里）",
-    "windows": null,
+    "windows": "https://github.com/Shirolin/s1er/releases/download/v0.4.0/s1er-0.4.0%2B1-windows-x64.zip",
     "linux": null,
     "macos": null,
     "play": null

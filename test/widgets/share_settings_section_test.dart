@@ -86,7 +86,8 @@ void main() {
     expect(find.text('约 900px 宽，默认推荐'), findsNothing);
   });
 
-  testWidgets('narrow screen uses dropdown for clarity selection', (tester) async {
+  testWidgets('narrow screen uses dropdown for clarity selection',
+      (tester) async {
     tester.view.devicePixelRatio = 1;
     tester.view.physicalSize = const Size(320, 800);
     addTearDown(() {

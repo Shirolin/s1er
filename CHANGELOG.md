@@ -7,6 +7,26 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.4.0] - 2026-07-29
+
+### Added
+
+- **多楼层分享**：跨页选择楼层，长图拼接导出，支持 RGBA 编码与 Isolate 并行处理
+- **高级分享选项**：平台分级上限（iOS/Android/桌面/Web），清晰度选择器（SegmentedButton + 紧凑屏 DropdownMenu）
+- **版块收藏排序**：首页收藏版块支持排序与论坛维护公告自动识别
+- **骨架屏**：搜索与用户空间首载改用可复用骨架屏
+
+### Changed
+
+- **滑动翻页优化**：统一楼层滚动对齐、阅读历史同步、翻页逻辑重写
+- **分享捕获重构**：提取独立的 RGBA 编码器与捕获辅助工具，降低耦合
+
+### Fixed
+
+- **置顶帖子修复**：修复备份导入回归，统一首页置顶 UX
+- **楼层定位瞬移**：修复中间估算跳转与 revealAlignment 对齐
+- **gitignore 配置**：优化忽略配置并统一换行符
+
 ## [0.3.6] - 2026-07-25
 
 ### Added

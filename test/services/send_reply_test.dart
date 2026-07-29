@@ -98,5 +98,14 @@ void main() {
       expect(result.pid, '210');
       expect(result.tid, '456');
     });
+
+    test('parses empty succeedhandle_ after attachnew submit', () {
+      const xml =
+          "<root><![CDATA[<script>succeedhandle_('forum.php?mod=viewthread&tid=1&pid=2', 'ok', {'fid':'4','tid':'1','pid':'2'});</script>]]></root>";
+      final result = ApiService.parseReplyResponse(xml);
+      expect(result.isSuccess, isTrue);
+      expect(result.pid, '2');
+      expect(result.tid, '1');
+    });
   });
 }

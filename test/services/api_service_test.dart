@@ -696,6 +696,29 @@ void main() {
         expect(result.error, isNull);
       });
 
+      test('returns success from empty succeedhandle_ after attach reply', () {
+        // 触屏/附件网页提交：handlekey 为空 → succeedhandle_(...)
+        const xml = '''<?xml version="1.0" encoding="utf-8"?>
+<root><![CDATA[<div class="tip">
+<dt id="messagetext">
+<p>非常感谢，回复发布成功，现在将转入主题页，请稍候……<br /><a href="forum-4-1.html">[ 点击这里转入主题列表 ]</a><script type="text/javascript" reload="1">if(typeof succeedhandle_=='function') {succeedhandle_('forum.php?mod=viewthread&tid=2253488&pid=69963296&page=14&extra=&mobile=2#pid69963296', '非常感谢，回复发布成功，现在将转入主题页，请稍候……[ 点击这里转入主题列表 ]', {'fid':'4','tid':'2253488','pid':'69963296','from':'','sechash':''});}</script></p>
+        <script type="text/javascript">
+setTimeout(function() {
+window.location.href = 'forum.php?mod=viewthread&tid=2253488&pid=69963296&page=14&extra=&mobile=2#pid69963296';
+}, '3000');
+</script>
+</dt>
+</div>
+]]></root>''';
+
+        final result = ApiService.parseReplyResponse(xml);
+
+        expect(result.isSuccess, isTrue);
+        expect(result.pid, '69963296');
+        expect(result.tid, '2253488');
+        expect(result.error, isNull);
+      });
+
       test('returns error message from errorhandle_reply', () {
         const xml =
             "<root><![CDATA[<script>errorhandle_reply('内容过长', 'error');</script>]]></root>";

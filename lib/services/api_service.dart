@@ -1041,8 +1041,10 @@ class ApiService {
   }
 
   static ReplySubmitResult parseReplyResponse(String xml) {
+    // 触屏/网页附件回复常见 `succeedhandle_`（空后缀）、`succeedhandle_reply`、
+    // `succeedhandle_postform`；与发新帖解析对齐，勿写死 handler 名。
     final successMatch = RegExp(
-      r"succeedhandle_(?:reply|postform)\('([^']*)',\s*'([^']*)',\s*\{([^}]*)\}\)",
+      r"succeedhandle_[^(]*\('([^']*)',\s*'([^']*)',\s*\{([^}]*)\}\)",
     ).firstMatch(xml);
     if (successMatch != null) {
       final meta = successMatch.group(3) ?? '';
@@ -1079,10 +1081,24 @@ class ApiService {
       dotAll: true,
     ).firstMatch(xml);
     if (messageText != null) {
-      return ReplySubmitResult(error: messageText.group(1)?.trim());
+      final text = messageText.group(1)?.trim() ?? '';
+      // 成功文案偶发落在 tip HTML 而无 succeedhandle（或已被剥掉）；勿当错误。
+      if (_looksLikeReplySuccessMessage(text)) {
+        final tid = RegExp(r'[?&]tid=(\d+)').firstMatch(xml)?.group(1);
+        final pid = RegExp(r'[?&]pid=(\d+)').firstMatch(xml)?.group(1) ??
+            RegExp(r'#pid(\d+)').firstMatch(xml)?.group(1);
+        return ReplySubmitResult(tid: tid, pid: pid);
+      }
+      return ReplySubmitResult(error: text);
     }
 
     return const ReplySubmitResult(error: '服务器返回未知响应');
+  }
+
+  static bool _looksLikeReplySuccessMessage(String text) {
+    return text.contains('回复发布成功') ||
+        text.contains('发帖成功') ||
+        text.contains('发布成功');
   }
 
   static String? _extractReplyField(String meta, String key) {
@@ -1228,10 +1244,11 @@ class ApiService {
     String? noticeAuthorMsg,
     required Set<String> attachmentIds,
   }) async {
+    // 附件回复与上传共用编辑页 formhash；勿 force 清掉再换 Mobile API 串。
+    // 仅在缓存为空时拉取（上传预取通常已写入）。
     final hasFormhash = await _httpClient.ensureFormhash(
       tid: tid,
       fid: fid,
-      force: true,
     );
     if (!hasFormhash) {
       return const ReplySubmitResult(
@@ -1240,6 +1257,7 @@ class ApiService {
     }
 
     final data = <String, String>{
+      'formhash': _httpClient.currentFormhash,
       'posttime': (DateTime.now().millisecondsSinceEpoch ~/ 1000).toString(),
       'usesig': '1',
       'subject': '',

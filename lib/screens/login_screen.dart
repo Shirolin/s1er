@@ -98,159 +98,160 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
       body: S1PageBody(
         child: Center(
           child: SingleChildScrollView(
-          padding: const EdgeInsets.all(24),
-          child: ConstrainedBox(
-            constraints: const BoxConstraints(maxWidth: 400),
-            child: Card(
-              elevation: 0,
-              color: scheme.surfaceContainerHighest,
-              child: Padding(
-                padding: const EdgeInsets.all(32),
-                child: Column(
-                  mainAxisSize: MainAxisSize.min,
-                  crossAxisAlignment: CrossAxisAlignment.stretch,
-                  children: [
-                    Text(
-                      '欢迎回来',
-                      style: textTheme.headlineMedium?.copyWith(
-                        fontWeight: FontWeight.bold,
-                      ),
-                      textAlign: TextAlign.center,
-                    ),
-                    const SizedBox(height: 8),
-                    Text(
-                      '登录您的 Stage1st 账号',
-                      style: textTheme.bodyMedium?.copyWith(
-                        color: scheme.onSurfaceVariant,
-                      ),
-                      textAlign: TextAlign.center,
-                    ),
-                    const SizedBox(height: 32),
-                    if (_errorMessage != null) ...[
-                      Container(
-                        padding: const EdgeInsets.symmetric(
-                          vertical: 10,
-                          horizontal: 14,
+            padding: const EdgeInsets.all(24),
+            child: ConstrainedBox(
+              constraints: const BoxConstraints(maxWidth: 400),
+              child: Card(
+                elevation: 0,
+                color: scheme.surfaceContainerHighest,
+                child: Padding(
+                  padding: const EdgeInsets.all(32),
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
+                    children: [
+                      Text(
+                        '欢迎回来',
+                        style: textTheme.headlineMedium?.copyWith(
+                          fontWeight: FontWeight.bold,
                         ),
-                        decoration: BoxDecoration(
-                          color: scheme.errorContainer,
-                          borderRadius: S1Shape.small,
+                        textAlign: TextAlign.center,
+                      ),
+                      const SizedBox(height: 8),
+                      Text(
+                        '登录您的 Stage1st 账号',
+                        style: textTheme.bodyMedium?.copyWith(
+                          color: scheme.onSurfaceVariant,
                         ),
-                        child: Text(
-                          _errorMessage!,
-                          style: textTheme.bodyMedium?.copyWith(
-                            color: scheme.onErrorContainer,
+                        textAlign: TextAlign.center,
+                      ),
+                      const SizedBox(height: 32),
+                      if (_errorMessage != null) ...[
+                        Container(
+                          padding: const EdgeInsets.symmetric(
+                            vertical: 10,
+                            horizontal: 14,
                           ),
-                        ),
-                      ),
-                      const SizedBox(height: 16),
-                    ],
-                    TextField(
-                      controller: _usernameController,
-                      focusNode: _usernameFocus,
-                      decoration: const InputDecoration(
-                        labelText: '用户名',
-                        prefixIcon: Icon(Icons.person),
-                      ),
-                      keyboardType: TextInputType.text,
-                      textInputAction: TextInputAction.next,
-                      onSubmitted: (_) => _passwordFocus.requestFocus(),
-                    ),
-                    const SizedBox(height: 16),
-                    TextField(
-                      controller: _passwordController,
-                      focusNode: _passwordFocus,
-                      decoration: InputDecoration(
-                        labelText: '密码',
-                        prefixIcon: const Icon(Icons.lock),
-                        suffixIcon: IconButton(
-                          icon: Icon(
-                            _obscurePassword
-                                ? Icons.visibility_off
-                                : Icons.visibility,
+                          decoration: BoxDecoration(
+                            color: scheme.errorContainer,
+                            borderRadius: S1Shape.small,
                           ),
-                          tooltip: _obscurePassword ? '显示密码' : '隐藏密码',
-                          onPressed: () => setState(
-                            () => _obscurePassword = !_obscurePassword,
-                          ),
-                        ),
-                      ),
-                      obscureText: _obscurePassword,
-                      textInputAction: showAnswer
-                          ? TextInputAction.next
-                          : TextInputAction.done,
-                      onSubmitted: (_) {
-                        if (showAnswer) {
-                          _answerFocus.requestFocus();
-                        } else {
-                          _handleLogin();
-                        }
-                      },
-                    ),
-                    const SizedBox(height: 16),
-                    DropdownMenu<int>(
-                      initialSelection: _questionId,
-                      label: const Text('安全提问'),
-                      leadingIcon: const Icon(Icons.help_outline),
-                      expandedInsets: EdgeInsets.zero,
-                      inputDecorationTheme: const InputDecorationTheme(
-                        filled: true,
-                      ),
-                      dropdownMenuEntries: [
-                        for (final q in LoginSecurityQuestions.all)
-                          DropdownMenuEntry<int>(
-                            value: q.id,
-                            label: q.label,
-                            style: const ButtonStyle(
-                              maximumSize: WidgetStatePropertyAll(
-                                Size(double.infinity, double.infinity),
-                              ),
+                          child: Text(
+                            _errorMessage!,
+                            style: textTheme.bodyMedium?.copyWith(
+                              color: scheme.onErrorContainer,
                             ),
                           ),
+                        ),
+                        const SizedBox(height: 16),
                       ],
-                      onSelected: (value) {
-                        if (value == null) return;
-                        setState(() {
-                          _questionId = value;
-                          if (value == 0) {
-                            _answerController.clear();
-                          }
-                        });
-                      },
-                    ),
-                    if (showAnswer) ...[
+                      TextField(
+                        controller: _usernameController,
+                        focusNode: _usernameFocus,
+                        decoration: const InputDecoration(
+                          labelText: '用户名',
+                          prefixIcon: Icon(Icons.person),
+                        ),
+                        keyboardType: TextInputType.text,
+                        textInputAction: TextInputAction.next,
+                        onSubmitted: (_) => _passwordFocus.requestFocus(),
+                      ),
                       const SizedBox(height: 16),
                       TextField(
-                        controller: _answerController,
-                        focusNode: _answerFocus,
-                        decoration: const InputDecoration(
-                          labelText: '答案',
-                          prefixIcon: Icon(Icons.quiz_outlined),
+                        controller: _passwordController,
+                        focusNode: _passwordFocus,
+                        decoration: InputDecoration(
+                          labelText: '密码',
+                          prefixIcon: const Icon(Icons.lock),
+                          suffixIcon: IconButton(
+                            icon: Icon(
+                              _obscurePassword
+                                  ? Icons.visibility_off
+                                  : Icons.visibility,
+                            ),
+                            tooltip: _obscurePassword ? '显示密码' : '隐藏密码',
+                            onPressed: () => setState(
+                              () => _obscurePassword = !_obscurePassword,
+                            ),
+                          ),
                         ),
-                        textInputAction: TextInputAction.done,
-                        onSubmitted: (_) => _handleLogin(),
+                        obscureText: _obscurePassword,
+                        textInputAction: showAnswer
+                            ? TextInputAction.next
+                            : TextInputAction.done,
+                        onSubmitted: (_) {
+                          if (showAnswer) {
+                            _answerFocus.requestFocus();
+                          } else {
+                            _handleLogin();
+                          }
+                        },
+                      ),
+                      const SizedBox(height: 16),
+                      DropdownMenu<int>(
+                        initialSelection: _questionId,
+                        label: const Text('安全提问'),
+                        leadingIcon: const Icon(Icons.help_outline),
+                        expandedInsets: EdgeInsets.zero,
+                        inputDecorationTheme: const InputDecorationTheme(
+                          filled: true,
+                        ),
+                        dropdownMenuEntries: [
+                          for (final q in LoginSecurityQuestions.all)
+                            DropdownMenuEntry<int>(
+                              value: q.id,
+                              label: q.label,
+                              style: const ButtonStyle(
+                                maximumSize: WidgetStatePropertyAll(
+                                  Size(double.infinity, double.infinity),
+                                ),
+                              ),
+                            ),
+                        ],
+                        onSelected: (value) {
+                          if (value == null) return;
+                          setState(() {
+                            _questionId = value;
+                            if (value == 0) {
+                              _answerController.clear();
+                            }
+                          });
+                        },
+                      ),
+                      if (showAnswer) ...[
+                        const SizedBox(height: 16),
+                        TextField(
+                          controller: _answerController,
+                          focusNode: _answerFocus,
+                          decoration: const InputDecoration(
+                            labelText: '答案',
+                            prefixIcon: Icon(Icons.quiz_outlined),
+                          ),
+                          textInputAction: TextInputAction.done,
+                          onSubmitted: (_) => _handleLogin(),
+                        ),
+                      ],
+                      const SizedBox(height: 24),
+                      FilledButton(
+                        onPressed: _isLoading ? null : _handleLogin,
+                        style: FilledButton.styleFrom(
+                          padding: const EdgeInsets.symmetric(vertical: 16),
+                        ),
+                        child: _isLoading
+                            ? const SizedBox(
+                                height: 20,
+                                width: 20,
+                                child:
+                                    CircularProgressIndicator(strokeWidth: 2),
+                              )
+                            : const Text('登录'),
                       ),
                     ],
-                    const SizedBox(height: 24),
-                    FilledButton(
-                      onPressed: _isLoading ? null : _handleLogin,
-                      style: FilledButton.styleFrom(
-                        padding: const EdgeInsets.symmetric(vertical: 16),
-                      ),
-                      child: _isLoading
-                          ? const SizedBox(
-                              height: 20,
-                              width: 20,
-                              child: CircularProgressIndicator(strokeWidth: 2),
-                            )
-                          : const Text('登录'),
-                    ),
-                  ],
+                  ),
                 ),
               ),
             ),
           ),
-        ),
         ),
       ),
     );

@@ -47,68 +47,68 @@ class _DarkRoomScreenState extends ConsumerState<DarkRoomScreen> {
         ),
         body: S1PageBody(
           child: async.when(
-          loading: () => const S1AsyncListLoading(
-            child: ListRowSkeletonList(),
-          ),
-          error: (error, stack) => S1ErrorView(
-            error: error,
-            onRetry: () => S1Haptics.wrapRefresh(
-              () => ref.read(darkRoomProvider.notifier).refresh(),
+            loading: () => const S1AsyncListLoading(
+              child: ListRowSkeletonList(),
             ),
-            onLogin: () => context.push('/login'),
-          ),
-          data: (state) {
-            if (state.items.isEmpty) {
-              return const _EmptyDarkRoom();
-            }
-            return S1ScrollBoundaryListener(
-              isTerminal: !state.hasMore,
-              feedback: _boundaryFeedback,
-              message: state.hasMore ? null : '没有更多了',
-              child: RefreshIndicator(
-                onRefresh: () => S1Haptics.wrapRefresh(
-                  () => ref.read(darkRoomProvider.notifier).refresh(),
-                ),
-                child: ListView.builder(
-                  padding: const EdgeInsets.fromLTRB(12, 8, 12, 24),
-                  itemCount: state.items.length + 1,
-                  itemBuilder: (context, index) {
-                    if (index >= state.items.length) {
-                      if (state.hasMore) {
-                        return Padding(
-                          padding: const EdgeInsets.symmetric(vertical: 12),
-                          child: Center(
-                            child: state.isLoadingMore
-                                ? const SizedBox(
-                                    width: 24,
-                                    height: 24,
-                                    child: CircularProgressIndicator(
-                                      strokeWidth: 2,
+            error: (error, stack) => S1ErrorView(
+              error: error,
+              onRetry: () => S1Haptics.wrapRefresh(
+                () => ref.read(darkRoomProvider.notifier).refresh(),
+              ),
+              onLogin: () => context.push('/login'),
+            ),
+            data: (state) {
+              if (state.items.isEmpty) {
+                return const _EmptyDarkRoom();
+              }
+              return S1ScrollBoundaryListener(
+                isTerminal: !state.hasMore,
+                feedback: _boundaryFeedback,
+                message: state.hasMore ? null : '没有更多了',
+                child: RefreshIndicator(
+                  onRefresh: () => S1Haptics.wrapRefresh(
+                    () => ref.read(darkRoomProvider.notifier).refresh(),
+                  ),
+                  child: ListView.builder(
+                    padding: const EdgeInsets.fromLTRB(12, 8, 12, 24),
+                    itemCount: state.items.length + 1,
+                    itemBuilder: (context, index) {
+                      if (index >= state.items.length) {
+                        if (state.hasMore) {
+                          return Padding(
+                            padding: const EdgeInsets.symmetric(vertical: 12),
+                            child: Center(
+                              child: state.isLoadingMore
+                                  ? const SizedBox(
+                                      width: 24,
+                                      height: 24,
+                                      child: CircularProgressIndicator(
+                                        strokeWidth: 2,
+                                      ),
+                                    )
+                                  : FilledButton.tonal(
+                                      onPressed: () => ref
+                                          .read(darkRoomProvider.notifier)
+                                          .loadMore(),
+                                      child: const Text('加载更多'),
                                     ),
-                                  )
-                                : FilledButton.tonal(
-                                    onPressed: () => ref
-                                        .read(darkRoomProvider.notifier)
-                                        .loadMore(),
-                                    child: const Text('加载更多'),
-                                  ),
-                          ),
+                            ),
+                          );
+                        }
+                        return const S1ListBoundaryFooter(
+                          kind: S1ListBoundaryKind.noMore,
                         );
                       }
-                      return const S1ListBoundaryFooter(
-                        kind: S1ListBoundaryKind.noMore,
+                      return Padding(
+                        padding: const EdgeInsets.only(bottom: 8),
+                        child: _DarkRoomCard(entry: state.items[index]),
                       );
-                    }
-                    return Padding(
-                      padding: const EdgeInsets.only(bottom: 8),
-                      child: _DarkRoomCard(entry: state.items[index]),
-                    );
-                  },
+                    },
+                  ),
                 ),
-              ),
-            );
-          },
-        ),
+              );
+            },
+          ),
         ),
       ),
     );

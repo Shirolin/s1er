@@ -41,38 +41,38 @@ class FriendsScreen extends ConsumerWidget {
         ),
         body: S1PageBody(
           child: async.when(
-          loading: () => const S1AsyncListLoading(
-            child: ListRowSkeletonList(),
-          ),
-          error: (error, stack) => S1ErrorView(
-            error: error,
-            onRetry: () => S1Haptics.wrapRefresh(
-              () => ref.read(friendListProvider.notifier).refresh(),
+            loading: () => const S1AsyncListLoading(
+              child: ListRowSkeletonList(),
             ),
-            onLogin: () => context.push('/login'),
-          ),
-          data: (result) {
-            if (result.items.isEmpty) {
-              return const _EmptyFriends();
-            }
-            return RefreshIndicator(
-              onRefresh: () => S1Haptics.wrapRefresh(
+            error: (error, stack) => S1ErrorView(
+              error: error,
+              onRetry: () => S1Haptics.wrapRefresh(
                 () => ref.read(friendListProvider.notifier).refresh(),
               ),
-              child: ListView.separated(
-                padding: const EdgeInsets.symmetric(vertical: 8),
-                itemCount: result.items.length,
-                separatorBuilder: (ctx, _) => Divider(
-                  height: 1,
-                  color: Theme.of(ctx).colorScheme.outlineVariant,
+              onLogin: () => context.push('/login'),
+            ),
+            data: (result) {
+              if (result.items.isEmpty) {
+                return const _EmptyFriends();
+              }
+              return RefreshIndicator(
+                onRefresh: () => S1Haptics.wrapRefresh(
+                  () => ref.read(friendListProvider.notifier).refresh(),
                 ),
-                itemBuilder: (context, index) {
-                  return _FriendTile(friend: result.items[index]);
-                },
-              ),
-            );
-          },
-        ),
+                child: ListView.separated(
+                  padding: const EdgeInsets.symmetric(vertical: 8),
+                  itemCount: result.items.length,
+                  separatorBuilder: (ctx, _) => Divider(
+                    height: 1,
+                    color: Theme.of(ctx).colorScheme.outlineVariant,
+                  ),
+                  itemBuilder: (context, index) {
+                    return _FriendTile(friend: result.items[index]);
+                  },
+                ),
+              );
+            },
+          ),
         ),
       ),
     );

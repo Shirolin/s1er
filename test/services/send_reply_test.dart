@@ -1,6 +1,13 @@
+import 'dart:convert';
+import 'dart:typed_data';
+
+import 'package:dio/dio.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:s1er/models/quote_info.dart';
 import 'package:s1er/services/api_service.dart';
+import 'package:s1er/services/formhash_service.dart';
+import 'package:s1er/services/http_client.dart';
 
 void main() {
   group('QuoteInfo.tryParse', () {
@@ -107,5 +114,184 @@ void main() {
       expect(result.pid, '2');
       expect(result.tid, '1');
     });
+
+    test('parses two-arg succeedhandle_ without meta object', () {
+      const xml =
+          "<root><![CDATA[<script>succeedhandle_('forum.php?mod=viewthread&tid=9&pid=8', '回复发布成功');</script>]]></root>";
+      final result = ApiService.parseReplyResponse(xml);
+      expect(result.isSuccess, isTrue);
+      expect(result.pid, '8');
+      expect(result.tid, '9');
+    });
+
+    test('success when only messagestr contains Chinese success text', () {
+      final result = ApiService.parseSendReplyResponse({
+        'Message': {
+          'messageval': '',
+          'messagestr': '非常感谢，回复发布成功，现在将转入主题页',
+        },
+        'Variables': {'pid': '55', 'tid': '66'},
+      });
+      expect(result.isSuccess, isTrue);
+      expect(result.pid, '55');
+      expect(result.tid, '66');
+    });
   });
+
+  group('ApiService.sendReply contract', () {
+    late ProviderContainer container;
+    late _SendReplyRecordingAdapter adapter;
+    late ApiService api;
+
+    setUp(() {
+      container = ProviderContainer();
+      adapter = _SendReplyRecordingAdapter();
+      final dio = Dio()..httpClientAdapter = adapter;
+      api = ApiService(S1HttpClient.test(container, dio));
+    });
+
+    tearDown(() {
+      container.dispose();
+    });
+
+    test('mobile path posts to sendreply with plain response type', () async {
+      final result = await api.sendReply(
+        tid: '100',
+        fid: '4',
+        message: '纯文本回复',
+      );
+
+      expect(result.isSuccess, isTrue);
+      expect(adapter.lastOptions?.responseType, ResponseType.plain);
+      expect(adapter.lastOptions?.uri.toString(), contains('sendreply'));
+      expect(adapter.lastOptions?.data, isA<Map>());
+      final data = adapter.lastOptions!.data as Map;
+      expect(data['tid'], '100');
+      expect(data['message'], '纯文本回复');
+    });
+
+    test('attach path posts to web reply with plain response type', () async {
+      container.read(formhashProvider.notifier).update('abc12345');
+
+      final result = await api.sendReply(
+        tid: '100',
+        fid: '4',
+        message: '附图[attachimg]123[/attachimg]',
+      );
+
+      expect(result.isSuccess, isTrue);
+      expect(adapter.lastOptions?.responseType, ResponseType.plain);
+      expect(
+        adapter.lastOptions?.uri.toString(),
+        contains('mod=post&action=reply'),
+      );
+      final data = adapter.lastOptions!.data as Map;
+      expect(data['attachnew[123][description]'], '');
+      expect(data['attachnew[123][readperm]'], '');
+    });
+
+    test('transport timeout maps to uncertain', () async {
+      container.read(formhashProvider.notifier).update('abc12345');
+      adapter.throwOnPost = DioException(
+        requestOptions: RequestOptions(path: '/'),
+        type: DioExceptionType.receiveTimeout,
+      );
+
+      final result = await api.sendReply(
+        tid: '100',
+        fid: '4',
+        message: '纯文本回复',
+      );
+
+      expect(result.isUncertain, isTrue);
+      expect(result.isSuccess, isFalse);
+      expect(result.message, contains('状态不确定'));
+    });
+
+    test('rejected when server returns explicit error', () async {
+      adapter.forceReject = true;
+
+      final result = await api.sendReply(
+        tid: '100',
+        fid: '4',
+        message: '纯文本回复',
+      );
+
+      expect(result.isSuccess, isFalse);
+      expect(result.message, '内容过长');
+    });
+  });
+}
+
+class _SendReplyRecordingAdapter implements HttpClientAdapter {
+  RequestOptions? lastOptions;
+  DioException? throwOnFetch;
+  DioException? throwOnPost;
+  bool forceReject = false;
+
+  @override
+  void close({bool force = false}) {}
+
+  @override
+  Future<ResponseBody> fetch(
+    RequestOptions options,
+    Stream<Uint8List>? requestStream,
+    Future<void>? cancelFuture,
+  ) async {
+    lastOptions = options;
+    if (throwOnFetch != null) throw throwOnFetch!;
+    if (options.method != 'GET' && throwOnPost != null) throw throwOnPost!;
+
+    if (options.method == 'GET') {
+      return ResponseBody.fromString(
+        jsonEncode({
+          'Variables': {'formhash': 'abc12345'},
+        }),
+        200,
+        headers: {
+          Headers.contentTypeHeader: [Headers.jsonContentType],
+        },
+      );
+    }
+
+    final path = options.uri.toString();
+    if (path.contains('mod=post&action=reply')) {
+      if (forceReject) {
+        return ResponseBody.fromString(
+          "<script>errorhandle_reply('内容过长', '');</script>",
+          200,
+        );
+      }
+      return ResponseBody.fromString(
+        "<script>succeedhandle_('forum.php?mod=viewthread&tid=100&pid=9', 'ok', {'tid':'100','pid':'9'});</script>",
+        200,
+      );
+    }
+
+    if (forceReject) {
+      return ResponseBody.fromString(
+        jsonEncode({
+          'Message': {
+            'messageval': 'post_reply_invalid',
+            'messagestr': '内容过长',
+          },
+        }),
+        200,
+        headers: {
+          Headers.contentTypeHeader: [Headers.jsonContentType],
+        },
+      );
+    }
+
+    return ResponseBody.fromString(
+      jsonEncode({
+        'Message': {'messageval': 'post_reply_succeed'},
+        'Variables': {'pid': '7', 'tid': '100'},
+      }),
+      200,
+      headers: {
+        Headers.contentTypeHeader: [Headers.jsonContentType],
+      },
+    );
+  }
 }

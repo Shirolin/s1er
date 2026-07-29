@@ -758,15 +758,30 @@ window.location.href = 'forum.php?mod=viewthread&tid=2253488&pid=69963296&page=1
         expect(result.error, '抱歉，您的请求来路不正确或表单验证串不符，无法提交');
       });
 
-      test('returns fallback on unknown response', () {
+      test('returns uncertain on unknown response', () {
         const xml = '<root><![CDATA[<p>unexpected</p>]]></root>';
         final result = ApiService.parseReplyResponse(xml);
-        expect(result.error, '服务器返回未知响应');
+        expect(result.isUncertain, isTrue);
+        expect(result.isSuccess, isFalse);
       });
 
-      test('returns fallback on empty string', () {
+      test('returns uncertain on empty string', () {
         final result = ApiService.parseReplyResponse('');
-        expect(result.error, '服务器返回未知响应');
+        expect(result.isUncertain, isTrue);
+      });
+
+      test('does not treat success messagetext as error', () {
+        const xml = '''<root><![CDATA[<div class="tip">
+<dt id="messagetext">
+<p>您的回复已发表，现在将转入主题页，请稍候……</p>
+</dt>
+</div>
+<script>window.location.href='forum.php?mod=viewthread&tid=100&pid=200';</script>
+]]></root>''';
+        final result = ApiService.parseReplyResponse(xml);
+        expect(result.isSuccess, isTrue);
+        expect(result.tid, '100');
+        expect(result.pid, '200');
       });
     });
 

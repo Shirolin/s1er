@@ -31,6 +31,23 @@ String userFacingError(Object error) {
   return '操作失败，请重试';
 }
 
+/// 发帖/回帖等写操作在超时或连接中断时不应一律视为明确失败。
+bool isTransportUncertainError(Object error) {
+  if (error is TimeoutException) return true;
+  if (error is DioException) {
+    switch (error.type) {
+      case DioExceptionType.connectionTimeout:
+      case DioExceptionType.sendTimeout:
+      case DioExceptionType.receiveTimeout:
+      case DioExceptionType.connectionError:
+        return true;
+      default:
+        return false;
+    }
+  }
+  return false;
+}
+
 String _mapDioError(DioException e) {
   switch (e.type) {
     case DioExceptionType.connectionTimeout:

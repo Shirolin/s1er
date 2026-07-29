@@ -143,6 +143,7 @@ class _ComposeScreenState extends ConsumerState<ComposeScreen> {
   bool _editLoading = false;
   bool _editUncertain = false;
   bool _editConflict = false;
+  bool _replyUncertain = false;
 
   /// 编辑页从服务器原文拆出的前置 `[quote]`（可移除，不进输入框）。
   String? _editLeadingQuote;
@@ -213,7 +214,8 @@ class _ComposeScreenState extends ConsumerState<ComposeScreen> {
         _newThreadLoading ||
         _editLoading ||
         _editUncertain ||
-        _editConflict;
+        _editConflict ||
+        _replyUncertain;
     if (busy) return false;
     final hasText = _messageController.text.trim().isNotEmpty;
     final hasMedia = _uploadedImages.isNotEmpty;
@@ -1006,7 +1008,8 @@ class _ComposeScreenState extends ConsumerState<ComposeScreen> {
       _newThreadLoading ||
       _editLoading ||
       _editUncertain ||
-      _editConflict;
+      _editConflict ||
+      _replyUncertain;
 
   void _applyBbcodeWrap(String openTag, String closeTag) {
     if (_composeBusy) return;
@@ -1797,19 +1800,37 @@ class _ComposeScreenState extends ConsumerState<ComposeScreen> {
           final snapshotId = widget.quoteSnapshotId;
           if (snapshotId != null) QuoteSnapshotStore.remove(snapshotId);
           _clearReplyDraft();
-          S1SnackBar.show(context, message: '回复成功', bottomClearance: 16);
+          setState(() => _replyUncertain = false);
+          S1SnackBar.show(
+            context,
+            message: '回复成功',
+            bottomClearance: 16,
+            feedback: S1SnackBarFeedback.success,
+          );
           _allowPopAndExit(result);
+        } else if (result.isUncertain) {
+          setState(() => _replyUncertain = true);
+          S1SnackBar.show(
+            context,
+            message: result.message ?? '回复状态不明确，请返回主题刷新确认后再决定是否重发',
+            bottomClearance: 72,
+          );
         } else {
           S1SnackBar.error(
             context,
-            message: result.error ?? '回复失败',
+            message: result.message ?? result.error ?? '回复失败',
             bottomClearance: 72,
           );
         }
       }
     } catch (e) {
       if (mounted) {
-        S1SnackBar.error(context, message: '$e', bottomClearance: 72);
+        setState(() => _replyUncertain = true);
+        S1SnackBar.show(
+          context,
+          message: '回复状态不明确，请返回主题刷新确认后再决定是否重发',
+          bottomClearance: 72,
+        );
       }
     } finally {
       if (mounted) setState(() => _isSubmitting = false);
@@ -1961,7 +1982,8 @@ class _ComposeScreenState extends ConsumerState<ComposeScreen> {
         _newThreadLoading ||
         _editLoading ||
         _editUncertain ||
-        _editConflict;
+        _editConflict ||
+        _replyUncertain;
     // 回复编辑与回复页一致展示主题；一楼编辑已有可改标题控件，不再叠一行。
     final subject = (_isEditing && widget.editIsFirst) ? null : _subjectLabel;
     final keyboardInset = MediaQuery.viewInsetsOf(context).bottom;
@@ -2040,6 +2062,12 @@ class _ComposeScreenState extends ConsumerState<ComposeScreen> {
                 _editUncertain ? '编辑结果不确定，请先核对服务器内容。' : '服务器内容已变化，请重新载入后再编辑。',
             actionLabel: '核对服务器',
             onPressed: _recheckEditState,
+          ),
+        if (!_isNewThread && !_isEditing && _replyUncertain)
+          _EditPostStatus(
+            message: '回复状态不明确，请返回主题刷新确认后再决定是否重发。',
+            actionLabel: '知道了',
+            onPressed: () => setState(() => _replyUncertain = false),
           ),
         if (_includeQuote && !_isNewThread && !_isEditing)
           _ComposeQuoteBanner(

@@ -8,6 +8,7 @@ import '../models/attendance_result.dart';
 import '../models/dark_room_entry.dart';
 import '../models/friend_summary.dart';
 import '../models/server_blacklist.dart';
+import '../utils/discuz_submit_response.dart';
 import '../utils/error_handler.dart';
 import 'http_client.dart';
 
@@ -142,7 +143,7 @@ class ForumToolsService {
   }
 
   static AttendanceResult parseAttendanceResponse(String body) {
-    final html = _unwrapAjaxHtml(body);
+    final html = DiscuzSubmitResponse.unwrapAjaxHtml(body);
     if (html.trim().isEmpty) {
       return const AttendanceResult(
         outcome: AttendanceOutcome.unknown,
@@ -150,7 +151,7 @@ class ForumToolsService {
       );
     }
 
-    final succeed = _extractHandlerMessage(
+    final succeed = DiscuzSubmitResponse.extractHandlerMessage(
       html,
       handlerPrefix: 'succeedhandle_',
       messageIndex: 1,
@@ -165,7 +166,7 @@ class ForumToolsService {
       );
     }
 
-    final error = _extractHandlerMessage(
+    final error = DiscuzSubmitResponse.extractHandlerMessage(
       html,
       handlerPrefix: 'errorhandle_',
       messageIndex: 0,
@@ -274,62 +275,6 @@ class ForumToolsService {
       }
     }
     throw FormatException('Unexpected response type: ${data.runtimeType}');
-  }
-
-  static String _unwrapAjaxHtml(String body) {
-    final cdataMatch = RegExp(
-      r'<!\[CDATA\[(.*)\]\]>',
-      dotAll: true,
-    ).firstMatch(body);
-    return cdataMatch?.group(1) ?? body;
-  }
-
-  /// Discuz Ajax handler 参数解析：按逗号切开，但尊重单引号字符串。
-  static String? _extractHandlerMessage(
-    String html, {
-    required String handlerPrefix,
-    required int messageIndex,
-  }) {
-    final match = RegExp(
-      '$handlerPrefix[^\\(]*\\((.*)\\)',
-      dotAll: true,
-    ).firstMatch(html);
-    if (match == null) return null;
-    final params = _splitAjaxParams(match.group(1) ?? '');
-    if (params.length <= messageIndex) return '';
-    return _stripQuotes(params[messageIndex]);
-  }
-
-  static List<String> _splitAjaxParams(String raw) {
-    final params = <String>[];
-    final buffer = StringBuffer();
-    var inQuote = false;
-    for (var i = 0; i < raw.length; i++) {
-      final ch = raw[i];
-      if (ch == "'" && (i == 0 || raw[i - 1] != '\\')) {
-        inQuote = !inQuote;
-        buffer.write(ch);
-        continue;
-      }
-      if (ch == ',' && !inQuote) {
-        params.add(buffer.toString().trim());
-        buffer.clear();
-        continue;
-      }
-      buffer.write(ch);
-    }
-    final last = buffer.toString().trim();
-    if (last.isNotEmpty || params.isNotEmpty) {
-      params.add(last);
-    }
-    return params;
-  }
-
-  static String _stripQuotes(String value) {
-    var msg = value.trim();
-    if (msg.startsWith("'")) msg = msg.substring(1);
-    if (msg.endsWith("'")) msg = msg.substring(0, msg.length - 1);
-    return msg.replaceAll(r"\'", "'").trim();
   }
 }
 

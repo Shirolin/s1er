@@ -478,6 +478,161 @@ void main() {
       S1Breakpoints.contentWidthLarge - 48,
     );
   });
+
+  testWidgets('reply success clears draft and pops compose', (tester) async {
+    await tester.pumpWidget(
+      ProviderScope(
+        overrides: buildOverrides(
+          auth: _LoggedInAuthNotifier.new,
+          compose: (ref) => _ReplyResultComposeController(
+            ref,
+            result: const ReplySubmitResult(pid: '9', tid: '100'),
+          ),
+        ),
+        child: MaterialApp(
+          theme: AppTheme.lightTheme('purple'),
+          home: Builder(
+            builder: (context) => Scaffold(
+              body: Center(
+                child: FilledButton(
+                  onPressed: () => Navigator.of(context).push(
+                    MaterialPageRoute<void>(
+                      builder: (_) => const ComposeScreen(
+                        tid: '100',
+                        fid: '4',
+                      ),
+                    ),
+                  ),
+                  child: const Text('Thread Page'),
+                ),
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.text('Thread Page'));
+    await tester.pumpAndSettle();
+
+    const draftText = '成功回复正文';
+    await tester.enterText(find.byType(TextField), draftText);
+    await tester.pump(ComposeMessageDraft.debounce);
+    await tester.tap(find.text('发送'));
+    await tester.pump();
+    await tester.pumpAndSettle();
+
+    expect(find.text('回复成功'), findsOneWidget);
+    expect(find.text('Thread Page'), findsOneWidget);
+    final drafts = ComposeMessageDraft.parseStore(
+      local.settings.get<Object>(ComposeMessageDraft.settingsKey),
+    );
+    expect(
+      ComposeMessageDraft.readMessage(
+        drafts,
+        ComposeMessageDraft.entryKey(tid: '100'),
+      ),
+      isNull,
+    );
+  });
+
+  testWidgets('reply rejected keeps draft on compose screen', (tester) async {
+    await tester.pumpWidget(
+      ProviderScope(
+        overrides: buildOverrides(
+          auth: _LoggedInAuthNotifier.new,
+          compose: (ref) => _ReplyResultComposeController(
+            ref,
+            result: const ReplySubmitResult.rejected('内容过长'),
+          ),
+        ),
+        child: MaterialApp(
+          theme: AppTheme.lightTheme('purple'),
+          home: const ComposeScreen(tid: '100', fid: '4'),
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    const draftText = '失败回复正文';
+    await tester.enterText(find.byType(TextField), draftText);
+    await tester.pump(ComposeMessageDraft.debounce);
+    await tester.tap(find.text('发送'));
+    await tester.pump();
+    await tester.pumpAndSettle();
+
+    expect(find.text('内容过长'), findsOneWidget);
+    expect(find.text(draftText), findsOneWidget);
+    expect(find.byType(ComposeScreen), findsOneWidget);
+    final rejectedDrafts = ComposeMessageDraft.parseStore(
+      local.settings.get<Object>(ComposeMessageDraft.settingsKey),
+    );
+    expect(
+      ComposeMessageDraft.readMessage(
+        rejectedDrafts,
+        ComposeMessageDraft.entryKey(tid: '100'),
+      ),
+      draftText,
+    );
+  });
+
+  testWidgets('reply uncertain keeps draft and shows banner', (tester) async {
+    await tester.pumpWidget(
+      ProviderScope(
+        overrides: buildOverrides(
+          auth: _LoggedInAuthNotifier.new,
+          compose: (ref) => _ReplyResultComposeController(
+            ref,
+            result: const ReplySubmitResult.uncertain('回复状态不明确'),
+          ),
+        ),
+        child: MaterialApp(
+          theme: AppTheme.lightTheme('purple'),
+          home: const ComposeScreen(tid: '100', fid: '4'),
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    const draftText = '不确定回复正文';
+    await tester.enterText(find.byType(TextField), draftText);
+    await tester.pump(ComposeMessageDraft.debounce);
+    await tester.tap(find.text('发送'));
+    await tester.pump();
+    await tester.pumpAndSettle();
+
+    expect(find.textContaining('回复状态不明确'), findsWidgets);
+    expect(find.text(draftText), findsOneWidget);
+    expect(find.byType(ComposeScreen), findsOneWidget);
+    final uncertainDrafts = ComposeMessageDraft.parseStore(
+      local.settings.get<Object>(ComposeMessageDraft.settingsKey),
+    );
+    expect(
+      ComposeMessageDraft.readMessage(
+        uncertainDrafts,
+        ComposeMessageDraft.entryKey(tid: '100'),
+      ),
+      draftText,
+    );
+  });
+}
+
+class _ReplyResultComposeController extends _StubComposeController {
+  _ReplyResultComposeController(super.ref, {required this.result});
+
+  final ReplySubmitResult result;
+
+  @override
+  Future<ReplySubmitResult> submitReply({
+    required String tid,
+    required String fid,
+    required String message,
+    QuoteInfo? quoteInfo,
+    Post? quotedPost,
+  }) async {
+    return result;
+  }
 }
 
 class _StubComposeController extends ComposeController {

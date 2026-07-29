@@ -28,6 +28,7 @@ import '../models/app_exceptions.dart';
 import '../utils/compose_img_tags.dart';
 import '../utils/error_handler.dart';
 import '../utils/discuz_message.dart';
+import '../utils/discuz_submit_response.dart';
 import '../utils/forum_attachment_submit.dart';
 import '../utils/forum_attachment_upload_info_parser.dart';
 import '../models/forum_attachment_upload_info.dart';
@@ -298,12 +299,13 @@ class ApiService {
         data: data,
         options: Options(
           contentType: Headers.formUrlEncodedContentType,
+          responseType: ResponseType.plain,
           headers: {
             'Referer': ApiConfig.forumAttachmentReferer(fid: fid),
           },
         ),
       );
-      final body = response.data?.toString() ?? '';
+      final body = DiscuzSubmitResponse.coerceBody(response.data);
       final web = _parseWebNewThreadSubmitResponse(body);
       if (web != null) return web;
       return parseNewThreadSubmitResponse(response.data);
@@ -314,20 +316,34 @@ class ApiService {
 
   /// 网页发帖成功：`succeedhandle_*` 里带 tid。
   static NewThreadSubmitResult? _parseWebNewThreadSubmitResponse(String xml) {
-    final successMatch = RegExp(
-      r"succeedhandle_[^(]*\('([^']*)',\s*'([^']*)',\s*\{([^}]*)\}\)",
-    ).firstMatch(xml);
-    if (successMatch != null) {
-      final meta = successMatch.group(3) ?? '';
-      final tid = _extractReplyField(meta, 'tid');
-      final pid = _extractReplyField(meta, 'pid');
+    final body = _unwrapAjaxHtml(_responseBodyText(xml)).trim();
+    if (body.isEmpty) return null;
+
+    if (RegExp(r'succeedhandle_', caseSensitive: false).hasMatch(body)) {
+      final detailed = RegExp(
+        r"succeedhandle_[^(]*\('([^']*)',\s*'([^']*)'(?:,\s*\{([^}]*)\})?\)",
+      ).firstMatch(body);
+      if (detailed != null) {
+        final meta = detailed.group(3) ?? '';
+        final tid = _extractReplyField(meta, 'tid') ??
+            DiscuzSubmitResponse.extractPostId(body, 'tid');
+        final pid = _extractReplyField(meta, 'pid') ??
+            DiscuzSubmitResponse.extractPostId(body, 'pid');
+        if (tid != null && tid.isNotEmpty) {
+          return NewThreadSubmitResult(tid: tid, pid: pid);
+        }
+      }
+      final tid = DiscuzSubmitResponse.extractPostId(body, 'tid');
       if (tid != null && tid.isNotEmpty) {
-        return NewThreadSubmitResult(tid: tid, pid: pid);
+        return NewThreadSubmitResult(
+          tid: tid,
+          pid: DiscuzSubmitResponse.extractPostId(body, 'pid'),
+        );
       }
     }
     final errorMatch = RegExp(
       r"errorhandle_[^(]*\('([^']*)'",
-    ).firstMatch(xml);
+    ).firstMatch(body);
     if (errorMatch != null) {
       final msg = errorMatch.group(1)?.trim();
       if (msg != null && msg.isNotEmpty) {
@@ -602,14 +618,8 @@ class ApiService {
   }
 
   /// Dio 在未设 [ResponseType.plain] 时偶发给出 `List<int>`；`.toString()` 会丢掉正文。
-  static String _responseBodyText(dynamic data) {
-    if (data == null) return '';
-    if (data is String) return data;
-    if (data is List<int>) {
-      return utf8.decode(data, allowMalformed: true);
-    }
-    return data.toString();
-  }
+  static String _responseBodyText(dynamic data) =>
+      DiscuzSubmitResponse.coerceBody(data);
 
   static EditPostSubmitResult parseEditPostSubmitResponse(String body) {
     final html = _unwrapAjaxHtml(body).trim();
@@ -1040,71 +1050,22 @@ class ApiService {
     }
   }
 
-  static ReplySubmitResult parseReplyResponse(String xml) {
-    // 触屏/网页附件回复常见 `succeedhandle_`（空后缀）、`succeedhandle_reply`、
-    // `succeedhandle_postform`；与发新帖解析对齐，勿写死 handler 名。
-    final successMatch = RegExp(
-      r"succeedhandle_[^(]*\('([^']*)',\s*'([^']*)',\s*\{([^}]*)\}\)",
-    ).firstMatch(xml);
-    if (successMatch != null) {
-      final meta = successMatch.group(3) ?? '';
-      return ReplySubmitResult(
-        pid: _extractReplyField(meta, 'pid'),
-        tid: _extractReplyField(meta, 'tid'),
-      );
-    }
+  static String _unwrapAjaxHtml(String body) =>
+      DiscuzSubmitResponse.unwrapAjaxHtml(body);
 
-    final errorMatch = RegExp(
-      r"errorhandle_reply\('([^']*)',\s*'([^']*)'\)",
-    ).firstMatch(xml);
-    if (errorMatch != null) {
-      final message = errorMatch.group(1)?.isNotEmpty == true
-          ? errorMatch.group(1)
-          : errorMatch.group(2);
-      return ReplySubmitResult(error: message);
-    }
+  static ReplySubmitResult parseReplyResponse(dynamic body) =>
+      DiscuzSubmitResponse.parseReplyAjaxBody(body);
 
-    final postformError = RegExp(
-      r"errorhandle_postform\('([^']*)'",
-    ).firstMatch(xml);
-    if (postformError != null) {
-      return ReplySubmitResult(error: postformError.group(1));
-    }
-
-    final alertMatch = RegExp(r"alert\('([^']*)'\)").firstMatch(xml);
-    if (alertMatch != null) {
-      return ReplySubmitResult(error: alertMatch.group(1));
-    }
-
-    final messageText = RegExp(
-      r'id="messagetext"[^>]*>\s*<p>([^<]+)',
-      dotAll: true,
-    ).firstMatch(xml);
-    if (messageText != null) {
-      final text = messageText.group(1)?.trim() ?? '';
-      // 成功文案偶发落在 tip HTML 而无 succeedhandle（或已被剥掉）；勿当错误。
-      if (_looksLikeReplySuccessMessage(text)) {
-        final tid = RegExp(r'[?&]tid=(\d+)').firstMatch(xml)?.group(1);
-        final pid = RegExp(r'[?&]pid=(\d+)').firstMatch(xml)?.group(1) ??
-            RegExp(r'#pid(\d+)').firstMatch(xml)?.group(1);
-        return ReplySubmitResult(tid: tid, pid: pid);
-      }
-      return ReplySubmitResult(error: text);
-    }
-
-    return const ReplySubmitResult(error: '服务器返回未知响应');
-  }
-
-  static bool _looksLikeReplySuccessMessage(String text) {
-    return text.contains('回复发布成功') ||
-        text.contains('发帖成功') ||
-        text.contains('发布成功');
-  }
+  static ReplySubmitResult parseSendReplyResponse(dynamic data) =>
+      DiscuzSubmitResponse.parseSendReplyMobileBody(data);
 
   static String? _extractReplyField(String meta, String key) {
-    final match = RegExp("'?$key'?\\s*:\\s*'([^']*)'").firstMatch(meta);
-    final value = match?.group(1);
-    return value != null && value.isNotEmpty ? value : null;
+    final single = RegExp("'?$key'?\\s*:\\s*'([^']*)'").firstMatch(meta);
+    final singleValue = single?.group(1);
+    if (singleValue != null && singleValue.isNotEmpty) return singleValue;
+    final quoted = RegExp('"?$key"?\\s*:\\s*"([^"]*)"').firstMatch(meta);
+    final quotedValue = quoted?.group(1);
+    return quotedValue != null && quotedValue.isNotEmpty ? quotedValue : null;
   }
 
   /// 官方引用助手：拉取 `noticeauthor` / `noticetrimstr`。
@@ -1202,8 +1163,8 @@ class ApiService {
       force: true,
     );
     if (!hasFormhash) {
-      return const ReplySubmitResult(
-        error: '无法获取表单验证串，请刷新主题页后重试',
+      return const ReplySubmitResult.rejected(
+        '无法获取表单验证串，请刷新主题页后重试',
       );
     }
 
@@ -1228,11 +1189,20 @@ class ApiService {
       final response = await _httpClient.post(
         url,
         data: data,
-        options: Options(contentType: Headers.formUrlEncodedContentType),
+        options: Options(
+          contentType: Headers.formUrlEncodedContentType,
+          responseType: ResponseType.plain,
+        ),
       );
       return parseSendReplyResponse(response.data);
     } catch (e, st) {
-      return ReplySubmitResult(error: friendlyError(e, '回复', st));
+      if (isTransportUncertainError(e)) {
+        talker.handle(e, st, 'sendReply transport uncertain');
+        return const ReplySubmitResult.uncertain(
+          '回复请求状态不确定，请返回主题刷新确认后再决定是否重发',
+        );
+      }
+      return ReplySubmitResult.rejected(friendlyError(e, '回复', st));
     }
   }
 
@@ -1251,8 +1221,8 @@ class ApiService {
       fid: fid,
     );
     if (!hasFormhash) {
-      return const ReplySubmitResult(
-        error: '无法获取表单验证串，请刷新主题页后重试',
+      return const ReplySubmitResult.rejected(
+        '无法获取表单验证串，请刷新主题页后重试',
       );
     }
 
@@ -1279,88 +1249,22 @@ class ApiService {
         data: data,
         options: Options(
           contentType: Headers.formUrlEncodedContentType,
+          responseType: ResponseType.plain,
           headers: {
             'Referer': ApiConfig.forumAttachmentReferer(fid: fid, tid: tid),
           },
         ),
       );
-      final responseData = response.data;
-      if (responseData is String) {
-        return parseReplyResponse(responseData);
-      }
-      return parseSendReplyResponse(responseData);
+      return parseReplyResponse(response.data);
     } catch (e, st) {
-      return ReplySubmitResult(error: friendlyError(e, '回复', st));
-    }
-  }
-
-  /// 解析 `module=sendreply` JSON（或偶发裸 key / XML 回落）。
-  static ReplySubmitResult parseSendReplyResponse(dynamic data) {
-    if (data is String) {
-      final trimmed = data.trimLeft();
-      if (trimmed.startsWith('{')) {
-        try {
-          return parseSendReplyResponse(jsonDecode(trimmed));
-        } catch (_) {
-          // fall through to XML legacy / key
-        }
-      }
-      if (trimmed.startsWith('<') ||
-          trimmed.contains('succeedhandle_') ||
-          trimmed.contains('errorhandle_')) {
-        return parseReplyResponse(data);
-      }
-      if (looksLikeDiscuzMessageKey(trimmed) || trimmed.startsWith('mobile:')) {
-        return ReplySubmitResult(
-          error: friendlyDiscuzApiError(messageval: trimmed),
+      if (isTransportUncertainError(e)) {
+        talker.handle(e, st, 'sendReplyViaWeb transport uncertain');
+        return const ReplySubmitResult.uncertain(
+          '回复请求状态不确定，请返回主题刷新确认后再决定是否重发',
         );
       }
-      return const ReplySubmitResult(error: '服务器返回异常');
+      return ReplySubmitResult.rejected(friendlyError(e, '回复', st));
     }
-
-    if (data is! Map) {
-      return const ReplySubmitResult(error: '服务器返回异常');
-    }
-    final map = Map<String, dynamic>.from(data);
-
-    if (map['error'] != null) {
-      return ReplySubmitResult(
-        error: friendlyDiscuzApiError(
-          messageval: map['error']?.toString(),
-          messagestr: map['error']?.toString(),
-        ),
-      );
-    }
-
-    final message = map['Message'];
-    String? messageval;
-    String? messagestr;
-    if (message is Map) {
-      messageval = message['messageval']?.toString();
-      messagestr = message['messagestr']?.toString();
-    }
-
-    final val = messageval ?? '';
-    if (val.contains('succeed')) {
-      String? pid;
-      String? tid;
-      final variables = map['Variables'];
-      if (variables is Map) {
-        pid = variables['pid']?.toString();
-        tid = variables['tid']?.toString();
-        if (pid != null && pid.isEmpty) pid = null;
-        if (tid != null && tid.isEmpty) tid = null;
-      }
-      return ReplySubmitResult(pid: pid, tid: tid);
-    }
-
-    return ReplySubmitResult(
-      error: friendlyDiscuzApiError(
-        messageval: messageval,
-        messagestr: messagestr,
-        fallback: '回复失败，请稍后重试',
-      ),
-    );
   }
 
   /// 发回复（旧 Web XML 路径）。请改用 [sendReply]。
@@ -1379,8 +1283,8 @@ class ApiService {
       force: true,
     );
     if (!hasFormhash) {
-      return const ReplySubmitResult(
-        error: '无法获取表单验证串，请刷新主题页后重试',
+      return const ReplySubmitResult.rejected(
+        '无法获取表单验证串，请刷新主题页后重试',
       );
     }
 
@@ -1413,7 +1317,7 @@ class ApiService {
 
     final responseData = response.data;
     if (responseData is! String) {
-      return const ReplySubmitResult(error: '服务器返回异常');
+      return const ReplySubmitResult.rejected('服务器返回异常');
     }
     return parseReplyResponse(responseData);
   }
@@ -1533,14 +1437,6 @@ class ApiService {
     } catch (_) {
       return [];
     }
-  }
-
-  static String _unwrapAjaxHtml(String body) {
-    final cdataMatch = RegExp(
-      r'<!\[CDATA\[(.*)\]\]>',
-      dotAll: true,
-    ).firstMatch(body);
-    return cdataMatch?.group(1) ?? body;
   }
 
   static int? _parseSignedInt(String? raw) {

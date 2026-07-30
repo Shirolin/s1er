@@ -189,8 +189,7 @@ class _ForumSearchAdvancedSheetState
                     const SizedBox(height: 8),
                     Theme(
                       data: Theme.of(context).copyWith(
-                        inputDecorationTheme:
-                            _searchAdvancedInputTheme(scheme),
+                        inputDecorationTheme: _searchAdvancedInputTheme(scheme),
                       ),
                       child: TextField(
                         controller: _keywordController,
@@ -206,8 +205,7 @@ class _ForumSearchAdvancedSheetState
                     const SizedBox(height: 8),
                     Theme(
                       data: Theme.of(context).copyWith(
-                        inputDecorationTheme:
-                            _searchAdvancedInputTheme(scheme),
+                        inputDecorationTheme: _searchAdvancedInputTheme(scheme),
                       ),
                       child: TextField(
                         controller: _authorController,

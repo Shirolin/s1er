@@ -209,9 +209,9 @@ class S1SwipePaginationState extends State<S1SwipePagination> {
 
   bool get _usePageView => widget.enabled && widget.totalPages > 1;
 
-  ScrollPhysics get _pagePhysics => _BoundedSwipePaginationPhysics(
-        canSwipeToPrevious: _canSwipeToPrevious,
-        canSwipeToNext: _canSwipeToNext,
+  ScrollPhysics get _pagePhysics => BoundedSwipePaginationPhysics(
+        getCurrentPage: () => widget.currentPage,
+        getTotalPages: () => widget.totalPages,
       );
 
   void _onHorizontalBoundaryBlocked(BoundaryEdge edge) {
@@ -375,22 +375,34 @@ class S1SwipePaginationState extends State<S1SwipePagination> {
   }
 }
 
+typedef PageIndexGetter = int Function();
+
 /// 限制首尾页越界滑动，并修正中心页双向甩动吸附不对称的问题。
-class _BoundedSwipePaginationPhysics extends PageScrollPhysics {
-  const _BoundedSwipePaginationPhysics({
-    required this.canSwipeToPrevious,
-    required this.canSwipeToNext,
+///
+/// [getCurrentPage] / [getTotalPages] 在每次手势计算时读取，避免 ScrollPosition
+/// 复用旧 physics 实例时仍按创建时的页码锁死横滑。
+@visibleForTesting
+class BoundedSwipePaginationPhysics extends PageScrollPhysics {
+  // 含运行时页码回调，无法 const。
+  // ignore: prefer_const_constructors_in_immutables
+  BoundedSwipePaginationPhysics({
+    required this.getCurrentPage,
+    required this.getTotalPages,
     super.parent,
   });
 
-  final bool canSwipeToPrevious;
-  final bool canSwipeToNext;
+  final PageIndexGetter getCurrentPage;
+  final PageIndexGetter getTotalPages;
+
+  bool get _canSwipeToPrevious => getCurrentPage() > 1;
+
+  bool get _canSwipeToNext => getCurrentPage() < getTotalPages();
 
   @override
-  _BoundedSwipePaginationPhysics applyTo(ScrollPhysics? ancestor) {
-    return _BoundedSwipePaginationPhysics(
-      canSwipeToPrevious: canSwipeToPrevious,
-      canSwipeToNext: canSwipeToNext,
+  BoundedSwipePaginationPhysics applyTo(ScrollPhysics? ancestor) {
+    return BoundedSwipePaginationPhysics(
+      getCurrentPage: getCurrentPage,
+      getTotalPages: getTotalPages,
       parent: buildParent(ancestor),
     );
   }
@@ -403,10 +415,10 @@ class _BoundedSwipePaginationPhysics extends PageScrollPhysics {
 
     final currentIndex = _pageIndex(position);
 
-    if (!canSwipeToPrevious && value < position.pixels && currentIndex <= 1) {
+    if (!_canSwipeToPrevious && value < position.pixels && currentIndex <= 1) {
       return value - position.pixels;
     }
-    if (!canSwipeToNext && value > position.pixels && currentIndex >= 1) {
+    if (!_canSwipeToNext && value > position.pixels && currentIndex >= 1) {
       return value - position.pixels;
     }
 
@@ -438,7 +450,7 @@ class _BoundedSwipePaginationPhysics extends PageScrollPhysics {
     var page = _pageIndex(position);
 
     if (velocity < -tolerance.velocity) {
-      if (!canSwipeToPrevious) {
+      if (!_canSwipeToPrevious) {
         return null;
       }
       page -= 0.5;
@@ -456,7 +468,7 @@ class _BoundedSwipePaginationPhysics extends PageScrollPhysics {
     }
 
     if (velocity > tolerance.velocity) {
-      if (!canSwipeToNext) {
+      if (!_canSwipeToNext) {
         return null;
       }
       page += 0.5;

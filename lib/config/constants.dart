@@ -60,7 +60,7 @@ class S1Constants {
   /// 楼内切块时单条 [RepaintBoundary.toImage] 的最大物理高度（留 8192 纹理余量）。
   static const int shareInFloorChunkMaxStripPhysicalPx = 4096;
 
-  /// 低于此像素且仅 1 楼时走单次 [RepaintBoundary.toImage]；否则按楼分块拼接。
+  /// 低于此像素总量时走单次 [RepaintBoundary.toImage]；否则整卡滚动切片拼接。
   /// 取常见 4096 纹理高 × 默认导出宽 900（1.5×）。
   static const int shareCaptureChunkThresholdPixels = 4096 * 900;
 

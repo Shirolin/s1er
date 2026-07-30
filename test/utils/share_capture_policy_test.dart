@@ -14,11 +14,35 @@ void main() {
     );
   });
 
-  test('multi-floor always chunks', () {
+  test('multi-floor below threshold uses one-shot capture', () {
     expect(
       shouldUseChunkedShareCapture(
         floorCount: 2,
         estimatedCapturePixels: 100,
+      ),
+      isFalse,
+    );
+    expect(
+      shouldUseChunkedShareCapture(
+        floorCount: 4,
+        estimatedCapturePixels: S1Constants.shareCaptureChunkThresholdPixels - 1,
+      ),
+      isFalse,
+    );
+  });
+
+  test('multi-floor above threshold uses scroll slicing', () {
+    expect(
+      shouldUseChunkedShareCapture(
+        floorCount: 2,
+        estimatedCapturePixels: S1Constants.shareCaptureChunkThresholdPixels,
+      ),
+      isTrue,
+    );
+    expect(
+      shouldUseChunkedShareCapture(
+        floorCount: 10,
+        estimatedCapturePixels: S1Constants.shareCaptureChunkThresholdPixels,
       ),
       isTrue,
     );

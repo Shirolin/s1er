@@ -5,14 +5,13 @@ import 'package:flutter/foundation.dart' show visibleForTesting;
 import '../config/constants.dart';
 import 'share_capture_limits.dart';
 
-/// Whether a capture should use per-floor chunking + stitch instead of one shot.
+/// Whether capture should use full-card scroll slicing + stitch instead of one shot.
 bool shouldUseChunkedShareCapture({
   required int floorCount,
   required int estimatedCapturePixels,
   int chunkThresholdPixels = S1Constants.shareCaptureChunkThresholdPixels,
 }) {
   if (floorCount <= 0) return false;
-  if (floorCount > 1) return true;
   return estimatedCapturePixels >= chunkThresholdPixels;
 }
 

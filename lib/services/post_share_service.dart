@@ -130,9 +130,9 @@ enum _FooterState { idle, capturing, error }
 class _SharePreviewSheetState extends ConsumerState<_SharePreviewSheet> {
   late final ShareCaptureKeys _captureKeys =
       ShareCaptureKeys(floorCount: widget.floors.length);
-  final GlobalKey _inFloorCaptureKey = GlobalKey();
-  final ScrollController _inFloorScrollController = ScrollController();
-  int? _inFloorCaptureFloorIndex;
+  final GlobalKey _offscreenCaptureKey = GlobalKey();
+  final ScrollController _offscreenScrollController = ScrollController();
+  bool _offscreenFullCardCapture = false;
   _FooterState _state = _FooterState.idle;
   String _statusMessage = '';
   String _captureProgressMessage = '';
@@ -153,14 +153,8 @@ class _SharePreviewSheetState extends ConsumerState<_SharePreviewSheet> {
 
   @override
   void dispose() {
-    _inFloorScrollController.dispose();
+    _offscreenScrollController.dispose();
     super.dispose();
-  }
-
-  ThreadPoll? _pollForFloor(ShareFloorData floor) {
-    if (widget.poll == null) return null;
-    if (floor.displayFloor != 1) return null;
-    return widget.poll;
   }
 
   ShareCaptureLimits get _shareCaptureLimits =>
@@ -379,7 +373,7 @@ class _SharePreviewSheetState extends ConsumerState<_SharePreviewSheet> {
     }
   }
 
-  Future<bool> _waitForOffscreenFloorLayout() async {
+  Future<bool> _waitForOffscreenScrollLayout() async {
     double? lastHeight;
     var stableFrames = 0;
 
@@ -387,8 +381,8 @@ class _SharePreviewSheetState extends ConsumerState<_SharePreviewSheet> {
       await WidgetsBinding.instance.endOfFrame;
       if (!mounted) return false;
 
-      final height = _inFloorScrollController.hasClients
-          ? measureScrollableLogicalHeight(_inFloorScrollController)
+      final height = _offscreenScrollController.hasClients
+          ? measureScrollableLogicalHeight(_offscreenScrollController)
           : 0.0;
       stableFrames = advanceLayoutStability(
         lastHeight: lastHeight,
@@ -414,7 +408,7 @@ class _SharePreviewSheetState extends ConsumerState<_SharePreviewSheet> {
       await WidgetsBinding.instance.endOfFrame;
       if (!mounted) return false;
 
-      final element = _inFloorCaptureKey.currentContext as Element?;
+      final element = _offscreenCaptureKey.currentContext as Element?;
       if (!subtreeHasLoadingIndicator(element)) {
         readyFrames++;
         if (readyFrames >= shareLayoutStableFramesRequired) {
@@ -479,44 +473,42 @@ class _SharePreviewSheetState extends ConsumerState<_SharePreviewSheet> {
     );
   }
 
-  Future<List<ShareRgbaStrip>> _captureInFloorStrips({
-    required int floorIndex,
-  }) async {
+  Future<List<ShareRgbaStrip>> _captureFullCardScrollStrips() async {
     if (!mounted) return [];
-    setState(() => _inFloorCaptureFloorIndex = floorIndex);
+    setState(() => _offscreenFullCardCapture = true);
     await WidgetsBinding.instance.endOfFrame;
     await WidgetsBinding.instance.endOfFrame;
 
-    if (_inFloorScrollController.hasClients) {
-      _inFloorScrollController.jumpTo(0);
+    if (_offscreenScrollController.hasClients) {
+      _offscreenScrollController.jumpTo(0);
     }
 
-    final layoutReady = await _waitForOffscreenFloorLayout();
+    final layoutReady = await _waitForOffscreenScrollLayout();
     if (!layoutReady) {
-      if (mounted) setState(() => _inFloorCaptureFloorIndex = null);
-      _showCaptureFailure('楼层布局未稳定，请稍后重试');
+      if (mounted) setState(() => _offscreenFullCardCapture = false);
+      _showCaptureFailure('分享卡布局未稳定，请稍后重试');
       return [];
     }
 
     final imagesReady = await _waitForOffscreenImagesReady();
     if (!imagesReady) {
-      if (mounted) setState(() => _inFloorCaptureFloorIndex = null);
+      if (mounted) setState(() => _offscreenFullCardCapture = false);
       _showCaptureFailure('图片未加载完成，请稍后重试');
       return [];
     }
 
-    final boundary = _inFloorCaptureKey.currentContext?.findRenderObject()
+    final boundary = _offscreenCaptureKey.currentContext?.findRenderObject()
         as RenderRepaintBoundary?;
     if (boundary == null) {
-      if (mounted) setState(() => _inFloorCaptureFloorIndex = null);
+      if (mounted) setState(() => _offscreenFullCardCapture = false);
       return [];
     }
 
-    final measuredHeight = _inFloorScrollController.hasClients
-        ? measureScrollableLogicalHeight(_inFloorScrollController)
+    final measuredHeight = _offscreenScrollController.hasClients
+        ? measureScrollableLogicalHeight(_offscreenScrollController)
         : 0.0;
     if (measuredHeight <= 0) {
-      if (mounted) setState(() => _inFloorCaptureFloorIndex = null);
+      if (mounted) setState(() => _offscreenFullCardCapture = false);
       return [];
     }
 
@@ -524,14 +516,14 @@ class _SharePreviewSheetState extends ConsumerState<_SharePreviewSheet> {
       boundary,
       pixelRatio: _sharePixelRatio,
       inFloorChunking: true,
-      scrollController: _inFloorScrollController,
+      scrollController: _offscreenScrollController,
       totalLogicalHeight: measuredHeight,
       limits: _shareCaptureLimits,
     );
 
-    if (mounted) setState(() => _inFloorCaptureFloorIndex = null);
+    if (mounted) setState(() => _offscreenFullCardCapture = false);
     if (strips.isEmpty && mounted) {
-      _showCaptureFailure('楼层截取不完整，请稍后重试');
+      _showCaptureFailure('长图截取不完整，请稍后重试');
     }
     return strips;
   }
@@ -542,88 +534,41 @@ class _SharePreviewSheetState extends ConsumerState<_SharePreviewSheet> {
   }) async {
     final limits = _shareCaptureLimits;
 
-    Future<List<ShareRgbaStrip>> captureSection(
-      RenderRepaintBoundary boundary, {
-      bool inFloorChunking = false,
-      ScrollController? scrollController,
-      double? totalLogicalHeight,
-    }) {
-      return captureBoundaryAsStrips(
-        boundary,
-        pixelRatio: _sharePixelRatio,
-        inFloorChunking: inFloorChunking,
-        scrollController: scrollController,
-        totalLogicalHeight: totalLogicalHeight,
-        limits: limits,
-      );
-    }
-
     try {
-      final headerBoundary = _captureKeys.header.currentContext
-          ?.findRenderObject() as RenderRepaintBoundary?;
-      if (headerBoundary == null) return null;
+      _setCaptureProgress('正在截取长图…');
+      final strips = await _captureFullCardScrollStrips();
+      if (strips.isEmpty) return null;
 
+      _setCaptureProgress('正在拼接…');
+
+      ShareRgbaStrip stitched;
       if (_shareAdvancedExport) {
         final estimatedPhysicalHeight =
             (estimatedCapturePixels / physicalWidth).ceil();
         final composer = VerticalRgbaComposer.fromEstimatedPhysicalSize(
           estimatedPhysicalHeight: estimatedPhysicalHeight,
         );
-
-        _setCaptureProgress('正在截取页眉…');
-        final headerStrips = await captureSection(headerBoundary);
-        if (headerStrips.isEmpty) return null;
-        for (final strip in headerStrips) {
+        for (final strip in strips) {
           composer.appendStrip(strip);
         }
+        stitched = composer.build();
+      } else {
+        stitched = await stitchRgbaVerticallyAsync(strips);
+      }
 
-        final floorCount = _captureKeys.floors.length;
-        for (var i = 0; i < floorCount; i++) {
-          _setCaptureProgress('正在截取第 ${i + 1}/$floorCount 层…');
-          final floorKey = _captureKeys.floors[i];
-          final boundary = floorKey.currentContext?.findRenderObject()
-              as RenderRepaintBoundary?;
-          if (boundary == null) return null;
-          final floorLogicalHeight = boundary.size.height;
-          final inFloor = shouldUseInFloorChunking(
-            advancedEnabled: _shareAdvancedExport,
-            floorLogicalHeight: floorLogicalHeight,
-            pixelRatio: _sharePixelRatio,
-            limits: limits,
-          );
-          final floorStrips = inFloor
-              ? await _captureInFloorStrips(floorIndex: i)
-              : await captureSection(boundary);
-          if (floorStrips.isEmpty) return null;
-          for (final strip in floorStrips) {
-            composer.appendStrip(strip);
-          }
-        }
+      var stitchedSize = shareCaptureSizeFromPhysical(
+        physicalWidth: stitched.width,
+        physicalHeight: stitched.height,
+        maxPixels: limits.maxPixels,
+      );
+      _rememberCaptureSize(stitchedSize);
 
-        final footerBoundary = _captureKeys.footer.currentContext
-            ?.findRenderObject() as RenderRepaintBoundary?;
-        if (footerBoundary == null) return null;
-        _setCaptureProgress('正在截取页脚…');
-        final footerStrips = await captureSection(footerBoundary);
-        if (footerStrips.isEmpty) return null;
-        for (final strip in footerStrips) {
-          composer.appendStrip(strip);
-        }
-
-        _setCaptureProgress('正在拼接…');
-        var stitched = composer.build();
-        var stitchedSize = shareCaptureSizeFromPhysical(
-          physicalWidth: stitched.width,
-          physicalHeight: stitched.height,
-          maxPixels: limits.maxPixels,
-        );
-        _rememberCaptureSize(stitchedSize);
-
-        if (exceedsShareCaptureHardCap(
-          estimatedCapturePixels: stitchedSize.totalPixels,
-          advanced: true,
-          limits: limits,
-        )) {
+      if (exceedsShareCaptureHardCap(
+        estimatedCapturePixels: stitchedSize.totalPixels,
+        advanced: _shareAdvancedExport,
+        limits: limits,
+      )) {
+        if (_shareAdvancedExport) {
           stitched = await scaleRgbaStripToFitPixelsAsync(
             stitched,
             maxPixels: limits.maxPixels,
@@ -635,45 +580,10 @@ class _SharePreviewSheetState extends ConsumerState<_SharePreviewSheet> {
           );
           _rememberCaptureSize(stitchedSize);
           _scaleExportNotice = formatScaledExportNotice(stitchedSize);
+        } else {
+          _showHeightCapError(stitchedSize);
+          return null;
         }
-        return await _encodeFromRgba(stitched);
-      }
-
-      final strips = <ShareRgbaStrip>[];
-      strips.addAll(await captureSection(headerBoundary));
-      if (strips.isEmpty) return null;
-
-      for (var i = 0; i < _captureKeys.floors.length; i++) {
-        final floorKey = _captureKeys.floors[i];
-        final boundary = floorKey.currentContext?.findRenderObject()
-            as RenderRepaintBoundary?;
-        if (boundary == null) return null;
-        final floorStrips = await captureSection(boundary);
-        if (floorStrips.isEmpty) return null;
-        strips.addAll(floorStrips);
-      }
-
-      final footerBoundary = _captureKeys.footer.currentContext
-          ?.findRenderObject() as RenderRepaintBoundary?;
-      if (footerBoundary == null) return null;
-      final footerStrips = await captureSection(footerBoundary);
-      if (footerStrips.isEmpty) return null;
-      strips.addAll(footerStrips);
-
-      final stitched = await stitchRgbaVerticallyAsync(strips);
-      final stitchedSize = shareCaptureSizeFromPhysical(
-        physicalWidth: stitched.width,
-        physicalHeight: stitched.height,
-        maxPixels: limits.maxPixels,
-      );
-      _rememberCaptureSize(stitchedSize);
-      if (exceedsShareCaptureHardCap(
-        estimatedCapturePixels: stitchedSize.totalPixels,
-        advanced: false,
-        limits: limits,
-      )) {
-        _showHeightCapError(stitchedSize);
-        return null;
       }
 
       return await _encodeFromRgba(stitched);
@@ -990,7 +900,7 @@ class _SharePreviewSheetState extends ConsumerState<_SharePreviewSheet> {
             ),
           ),
         ),
-        if (_inFloorCaptureFloorIndex != null)
+        if (_offscreenFullCardCapture)
           Positioned(
             left: -30000,
             top: 0,
@@ -1005,19 +915,30 @@ class _SharePreviewSheetState extends ConsumerState<_SharePreviewSheet> {
                     Theme.of(context).textTheme,
                   ),
                 ),
-                child: ShareFloorBlock(
-                  floor: widget.floors[_inFloorCaptureFloorIndex!],
-                  poll:
-                      _pollForFloor(widget.floors[_inFloorCaptureFloorIndex!]),
-                  showLeadingDivider: _inFloorCaptureFloorIndex! > 0,
-                  captureKey: _inFloorCaptureKey,
-                  inFloorSliceCapture: true,
-                  sliceScrollController: _inFloorScrollController,
-                  sliceViewportLogicalHeight:
-                      shareInFloorChunkLogicalSliceHeight(
-                    _sharePixelRatio,
-                    limits: _shareCaptureLimits,
-                  ).toDouble(),
+                child: RepaintBoundary(
+                  key: _offscreenCaptureKey,
+                  child: ColoredBox(
+                    color: S1Surface.card(scheme),
+                    child: SizedBox(
+                      width: ShareCard.cardWidth,
+                      height: shareInFloorChunkLogicalSliceHeight(
+                        _sharePixelRatio,
+                        limits: _shareCaptureLimits,
+                      ).toDouble(),
+                      child: SingleChildScrollView(
+                        controller: _offscreenScrollController,
+                        physics: const NeverScrollableScrollPhysics(),
+                        child: SizedBox(
+                          width: ShareCard.cardWidth,
+                          child: ShareCard(
+                            floors: widget.floors,
+                            threadSubject: widget.threadSubject,
+                            poll: widget.poll,
+                          ),
+                        ),
+                      ),
+                    ),
+                  ),
                 ),
               ),
             ),

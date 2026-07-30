@@ -1,6 +1,15 @@
 {
   "entries": [
     {
+      "version": "0.4.2",
+      "date": "2026-07-30",
+      "highlights": [
+        "系统导航栏适配：全屏页面 S1PageBody 包裹",
+        "audit_m3 强制系统底栏审计规则",
+        "高级搜索弹窗代码精简"
+      ]
+    },
+    {
       "version": "0.4.1",
       "date": "2026-07-29",
       "highlights": [

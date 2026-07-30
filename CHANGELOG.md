@@ -7,6 +7,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.4.2] - 2026-07-30
+
+### Fixed
+
+- **系统导航栏适配**：全屏页面包裹 S1PageBody，适配系统底栏
+- **审计脚本增强**：audit_m3 强制执行系统底栏规则
+
+### Changed
+
+- **高级搜索弹窗**：精简冗余代码
+- **S1PageBody 格式化**：统一缩进
+
 ## [0.4.1] - 2026-07-29
 
 ### Added

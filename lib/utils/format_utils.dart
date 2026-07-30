@@ -1,3 +1,9 @@
+/// 列表回复数等需完整展示的计数（不缩写、不加千分位逗号）。
+String formatFullCount(int n) {
+  if (n < 0) return '0';
+  return '$n';
+}
+
 /// 数字缩写：12345 → 1.2万，256823 → 25.7万，318 → 318
 String formatCount(int n) {
   if (n >= 100000) return '${(n / 10000).toStringAsFixed(0)}万';

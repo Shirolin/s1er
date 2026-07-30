@@ -2,6 +2,14 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:s1er/utils/format_utils.dart';
 
 void main() {
+  group('formatFullCount', () {
+    test('returns plain integer string without grouping', () {
+      expect(formatFullCount(318), '318');
+      expect(formatFullCount(1723), '1723');
+      expect(formatFullCount(1234567), '1234567');
+    });
+  });
+
   group('formatRegDate', () {
     test('formats unix timestamp', () {
       // 2019-03-19 19:01:40 UTC+8 approx - use known timestamp

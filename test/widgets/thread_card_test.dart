@@ -20,13 +20,19 @@ void main() {
     views: 100,
     replies: 5,
     fid: '4',
+    typeId: '1',
     typeName: 'NS',
   );
 
   Future<void> pumpCard(
     WidgetTester tester, {
     required ListDensity density,
+    Thread? thread,
+    String? selectedTypeId,
+    ThreadTypeFilterCallback? onTypeFilter,
+    ReadingRecord? record,
   }) async {
+    final t = thread ?? sampleThread;
     await tester.pumpWidget(
       ProviderScope(
         overrides: [
@@ -35,12 +41,16 @@ void main() {
               initial: AppSettings(threadListDensity: density),
             ),
           ),
-          readingRecordProvider(sampleThread.tid).overrideWithValue(null),
+          readingRecordProvider(t.tid).overrideWithValue(record),
         ],
         child: wrapWithAppTheme(
           SizedBox(
             width: 400,
-            child: ThreadCard(thread: sampleThread),
+            child: ThreadCard(
+              thread: t,
+              selectedTypeId: selectedTypeId,
+              onTypeFilter: onTypeFilter,
+            ),
           ),
         ),
       ),
@@ -130,16 +140,47 @@ void main() {
       1,
     );
     expect(
-      ThreadCardDensityTokens.forDensity(ListDensity.compact).inlineProgress,
+      ThreadCardDensityTokens.forDensity(ListDensity.compact).showProgressBar,
+      isFalse,
+    );
+    expect(
+      ThreadCardDensityTokens.forDensity(ListDensity.standard).showProgressBar,
       isTrue,
     );
     expect(
-      ThreadCardDensityTokens.forDensity(ListDensity.standard).inlineProgress,
+      ThreadCardDensityTokens.forDensity(ListDensity.compact).showPageChip,
       isFalse,
+    );
+    expect(
+      ThreadCardDensityTokens.forDensity(ListDensity.standard).showPageChip,
+      isTrue,
     );
   });
 
-  testWidgets('compact density shows reading progress as meta badge',
+  testWidgets('compact density hides page ActionChip', (tester) async {
+    final multiPageThread = sampleThread.copyWith(replies: 5000);
+    await pumpCard(
+      tester,
+      density: ListDensity.compact,
+      thread: multiPageThread,
+    );
+
+    expect(find.byType(ActionChip), findsNothing);
+  });
+
+  testWidgets('standard density keeps page ActionChip', (tester) async {
+    final multiPageThread = sampleThread.copyWith(replies: 5000);
+    await pumpCard(
+      tester,
+      density: ListDensity.standard,
+      thread: multiPageThread,
+    );
+
+    expect(find.byType(ActionChip), findsOneWidget);
+    expect(find.textContaining('页'), findsOneWidget);
+  });
+
+  testWidgets('compact density merges reading progress into reply meta',
       (tester) async {
     final record = ReadingRecord(
       tid: sampleThread.tid,
@@ -155,33 +196,19 @@ void main() {
       firstReadAt: 1,
     );
 
-    await tester.pumpWidget(
-      ProviderScope(
-        overrides: [
-          settingsProvider.overrideWith(
-            () => SettingsNotifier(
-              initial: const AppSettings(
-                threadListDensity: ListDensity.compact,
-              ),
-            ),
-          ),
-          readingRecordProvider(sampleThread.tid).overrideWithValue(record),
-        ],
-        child: wrapWithAppTheme(
-          SizedBox(
-            width: 400,
-            child: ThreadCard(thread: sampleThread),
-          ),
-        ),
-      ),
+    await pumpCard(
+      tester,
+      density: ListDensity.compact,
+      record: record,
     );
-    await tester.pumpAndSettle();
 
-    expect(find.text('#4/6'), findsOneWidget);
+    expect(find.textContaining('#4'), findsOneWidget);
+    expect(find.textContaining('#4/'), findsNothing);
     expect(find.byType(LinearProgressIndicator), findsNothing);
   });
 
-  testWidgets('standard density keeps reading progress bar', (tester) async {
+  testWidgets('standard density hides progress bar when finished',
+      (tester) async {
     final record = ReadingRecord(
       tid: sampleThread.tid,
       subject: sampleThread.subject,
@@ -196,30 +223,78 @@ void main() {
       firstReadAt: 1,
     );
 
-    await tester.pumpWidget(
-      ProviderScope(
-        overrides: [
-          settingsProvider.overrideWith(
-            () => SettingsNotifier(
-              initial: const AppSettings(
-                threadListDensity: ListDensity.standard,
-              ),
-            ),
-          ),
-          readingRecordProvider(sampleThread.tid).overrideWithValue(record),
-        ],
-        child: wrapWithAppTheme(
-          SizedBox(
-            width: 400,
-            child: ThreadCard(thread: sampleThread),
-          ),
-        ),
-      ),
+    await pumpCard(
+      tester,
+      density: ListDensity.standard,
+      record: record,
     );
-    await tester.pumpAndSettle();
 
-    expect(find.byIcon(Icons.check_circle_outline), findsOneWidget);
+    expect(find.textContaining('已读'), findsOneWidget);
+    expect(find.byType(LinearProgressIndicator), findsNothing);
+  });
+
+  testWidgets('standard density shows 2px progress bar while reading',
+      (tester) async {
+    final record = ReadingRecord(
+      tid: sampleThread.tid,
+      subject: sampleThread.subject,
+      author: sampleThread.author,
+      fid: sampleThread.fid,
+      lastReadPage: 1,
+      lastReadFloor: 4,
+      totalPages: 1,
+      totalReplies: 5,
+      perPage: 40,
+      lastReadAt: 1,
+      firstReadAt: 1,
+    );
+
+    await pumpCard(
+      tester,
+      density: ListDensity.standard,
+      record: record,
+    );
+
+    expect(find.textContaining('#4'), findsOneWidget);
     expect(find.byType(LinearProgressIndicator), findsOneWidget);
+    final bar = tester.widget<LinearProgressIndicator>(
+      find.byType(LinearProgressIndicator),
+    );
+    expect(bar.minHeight, 2);
+  });
+
+  testWidgets('reply count uses full number not abbreviation', (tester) async {
+    final busyThread = sampleThread.copyWith(replies: 1723);
+    await pumpCard(tester, density: ListDensity.compact, thread: busyThread);
+
+    expect(find.textContaining('1723'), findsOneWidget);
+    expect(find.textContaining('1,723'), findsNothing);
+    expect(find.textContaining('1.7k'), findsNothing);
+  });
+
+  testWidgets('category FilterChip toggles type filter', (tester) async {
+    String? filtered;
+    await pumpCard(
+      tester,
+      density: ListDensity.standard,
+      selectedTypeId: null,
+      onTypeFilter: (id) => filtered = id,
+    );
+
+    await tester.tap(find.widgetWithText(FilterChip, 'NS'));
+    await tester.pumpAndSettle();
+    expect(filtered, '1');
+
+    await pumpCard(
+      tester,
+      density: ListDensity.standard,
+      selectedTypeId: '1',
+      onTypeFilter: (id) => filtered = id,
+    );
+
+    await tester.tap(find.widgetWithText(FilterChip, 'NS'));
+    await tester.pumpAndSettle();
+    expect(filtered, isNull);
   });
 
   testWidgets('compact density truncates long category tags to 4 chars',
@@ -233,6 +308,7 @@ void main() {
       views: 100,
       replies: 5,
       fid: '4',
+      typeId: '2',
       typeName: '????????????',
     );
 
@@ -251,7 +327,11 @@ void main() {
         child: wrapWithAppTheme(
           SizedBox(
             width: 400,
-            child: ThreadCard(thread: longTagThread),
+            child: ThreadCard(
+              thread: longTagThread,
+              onTypeFilter: (_) {},
+              selectedTypeId: null,
+            ),
           ),
         ),
       ),
@@ -260,6 +340,22 @@ void main() {
 
     expect(find.text('????'), findsOneWidget);
     expect(find.text('????????????'), findsNothing);
+  });
+
+  testWidgets('sticky thread uses primaryContainer and pin icon',
+      (tester) async {
+    final stickyThread = sampleThread.copyWith(displayOrder: 1);
+    await pumpCard(
+      tester,
+      density: ListDensity.standard,
+      thread: stickyThread,
+    );
+
+    final card = tester.widget<Card>(find.byType(Card));
+    final scheme = Theme.of(tester.element(find.byType(Card))).colorScheme;
+    expect(card.color, scheme.primaryContainer);
+    expect(find.byIcon(Icons.push_pin), findsOneWidget);
+    expect(find.textContaining('置顶'), findsNothing);
   });
 
   testWidgets('standard density keeps full category tag', (tester) async {

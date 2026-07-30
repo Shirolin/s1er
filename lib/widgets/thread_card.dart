@@ -19,6 +19,9 @@ typedef ThreadOpenCallback = void Function(
   int? resumePageHint,
 });
 
+/// `null` 表示取消筛选。
+typedef ThreadTypeFilterCallback = void Function(String? typeId);
+
 /// Spacing / layout tokens for [ThreadCard] density modes.
 class ThreadCardDensityTokens {
   const ThreadCardDensityTokens({
@@ -30,7 +33,11 @@ class ThreadCardDensityTokens {
     required this.progressTop,
     required this.inlineTag,
     required this.tagMaxChars,
-    required this.inlineProgress,
+    required this.showProgressBar,
+    required this.showPageChip,
+    required this.categoryChipVisualDensity,
+    required this.categoryChipLabelPadding,
+    required this.categoryFilterBarPadding,
   });
 
   final double cardMarginVertical;
@@ -44,8 +51,15 @@ class ThreadCardDensityTokens {
   /// Max category tag characters when [inlineTag]; null = no truncation.
   final int? tagMaxChars;
 
-  /// When true, reading progress is a meta-row badge (no dedicated bar row).
-  final bool inlineProgress;
+  /// Standard density: 2px reading progress bar under meta row.
+  final bool showProgressBar;
+
+  /// Meta-row page picker chip (compact hides to save horizontal space).
+  final bool showPageChip;
+
+  final VisualDensity categoryChipVisualDensity;
+  final EdgeInsetsGeometry categoryChipLabelPadding;
+  final EdgeInsets categoryFilterBarPadding;
 
   static const standard = ThreadCardDensityTokens(
     cardMarginVertical: 4,
@@ -56,8 +70,15 @@ class ThreadCardDensityTokens {
     progressTop: 6,
     inlineTag: false,
     tagMaxChars: null,
-    inlineProgress: false,
+    showProgressBar: true,
+    showPageChip: true,
+    categoryChipVisualDensity: VisualDensity.compact,
+    categoryChipLabelPadding: EdgeInsets.symmetric(horizontal: 6),
+    categoryFilterBarPadding: EdgeInsets.symmetric(horizontal: 12, vertical: 6),
   );
+
+  static const _compactCategoryChipVisualDensity =
+      VisualDensity(horizontal: -2, vertical: -4);
 
   static const compact = ThreadCardDensityTokens(
     cardMarginVertical: 2,
@@ -68,7 +89,11 @@ class ThreadCardDensityTokens {
     progressTop: 4,
     inlineTag: true,
     tagMaxChars: 4,
-    inlineProgress: true,
+    showProgressBar: false,
+    showPageChip: false,
+    categoryChipVisualDensity: _compactCategoryChipVisualDensity,
+    categoryChipLabelPadding: EdgeInsets.symmetric(horizontal: 4),
+    categoryFilterBarPadding: EdgeInsets.symmetric(horizontal: 12, vertical: 4),
   );
 
   static ThreadCardDensityTokens forDensity(ListDensity density) {
@@ -87,12 +112,20 @@ class ThreadCard extends ConsumerWidget {
     super.key,
     required this.thread,
     this.onOpenThread,
+    this.onTypeFilter,
+    this.selectedTypeId,
     this.selected = false,
   });
   final Thread thread;
 
   /// Overrides normal route navigation for the forum desktop detail pane.
   final ThreadOpenCallback? onOpenThread;
+
+  /// 点击主题分类筛选；再点已选分类传 `null` 取消。
+  final ThreadTypeFilterCallback? onTypeFilter;
+
+  /// 与版块顶栏 [FilterChip] 同步的当前筛选 typeId。
+  final String? selectedTypeId;
   final bool selected;
 
   int _calcTotalPages(
@@ -175,6 +208,9 @@ class ThreadCard extends ConsumerWidget {
       color: scheme.onSurfaceVariant,
       height: 1.2,
     );
+    final typeId = thread.typeId;
+    final canFilterType =
+        onTypeFilter != null && typeId != null && typeId.isNotEmpty;
 
     return Semantics(
       selected: selected,
@@ -211,6 +247,10 @@ class ThreadCard extends ConsumerWidget {
                   isSticky: isSticky,
                   hasTag: hasTag,
                   tagName: thread.typeName,
+                  typeId: typeId,
+                  selectedTypeId: selectedTypeId,
+                  onTypeFilter: canFilterType ? onTypeFilter : null,
+                  isOnTintedCard: isSticky || selected,
                   scheme: scheme,
                   textTheme: textTheme,
                   tokens: tokens,
@@ -220,17 +260,18 @@ class ThreadCard extends ConsumerWidget {
                   author: thread.author,
                   time: formatTimeAgo(thread.dateline),
                   views: formatCount(thread.views),
-                  replies: formatCount(thread.replies),
+                  replyCount: thread.replies,
                   totalPages: totalPages,
                   metaStyle: metaStyle,
                   scheme: scheme,
-                  onPageTap:
-                      totalPages > 1 ? () => _showPageSheet(context) : null,
+                  showPageChip: tokens.showPageChip,
+                  onPageTap: tokens.showPageChip && totalPages > 1
+                      ? () => _showPageSheet(context)
+                      : null,
                   tid: thread.tid,
                   liveTotalReplies: thread.replies,
-                  showInlineProgress: tokens.inlineProgress,
                 ),
-                if (!tokens.inlineProgress)
+                if (tokens.showProgressBar)
                   _ReadingProgressBar(
                     tid: thread.tid,
                     liveTotalReplies: thread.replies,
@@ -246,18 +287,8 @@ class ThreadCard extends ConsumerWidget {
 }
 
 // ═══════════════════════════════════════════════════════════
-//  阅读进度指示器：无记录时不占位（仅标准密度）
+//  阅读进度：标准密度 2px 细条（文案已并入 meta 回复数）
 // ═══════════════════════════════════════════════════════════
-
-String? _readingProgressLabel({
-  required int lastReadFloor,
-  required int liveTotalReplies,
-  required bool isFinished,
-}) {
-  if (isFinished) return '已读';
-  final liveTotalPosts = liveTotalReplies + 1;
-  return '#$lastReadFloor/$liveTotalPosts';
-}
 
 class _ReadingProgressBar extends ConsumerWidget {
   const _ReadingProgressBar({
@@ -271,117 +302,29 @@ class _ReadingProgressBar extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    // 按 tid 订阅阅读记录，仅在对应记录变化时重建。
     final record = ref.watch(readingRecordProvider(tid));
     if (record == null || record.progressAt(liveTotalReplies) <= 0) {
       return const SizedBox.shrink();
     }
 
     final scheme = Theme.of(context).colorScheme;
-    final textTheme = Theme.of(context).textTheme;
     final isFinished = record.isFinishedAt(liveTotalReplies);
-    final accent = isFinished ? scheme.onSurfaceVariant : scheme.primary;
-    final label = _readingProgressLabel(
-      lastReadFloor: record.lastReadFloor,
-      liveTotalReplies: liveTotalReplies,
-      isFinished: isFinished,
-    )!;
+    if (isFinished) {
+      return const SizedBox.shrink();
+    }
 
     return Padding(
       padding: EdgeInsets.only(top: progressTop),
-      child: Row(
-        children: [
-          Icon(
-            isFinished ? Icons.check_circle_outline : Icons.schedule,
-            size: 12,
-            color: accent,
-          ),
-          const SizedBox(width: 4),
-          Expanded(
-            child: ClipRRect(
-              borderRadius: S1Shape.extraSmall,
-              child: LinearProgressIndicator(
-                value: record.progressAt(liveTotalReplies),
-                minHeight: 3,
-                backgroundColor: scheme.surfaceContainerHighest,
-                valueColor: AlwaysStoppedAnimation<Color>(
-                  isFinished
-                      ? scheme.onSurfaceVariant
-                          .withValues(alpha: S1Alpha.medium)
-                      : scheme.primary,
-                ),
-              ),
-            ),
-          ),
-          const SizedBox(width: 6),
-          Text(
-            label,
-            style: textTheme.labelSmall?.copyWith(
-              color: accent,
-              fontWeight: FontWeight.w500,
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-/// Compact density: reading progress as a meta-row chip (no extra bar row).
-class _CompactReadingBadge extends ConsumerWidget {
-  const _CompactReadingBadge({
-    required this.tid,
-    required this.liveTotalReplies,
-    required this.metaStyle,
-  });
-
-  final String tid;
-  final int liveTotalReplies;
-  final TextStyle? metaStyle;
-
-  @override
-  Widget build(BuildContext context, WidgetRef ref) {
-    final record = ref.watch(readingRecordProvider(tid));
-    if (record == null || record.progressAt(liveTotalReplies) <= 0) {
-      return const SizedBox.shrink();
-    }
-
-    final scheme = Theme.of(context).colorScheme;
-    final isFinished = record.isFinishedAt(liveTotalReplies);
-    final label = _readingProgressLabel(
-      lastReadFloor: record.lastReadFloor,
-      liveTotalReplies: liveTotalReplies,
-      isFinished: isFinished,
-    )!;
-
-    final Color fg;
-    final Color bg;
-    if (isFinished) {
-      fg = scheme.onSurfaceVariant;
-      bg = scheme.surfaceContainerHighest;
-    } else {
-      fg = scheme.onPrimaryContainer;
-      bg = scheme.primaryContainer;
-    }
-
-    return Padding(
-      padding: const EdgeInsets.only(left: 8),
-      child: Chip(
-        label: CompactLabel.text(
-          label,
-          style: CompactLabel.style(
-            context,
-            base: metaStyle,
-            color: fg,
-            fontWeight: FontWeight.w500,
+      child: ClipRRect(
+        borderRadius: S1Shape.extraSmall,
+        child: LinearProgressIndicator(
+          value: record.progressAt(liveTotalReplies),
+          minHeight: 2,
+          backgroundColor: scheme.surfaceContainerHighest,
+          valueColor: AlwaysStoppedAnimation<Color>(
+            scheme.primary.withValues(alpha: S1Alpha.strong),
           ),
         ),
-        labelPadding: const EdgeInsets.symmetric(horizontal: 6),
-        backgroundColor: bg,
-        side: BorderSide.none,
-        visualDensity: VisualDensity.compact,
-        materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
-        padding: EdgeInsets.zero,
       ),
     );
   }
@@ -397,6 +340,10 @@ class _TitleLine extends StatelessWidget {
     required this.isSticky,
     required this.hasTag,
     required this.tagName,
+    required this.typeId,
+    required this.selectedTypeId,
+    required this.onTypeFilter,
+    required this.isOnTintedCard,
     required this.scheme,
     required this.textTheme,
     required this.tokens,
@@ -405,6 +352,10 @@ class _TitleLine extends StatelessWidget {
   final bool isSticky;
   final bool hasTag;
   final String? tagName;
+  final String? typeId;
+  final String? selectedTypeId;
+  final ThreadTypeFilterCallback? onTypeFilter;
+  final bool isOnTintedCard;
   final ColorScheme scheme;
   final TextTheme textTheme;
   final ThreadCardDensityTokens tokens;
@@ -424,11 +375,21 @@ class _TitleLine extends StatelessWidget {
     final pin =
         isSticky ? Icon(Icons.push_pin, size: 13, color: scheme.primary) : null;
 
-    final tag = hasTag
+    final fullTagName = tagName ?? '';
+    final displayTag =
+        hasTag ? _truncateTagLabel(fullTagName, tokens.tagMaxChars) : null;
+
+    final tag = hasTag && displayTag != null
         ? _CategoryTag(
-            label: _truncateTagLabel(tagName!, tokens.tagMaxChars),
-            color: scheme.onSecondaryContainer,
-            bgColor: scheme.secondaryContainer,
+            label: displayTag,
+            fullLabel: fullTagName,
+            typeId: typeId,
+            selected: typeId != null && selectedTypeId == typeId,
+            onTypeFilter: onTypeFilter,
+            isOnTintedCard: isOnTintedCard,
+            chipVisualDensity: tokens.categoryChipVisualDensity,
+            chipLabelPadding: tokens.categoryChipLabelPadding,
+            scheme: scheme,
           )
         : null;
 
@@ -438,7 +399,7 @@ class _TitleLine extends StatelessWidget {
         children: [
           if (tag != null) ...[
             tag,
-            const SizedBox(width: 6),
+            SizedBox(width: tokens.inlineTag ? 4 : 6),
           ],
           if (pin != null) ...[
             pin,
@@ -488,33 +449,32 @@ class _MetaLine extends StatelessWidget {
     required this.author,
     required this.time,
     required this.views,
-    required this.replies,
+    required this.replyCount,
     required this.totalPages,
     required this.metaStyle,
     required this.scheme,
     required this.tid,
     required this.liveTotalReplies,
-    required this.showInlineProgress,
+    required this.showPageChip,
     this.onPageTap,
   });
   final String author;
   final String time;
   final String views;
-  final String replies;
+  final int replyCount;
   final int totalPages;
   final TextStyle? metaStyle;
   final ColorScheme scheme;
   final VoidCallback? onPageTap;
   final String tid;
   final int liveTotalReplies;
-  final bool showInlineProgress;
+  final bool showPageChip;
 
   @override
   Widget build(BuildContext context) {
     return Row(
       mainAxisAlignment: MainAxisAlignment.spaceBetween,
       children: [
-        // ── 左侧：作者 + 时间（可压缩） ──
         Flexible(
           child: Text.rich(
             TextSpan(
@@ -543,55 +503,158 @@ class _MetaLine extends StatelessWidget {
           ),
         ),
         const SizedBox(width: 8),
-        // ── 右侧：统计 + 阅读进度徽标（紧凑） + 页码 ──
-        Row(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.center,
-          children: [
-            _MetaStat(
-              icon: Icons.visibility_outlined,
-              value: views,
-              color: scheme.onSurfaceVariant,
-              textStyle: metaStyle,
-            ),
-            const SizedBox(width: 8),
-            _MetaStat(
-              icon: Icons.chat_bubble_outline,
-              value: replies,
-              color: scheme.onSurfaceVariant,
-              textStyle: metaStyle,
-              iconOffset: const Offset(0, 0.5),
-            ),
-            if (showInlineProgress)
-              _CompactReadingBadge(
-                tid: tid,
-                liveTotalReplies: liveTotalReplies,
-                metaStyle: metaStyle,
-              ),
-            if (totalPages > 1) ...[
-              const SizedBox(width: 8),
-              ActionChip(
-                label: CompactLabel.text(
-                  '$totalPages页',
-                  style: CompactLabel.style(
-                    context,
-                    base: metaStyle,
-                    color: scheme.onSecondaryContainer,
-                    fontWeight: FontWeight.w500,
-                  ),
+        Flexible(
+          child: FittedBox(
+            fit: BoxFit.scaleDown,
+            alignment: Alignment.centerRight,
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.center,
+              children: [
+                _MetaStat(
+                  icon: Icons.visibility_outlined,
+                  value: views,
+                  color: scheme.onSurfaceVariant,
+                  textStyle: metaStyle,
                 ),
-                labelPadding: const EdgeInsets.symmetric(horizontal: 6),
-                backgroundColor: scheme.secondaryContainer,
-                side: BorderSide.none,
-                visualDensity: VisualDensity.compact,
-                materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
-                padding: EdgeInsets.zero,
-                onPressed: onPageTap,
-              ),
-            ],
-          ],
+                const SizedBox(width: 6),
+                _ReplyMetaStat(
+                  replyCount: replyCount,
+                  tid: tid,
+                  liveTotalReplies: liveTotalReplies,
+                  color: scheme.onSurfaceVariant,
+                  textStyle: metaStyle,
+                  scheme: scheme,
+                ),
+                if (showPageChip && totalPages > 1 && onPageTap != null) ...[
+                  const SizedBox(width: 6),
+                  ActionChip(
+                    label: CompactLabel.text(
+                      '$totalPages页',
+                      style: CompactLabel.style(
+                        context,
+                        base: metaStyle,
+                        color: scheme.onSecondaryContainer,
+                        fontWeight: FontWeight.w500,
+                      ),
+                    ),
+                    labelPadding: const EdgeInsets.symmetric(horizontal: 6),
+                    backgroundColor: scheme.secondaryContainer,
+                    side: BorderSide.none,
+                    visualDensity: VisualDensity.compact,
+                    materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                    padding: EdgeInsets.zero,
+                    onPressed: onPageTap,
+                  ),
+                ],
+              ],
+            ),
+          ),
         ),
       ],
+    );
+  }
+}
+
+class _ReplyMetaStat extends ConsumerWidget {
+  const _ReplyMetaStat({
+    required this.replyCount,
+    required this.tid,
+    required this.liveTotalReplies,
+    required this.color,
+    required this.textStyle,
+    required this.scheme,
+  });
+
+  final int replyCount;
+  final String tid;
+  final int liveTotalReplies;
+  final Color color;
+  final TextStyle? textStyle;
+  final ColorScheme scheme;
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final record = ref.watch(readingRecordProvider(tid));
+    final base = formatFullCount(replyCount);
+    final progress = record?.progressAt(liveTotalReplies) ?? 0;
+    final isFinished = record != null && record.isFinishedAt(liveTotalReplies);
+
+    return Row(
+      mainAxisSize: MainAxisSize.min,
+      crossAxisAlignment: CrossAxisAlignment.center,
+      children: [
+        Transform.translate(
+          offset: const Offset(0, 0.5),
+          child: Icon(Icons.chat_bubble_outline, size: 12, color: color),
+        ),
+        const SizedBox(width: 2),
+        CompactLabel.text(
+          base,
+          style: CompactLabel.style(
+            context,
+            base: textStyle,
+            color: color,
+          ),
+        ),
+        if (record != null && progress > 0) ...[
+          const SizedBox(width: 4),
+          _ReadingStateBadge(
+            isFinished: isFinished,
+            lastReadFloor: record.lastReadFloor,
+            textStyle: textStyle,
+            scheme: scheme,
+          ),
+        ],
+      ],
+    );
+  }
+}
+
+/// 阅读进度角标：与回复数分列，避免 `19,001#18980` 连成一片。
+class _ReadingStateBadge extends StatelessWidget {
+  const _ReadingStateBadge({
+    required this.isFinished,
+    required this.lastReadFloor,
+    required this.textStyle,
+    required this.scheme,
+  });
+
+  final bool isFinished;
+  final int lastReadFloor;
+  final TextStyle? textStyle;
+  final ColorScheme scheme;
+
+  @override
+  Widget build(BuildContext context) {
+    if (isFinished) {
+      return Badge(
+        label: CompactLabel.text(
+          '已读',
+          style: CompactLabel.style(
+            context,
+            base: textStyle,
+            color: scheme.onSurfaceVariant,
+            fontWeight: FontWeight.w500,
+          ),
+        ),
+        backgroundColor: scheme.surfaceContainerHighest,
+        padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 1),
+      );
+    }
+
+    return Badge(
+      label: CompactLabel.text(
+        '#${formatFullCount(lastReadFloor)}',
+        style: CompactLabel.style(
+          context,
+          base: textStyle,
+          color: scheme.onPrimaryContainer,
+          fontWeight: FontWeight.w600,
+        ),
+      ),
+      backgroundColor: scheme.primaryContainer,
+      padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 1),
     );
   }
 }
@@ -602,14 +665,12 @@ class _MetaStat extends StatelessWidget {
     required this.value,
     required this.color,
     required this.textStyle,
-    this.iconOffset = Offset.zero,
   });
 
   final IconData icon;
   final String value;
   final Color color;
   final TextStyle? textStyle;
-  final Offset iconOffset;
 
   @override
   Widget build(BuildContext context) {
@@ -617,10 +678,7 @@ class _MetaStat extends StatelessWidget {
       mainAxisSize: MainAxisSize.min,
       crossAxisAlignment: CrossAxisAlignment.center,
       children: [
-        Transform.translate(
-          offset: iconOffset,
-          child: Icon(icon, size: 12, color: color),
-        ),
+        Icon(icon, size: 12, color: color),
         const SizedBox(width: 2),
         CompactLabel.text(
           value,
@@ -636,7 +694,7 @@ class _MetaStat extends StatelessWidget {
 }
 
 // ═══════════════════════════════════════════════════════════
-//  分类标签
+//  分类标签（可筛选 FilterChip / 只读 Chip）
 // ═══════════════════════════════════════════════════════════
 
 String _truncateTagLabel(String label, int? maxChars) {
@@ -647,28 +705,82 @@ String _truncateTagLabel(String label, int? maxChars) {
 class _CategoryTag extends StatelessWidget {
   const _CategoryTag({
     required this.label,
-    required this.color,
-    required this.bgColor,
+    required this.fullLabel,
+    required this.typeId,
+    required this.selected,
+    required this.onTypeFilter,
+    required this.isOnTintedCard,
+    required this.chipVisualDensity,
+    required this.chipLabelPadding,
+    required this.scheme,
   });
   final String label;
-  final Color color;
-  final Color bgColor;
+  final String fullLabel;
+  final String? typeId;
+  final bool selected;
+  final ThreadTypeFilterCallback? onTypeFilter;
+  final bool isOnTintedCard;
+  final VisualDensity chipVisualDensity;
+  final EdgeInsetsGeometry chipLabelPadding;
+  final ColorScheme scheme;
 
   @override
   Widget build(BuildContext context) {
+    final labelStyle = CompactLabel.style(
+      context,
+      fontWeight: FontWeight.w600,
+    );
+
+    if (onTypeFilter != null && typeId != null) {
+      final chipBg = selected
+          ? scheme.secondaryContainer
+          : isOnTintedCard
+              ? S1Surface.card(scheme)
+              : scheme.surfaceContainerHighest;
+
+      final chip = FilterChip(
+        label: CompactLabel.text(label, style: labelStyle),
+        selected: selected,
+        showCheckmark: false,
+        backgroundColor: chipBg,
+        selectedColor: scheme.secondaryContainer,
+        side: BorderSide(
+          color: selected
+              ? Colors.transparent
+              : scheme.outline.withValues(alpha: S1Alpha.subtle),
+        ),
+        visualDensity: chipVisualDensity,
+        materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
+        labelPadding: chipLabelPadding,
+        padding: EdgeInsets.zero,
+        onSelected: (nextSelected) {
+          S1Haptics.selection();
+          if (nextSelected) {
+            onTypeFilter!(typeId);
+          } else {
+            onTypeFilter!(null);
+          }
+        },
+      );
+      if (fullLabel != label) {
+        return Tooltip(message: fullLabel, child: chip);
+      }
+      return chip;
+    }
+
     return Chip(
       label: CompactLabel.text(
         label,
         style: CompactLabel.style(
           context,
-          color: color,
+          color: scheme.onSurfaceVariant,
           fontWeight: FontWeight.w600,
         ),
       ),
-      backgroundColor: bgColor,
+      backgroundColor: scheme.surfaceContainerHighest,
       side: BorderSide.none,
-      labelPadding: const EdgeInsets.symmetric(horizontal: 6),
-      visualDensity: VisualDensity.compact,
+      labelPadding: chipLabelPadding,
+      visualDensity: chipVisualDensity,
       materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
       padding: EdgeInsets.zero,
     );

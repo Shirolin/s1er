@@ -11,7 +11,6 @@ import '../providers/auth_provider.dart';
 import '../providers/settings_provider.dart';
 import '../providers/thread_list_provider.dart';
 import '../widgets/app_bar_more_menu.dart';
-import '../providers/pinned_threads_provider.dart';
 import '../widgets/favorite_bookmark_button.dart';
 import '../widgets/hide_forum_confirm_dialog.dart';
 import '../models/favorite_item.dart';
@@ -23,6 +22,7 @@ import '../widgets/s1_fab_layout.dart';
 import '../widgets/s1_list_boundary_footer.dart';
 import '../widgets/s1_local_search_bar.dart';
 import '../widgets/s1_swipe_pagination.dart';
+import '../widgets/thread_context_sheet.dart';
 import '../widgets/thread_card.dart';
 import '../widgets/skeleton/s1_async_list_loading.dart';
 import '../widgets/skeleton/thread_card_skeleton.dart';
@@ -373,6 +373,10 @@ class _ForumThreadList extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final threads = _filterThreads(state.threads, pageSearchQuery);
     final hasQuery = PageSearch.normalizeQuery(pageSearchQuery).isNotEmpty;
+    final listDensity = ref.watch(
+      settingsProvider.select((s) => s.threadListDensity),
+    );
+    final chipTokens = ThreadCardDensityTokens.forDensity(listDensity);
 
     return Column(
       children: [
@@ -382,6 +386,9 @@ class _ForumThreadList extends ConsumerWidget {
             threadTypes: state.threadTypes,
             selectedTypeId: state.selectedTypeId,
             enabled: !state.isLoading,
+            chipVisualDensity: chipTokens.categoryChipVisualDensity,
+            chipLabelPadding: chipTokens.categoryChipLabelPadding,
+            barPadding: chipTokens.categoryFilterBarPadding,
             onSelected: (typeId) =>
                 ref.read(threadListProvider(fid).notifier).selectType(typeId),
           ),
@@ -455,102 +462,11 @@ class _ForumThreadList extends ConsumerWidget {
                                   child: GestureDetector(
                                     onLongPress: () {
                                       S1Haptics.selection();
-                                      final isPinned = ref
-                                          .read(pinnedThreadsProvider.notifier)
-                                          .isPinned(thread.tid);
-                                      showModalBottomSheet<void>(
+                                      showThreadContextSheet(
                                         context: context,
-                                        builder: (sheetContext) {
-                                          return SafeArea(
-                                            child: Column(
-                                              mainAxisSize: MainAxisSize.min,
-                                              children: [
-                                                Padding(
-                                                  padding:
-                                                      const EdgeInsets.fromLTRB(
-                                                    16,
-                                                    16,
-                                                    16,
-                                                    8,
-                                                  ),
-                                                  child: Text(
-                                                    thread.subject,
-                                                    style: Theme.of(context)
-                                                        .textTheme
-                                                        .titleMedium
-                                                        ?.copyWith(
-                                                          fontWeight:
-                                                              FontWeight.bold,
-                                                        ),
-                                                    maxLines: 2,
-                                                    overflow:
-                                                        TextOverflow.ellipsis,
-                                                  ),
-                                                ),
-                                                Divider(
-                                                  color: Theme.of(context)
-                                                      .colorScheme
-                                                      .outlineVariant,
-                                                ),
-                                                ListTile(
-                                                  leading: Icon(
-                                                    isPinned
-                                                        ? Icons
-                                                            .push_pin_outlined
-                                                        : Icons.push_pin,
-                                                  ),
-                                                  title: Text(
-                                                    isPinned ? '取消置顶' : '钉在首页',
-                                                  ),
-                                                  onTap: () {
-                                                    Navigator.pop(sheetContext);
-                                                    if (isPinned) {
-                                                      ref
-                                                          .read(
-                                                            pinnedThreadsProvider
-                                                                .notifier,
-                                                          )
-                                                          .unpin(thread.tid);
-                                                      S1SnackBar.show(
-                                                        context,
-                                                        message: '已取消置顶',
-                                                      );
-                                                    } else {
-                                                      final title = thread
-                                                              .subject
-                                                              .trim()
-                                                              .isNotEmpty
-                                                          ? thread.subject
-                                                              .trim()
-                                                          : '帖子 ${thread.tid}';
-                                                      final ok = ref
-                                                          .read(
-                                                            pinnedThreadsProvider
-                                                                .notifier,
-                                                          )
-                                                          .pin(
-                                                            tid: thread.tid,
-                                                            title: title,
-                                                          );
-                                                      if (ok) {
-                                                        S1SnackBar.show(
-                                                          context,
-                                                          message: '已钉在首页',
-                                                        );
-                                                      } else {
-                                                        S1SnackBar.show(
-                                                          context,
-                                                          message:
-                                                              '首页置顶已满（10 条），请先移除一条',
-                                                        );
-                                                      }
-                                                    }
-                                                  },
-                                                ),
-                                              ],
-                                            ),
-                                          );
-                                        },
+                                        ref: ref,
+                                        thread: thread,
+                                        onOpenThread: onOpenThread,
                                       );
                                     },
                                     child: ThreadCard(
@@ -558,6 +474,12 @@ class _ForumThreadList extends ConsumerWidget {
                                       thread: thread,
                                       selected: thread.tid == selectedThreadId,
                                       onOpenThread: onOpenThread,
+                                      selectedTypeId: state.selectedTypeId,
+                                      onTypeFilter: (typeId) => ref
+                                          .read(
+                                            threadListProvider(fid).notifier,
+                                          )
+                                          .selectType(typeId),
                                     ),
                                   ),
                                 );
@@ -583,19 +505,25 @@ class _ThreadTypeFilterBar extends StatelessWidget {
     required this.threadTypes,
     required this.selectedTypeId,
     required this.enabled,
+    required this.chipVisualDensity,
+    required this.chipLabelPadding,
+    required this.barPadding,
     required this.onSelected,
   });
 
   final Map<String, String> threadTypes;
   final String? selectedTypeId;
   final bool enabled;
+  final VisualDensity chipVisualDensity;
+  final EdgeInsetsGeometry chipLabelPadding;
+  final EdgeInsets barPadding;
   final ValueChanged<String?> onSelected;
 
   @override
   Widget build(BuildContext context) {
     return SingleChildScrollView(
       scrollDirection: Axis.horizontal,
-      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+      padding: barPadding,
       child: Row(
         children: [
           Padding(
@@ -603,8 +531,12 @@ class _ThreadTypeFilterBar extends StatelessWidget {
             child: FilterChip(
               label: const Text('全部'),
               selected: selectedTypeId == null,
-              showCheckmark: true,
+              showCheckmark: false,
               side: BorderSide.none,
+              visualDensity: chipVisualDensity,
+              materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
+              labelPadding: chipLabelPadding,
+              padding: EdgeInsets.zero,
               onSelected: enabled ? (_) => onSelected(null) : null,
             ),
           ),
@@ -614,8 +546,12 @@ class _ThreadTypeFilterBar extends StatelessWidget {
               child: FilterChip(
                 label: Text(entry.value),
                 selected: selectedTypeId == entry.key,
-                showCheckmark: true,
+                showCheckmark: false,
                 side: BorderSide.none,
+                visualDensity: chipVisualDensity,
+                materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                labelPadding: chipLabelPadding,
+                padding: EdgeInsets.zero,
                 onSelected: enabled ? (_) => onSelected(entry.key) : null,
               ),
             ),

@@ -12,9 +12,11 @@ void main() {
       MaterialApp(
         home: Builder(
           builder: (context) {
-            bridge.publish(const ThreadDetailChromeSnapshot(
-              canPrevPage: true,
-            ),);
+            bridge.publish(
+              const ThreadDetailChromeSnapshot(
+                canPrevPage: true,
+              ),
+            );
             return ListenableBuilder(
               listenable: bridge,
               builder: (context, _) => Text(

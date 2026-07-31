@@ -1,5 +1,6 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import '../config/api_config.dart';
@@ -8,11 +9,15 @@ import '../widgets/s1_content_width.dart';
 import 'thread_detail_screen.dart';
 import '../providers/forum_name_provider.dart';
 import '../providers/auth_provider.dart';
+import '../providers/post_provider.dart';
 import '../providers/settings_provider.dart';
 import '../providers/thread_list_provider.dart';
 import '../widgets/app_bar_more_menu.dart';
 import '../widgets/favorite_bookmark_button.dart';
+import '../widgets/forum_split_breadcrumb_title.dart';
+import '../widgets/forum_split_pane_divider.dart';
 import '../widgets/hide_forum_confirm_dialog.dart';
+import '../widgets/thread_detail_chrome_bridge.dart';
 import '../models/favorite_item.dart';
 import '../models/new_thread_submit_result.dart';
 import '../models/thread.dart';
@@ -33,6 +38,7 @@ import '../models/thread_open_intent.dart';
 import '../models/thread_destination.dart';
 import '../utils/thread_navigation.dart';
 import '../theme/s1_haptics.dart';
+import '../theme/app_theme.dart';
 import '../widgets/thread_open_intent_scope.dart';
 
 class ForumListScreen extends ConsumerStatefulWidget {
@@ -52,9 +58,17 @@ class ForumListScreen extends ConsumerStatefulWidget {
 
 class _ForumListScreenState extends ConsumerState<ForumListScreen> {
   final _swipeKey = GlobalKey<S1SwipePaginationState>();
+  final _detailChrome = ThreadDetailChromeBridge();
   bool _showScrollToTop = false;
   bool _pageSearchOpen = false;
   String _pageSearchQuery = '';
+  double? _dragListPaneWidth;
+
+  @override
+  void dispose() {
+    _detailChrome.dispose();
+    super.dispose();
+  }
 
   void _openThread(
     ThreadDestination destination, {
@@ -95,6 +109,86 @@ class _ForumListScreenState extends ConsumerState<ForumListScreen> {
     if (mounted) unawaited(context.push('/thread/${result.tid}'));
   }
 
+  void _closeSplitDetail() {
+    context.replace('/forum/${widget.fid}');
+  }
+
+  bool _acceptsGlobalShortcut() {
+    final focusContext = FocusManager.instance.primaryFocus?.context;
+    return focusContext == null ||
+        (focusContext.widget is! EditableText &&
+            focusContext.findAncestorWidgetOfExactType<EditableText>() == null);
+  }
+
+  void _selectAdjacentThread(int delta) {
+    final state = ref.read(threadListProvider(widget.fid)).asData?.value;
+    final selectedId = widget.selectedThreadId;
+    if (state == null || selectedId == null) return;
+    final threads = state.threads;
+    final index = threads.indexWhere((t) => t.tid == selectedId);
+    if (index < 0) return;
+    final next = index + delta;
+    if (next < 0 || next >= threads.length) return;
+    _openThread(ResumeThread(threads[next].tid));
+  }
+
+  void _onListPaneDragDelta(double delta, double availableWidth) {
+    final stored = ref.read(settingsProvider).forumSplitListPaneWidth;
+    final current =
+        _dragListPaneWidth ?? stored ?? forumListPaneWidth(availableWidth);
+    setState(() {
+      _dragListPaneWidth = forumListPaneWidth(
+        availableWidth,
+        userOverride: current + delta,
+      );
+    });
+  }
+
+  void _persistListPaneWidth(double availableWidth) {
+    final width = _dragListPaneWidth;
+    if (width == null) return;
+    ref.read(settingsProvider.notifier).setForumSplitListPaneWidth(width);
+    setState(() => _dragListPaneWidth = null);
+  }
+
+  double _resolveListPaneWidth(double availableWidth) {
+    final stored = ref.watch(
+      settingsProvider.select((s) => s.forumSplitListPaneWidth),
+    );
+    return forumListPaneWidth(
+      availableWidth,
+      userOverride: _dragListPaneWidth ?? stored,
+    );
+  }
+
+  List<Widget> _buildSplitDetailAppBarActions(
+    ThreadDetailChromeSnapshot? chrome,
+  ) {
+    if (chrome == null || chrome.shareSelectMode) {
+      return const [];
+    }
+    return [
+      FavoriteBookmarkButton(
+        type: FavoriteType.thread,
+        id: widget.selectedThreadId!,
+      ),
+      if (chrome.onRefresh != null &&
+          chrome.onTogglePageSearch != null &&
+          chrome.browserUrl != null)
+        AppBarMoreMenu(
+          onRefresh: chrome.onRefresh!,
+          onPageSearch: chrome.onTogglePageSearch!,
+          pageSearchOpen: chrome.pageSearchOpen,
+          onGoToLatest: chrome.onGoToLatest,
+          isPinned: chrome.isPinned,
+          onTogglePin: chrome.onTogglePin,
+          browserUrl: chrome.browserUrl!,
+          postListDensity: chrome.postListDensity,
+          onPostListDensityChanged: chrome.onPostListDensityChanged,
+        ),
+    ];
+  }
+
   @override
   Widget build(BuildContext context) {
     final provider = threadListProvider(widget.fid);
@@ -113,6 +207,17 @@ class _ForumListScreenState extends ConsumerState<ForumListScreen> {
       authStateProvider.select((auth) => auth.isLoggedIn),
     );
     final windowWidth = MediaQuery.sizeOf(context).width;
+    final isSplit = shouldShowForumSplitView(
+      windowWidth,
+      hasSelectedThread: widget.selectedThreadId != null,
+    );
+    final selectedThreadId = widget.selectedThreadId;
+    final postsAsync = isSplit && selectedThreadId != null
+        ? ref.watch(postProvider(selectedThreadId))
+        : null;
+    final threadTitle = postsAsync?.asData?.value.threadSubject;
+    final floorSubtitle =
+        isSplit ? _splitFloorSubtitle(postsAsync?.asData?.value) : null;
 
     if (!shouldOpenForumThreadInPlace(windowWidth) &&
         widget.selectedThreadId != null) {
@@ -129,59 +234,101 @@ class _ForumListScreenState extends ConsumerState<ForumListScreen> {
       );
     }
 
-    return S1DesktopScaffold(
-      highlightedTab: 0,
-      child: Scaffold(
-        appBar: AppBar(
-          elevation: 0,
-          title: Text(forum.isNotEmpty ? forum : '版块 #${widget.fid}'),
-          actions: [
-            FavoriteBookmarkButton(
-              type: FavoriteType.forum,
-              id: widget.fid,
-            ),
-            AppBarMoreMenu(
-              onRefresh: () =>
-                  ref.read(threadListProvider(widget.fid).notifier).refresh(),
-              onPageSearch: () {
-                setState(() {
-                  _pageSearchOpen = !_pageSearchOpen;
-                  if (!_pageSearchOpen) _pageSearchQuery = '';
-                });
-              },
-              pageSearchOpen: _pageSearchOpen,
-              browserUrl: ApiConfig.forumBrowserUrl(
-                fid: widget.fid,
-                page: threadsAsync.asData?.value.currentPage ?? 1,
-              ),
-              threadListDensity: ref.watch(
-                settingsProvider.select((s) => s.threadListDensity),
-              ),
-              onThreadListDensityChanged: (density) => ref
-                  .read(settingsProvider.notifier)
-                  .setThreadListDensity(density),
-              onHideForum: () async {
-                final confirmed = await confirmHideForum(context);
-                if (!confirmed || !context.mounted) return;
-                ref.read(settingsProvider.notifier).hideForum(widget.fid);
-                S1SnackBar.show(context, message: '已屏蔽此版块');
-              },
-            ),
-          ],
-        ),
-        body: LayoutBuilder(
-          builder: (context, constraints) {
-            final opensThreadInPlace =
-                shouldOpenForumThreadInPlace(windowWidth);
-            final isSplit = shouldShowForumSplitView(
-              windowWidth,
-              hasSelectedThread: widget.selectedThreadId != null,
-            );
-            return Row(
-              children: [
-                if (isSplit)
-                  SizedBox(
-                    width: forumListPaneWidth(constraints.maxWidth),
+    final scaffold = Scaffold(
+      appBar: AppBar(
+        elevation: 0,
+        title: isSplit
+            ? ListenableBuilder(
+                listenable: _detailChrome,
+                builder: (context, _) {
+                  final chrome = _detailChrome.snapshot;
+                  if (chrome?.shareSelectMode ?? false) {
+                    return const Text('选择分享楼层');
+                  }
+                  return ForumSplitBreadcrumbTitle(
+                    forumLabel: forum.isNotEmpty ? forum : '版块 #${widget.fid}',
+                    threadTitle: threadTitle,
+                    floorContext: floorSubtitle,
+                    loading: postsAsync?.isLoading ?? false,
+                    onForumTap: _closeSplitDetail,
+                    onThreadTap: threadTitle == null
+                        ? null
+                        : () => showThreadFullTitleSheet(
+                              context,
+                              threadTitle,
+                            ),
+                  );
+                },
+              )
+            : Text(forum.isNotEmpty ? forum : '版块 #${widget.fid}'),
+        actions: isSplit
+            ? [
+                IconButton(
+                  onPressed: () {},
+                  tooltip: 'Esc 关闭详情 · Alt+↑/↓ 切换主题 · Alt+[ ] 翻回复页',
+                  icon: const Icon(Icons.keyboard_outlined),
+                ),
+                FavoriteBookmarkButton(
+                  type: FavoriteType.forum,
+                  id: widget.fid,
+                ),
+                ListenableBuilder(
+                  listenable: _detailChrome,
+                  builder: (context, _) => Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: _buildSplitDetailAppBarActions(
+                      _detailChrome.snapshot,
+                    ),
+                  ),
+                ),
+              ]
+            : [
+                FavoriteBookmarkButton(
+                  type: FavoriteType.forum,
+                  id: widget.fid,
+                ),
+                AppBarMoreMenu(
+                  onRefresh: () => ref
+                      .read(threadListProvider(widget.fid).notifier)
+                      .refresh(),
+                  onPageSearch: () {
+                    setState(() {
+                      _pageSearchOpen = !_pageSearchOpen;
+                      if (!_pageSearchOpen) _pageSearchQuery = '';
+                    });
+                  },
+                  pageSearchOpen: _pageSearchOpen,
+                  browserUrl: ApiConfig.forumBrowserUrl(
+                    fid: widget.fid,
+                    page: threadsAsync.asData?.value.currentPage ?? 1,
+                  ),
+                  threadListDensity: ref.watch(
+                    settingsProvider.select((s) => s.threadListDensity),
+                  ),
+                  onThreadListDensityChanged: (density) => ref
+                      .read(settingsProvider.notifier)
+                      .setThreadListDensity(density),
+                  onHideForum: () async {
+                    final confirmed = await confirmHideForum(context);
+                    if (!confirmed || !context.mounted) return;
+                    ref.read(settingsProvider.notifier).hideForum(widget.fid);
+                    S1SnackBar.show(context, message: '已屏蔽此版块');
+                  },
+                ),
+              ],
+      ),
+      body: LayoutBuilder(
+        builder: (context, constraints) {
+          final opensThreadInPlace = shouldOpenForumThreadInPlace(windowWidth);
+          final listPaneWidth =
+              isSplit ? _resolveListPaneWidth(constraints.maxWidth) : null;
+          final splitBody = Row(
+            children: [
+              if (isSplit)
+                ColoredBox(
+                  color: S1Surface.page(Theme.of(context).colorScheme),
+                  child: SizedBox(
+                    width: listPaneWidth,
                     child: Column(
                       children: [
                         if (_pageSearchOpen)
@@ -228,7 +375,72 @@ class _ForumListScreenState extends ConsumerState<ForumListScreen> {
                               onOpenNewThread: _openNewThread,
                               onOpenThread: _openThread,
                               onPageChanged: (page) => ref
-                                  .read(threadListProvider(widget.fid).notifier)
+                                  .read(
+                                    threadListProvider(widget.fid).notifier,
+                                  )
+                                  .goToPage(page),
+                              pageSearchQuery: _pageSearchQuery,
+                              useSplitFab: true,
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                )
+              else
+                Expanded(
+                  child: S1ContentWidth(
+                    child: Column(
+                      children: [
+                        if (_pageSearchOpen)
+                          S1LocalSearchBar(
+                            hintText: '搜索本页主题 / 作者',
+                            query: _pageSearchQuery,
+                            onChanged: (q) =>
+                                setState(() => _pageSearchQuery = q),
+                            onClose: () => setState(() {
+                              _pageSearchOpen = false;
+                              _pageSearchQuery = '';
+                            }),
+                            matchCount: threadsAsync.asData == null
+                                ? null
+                                : _filterThreads(
+                                    threadsAsync.asData!.value.threads,
+                                    _pageSearchQuery,
+                                  ).length,
+                          ),
+                        Expanded(
+                          child: threadsAsync.when(
+                            loading: () => const S1AsyncListLoading(
+                              child: ThreadCardSkeletonList(),
+                            ),
+                            error: (e, st) => S1ErrorView(
+                              error: e,
+                              onRetry: () => S1Haptics.wrapRefresh(
+                                () => ref
+                                    .read(
+                                      threadListProvider(widget.fid).notifier,
+                                    )
+                                    .refresh(),
+                              ),
+                              onLogin: () => context.push('/login'),
+                            ),
+                            data: (state) => _ForumThreadList(
+                              state: state,
+                              isLoggedIn: isLoggedIn,
+                              fid: widget.fid,
+                              selectedThreadId: widget.selectedThreadId,
+                              swipeKey: _swipeKey,
+                              showScrollToTop: _showScrollToTop,
+                              onScrollMetricsChanged: _onScrollMetricsChanged,
+                              onOpenNewThread: _openNewThread,
+                              onOpenThread:
+                                  opensThreadInPlace ? _openThread : null,
+                              onPageChanged: (page) => ref
+                                  .read(
+                                    threadListProvider(widget.fid).notifier,
+                                  )
                                   .goToPage(page),
                               pageSearchQuery: _pageSearchQuery,
                             ),
@@ -236,97 +448,91 @@ class _ForumListScreenState extends ConsumerState<ForumListScreen> {
                         ),
                       ],
                     ),
-                  )
-                else
-                  Expanded(
-                    child: S1ContentWidth(
-                      child: Column(
-                        children: [
-                          if (_pageSearchOpen)
-                            S1LocalSearchBar(
-                              hintText: '搜索本页主题 / 作者',
-                              query: _pageSearchQuery,
-                              onChanged: (q) =>
-                                  setState(() => _pageSearchQuery = q),
-                              onClose: () => setState(() {
-                                _pageSearchOpen = false;
-                                _pageSearchQuery = '';
-                              }),
-                              matchCount: threadsAsync.asData == null
-                                  ? null
-                                  : _filterThreads(
-                                      threadsAsync.asData!.value.threads,
-                                      _pageSearchQuery,
-                                    ).length,
-                            ),
-                          Expanded(
-                            child: threadsAsync.when(
-                              loading: () => const S1AsyncListLoading(
-                                child: ThreadCardSkeletonList(),
-                              ),
-                              error: (e, st) => S1ErrorView(
-                                error: e,
-                                onRetry: () => S1Haptics.wrapRefresh(
-                                  () => ref
-                                      .read(
-                                        threadListProvider(widget.fid).notifier,
-                                      )
-                                      .refresh(),
-                                ),
-                                onLogin: () => context.push('/login'),
-                              ),
-                              data: (state) => _ForumThreadList(
-                                state: state,
-                                isLoggedIn: isLoggedIn,
-                                fid: widget.fid,
-                                selectedThreadId: widget.selectedThreadId,
-                                swipeKey: _swipeKey,
-                                showScrollToTop: _showScrollToTop,
-                                onScrollMetricsChanged: _onScrollMetricsChanged,
-                                onOpenNewThread: _openNewThread,
-                                onOpenThread:
-                                    opensThreadInPlace ? _openThread : null,
-                                onPageChanged: (page) => ref
-                                    .read(
-                                      threadListProvider(widget.fid).notifier,
-                                    )
-                                    .goToPage(page),
-                                pageSearchQuery: _pageSearchQuery,
-                              ),
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
                   ),
-                if (isSplit) ...[
-                  const SizedBox(width: 8),
-                  Expanded(
-                    child: ThreadOpenIntentScope(
+                ),
+              if (isSplit) ...[
+                ForumSplitPaneDivider(
+                  onDragDelta: (delta) => _onListPaneDragDelta(
+                    delta,
+                    constraints.maxWidth,
+                  ),
+                ),
+                Expanded(
+                  child: ThreadOpenIntentScope(
+                    tid: widget.selectedThreadId!,
+                    intent: widget.selectedThreadIntent,
+                    child: ThreadDetailScreen(
+                      key: ValueKey(widget.selectedThreadId),
                       tid: widget.selectedThreadId!,
-                      intent: widget.selectedThreadIntent,
-                      child: ThreadDetailScreen(
-                        key: ValueKey(widget.selectedThreadId),
-                        tid: widget.selectedThreadId!,
-                        embedded: true,
-                        onClose: () => context.replace('/forum/${widget.fid}'),
-                        onDestinationChanged: (destination) => context.replace(
-                          ThreadRouteCodec.encodeForumPath(
-                            widget.fid,
-                            destination,
-                          ),
+                      embedded: true,
+                      suppressAppBar: true,
+                      chromeBridge: _detailChrome,
+                      onClose: _closeSplitDetail,
+                      onDestinationChanged: (destination) => context.replace(
+                        ThreadRouteCodec.encodeForumPath(
+                          widget.fid,
+                          destination,
                         ),
                       ),
                     ),
                   ),
-                ],
+                ),
               ],
-            );
-          },
-        ),
+            ],
+          );
+          if (!isSplit) return splitBody;
+          return Listener(
+            onPointerUp: (_) => _persistListPaneWidth(constraints.maxWidth),
+            child: splitBody,
+          );
+        },
       ),
     );
+
+    final child = isSplit
+        ? CallbackShortcuts(
+            bindings: {
+              const SingleActivator(LogicalKeyboardKey.escape): () {
+                if (_acceptsGlobalShortcut()) _closeSplitDetail();
+              },
+              const SingleActivator(LogicalKeyboardKey.arrowUp, alt: true): () {
+                if (_acceptsGlobalShortcut()) _selectAdjacentThread(-1);
+              },
+              const SingleActivator(LogicalKeyboardKey.arrowDown, alt: true):
+                  () {
+                if (_acceptsGlobalShortcut()) _selectAdjacentThread(1);
+              },
+              const SingleActivator(LogicalKeyboardKey.bracketLeft, alt: true):
+                  () {
+                final chrome = _detailChrome.snapshot;
+                if (_acceptsGlobalShortcut() && chrome?.canPrevPage == true) {
+                  chrome!.onPrevPage?.call();
+                }
+              },
+              const SingleActivator(LogicalKeyboardKey.bracketRight, alt: true):
+                  () {
+                final chrome = _detailChrome.snapshot;
+                if (_acceptsGlobalShortcut() && chrome?.canNextPage == true) {
+                  chrome!.onNextPage?.call();
+                }
+              },
+            },
+            child: Focus(autofocus: true, child: scaffold),
+          )
+        : scaffold;
+
+    return S1DesktopScaffold(
+      highlightedTab: 0,
+      child: child,
+    );
   }
+}
+
+String? _splitFloorSubtitle(PostListState? state) {
+  if (state == null) return null;
+  if (state.totalPages <= 1 && state.totalReplies <= 0) return null;
+  final floors = state.totalReplies + 1;
+  return '第 ${state.currentPage} / ${state.totalPages} 页 · 共 $floors 楼';
 }
 
 List<Thread> _filterThreads(List<Thread> threads, String query) {
@@ -355,6 +561,7 @@ class _ForumThreadList extends ConsumerWidget {
     required this.onOpenThread,
     required this.onPageChanged,
     this.pageSearchQuery = '',
+    this.useSplitFab = false,
   });
 
   final ThreadListState state;
@@ -368,6 +575,7 @@ class _ForumThreadList extends ConsumerWidget {
   final ThreadOpenCallback? onOpenThread;
   final S1PageChangeCallback onPageChanged;
   final String pageSearchQuery;
+  final bool useSplitFab;
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -398,8 +606,10 @@ class _ForumThreadList extends ConsumerWidget {
               primary: isLoggedIn
                   ? S1FabItem(
                       heroTag: 'newThread-$fid',
-                      icon: Icons.create_outlined,
+                      icon: useSplitFab ? Icons.add : Icons.create_outlined,
                       tooltip: '发新主题',
+                      label: useSplitFab ? '发新主题' : null,
+                      extended: useSplitFab,
                       onPressed: () => unawaited(onOpenNewThread()),
                     )
                   : null,
@@ -493,6 +703,9 @@ class _ForumThreadList extends ConsumerWidget {
         PaginationBar(
           currentPage: state.currentPage,
           totalPages: state.totalPages,
+          sheetTitle: useSplitFab ? '选择主题页' : '选择页码',
+          contextLabel: useSplitFab ? '主题' : null,
+          contextTooltip: useSplitFab ? '主题列表分页' : null,
           onPageChanged: onPageChanged,
         ),
       ],

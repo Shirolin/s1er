@@ -4,6 +4,7 @@ import '../theme/app_theme.dart';
 import '../theme/s1_haptics.dart';
 import '../utils/compact_label.dart';
 import 'page_picker_sheet.dart';
+import 's1_reading_column.dart';
 import 's1_system_bottom_inset.dart';
 
 export 'page_picker_sheet.dart' show PageItemLabelBuilder, showPagePickerSheet;
@@ -20,6 +21,11 @@ class PaginationBar extends StatefulWidget {
     this.sheetTitle = '选择页码',
     this.sheetSubtitle,
     this.pageItemLabelBuilder,
+    this.contextLabel,
+    this.contextTooltip,
+    this.alignToReadingColumn = false,
+    this.useCardSurface = false,
+    this.respectReadingColumnWidth = false,
     this.reserveSystemBottomInset = true,
     this.applyBottomSafeArea = true,
   });
@@ -30,6 +36,21 @@ class PaginationBar extends StatefulWidget {
   final String sheetTitle;
   final String? sheetSubtitle;
   final PageItemLabelBuilder? pageItemLabelBuilder;
+
+  /// Short label shown before page controls in split view (e.g. 主题 / 回复页).
+  final String? contextLabel;
+
+  /// Tooltip / semantics hint for [contextLabel].
+  final String? contextTooltip;
+
+  /// When true, constrains bar width to [ReadingColumnScope] if present.
+  final bool alignToReadingColumn;
+
+  /// Uses [S1Surface.card] instead of chrome background (embedded detail pane).
+  final bool useCardSurface;
+
+  /// When true, edge page buttons follow [ReadingColumnScope.columnWidth].
+  final bool respectReadingColumnWidth;
 
   /// 单页时是否保留系统底栏占位（传统三键 / 手势条）。
   ///
@@ -139,7 +160,12 @@ class _PaginationBarState extends State<PaginationBar> {
     final total = widget.totalPages;
     final canPrev = page > 1 && !_isLoading;
     final canNext = page < total && !_isLoading;
-    final showEdgeButtons = MediaQuery.sizeOf(context).width >= 400;
+    final readingGeometry = ReadingColumnScope.maybeOf(context);
+    final layoutWidth = widget.respectReadingColumnWidth
+        ? (readingGeometry?.columnWidth ?? MediaQuery.sizeOf(context).width)
+        : MediaQuery.sizeOf(context).width;
+    final edgeThreshold = widget.respectReadingColumnWidth ? 480 : 400;
+    final showEdgeButtons = layoutWidth >= edgeThreshold;
 
     final bar = Column(
       mainAxisSize: MainAxisSize.min,
@@ -167,14 +193,32 @@ class _PaginationBarState extends State<PaginationBar> {
                 textTheme: textTheme,
                 scheme: scheme,
               );
+              final row = Row(
+                mainAxisAlignment: MainAxisAlignment.center,
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  if (widget.contextLabel != null) ...[
+                    Padding(
+                      padding: const EdgeInsets.only(right: 8),
+                      child: Tooltip(
+                        message: widget.contextTooltip ?? widget.contextLabel!,
+                        child: Text(
+                          widget.contextLabel!,
+                          style: textTheme.labelMedium?.copyWith(
+                            color: scheme.onSurfaceVariant,
+                          ),
+                        ),
+                      ),
+                    ),
+                  ],
+                  ...controls,
+                ],
+              );
               return SingleChildScrollView(
                 scrollDirection: Axis.horizontal,
                 child: ConstrainedBox(
                   constraints: BoxConstraints(minWidth: constraints.maxWidth),
-                  child: Row(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: controls,
-                  ),
+                  child: row,
                 ),
               );
             },
@@ -183,10 +227,14 @@ class _PaginationBarState extends State<PaginationBar> {
       ],
     );
 
-    return SizedBox(
+    final decoration = widget.useCardSurface
+        ? BoxDecoration(color: S1Surface.card(scheme))
+        : S1BottomBarStyle.decoration(scheme);
+
+    final decorated = SizedBox(
       width: double.infinity,
       child: DecoratedBox(
-        decoration: S1BottomBarStyle.decoration(scheme),
+        decoration: decoration,
         child: widget.applyBottomSafeArea
             ? SafeArea(
                 top: false,
@@ -197,6 +245,11 @@ class _PaginationBarState extends State<PaginationBar> {
             : bar,
       ),
     );
+
+    if (widget.alignToReadingColumn) {
+      return ReadingColumnAlign(child: decorated);
+    }
+    return decorated;
   }
 }
 

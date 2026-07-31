@@ -47,6 +47,7 @@ class AppSettings {
     this.postSignatureShowDevice = true,
     this.postSignatureCustom = '',
     this.customFontFileName,
+    this.forumSplitListPaneWidth,
   });
 
   final String themeMode;
@@ -74,6 +75,7 @@ class AppSettings {
   final bool postSignatureShowDevice;
   final String postSignatureCustom;
   final String? customFontFileName;
+  final double? forumSplitListPaneWidth;
 
   double get textScaleFactor => fontSize / S1Typography.defaultBodySize;
 
@@ -103,6 +105,7 @@ class AppSettings {
     bool? postSignatureShowDevice,
     String? postSignatureCustom,
     Object? customFontFileName = _Sentinel.value,
+    Object? forumSplitListPaneWidth = _Sentinel.value,
   }) {
     return AppSettings(
       themeMode: themeMode ?? this.themeMode,
@@ -135,6 +138,9 @@ class AppSettings {
       customFontFileName: customFontFileName == _Sentinel.value
           ? this.customFontFileName
           : customFontFileName as String?,
+      forumSplitListPaneWidth: forumSplitListPaneWidth == _Sentinel.value
+          ? this.forumSplitListPaneWidth
+          : forumSplitListPaneWidth as double?,
     );
   }
 
@@ -165,7 +171,8 @@ class AppSettings {
         other.postSignatureEnabled == postSignatureEnabled &&
         other.postSignatureShowDevice == postSignatureShowDevice &&
         other.postSignatureCustom == postSignatureCustom &&
-        other.customFontFileName == customFontFileName;
+        other.customFontFileName == customFontFileName &&
+        other.forumSplitListPaneWidth == forumSplitListPaneWidth;
   }
 
   static bool _setEquals(Set<String> a, Set<String> b) =>
@@ -201,6 +208,7 @@ class AppSettings {
           postSignatureShowDevice,
           postSignatureCustom,
           customFontFileName,
+          forumSplitListPaneWidth,
         ),
       );
 }
@@ -403,7 +411,14 @@ class SettingsNotifier extends Notifier<AppSettings> {
           ) ??
           '',
       customFontFileName: settingsStore.get<String>('customFontFileName'),
+      forumSplitListPaneWidth: _readForumSplitListPaneWidth(settingsStore),
     );
+  }
+
+  double? _readForumSplitListPaneWidth(SettingsStore settingsStore) {
+    final raw = settingsStore.get<Object>('forumSplitListPaneWidth');
+    if (raw is num) return raw.toDouble();
+    return null;
   }
 
   void setShareSaveMode(ShareSaveMode value) {
@@ -525,6 +540,11 @@ class SettingsNotifier extends Notifier<AppSettings> {
   void setPostListDensity(ListDensity value) {
     _commit(state.copyWith(postListDensity: value));
     _persist('postListDensity', value.storageKey);
+  }
+
+  void setForumSplitListPaneWidth(double? value) {
+    _commit(state.copyWith(forumSplitListPaneWidth: value));
+    _persist('forumSplitListPaneWidth', value);
   }
 
   void setFontSize(int value) {

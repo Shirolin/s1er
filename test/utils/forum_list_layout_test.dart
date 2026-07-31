@@ -31,5 +31,11 @@ void main() {
       expect(forumListPaneWidth(1280), closeTo(486.4, 0.01));
       expect(forumListPaneWidth(1600), 520);
     });
+
+    test('user override is clamped within split pane bounds', () {
+      expect(forumListPaneWidth(1600, userOverride: 700), 600);
+      expect(forumListPaneWidth(1600, userOverride: 300), 360);
+      expect(forumListPaneWidth(1600, userOverride: 480), 480);
+    });
   });
 }

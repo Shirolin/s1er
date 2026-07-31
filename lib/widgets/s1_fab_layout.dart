@@ -377,6 +377,8 @@ class S1FabItem {
     required this.tooltip,
     required this.onPressed,
     this.visible = true,
+    this.label,
+    this.extended = false,
   });
 
   final Object heroTag;
@@ -384,6 +386,12 @@ class S1FabItem {
   final String tooltip;
   final VoidCallback onPressed;
   final bool visible;
+
+  /// When set with [extended], renders [FloatingActionButton.extended].
+  final String? label;
+
+  /// Desktop split list pane: extended FAB with [label].
+  final bool extended;
 }
 
 /// 内容区右下角 FAB 纵列：滚动导航组（上）+ 主操作 FAB（下）。
@@ -412,12 +420,20 @@ class S1FabStack extends StatelessWidget {
         children.add(const SizedBox(height: S1FabLayout.stackGap));
       }
       children.add(
-        FloatingActionButton(
-          heroTag: primary!.heroTag,
-          onPressed: primary!.onPressed,
-          tooltip: primary!.tooltip,
-          child: Icon(primary!.icon),
-        ),
+        primary!.extended && primary!.label != null
+            ? FloatingActionButton.extended(
+                heroTag: primary!.heroTag,
+                onPressed: primary!.onPressed,
+                tooltip: primary!.tooltip,
+                icon: Icon(primary!.icon),
+                label: Text(primary!.label!),
+              )
+            : FloatingActionButton(
+                heroTag: primary!.heroTag,
+                onPressed: primary!.onPressed,
+                tooltip: primary!.tooltip,
+                child: Icon(primary!.icon),
+              ),
       );
     }
 
@@ -438,21 +454,26 @@ class S1ContentFabOverlay extends StatelessWidget {
     required this.child,
     required this.fab,
     this.fabBottomPadding = S1FabLayout.edgeMargin,
+    this.fabRightInset,
   });
 
   final Widget child;
   final Widget fab;
   final double fabBottomPadding;
 
+  /// Extra inset from the parent's right edge (e.g. reading-column gutter).
+  final double? fabRightInset;
+
   @override
   Widget build(BuildContext context) {
+    final right = fabRightInset ?? S1FabLayout.edgeMargin;
     return Stack(
       clipBehavior: Clip.none,
       fit: StackFit.expand,
       children: [
         child,
         Positioned(
-          right: S1FabLayout.edgeMargin,
+          right: right,
           bottom: fabBottomPadding,
           child: fab,
         ),

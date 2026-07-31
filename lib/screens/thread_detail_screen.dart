@@ -37,6 +37,9 @@ import '../widgets/s1_list_boundary_footer.dart';
 import '../widgets/scroll_pointer_gate.dart';
 import '../widgets/s1_desktop_scaffold.dart';
 import '../widgets/s1_content_width.dart';
+import '../widgets/s1_reading_column.dart';
+import '../widgets/thread_detail_chrome_bridge.dart';
+import '../widgets/forum_split_breadcrumb_title.dart';
 import '../models/reading_record.dart';
 import '../models/open_scroll_target.dart';
 import '../models/thread_destination.dart';
@@ -44,7 +47,6 @@ import '../models/thread_open_intent.dart';
 import '../utils/page_search.dart';
 import '../utils/post_plain_text.dart';
 import '../utils/scroll_floor.dart';
-import '../widgets/s1_adaptive_sheet.dart';
 import '../widgets/s1_click_region.dart';
 import '../widgets/s1_local_search_bar.dart';
 import '../widgets/thread_locate_skeleton.dart';
@@ -115,6 +117,8 @@ class ThreadDetailScreen extends ConsumerStatefulWidget {
     super.key,
     required this.tid,
     this.embedded = false,
+    this.suppressAppBar = false,
+    this.chromeBridge,
     this.onClose,
     this.onDestinationChanged,
   });
@@ -122,6 +126,12 @@ class ThreadDetailScreen extends ConsumerStatefulWidget {
 
   /// Whether the screen is rendered inside the forum desktop detail pane.
   final bool embedded;
+
+  /// Hides the local AppBar when the parent renders a unified breadcrumb bar.
+  final bool suppressAppBar;
+
+  /// Publishes toolbar actions to the parent split AppBar.
+  final ThreadDetailChromeBridge? chromeBridge;
   final VoidCallback? onClose;
   final ValueChanged<ThreadDestination>? onDestinationChanged;
 
@@ -224,6 +234,7 @@ class _ThreadDetailScreenState extends ConsumerState<ThreadDetailScreen> {
   @override
   void dispose() {
     _locateOverlayTimer?.cancel();
+    widget.chromeBridge?.clear();
     _scrollFabVisibility.dispose();
     super.dispose();
   }
@@ -954,32 +965,66 @@ class _ThreadDetailScreenState extends ConsumerState<ThreadDetailScreen> {
   }
 
   void _showFullTitle(BuildContext context, String title) {
-    showS1AdaptiveSheet<void>(
-      context: context,
-      desktopMaxWidth: 560,
-      builder: (context) => SafeArea(
-        child: Padding(
-          padding: const EdgeInsets.fromLTRB(24, 16, 24, 24),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(
-                '完整标题',
-                style: Theme.of(context).textTheme.labelMedium?.copyWith(
-                      color: Theme.of(context).colorScheme.onSurfaceVariant,
-                    ),
-              ),
-              const SizedBox(height: 8),
-              Text(
-                title,
-                style: Theme.of(context).textTheme.titleMedium,
-              ),
-              const SizedBox(height: 16),
-            ],
+    showThreadFullTitleSheet(context, title);
+  }
+
+  void _publishChromeBridge({
+    required PostListState? state,
+    required bool isLoggedIn,
+  }) {
+    final bridge = widget.chromeBridge;
+    if (bridge == null) return;
+    final currentPage = state?.currentPage ?? 1;
+    final totalPages = state?.totalPages ?? 1;
+    bridge.publish(
+      ThreadDetailChromeSnapshot(
+        pageSearchOpen: _pageSearchOpen,
+        shareSelectMode: _shareSelectMode,
+        isPinned: ref.read(
+          pinnedThreadsProvider.select(
+            (list) => list.any((t) => t.tid == widget.tid),
           ),
         ),
+        browserUrl: state == null
+            ? null
+            : ApiConfig.threadBrowserUrl(
+                tid: widget.tid,
+                page: state.currentPage,
+              ),
+        postListDensity: ref.read(settingsProvider).postListDensity,
+        onRefresh: () => ref.read(postProvider(widget.tid).notifier).refresh(),
+        onTogglePageSearch: () {
+          setState(() {
+            _pageSearchOpen = !_pageSearchOpen;
+            if (!_pageSearchOpen) _pageSearchQuery = '';
+          });
+        },
+        onGoToLatest: () => unawaited(_goToLatest()),
+        onTogglePin: () => _toggleThreadPin(
+          context,
+          subject: state?.threadSubject,
+        ),
+        onPostListDensityChanged: (density) =>
+            ref.read(settingsProvider.notifier).setPostListDensity(density),
+        onPrevPage: currentPage > 1
+            ? () => unawaited(_goToPage(currentPage - 1))
+            : null,
+        onNextPage: currentPage < totalPages
+            ? () => unawaited(_goToPage(currentPage + 1))
+            : null,
+        canPrevPage: currentPage > 1,
+        canNextPage: currentPage < totalPages,
       ),
+    );
+  }
+
+  Widget _buildWidthConstrainedChild(Widget child) {
+    if (widget.embedded) {
+      return S1ReadingColumn(showPaneGutter: true, child: child);
+    }
+    return S1ContentWidth(
+      mode: S1ContentWidthMode.reading,
+      child: child,
     );
   }
 
@@ -1106,120 +1151,127 @@ class _ThreadDetailScreenState extends ConsumerState<ThreadDetailScreen> {
     final isLoggedIn = ref.watch(
       authStateProvider.select((auth) => auth.isLoggedIn),
     );
+    _publishChromeBridge(
+      state: postsAsync.asData?.value,
+      isLoggedIn: isLoggedIn,
+    );
+
+    final showEmbeddedBack = !widget.suppressAppBar &&
+        !_shareSelectMode &&
+        (jumpStack.isNotEmpty ||
+            (!widget.embedded && widget.onClose != null) ||
+            context.canPop());
 
     final scaffold = Scaffold(
-      appBar: AppBar(
-        elevation: 0,
-        leading: _shareSelectMode
-            ? IconButton(
-                tooltip: '取消',
-                onPressed: _exitShareSelectMode,
-                icon: const Icon(Icons.close),
-              )
-            : (jumpStack.isNotEmpty ||
-                    widget.onClose != null ||
-                    context.canPop())
-                ? IconButton(
-                    tooltip: jumpStack.isNotEmpty
-                        ? '返回上一位置'
-                        : (widget.onClose != null ? '返回主题列表' : '返回'),
-                    onPressed: () {
-                      if (jumpStack.isNotEmpty) {
-                        unawaited(_restoreInThreadJump());
-                        return;
-                      }
-                      if (widget.onClose != null) {
-                        _flushProgressBeforeLeave();
-                        widget.onClose!();
-                        return;
-                      }
-                      if (context.canPop()) {
-                        _flushProgressBeforeLeave();
-                        context.pop();
-                      }
-                    },
-                    icon: const Icon(Icons.arrow_back),
-                  )
-                : null,
-        title: _shareSelectMode
-            ? Text(
-                '已选 ${_shareSelectedFloors.length}/${S1Constants.shareMaxSelectedFloors}',
-              )
-            : postsAsync.whenOrNull(
-                  data: (s) => s.threadSubject != null
-                      ? S1ClickRegion(
-                          onTap: () =>
-                              _showFullTitle(context, s.threadSubject!),
-                          child: Text(
-                            s.threadSubject!,
-                            maxLines: 1,
-                            overflow: TextOverflow.ellipsis,
-                          ),
+      appBar: widget.suppressAppBar
+          ? null
+          : AppBar(
+              elevation: 0,
+              leading: _shareSelectMode
+                  ? IconButton(
+                      tooltip: '取消',
+                      onPressed: _exitShareSelectMode,
+                      icon: const Icon(Icons.close),
+                    )
+                  : showEmbeddedBack
+                      ? IconButton(
+                          tooltip: jumpStack.isNotEmpty
+                              ? '返回上一位置'
+                              : (widget.onClose != null ? '返回主题列表' : '返回'),
+                          onPressed: () {
+                            if (jumpStack.isNotEmpty) {
+                              unawaited(_restoreInThreadJump());
+                              return;
+                            }
+                            if (widget.onClose != null) {
+                              _flushProgressBeforeLeave();
+                              widget.onClose!();
+                              return;
+                            }
+                            if (context.canPop()) {
+                              _flushProgressBeforeLeave();
+                              context.pop();
+                            }
+                          },
+                          icon: const Icon(Icons.arrow_back),
                         )
                       : null,
-                ) ??
-                const Text('加载中…'),
-        actions: _shareSelectMode
-            ? [
-                TextButton(
-                  onPressed: _exitShareSelectMode,
-                  child: const Text('取消'),
-                ),
-              ]
-            : [
-                FavoriteBookmarkButton(
-                  type: FavoriteType.thread,
-                  id: widget.tid,
-                ),
-                AppBarMoreMenu(
-                  onRefresh: () =>
-                      ref.read(postProvider(widget.tid).notifier).refresh(),
-                  onPageSearch: () {
-                    setState(() {
-                      _pageSearchOpen = !_pageSearchOpen;
-                      if (!_pageSearchOpen) _pageSearchQuery = '';
-                    });
-                  },
-                  pageSearchOpen: _pageSearchOpen,
-                  onGoToLatest: _goToLatest,
-                  isPinned: ref.watch(
-                    pinnedThreadsProvider.select(
-                      (list) => list.any((t) => t.tid == widget.tid),
-                    ),
-                  ),
-                  onTogglePin: () => _toggleThreadPin(
-                    context,
-                    subject: postsAsync.asData?.value.threadSubject,
-                  ),
-                  browserUrl: ApiConfig.threadBrowserUrl(
-                    tid: widget.tid,
-                    page: postsAsync.asData?.value.currentPage ?? 1,
-                  ),
-                  postListDensity: ref.watch(
-                    settingsProvider.select((s) => s.postListDensity),
-                  ),
-                  onPostListDensityChanged: (density) => ref
-                      .read(settingsProvider.notifier)
-                      .setPostListDensity(density),
-                ),
-              ],
-      ),
-      // Keep the post list mounted while consuming OpenScrollTarget so
+              title: _shareSelectMode
+                  ? Text(
+                      '已选 ${_shareSelectedFloors.length}/${S1Constants.shareMaxSelectedFloors}',
+                    )
+                  : postsAsync.whenOrNull(
+                        data: (s) => s.threadSubject != null
+                            ? S1ClickRegion(
+                                onTap: () =>
+                                    _showFullTitle(context, s.threadSubject!),
+                                child: Text(
+                                  s.threadSubject!,
+                                  maxLines: 1,
+                                  overflow: TextOverflow.ellipsis,
+                                ),
+                              )
+                            : null,
+                      ) ??
+                      const Text('加载中…'),
+              actions: _shareSelectMode
+                  ? [
+                      TextButton(
+                        onPressed: _exitShareSelectMode,
+                        child: const Text('取消'),
+                      ),
+                    ]
+                  : [
+                      FavoriteBookmarkButton(
+                        type: FavoriteType.thread,
+                        id: widget.tid,
+                      ),
+                      AppBarMoreMenu(
+                        onRefresh: () => ref
+                            .read(postProvider(widget.tid).notifier)
+                            .refresh(),
+                        onPageSearch: () {
+                          setState(() {
+                            _pageSearchOpen = !_pageSearchOpen;
+                            if (!_pageSearchOpen) _pageSearchQuery = '';
+                          });
+                        },
+                        pageSearchOpen: _pageSearchOpen,
+                        onGoToLatest: _goToLatest,
+                        isPinned: ref.watch(
+                          pinnedThreadsProvider.select(
+                            (list) => list.any((t) => t.tid == widget.tid),
+                          ),
+                        ),
+                        onTogglePin: () => _toggleThreadPin(
+                          context,
+                          subject: postsAsync.asData?.value.threadSubject,
+                        ),
+                        browserUrl: ApiConfig.threadBrowserUrl(
+                          tid: widget.tid,
+                          page: postsAsync.asData?.value.currentPage ?? 1,
+                        ),
+                        postListDensity: ref.watch(
+                          settingsProvider.select((s) => s.postListDensity),
+                        ),
+                        onPostListDensityChanged: (density) => ref
+                            .read(settingsProvider.notifier)
+                            .setPostListDensity(density),
+                      ),
+                    ],
+            ),
       // index-based scroll (pid / floor) can run against live GlobalKeys.
       // `_pendingInitialNavigation` only gates progress writeback.
       //
       // Reading width applies to the post column only; AppBar / PaginationBar
       // stay full-bleed in the detail pane (chrome vs. content).
+      // Keep the post list mounted while consuming OpenScrollTarget so
       body: postsAsync.when(
         skipLoadingOnReload: true,
         skipLoadingOnRefresh: true,
-        loading: () => S1ContentWidth(
-          mode: S1ContentWidthMode.reading,
-          child: _buildLoadingBody(),
-        ),
-        error: (e, st) => S1ContentWidth(
-          mode: S1ContentWidthMode.reading,
-          child: S1ErrorView(
+        loading: () => _buildWidthConstrainedChild(_buildLoadingBody()),
+        error: (e, st) => _buildWidthConstrainedChild(
+          S1ErrorView(
             error: e,
             onRetry: () =>
                 ref.read(postProvider(widget.tid).notifier).refresh(),
@@ -1236,8 +1288,151 @@ class _ThreadDetailScreenState extends ConsumerState<ThreadDetailScreen> {
               PageSearch.normalizeQuery(_pageSearchQuery).isNotEmpty;
           final showLocateOverlay = _showLocateOverlay(state);
 
-          return Column(
+          final replyFab = showPrimary
+              ? S1FabItem(
+                  heroTag: 'replyDetail',
+                  icon: widget.embedded
+                      ? Icons.reply_outlined
+                      : Icons.edit_outlined,
+                  tooltip: '回复',
+                  onPressed: () => _openCompose(state),
+                )
+              : null;
+
+          final scrollArea = S1ContentFabOverlay(
+            fab: _shareSelectMode
+                ? const SizedBox.shrink()
+                : ValueListenableBuilder<_ScrollFabVisibility>(
+                    valueListenable: _scrollFabVisibility,
+                    builder: (context, fab, _) {
+                      final showScrollAdvance = fab.showScrollDown ||
+                          (fab.atPageBottom && hasNextPage);
+                      final advanceMode = fab.atPageBottom && hasNextPage
+                          ? ScrollNavAdvanceMode.nextPage
+                          : ScrollNavAdvanceMode.nextFloor;
+                      return S1FabStack(
+                        scrollNav: S1ScrollNavConfig(
+                          showScrollToTop: fab.showScrollToTop,
+                          showScrollAdvance: showScrollAdvance,
+                          advanceMode: advanceMode,
+                          onScrollToTop: _scrollToTop,
+                          onScrollToNextFloor: _scrollToNextFloor,
+                          onScrollToBottom: _scrollToBottom,
+                          onGoToNextPage: hasNextPage
+                              ? () => _goToPage(state.currentPage + 1)
+                              : null,
+                        ),
+                        primary: replyFab,
+                      );
+                    },
+                  ),
+            child: Stack(
+              fit: StackFit.expand,
+              children: [
+                S1SwipePagination(
+                  key: _swipeKey,
+                  currentPage: state.currentPage,
+                  totalPages: state.totalPages,
+                  onScrollMetricsChanged: _onScrollMetricsChanged,
+                  onPageChanged: _goToPage,
+                  pageBuilder: (context, scrollController) =>
+                      ScrollPointerGateHost(
+                    child: Scrollbar(
+                      controller: scrollController,
+                      child: state.posts.isEmpty
+                          ? const Center(child: Text('暂无回复'))
+                          : visible.isEmpty && hasPageQuery
+                              ? ListView(
+                                  controller: scrollController,
+                                  children: const [
+                                    SizedBox(height: 48),
+                                    Center(child: Text('本页无匹配回复')),
+                                  ],
+                                )
+                              : ListView.builder(
+                                  controller: scrollController,
+                                  scrollCacheExtent:
+                                      S1FabLayout.threadDetailScrollCacheExtent,
+                                  padding: S1FabLayout
+                                      .threadDetailScrollBottomPadding,
+                                  itemCount: _detailItemCount(state, visible),
+                                  itemBuilder: (context, index) =>
+                                      _buildDetailItem(
+                                    context,
+                                    state,
+                                    visible,
+                                    index,
+                                  ),
+                                ),
+                    ),
+                  ),
+                ),
+                if (showLocateOverlay)
+                  const Positioned.fill(
+                    child: ThreadLocateSkeleton(),
+                  ),
+              ],
+            ),
+          );
+
+          final pagination = _shareSelectMode
+              ? _ShareSelectBottomBar(
+                  selectedCount: _shareSelectedFloors.length,
+                  maxCount: S1Constants.shareMaxSelectedFloors,
+                  onGenerate: _shareSelectedFloors.isEmpty
+                      ? null
+                      : () => unawaited(_generateMultiShare(state)),
+                )
+              : PaginationBar(
+                  currentPage: state.currentPage,
+                  totalPages: state.totalPages,
+                  sheetTitle: widget.embedded ? '选择楼层' : '选择页码',
+                  sheetSubtitle: state.threadSubject,
+                  contextLabel: widget.embedded ? '回复页' : null,
+                  contextTooltip: widget.embedded ? '帖子内回复分页，非主题列表' : null,
+                  useCardSurface: widget.embedded,
+                  alignToReadingColumn: widget.embedded,
+                  respectReadingColumnWidth: widget.embedded,
+                  pageItemLabelBuilder: (page) {
+                    final start = (page - 1) * state.perPage + 1;
+                    final end = page * state.perPage;
+                    return '第 $start - $end 楼';
+                  },
+                  onPageChanged: _goToPage,
+                );
+
+          final content = Column(
             children: [
+              if (widget.suppressAppBar && _shareSelectMode)
+                Material(
+                  color: scheme.surface,
+                  elevation: 0,
+                  child: SafeArea(
+                    bottom: false,
+                    child: Padding(
+                      padding: const EdgeInsets.symmetric(horizontal: 4),
+                      child: Row(
+                        children: [
+                          IconButton(
+                            tooltip: '取消',
+                            onPressed: _exitShareSelectMode,
+                            icon: const Icon(Icons.close),
+                          ),
+                          Expanded(
+                            child: Text(
+                              '已选 ${_shareSelectedFloors.length}/${S1Constants.shareMaxSelectedFloors}',
+                              style: Theme.of(context).textTheme.titleMedium,
+                            ),
+                          ),
+                          TextButton(
+                            onPressed: _exitShareSelectMode,
+                            child: const Text('取消'),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+                ),
               if (postsAsync.isLoading)
                 const SizedBox(
                   height: 2,
@@ -1304,116 +1499,18 @@ class _ThreadDetailScreenState extends ConsumerState<ThreadDetailScreen> {
                   matchCount: hasPageQuery ? visible.length : null,
                 ),
               Expanded(
-                child: S1ContentWidth(
-                  mode: S1ContentWidthMode.reading,
-                  child: S1ContentFabOverlay(
-                    fab: _shareSelectMode
-                        ? const SizedBox.shrink()
-                        : ValueListenableBuilder<_ScrollFabVisibility>(
-                            valueListenable: _scrollFabVisibility,
-                            builder: (context, fab, _) {
-                              final showScrollAdvance = fab.showScrollDown ||
-                                  (fab.atPageBottom && hasNextPage);
-                              final advanceMode =
-                                  fab.atPageBottom && hasNextPage
-                                      ? ScrollNavAdvanceMode.nextPage
-                                      : ScrollNavAdvanceMode.nextFloor;
-                              return S1FabStack(
-                                scrollNav: S1ScrollNavConfig(
-                                  showScrollToTop: fab.showScrollToTop,
-                                  showScrollAdvance: showScrollAdvance,
-                                  advanceMode: advanceMode,
-                                  onScrollToTop: _scrollToTop,
-                                  onScrollToNextFloor: _scrollToNextFloor,
-                                  onScrollToBottom: _scrollToBottom,
-                                  onGoToNextPage: hasNextPage
-                                      ? () => _goToPage(state.currentPage + 1)
-                                      : null,
-                                ),
-                                primary: showPrimary
-                                    ? S1FabItem(
-                                        heroTag: 'replyDetail',
-                                        icon: Icons.edit_outlined,
-                                        tooltip: '回复',
-                                        onPressed: () => _openCompose(state),
-                                      )
-                                    : null,
-                              );
-                            },
-                          ),
-                    child: Stack(
-                      fit: StackFit.expand,
-                      children: [
-                        S1SwipePagination(
-                          key: _swipeKey,
-                          currentPage: state.currentPage,
-                          totalPages: state.totalPages,
-                          onScrollMetricsChanged: _onScrollMetricsChanged,
-                          onPageChanged: _goToPage,
-                          pageBuilder: (context, scrollController) =>
-                              ScrollPointerGateHost(
-                            child: Scrollbar(
-                              controller: scrollController,
-                              child: state.posts.isEmpty
-                                  ? const Center(child: Text('暂无回复'))
-                                  : visible.isEmpty && hasPageQuery
-                                      ? ListView(
-                                          controller: scrollController,
-                                          children: const [
-                                            SizedBox(height: 48),
-                                            Center(child: Text('本页无匹配回复')),
-                                          ],
-                                        )
-                                      : ListView.builder(
-                                          controller: scrollController,
-                                          scrollCacheExtent: S1FabLayout
-                                              .threadDetailScrollCacheExtent,
-                                          padding: S1FabLayout
-                                              .threadDetailScrollBottomPadding,
-                                          itemCount:
-                                              _detailItemCount(state, visible),
-                                          itemBuilder: (context, index) =>
-                                              _buildDetailItem(
-                                            context,
-                                            state,
-                                            visible,
-                                            index,
-                                          ),
-                                        ),
-                            ),
-                          ),
-                        ),
-                        if (showLocateOverlay)
-                          const Positioned.fill(
-                            child: ThreadLocateSkeleton(),
-                          ),
-                      ],
-                    ),
-                  ),
-                ),
+                child: widget.embedded
+                    ? scrollArea
+                    : _buildWidthConstrainedChild(scrollArea),
               ),
-              if (_shareSelectMode)
-                _ShareSelectBottomBar(
-                  selectedCount: _shareSelectedFloors.length,
-                  maxCount: S1Constants.shareMaxSelectedFloors,
-                  onGenerate: _shareSelectedFloors.isEmpty
-                      ? null
-                      : () => unawaited(_generateMultiShare(state)),
-                )
-              else
-                PaginationBar(
-                  currentPage: state.currentPage,
-                  totalPages: state.totalPages,
-                  sheetSubtitle: state.threadSubject,
-                  pageItemLabelBuilder: (page) {
-                    final start = (page - 1) * state.perPage + 1;
-                    final end = page * state.perPage;
-                    return '第 $start - $end 楼';
-                  },
-                  onPageChanged: _goToPage,
-                ),
+              pagination,
             ],
           );
+
+          if (widget.embedded) {
+            return S1ReadingColumn(showPaneGutter: true, child: content);
+          }
+          return content;
         },
       ),
     );

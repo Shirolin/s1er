@@ -19,9 +19,9 @@ Future<void> showPagePickerSheet({
   String? subtitle,
   PageItemLabelBuilder? pageItemLabelBuilder,
 }) {
-  return showS1AdaptiveSheet<void>(
+  return showS1FormSheet<void>(
     context: context,
-    isScrollControlled: true,
+    desktopMaxWidth: S1AdaptiveSheetSpec.pickerWidth,
     builder: (ctx) => PagePickerSheet(
       totalPages: totalPages,
       currentPage: currentPage,
@@ -105,81 +105,55 @@ class _PagePickerSheetState extends State<PagePickerSheet> {
     return entries;
   }
 
+  Widget _pageCountBadge(BuildContext context) {
+    final scheme = Theme.of(context).colorScheme;
+    final textTheme = Theme.of(context).textTheme;
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+      decoration: BoxDecoration(
+        color: scheme.secondaryContainer,
+        borderRadius: S1Shape.medium,
+      ),
+      child: Text(
+        '共 ${widget.totalPages} 页',
+        style: textTheme.labelMedium?.copyWith(
+          color: scheme.onSecondaryContainer,
+          fontWeight: FontWeight.bold,
+        ),
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final scheme = Theme.of(context).colorScheme;
-    final textTheme = Theme.of(context).textTheme;
     final isDesktop = context.isExpandedOrAbove;
     final pages = _visiblePages(radius: isDesktop ? 2 : 5);
     final pageEntries = _pageEntries(pages);
+    final insets = S1AdaptiveSheetInsets.of(context);
+    final maxHeight = MediaQuery.sizeOf(context).height *
+        S1AdaptiveSheetSpec.pickerMaxHeightFactor;
 
     return SafeArea(
-      child: ConstrainedBox(
-        constraints: BoxConstraints(
-          maxHeight: MediaQuery.sizeOf(context).height * 0.65,
-        ),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [
-            Padding(
-              padding: EdgeInsets.fromLTRB(
-                24,
-                isDesktop ? 24 : 0,
-                24,
-                12,
+      child: Padding(
+        padding: insets.content,
+        child: ConstrainedBox(
+          constraints: BoxConstraints(maxHeight: maxHeight),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              S1AdaptiveSheetHeader(
+                title: widget.title,
+                subtitle: widget.subtitle,
+                trailing: _pageCountBadge(context),
+                prominentTitle: true,
+                includeDivider: false,
               ),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                    children: [
-                      Text(
-                        widget.title,
-                        style: (isDesktop
-                                ? textTheme.titleMedium
-                                : textTheme.titleLarge)
-                            ?.copyWith(
-                          fontWeight: FontWeight.bold,
-                        ),
-                      ),
-                      Container(
-                        padding: const EdgeInsets.symmetric(
-                          horizontal: 10,
-                          vertical: 4,
-                        ),
-                        decoration: BoxDecoration(
-                          color: scheme.secondaryContainer,
-                          borderRadius: S1Shape.medium,
-                        ),
-                        child: Text(
-                          '共 ${widget.totalPages} 页',
-                          style: textTheme.labelMedium?.copyWith(
-                            color: scheme.onSecondaryContainer,
-                            fontWeight: FontWeight.bold,
-                          ),
-                        ),
-                      ),
-                    ],
-                  ),
-                  if (widget.subtitle != null) ...[
-                    const SizedBox(height: 6),
-                    Text(
-                      widget.subtitle!,
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                      style: textTheme.bodySmall?.copyWith(
-                        color: scheme.onSurfaceVariant,
-                      ),
-                    ),
-                  ],
-                ],
-              ),
-            ),
-            Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 4),
-              child: Row(
+              const SizedBox(height: 12),
+              Divider(height: 1, color: scheme.outlineVariant),
+              const SizedBox(height: 12),
+              Row(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Expanded(
@@ -241,47 +215,43 @@ class _PagePickerSheetState extends State<PagePickerSheet> {
                   ),
                 ],
               ),
-            ),
-            const SizedBox(height: 12),
-            Divider(height: 1, color: scheme.outlineVariant),
-            Flexible(
-              child: ClipRect(
-                child: isDesktop
-                    ? GridView.builder(
-                        shrinkWrap: true,
-                        padding: const EdgeInsets.all(16),
-                        gridDelegate:
-                            const SliverGridDelegateWithFixedCrossAxisCount(
-                          crossAxisCount: 2,
-                          mainAxisExtent: 56,
-                          crossAxisSpacing: 12,
-                          mainAxisSpacing: 8,
+              const SizedBox(height: 12),
+              Divider(height: 1, color: scheme.outlineVariant),
+              const SizedBox(height: 4),
+              Flexible(
+                child: ClipRect(
+                  child: isDesktop
+                      ? GridView.builder(
+                          padding: EdgeInsets.zero,
+                          gridDelegate:
+                              const SliverGridDelegateWithFixedCrossAxisCount(
+                            crossAxisCount: 2,
+                            mainAxisExtent: 56,
+                            crossAxisSpacing: 12,
+                            mainAxisSpacing: 8,
+                          ),
+                          itemCount: pageEntries.length,
+                          itemBuilder: (context, index) => _PageEntryTile(
+                            page: pageEntries[index],
+                            currentPage: widget.currentPage,
+                            labelBuilder: widget.pageItemLabelBuilder,
+                            onSelected: widget.onPageSelected,
+                          ),
+                        )
+                      : ListView.builder(
+                          padding: const EdgeInsets.symmetric(vertical: 8),
+                          itemCount: pageEntries.length,
+                          itemBuilder: (context, index) => _PageEntryTile(
+                            page: pageEntries[index],
+                            currentPage: widget.currentPage,
+                            labelBuilder: widget.pageItemLabelBuilder,
+                            onSelected: widget.onPageSelected,
+                          ),
                         ),
-                        itemCount: pageEntries.length,
-                        itemBuilder: (context, index) => _PageEntryTile(
-                          page: pageEntries[index],
-                          currentPage: widget.currentPage,
-                          labelBuilder: widget.pageItemLabelBuilder,
-                          onSelected: widget.onPageSelected,
-                        ),
-                      )
-                    : ListView.builder(
-                        shrinkWrap: true,
-                        padding: const EdgeInsets.symmetric(
-                          horizontal: 16,
-                          vertical: 12,
-                        ),
-                        itemCount: pageEntries.length,
-                        itemBuilder: (context, index) => _PageEntryTile(
-                          page: pageEntries[index],
-                          currentPage: widget.currentPage,
-                          labelBuilder: widget.pageItemLabelBuilder,
-                          onSelected: widget.onPageSelected,
-                        ),
-                      ),
+                ),
               ),
-            ),
-          ],
+            ],
+          ),
         ),
       ),
     );

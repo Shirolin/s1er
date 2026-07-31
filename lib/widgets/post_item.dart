@@ -454,46 +454,24 @@ class _PostItemState extends ConsumerState<PostItem>
   }
 
   void _showSelectTextSheet(BuildContext context) {
-    showS1AdaptiveSheet(
+    showS1FormSheet(
       context: context,
       builder: (context) {
-        final textTheme = Theme.of(context).textTheme;
-        return Padding(
-          padding: const EdgeInsets.all(16),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                children: [
-                  Text(
-                    '选择文字',
-                    style: textTheme.titleMedium?.copyWith(
-                      fontWeight: FontWeight.bold,
-                    ),
-                  ),
-                  IconButton(
-                    icon: const Icon(Icons.close),
-                    onPressed: () => Navigator.of(context).pop(),
-                  ),
-                ],
-              ),
-              const SizedBox(height: 8),
-              Flexible(
-                child: SingleChildScrollView(
-                  child: BbcodeRenderer(
-                    bbcode: widget.post.message,
-                    imageIndexCounter: PostImageIndexCounter(),
-                    currentTid: widget.tid,
-                    imagesExpanded: true,
-                    selectable: true,
-                    highlightQuery: widget.highlightQuery,
-                  ),
-                ),
-              ),
-            ],
-          ),
+        return S1AdaptiveSheetScaffold(
+          title: '选择文字',
+          prominentTitle: true,
+          scrollable: true,
+          maxHeightFactor: 0.72,
+          children: [
+            BbcodeRenderer(
+              bbcode: widget.post.message,
+              imageIndexCounter: PostImageIndexCounter(),
+              currentTid: widget.tid,
+              imagesExpanded: true,
+              selectable: true,
+              highlightQuery: widget.highlightQuery,
+            ),
+          ],
         );
       },
     );

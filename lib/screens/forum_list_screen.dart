@@ -263,11 +263,6 @@ class _ForumListScreenState extends ConsumerState<ForumListScreen> {
             : Text(forum.isNotEmpty ? forum : '版块 #${widget.fid}'),
         actions: isSplit
             ? [
-                IconButton(
-                  onPressed: () {},
-                  tooltip: 'Esc 关闭详情 · Alt+↑/↓ 切换主题 · Alt+[ ] 翻回复页',
-                  icon: const Icon(Icons.keyboard_outlined),
-                ),
                 FavoriteBookmarkButton(
                   type: FavoriteType.forum,
                   id: widget.fid,

@@ -20,6 +20,23 @@ class FavoriteBookmarkButton extends ConsumerStatefulWidget {
   final FavoriteType type;
   final String id;
 
+  IconData _icon(bool isFavorited) {
+    return switch (type) {
+      FavoriteType.forum => isFavorited
+          ? Icons.collections_bookmark
+          : Icons.collections_bookmark_outlined,
+      FavoriteType.thread =>
+        isFavorited ? Icons.bookmark : Icons.bookmark_outline,
+    };
+  }
+
+  String _tooltip(bool isFavorited) {
+    return switch (type) {
+      FavoriteType.forum => isFavorited ? '取消收藏版块' : '收藏版块',
+      FavoriteType.thread => isFavorited ? '取消收藏主题' : '收藏主题',
+    };
+  }
+
   @override
   ConsumerState<FavoriteBookmarkButton> createState() =>
       _FavoriteBookmarkButtonState();
@@ -97,8 +114,8 @@ class _FavoriteBookmarkButtonState
     }
 
     return IconButton(
-      tooltip: isFavorited ? '取消收藏' : '收藏',
-      icon: Icon(isFavorited ? Icons.bookmark : Icons.bookmark_outline),
+      tooltip: widget._tooltip(isFavorited),
+      icon: Icon(widget._icon(isFavorited)),
       onPressed: _toggle,
     );
   }

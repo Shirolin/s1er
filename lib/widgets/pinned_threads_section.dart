@@ -29,44 +29,26 @@ class _PinnedThreadsSectionState extends ConsumerState<PinnedThreadsSection> {
 
   void _showPinActions(BuildContext context, PinnedThread thread) {
     S1Haptics.selection();
-    final scheme = Theme.of(context).colorScheme;
-    final textTheme = Theme.of(context).textTheme;
 
-    showS1AdaptiveSheet<void>(
+    showS1ActionSheet<void>(
       context: context,
       builder: (sheetContext) {
-        return SafeArea(
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Padding(
-                padding: const EdgeInsets.fromLTRB(16, 16, 16, 8),
-                child: Text(
-                  thread.title,
-                  style: textTheme.titleMedium?.copyWith(
-                    fontWeight: FontWeight.bold,
-                  ),
-                  maxLines: 2,
-                  overflow: TextOverflow.ellipsis,
-                ),
-              ),
-              const Divider(),
-              ListTile(
-                leading: Icon(Icons.push_pin_outlined, color: scheme.error),
-                title: Text(
-                  '取消置顶',
-                  style: textTheme.bodyLarge?.copyWith(color: scheme.error),
-                ),
-                onTap: () {
-                  Navigator.pop(sheetContext);
-                  ref.read(pinnedThreadsProvider.notifier).unpin(thread.tid);
-                  if (mounted) {
-                    S1SnackBar.show(context, message: '已取消置顶');
-                  }
-                },
-              ),
-            ],
-          ),
+        return S1AdaptiveSheetScaffold(
+          title: thread.title,
+          children: [
+            S1AdaptiveActionTile(
+              icon: Icons.push_pin_outlined,
+              label: '取消置顶',
+              destructive: true,
+              onTap: () {
+                Navigator.pop(sheetContext);
+                ref.read(pinnedThreadsProvider.notifier).unpin(thread.tid);
+                if (mounted) {
+                  S1SnackBar.show(context, message: '已取消置顶');
+                }
+              },
+            ),
+          ],
         );
       },
     );

@@ -4,31 +4,22 @@ import 's1_adaptive_sheet.dart';
 import 's1_click_region.dart';
 
 void showThreadFullTitleSheet(BuildContext context, String title) {
-  showS1AdaptiveSheet<void>(
+  showS1InfoSheet<void>(
     context: context,
-    desktopMaxWidth: 560,
-    builder: (context) => SafeArea(
-      child: Padding(
-        padding: const EdgeInsets.fromLTRB(24, 16, 24, 24),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(
-              '完整标题',
-              style: Theme.of(context).textTheme.labelMedium?.copyWith(
-                    color: Theme.of(context).colorScheme.onSurfaceVariant,
-                  ),
-            ),
-            const SizedBox(height: 8),
-            Text(
-              title,
-              style: Theme.of(context).textTheme.titleMedium,
-            ),
-            const SizedBox(height: 16),
-          ],
+    builder: (context) => S1AdaptiveSheetScaffold(
+      children: [
+        Text(
+          '完整标题',
+          style: Theme.of(context).textTheme.labelMedium?.copyWith(
+                color: Theme.of(context).colorScheme.onSurfaceVariant,
+              ),
         ),
-      ),
+        const SizedBox(height: 8),
+        Text(
+          title,
+          style: Theme.of(context).textTheme.titleMedium,
+        ),
+      ],
     ),
   );
 }

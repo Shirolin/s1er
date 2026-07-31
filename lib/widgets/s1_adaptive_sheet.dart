@@ -1,10 +1,21 @@
 import 'package:flutter/material.dart';
 
 import '../utils/window_size.dart';
+import 's1_adaptive_sheet_spec.dart';
+
+export 's1_adaptive_sheet_content.dart';
+export 's1_adaptive_sheet_spec.dart';
 
 enum S1DesktopSheetPresentation { dialog, sideSheet }
 
-/// 在紧凑屏使用底部弹层、在桌面使用限宽对话框的辅助入口。
+/// ## 作者指南
+///
+/// 1. 新 sheet 先选 preset：[showS1ActionSheet] / [showS1FormSheet] /
+///    [showS1ProfileSheet] / [showS1InfoSheet]
+/// 2. 内容层使用 [S1AdaptiveSheetScaffold]、[S1AdaptiveSheetHeader]、
+///    [S1AdaptiveActionTile]、[S1AdaptiveSheetFooter]；禁止自写 `isDesktop`
+///    padding
+/// 3. AppBar 锚点菜单仍用 [s1_menu.dart] 的 `s1MenuItem`，不与 modal sheet 混用
 ///
 /// ## 关闭约定（MD3）
 ///
@@ -13,22 +24,19 @@ enum S1DesktopSheetPresentation { dialog, sideSheet }
 /// - 紧凑屏：`showDragHandle` 下拉、点 scrim、系统返回
 /// - 桌面 dialog / side sheet：点 barrier、Escape / 返回
 ///
-/// 需要显式关闭控件的情况（不要用本约定一刀切去掉）：
-/// - [AlertDialog] / 确认框：用「取消 / 关闭」等 **actions**（非抽屉顶栏 X）
+/// 需要显式关闭控件的情况：
+/// - [AlertDialog] / 确认框：用 actions
 /// - **全屏** modal sheet：顶栏关闭 affordance
-/// - 内容错误/空态且无其它主操作：内容区可放「关闭」等 CTA（如资料加载失败）
+/// - 内容错误/空态且无其它主操作：内容区可放「关闭」CTA
 ///
-/// 禁止在 sheet 内容里再画一套自定义 drag handle（本 API 紧凑屏已提供）。
+/// 禁止在 sheet 内容里再画一套自定义 drag handle（紧凑屏 API 已提供）。
 Future<T?> showS1AdaptiveSheet<T>({
   required BuildContext context,
   required WidgetBuilder builder,
-  double desktopMaxWidth = 560,
+  double desktopMaxWidth = S1AdaptiveSheetSpec.infoWidth,
   bool isScrollControlled = true,
   S1DesktopSheetPresentation desktopPresentation =
       S1DesktopSheetPresentation.dialog,
-
-  /// When true with [S1DesktopSheetPresentation.sideSheet], the panel
-  /// height shrinks to its child instead of filling the viewport.
   bool desktopSideSheetFitContent = false,
 }) {
   if (!context.isExpandedOrAbove) {
@@ -103,10 +111,8 @@ Future<T?> showS1AdaptiveSheet<T>({
     builder: (dialogContext) {
       final scheme = Theme.of(dialogContext).colorScheme;
       return Dialog(
-        // 与读帖画布同档，便于内容区用 card 浮层（非同色 card-in-card）。
         backgroundColor: scheme.surfaceContainerHighest,
         elevation: 0,
-        // 显式圆角 + 裁剪，避免子级全幅 Material 把 Dialog 画成直角。
         shape: Theme.of(dialogContext).dialogTheme.shape ??
             const RoundedRectangleBorder(
               borderRadius: BorderRadius.all(Radius.circular(28)),
@@ -118,5 +124,61 @@ Future<T?> showS1AdaptiveSheet<T>({
         ),
       );
     },
+  );
+}
+
+/// 操作菜单：桌面居中 Dialog，移动端 bottom sheet。
+Future<T?> showS1ActionSheet<T>({
+  required BuildContext context,
+  required WidgetBuilder builder,
+}) {
+  return showS1AdaptiveSheet<T>(
+    context: context,
+    desktopMaxWidth: S1AdaptiveSheetSpec.actionMenuWidth,
+    isScrollControlled: true,
+    builder: builder,
+  );
+}
+
+/// 表单 / 搜索 / 页码选择：桌面宽 Dialog，可滚动。
+Future<T?> showS1FormSheet<T>({
+  required BuildContext context,
+  required WidgetBuilder builder,
+  double? desktopMaxWidth,
+}) {
+  return showS1AdaptiveSheet<T>(
+    context: context,
+    desktopMaxWidth: desktopMaxWidth ?? S1AdaptiveSheetSpec.formWidth,
+    isScrollControlled: true,
+    builder: builder,
+  );
+}
+
+/// 用户资料：Large+ 右侧 side sheet，否则 Dialog。
+Future<T?> showS1ProfileSheet<T>({
+  required BuildContext context,
+  required WidgetBuilder builder,
+}) {
+  return showS1AdaptiveSheet<T>(
+    context: context,
+    desktopMaxWidth: S1AdaptiveSheetSpec.profileWidth,
+    isScrollControlled: true,
+    desktopPresentation: S1DesktopSheetPresentation.sideSheet,
+    desktopSideSheetFitContent: true,
+    builder: builder,
+  );
+}
+
+/// 纯信息展示：桌面居中 Dialog。
+Future<T?> showS1InfoSheet<T>({
+  required BuildContext context,
+  required WidgetBuilder builder,
+  double? desktopMaxWidth,
+}) {
+  return showS1AdaptiveSheet<T>(
+    context: context,
+    desktopMaxWidth: desktopMaxWidth ?? S1AdaptiveSheetSpec.infoWidth,
+    isScrollControlled: true,
+    builder: builder,
   );
 }

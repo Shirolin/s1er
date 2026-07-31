@@ -28,10 +28,8 @@ Future<ForumSearchQuery?> showForumSearchAdvancedSheet({
   required BuildContext context,
   required ForumSearchQuery initialQuery,
 }) {
-  return showS1AdaptiveSheet<ForumSearchQuery>(
+  return showS1FormSheet<ForumSearchQuery>(
     context: context,
-    isScrollControlled: true,
-    desktopMaxWidth: 640,
     builder: (ctx) => ForumSearchAdvancedSheet(initialQuery: initialQuery),
   );
 }
@@ -137,10 +135,9 @@ class _ForumSearchAdvancedSheetState
       return;
     }
     final categories = forumsAsync.requireValue;
-    final picked = await showS1AdaptiveSheet<Set<String>>(
+    final picked = await showS1FormSheet<Set<String>>(
       context: context,
-      isScrollControlled: true,
-      desktopMaxWidth: 480,
+      desktopMaxWidth: S1AdaptiveSheetSpec.pickerWidth,
       builder: (ctx) => _ForumScopePickerSheet(
         categories: categories,
         initialSelection: _forumIds,
@@ -166,185 +163,168 @@ class _ForumSearchAdvancedSheetState
   Widget build(BuildContext context) {
     final scheme = Theme.of(context).colorScheme;
     final textTheme = Theme.of(context).textTheme;
-    final bottomInset = MediaQuery.viewInsetsOf(context).bottom;
-    final maxSheetHeight =
-        MediaQuery.sizeOf(context).height * _sheetMaxHeightFactor;
 
-    return Padding(
-      padding: EdgeInsets.fromLTRB(16, 0, 16, 16 + bottomInset),
-      child: ConstrainedBox(
-        constraints: BoxConstraints(maxHeight: maxSheetHeight),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
+    return S1AdaptiveSheetScaffold(
+      title: '帖子高级搜索',
+      prominentTitle: true,
+      scrollable: true,
+      maxHeightFactor: _sheetMaxHeightFactor,
+      footer: S1AdaptiveSheetFooter(
+        primaryLabel: '搜索',
+        onPrimary: _submit,
+      ),
+      children: [
+        Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-            Text('帖子高级搜索', style: textTheme.titleLarge),
-            const SizedBox(height: 16),
-            Flexible(
-              child: SingleChildScrollView(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.stretch,
-                  children: [
-                    _SectionLabel(text: '关键词', textTheme: textTheme),
-                    const SizedBox(height: 8),
-                    Theme(
-                      data: Theme.of(context).copyWith(
-                        inputDecorationTheme: _searchAdvancedInputTheme(scheme),
-                      ),
-                      child: TextField(
-                        controller: _keywordController,
-                        maxLength: ForumSearchQuery.maxTextLength,
-                        decoration: const InputDecoration(
-                          hintText: '请输入搜索内容',
-                          counterText: '',
-                        ),
-                      ),
-                    ),
-                    const SizedBox(height: 16),
-                    _SectionLabel(text: '作者', textTheme: textTheme),
-                    const SizedBox(height: 8),
-                    Theme(
-                      data: Theme.of(context).copyWith(
-                        inputDecorationTheme: _searchAdvancedInputTheme(scheme),
-                      ),
-                      child: TextField(
-                        controller: _authorController,
-                        maxLength: ForumSearchQuery.maxTextLength,
-                        decoration: const InputDecoration(
-                          hintText: '按用户名筛选',
-                          counterText: '',
-                        ),
-                      ),
-                    ),
-                    const SizedBox(height: 16),
-                    _SectionLabel(text: '主题范围', textTheme: textTheme),
-                    const SizedBox(height: 8),
-                    SegmentedButton<ForumSearchFilter>(
-                      segments: ForumSearchFilter.values
-                          .map(
-                            (f) => ButtonSegment(
-                              value: f,
-                              label: Text(_filterSegmentLabels[f]!),
-                            ),
-                          )
-                          .toList(),
-                      selected: {_filter},
-                      showSelectedIcon: false,
-                      onSelectionChanged: (value) {
-                        setState(() => _filter = value.first);
-                      },
-                      style: S1SegmentedButtonStyle.forScheme(scheme),
-                    ),
-                    const SizedBox(height: 16),
-                    _SectionLabel(text: '特殊主题', textTheme: textTheme),
-                    const SizedBox(height: 8),
-                    SingleChildScrollView(
-                      scrollDirection: Axis.horizontal,
-                      child: Row(
-                        children: [
-                          for (final special in ForumSearchSpecial.values)
-                            Padding(
-                              padding: const EdgeInsets.only(right: 8),
-                              child: FilterChip(
-                                label: Text(_specialChipLabels[special]!),
-                                selected: _specials.contains(special.value),
-                                showCheckmark: false,
-                                side: BorderSide.none,
-                                onSelected: (_) =>
-                                    _toggleSpecial(special.value),
-                              ),
-                            ),
-                        ],
-                      ),
-                    ),
-                    const SizedBox(height: 16),
-                    _SectionLabel(text: '搜索时间', textTheme: textTheme),
-                    const SizedBox(height: 8),
-                    _SearchAdvancedDropdownMenu<int>(
-                      initialSelection: _srchfromSeconds,
-                      entries: [
-                        for (final option in forumSearchTimeOptions)
-                          (value: option.seconds, label: option.label),
-                      ],
-                      onSelected: (value) {
-                        if (value == null) return;
-                        setState(() => _srchfromSeconds = value);
-                      },
-                    ),
-                    const SizedBox(height: 8),
-                    SegmentedButton<bool>(
-                      segments: const [
-                        ButtonSegment(value: false, label: Text('以内')),
-                        ButtonSegment(value: true, label: Text('以前')),
-                      ],
-                      selected: {_before},
-                      showSelectedIcon: false,
-                      onSelectionChanged: (value) {
-                        setState(() => _before = value.first);
-                      },
-                      style: S1SegmentedButtonStyle.forScheme(scheme),
-                    ),
-                    const SizedBox(height: 16),
-                    _SectionLabel(text: '排序类型', textTheme: textTheme),
-                    const SizedBox(height: 8),
-                    _SearchAdvancedDropdownMenu<String>(
-                      key: ValueKey('orderby-trade-$_hasTradeSpecial'),
-                      initialSelection: _effectiveOrderby,
-                      entries: [
-                        for (final option in _orderOptions)
-                          (value: option.value, label: option.label),
-                      ],
-                      onSelected: (value) {
-                        if (value == null) return;
-                        setState(() => _orderby = value);
-                      },
-                    ),
-                    const SizedBox(height: 8),
-                    SegmentedButton<bool>(
-                      segments: const [
-                        ButtonSegment(value: true, label: Text('升序')),
-                        ButtonSegment(value: false, label: Text('降序')),
-                      ],
-                      selected: {_ascending},
-                      showSelectedIcon: false,
-                      onSelectionChanged: (value) {
-                        setState(() => _ascending = value.first);
-                      },
-                      style: S1SegmentedButtonStyle.forScheme(scheme),
-                    ),
-                    const SizedBox(height: 16),
-                    _SectionLabel(text: '搜索范围', textTheme: textTheme),
-                    const SizedBox(height: 8),
-                    OutlinedButton.icon(
-                      onPressed: _pickForums,
-                      icon: const Icon(Icons.forum_outlined),
-                      label: Text(
-                        _forumIds.isEmpty
-                            ? '全部版块'
-                            : '已选 ${_forumIds.length} 个版块',
-                      ),
-                    ),
-                    if (_error != null) ...[
-                      const SizedBox(height: 12),
-                      Text(
-                        _error!,
-                        style: textTheme.bodyMedium?.copyWith(
-                          color: scheme.error,
-                        ),
-                      ),
-                    ],
-                  ],
+            _SectionLabel(text: '关键词', textTheme: textTheme),
+            const SizedBox(height: 8),
+            Theme(
+              data: Theme.of(context).copyWith(
+                inputDecorationTheme: _searchAdvancedInputTheme(scheme),
+              ),
+              child: TextField(
+                controller: _keywordController,
+                maxLength: ForumSearchQuery.maxTextLength,
+                decoration: const InputDecoration(
+                  hintText: '请输入搜索内容',
+                  counterText: '',
                 ),
               ),
             ),
             const SizedBox(height: 16),
-            FilledButton(
-              onPressed: _submit,
-              child: const Text('搜索'),
+            _SectionLabel(text: '作者', textTheme: textTheme),
+            const SizedBox(height: 8),
+            Theme(
+              data: Theme.of(context).copyWith(
+                inputDecorationTheme: _searchAdvancedInputTheme(scheme),
+              ),
+              child: TextField(
+                controller: _authorController,
+                maxLength: ForumSearchQuery.maxTextLength,
+                decoration: const InputDecoration(
+                  hintText: '按用户名筛选',
+                  counterText: '',
+                ),
+              ),
             ),
+            const SizedBox(height: 16),
+            _SectionLabel(text: '主题范围', textTheme: textTheme),
+            const SizedBox(height: 8),
+            SegmentedButton<ForumSearchFilter>(
+              segments: ForumSearchFilter.values
+                  .map(
+                    (f) => ButtonSegment(
+                      value: f,
+                      label: Text(_filterSegmentLabels[f]!),
+                    ),
+                  )
+                  .toList(),
+              selected: {_filter},
+              showSelectedIcon: false,
+              onSelectionChanged: (value) {
+                setState(() => _filter = value.first);
+              },
+              style: S1SegmentedButtonStyle.forScheme(scheme),
+            ),
+            const SizedBox(height: 16),
+            _SectionLabel(text: '特殊主题', textTheme: textTheme),
+            const SizedBox(height: 8),
+            SingleChildScrollView(
+              scrollDirection: Axis.horizontal,
+              child: Row(
+                children: [
+                  for (final special in ForumSearchSpecial.values)
+                    Padding(
+                      padding: const EdgeInsets.only(right: 8),
+                      child: FilterChip(
+                        label: Text(_specialChipLabels[special]!),
+                        selected: _specials.contains(special.value),
+                        showCheckmark: false,
+                        side: BorderSide.none,
+                        onSelected: (_) => _toggleSpecial(special.value),
+                      ),
+                    ),
+                ],
+              ),
+            ),
+            const SizedBox(height: 16),
+            _SectionLabel(text: '搜索时间', textTheme: textTheme),
+            const SizedBox(height: 8),
+            _SearchAdvancedDropdownMenu<int>(
+              initialSelection: _srchfromSeconds,
+              entries: [
+                for (final option in forumSearchTimeOptions)
+                  (value: option.seconds, label: option.label),
+              ],
+              onSelected: (value) {
+                if (value == null) return;
+                setState(() => _srchfromSeconds = value);
+              },
+            ),
+            const SizedBox(height: 8),
+            SegmentedButton<bool>(
+              segments: const [
+                ButtonSegment(value: false, label: Text('以内')),
+                ButtonSegment(value: true, label: Text('以前')),
+              ],
+              selected: {_before},
+              showSelectedIcon: false,
+              onSelectionChanged: (value) {
+                setState(() => _before = value.first);
+              },
+              style: S1SegmentedButtonStyle.forScheme(scheme),
+            ),
+            const SizedBox(height: 16),
+            _SectionLabel(text: '排序类型', textTheme: textTheme),
+            const SizedBox(height: 8),
+            _SearchAdvancedDropdownMenu<String>(
+              key: ValueKey('orderby-trade-$_hasTradeSpecial'),
+              initialSelection: _effectiveOrderby,
+              entries: [
+                for (final option in _orderOptions)
+                  (value: option.value, label: option.label),
+              ],
+              onSelected: (value) {
+                if (value == null) return;
+                setState(() => _orderby = value);
+              },
+            ),
+            const SizedBox(height: 8),
+            SegmentedButton<bool>(
+              segments: const [
+                ButtonSegment(value: true, label: Text('升序')),
+                ButtonSegment(value: false, label: Text('降序')),
+              ],
+              selected: {_ascending},
+              showSelectedIcon: false,
+              onSelectionChanged: (value) {
+                setState(() => _ascending = value.first);
+              },
+              style: S1SegmentedButtonStyle.forScheme(scheme),
+            ),
+            const SizedBox(height: 16),
+            _SectionLabel(text: '搜索范围', textTheme: textTheme),
+            const SizedBox(height: 8),
+            OutlinedButton.icon(
+              onPressed: _pickForums,
+              icon: const Icon(Icons.forum_outlined),
+              label: Text(
+                _forumIds.isEmpty ? '全部版块' : '已选 ${_forumIds.length} 个版块',
+              ),
+            ),
+            if (_error != null) ...[
+              const SizedBox(height: 12),
+              Text(
+                _error!,
+                style: textTheme.bodyMedium?.copyWith(
+                  color: scheme.error,
+                ),
+              ),
+            ],
           ],
         ),
-      ),
+      ],
     );
   }
 }
@@ -486,69 +466,57 @@ class _ForumScopePickerSheetState extends State<_ForumScopePickerSheet> {
   @override
   Widget build(BuildContext context) {
     final textTheme = Theme.of(context).textTheme;
-    final bottomInset = MediaQuery.viewInsetsOf(context).bottom;
-    final maxSheetHeight =
-        MediaQuery.sizeOf(context).height * _sheetMaxHeightFactor;
 
-    return Padding(
-      padding: EdgeInsets.fromLTRB(16, 0, 16, 16 + bottomInset),
-      child: ConstrainedBox(
-        constraints: BoxConstraints(maxHeight: maxSheetHeight),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
+    return S1AdaptiveSheetScaffold(
+      title: '选择版块',
+      prominentTitle: true,
+      scrollable: true,
+      maxHeightFactor: _sheetMaxHeightFactor,
+      footer: S1AdaptiveSheetFooter(
+        primaryLabel: '确定',
+        onPrimary: () {
+          S1Haptics.selection();
+          Navigator.pop(context, _allForums ? <String>{} : _selected);
+        },
+      ),
+      children: [
+        Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-            Text('选择版块', style: textTheme.titleLarge),
-            const SizedBox(height: 8),
             CheckboxListTile(
               contentPadding: EdgeInsets.zero,
               title: const Text('全部版块'),
               value: _allForums,
               onChanged: _toggleAll,
             ),
-            Flexible(
-              child: ListView(
-                shrinkWrap: true,
-                children: [
-                  for (final category in widget.categories) ...[
-                    if (category.subforums.isEmpty)
-                      CheckboxListTile(
-                        contentPadding: const EdgeInsets.only(left: 8),
-                        title: Text(category.name),
-                        value: !_allForums && _selected.contains(category.fid),
-                        onChanged: (value) => _toggleForum(category.fid, value),
-                      )
-                    else ...[
-                      Padding(
-                        padding: const EdgeInsets.fromLTRB(8, 12, 8, 4),
-                        child: Text(
-                          category.name,
-                          style: textTheme.labelLarge,
-                        ),
-                      ),
-                      for (final sub in category.subforums)
-                        CheckboxListTile(
-                          contentPadding: const EdgeInsets.only(left: 24),
-                          title: Text(sub.name),
-                          value: !_allForums && _selected.contains(sub.fid),
-                          onChanged: (value) => _toggleForum(sub.fid, value),
-                        ),
-                    ],
-                  ],
-                ],
-              ),
-            ),
-            const SizedBox(height: 12),
-            FilledButton(
-              onPressed: () {
-                S1Haptics.selection();
-                Navigator.pop(context, _allForums ? <String>{} : _selected);
-              },
-              child: const Text('确定'),
-            ),
+            for (final category in widget.categories) ...[
+              if (category.subforums.isEmpty)
+                CheckboxListTile(
+                  contentPadding: const EdgeInsets.only(left: 8),
+                  title: Text(category.name),
+                  value: !_allForums && _selected.contains(category.fid),
+                  onChanged: (value) => _toggleForum(category.fid, value),
+                )
+              else ...[
+                Padding(
+                  padding: const EdgeInsets.fromLTRB(8, 12, 8, 4),
+                  child: Text(
+                    category.name,
+                    style: textTheme.labelLarge,
+                  ),
+                ),
+                for (final sub in category.subforums)
+                  CheckboxListTile(
+                    contentPadding: const EdgeInsets.only(left: 24),
+                    title: Text(sub.name),
+                    value: !_allForums && _selected.contains(sub.fid),
+                    onChanged: (value) => _toggleForum(sub.fid, value),
+                  ),
+              ],
+            ],
           ],
         ),
-      ),
+      ],
     );
   }
 }

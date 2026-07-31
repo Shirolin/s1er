@@ -789,53 +789,46 @@ class _ComposeScreenState extends ConsumerState<ComposeScreen> {
 
     if (threadTypes.isEmpty && readPermissions.isEmpty) return;
 
-    await showS1AdaptiveSheet<void>(
+    await showS1FormSheet<void>(
       context: context,
       builder: (sheetContext) {
-        final textTheme = Theme.of(sheetContext).textTheme;
-        final bottom = MediaQuery.paddingOf(sheetContext).bottom;
-        return Padding(
-          padding: EdgeInsets.fromLTRB(16, 8, 16, bottom + 16),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
-              Text('主题设置', style: textTheme.titleMedium),
-              const SizedBox(height: 16),
-              _ComposeThreadMetaFields(
-                threadTypes: threadTypes,
-                readPermissions: readPermissions,
-                selectedTypeId: _selectedTypeId,
-                selectedReadPerm: _selectedReadPerm,
-                allowUncategorized: allowUncategorized,
-                onTypeChanged: (value) {
-                  setState(() {
-                    _selectedTypeId = value;
-                    if (_isNewThread) {
-                      _persistNewThreadDraft();
-                    } else if (_isEditing) {
-                      _persistEditDraft();
-                    }
-                  });
-                },
-                onReadPermChanged: (value) {
-                  setState(() {
-                    _selectedReadPerm = value;
+        return S1AdaptiveSheetScaffold(
+          title: '主题设置',
+          children: [
+            _ComposeThreadMetaFields(
+              threadTypes: threadTypes,
+              readPermissions: readPermissions,
+              selectedTypeId: _selectedTypeId,
+              selectedReadPerm: _selectedReadPerm,
+              allowUncategorized: allowUncategorized,
+              onTypeChanged: (value) {
+                setState(() {
+                  _selectedTypeId = value;
+                  if (_isNewThread) {
+                    _persistNewThreadDraft();
+                  } else if (_isEditing) {
                     _persistEditDraft();
-                  });
-                },
+                  }
+                });
+              },
+              onReadPermChanged: (value) {
+                setState(() {
+                  _selectedReadPerm = value;
+                  _persistEditDraft();
+                });
+              },
+            ),
+            if (typeRequired) ...[
+              const SizedBox(height: 8),
+              Text(
+                '本版块必须选择主题分类',
+                style: Theme.of(sheetContext).textTheme.bodySmall?.copyWith(
+                      color:
+                          Theme.of(sheetContext).colorScheme.onSurfaceVariant,
+                    ),
               ),
-              if (typeRequired) ...[
-                const SizedBox(height: 8),
-                Text(
-                  '本版块必须选择主题分类',
-                  style: textTheme.bodySmall?.copyWith(
-                    color: Theme.of(sheetContext).colorScheme.onSurfaceVariant,
-                  ),
-                ),
-              ],
             ],
-          ),
+          ],
         );
       },
     );
@@ -1337,9 +1330,8 @@ class _ComposeScreenState extends ConsumerState<ComposeScreen> {
         ) ??
         PrivateMessageItem.avatarUrlForUid(auth.user?.uid ?? '');
 
-    final confirmed = await showS1AdaptiveSheet<bool>(
+    final confirmed = await showS1FormSheet<bool>(
       context: context,
-      isScrollControlled: true,
       desktopMaxWidth: S1Breakpoints.contentWidthReading,
       builder: (ctx) => _ComposePreviewSheet(
         subject: previewSubject.isEmpty ? null : previewSubject,
@@ -2437,8 +2429,6 @@ class _ComposePreviewSheet extends StatelessWidget {
     final scheme = Theme.of(context).colorScheme;
     final textTheme = Theme.of(context).textTheme;
     final desktop = context.isExpandedOrAbove;
-    final maxHeight =
-        MediaQuery.sizeOf(context).height * (desktop ? 0.78 : 0.72);
     final imageIndexCounter = PostImageIndexCounter();
     final letter = authorName.isNotEmpty ? authorName[0] : '?';
     // 主题始终在卡上方作上下文；卡内只预览楼层正文（含签名）。
@@ -2532,117 +2522,49 @@ class _ComposePreviewSheet extends StatelessWidget {
       ),
     );
 
-    final header = Column(
-      crossAxisAlignment: CrossAxisAlignment.stretch,
-      mainAxisSize: MainAxisSize.min,
+    return S1AdaptiveSheetScaffold(
+      title: '预览',
+      scrollable: true,
+      maxHeightFactor: desktop ? 0.78 : 0.72,
+      footer: S1AdaptiveSheetFooter(
+        primaryLabel: submitLabel,
+        onPrimary: canSubmit ? () => Navigator.of(context).pop(true) : null,
+        primaryEnabled: canSubmit,
+        secondaryLabel: desktop ? '关闭' : null,
+        onSecondary: desktop ? () => Navigator.of(context).maybePop() : null,
+      ),
       children: [
-        Row(
+        Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-            Icon(
-              Icons.visibility_outlined,
-              size: 20,
-              color: scheme.onSurfaceVariant,
-            ),
-            const SizedBox(width: 8),
-            Expanded(
-              child: Text(
-                '预览',
-                style: textTheme.titleMedium?.copyWith(
-                  color: scheme.onSurface,
+            if (showSubjectAbove) ...[
+              Text(
+                isNewThread ? subject! : '主题 · $subject',
+                maxLines: 2,
+                overflow: TextOverflow.ellipsis,
+                style:
+                    (isNewThread ? textTheme.titleMedium : textTheme.labelLarge)
+                        ?.copyWith(
+                  color:
+                      isNewThread ? scheme.onSurface : scheme.onSurfaceVariant,
+                  fontWeight: isNewThread ? FontWeight.w600 : null,
                 ),
               ),
-            ),
-            // PC Dialog：TextButton「关闭」属 M3 actions 语义；不放顶栏 X
-            //（AGENTS：adaptive sheet 不放关闭 chrome，桌面靠 scrim / Escape）。
-            if (desktop)
-              TextButton(
-                onPressed: () => Navigator.of(context).maybePop(),
-                child: const Text('关闭'),
+              const SizedBox(height: 12),
+            ],
+            if (attachPreviewLimited) ...[
+              Text(
+                '部分论坛附件图暂无地址，预览可能显示附件码；保存后仍会按原附件提交。',
+                style: textTheme.bodySmall?.copyWith(
+                  color: scheme.onSurfaceVariant,
+                ),
               ),
+              const SizedBox(height: 12),
+            ],
+            postCard,
           ],
         ),
-        if (showSubjectAbove) ...[
-          const SizedBox(height: 8),
-          Text(
-            isNewThread ? subject! : '主题 · $subject',
-            maxLines: 2,
-            overflow: TextOverflow.ellipsis,
-            style: (isNewThread ? textTheme.titleMedium : textTheme.labelLarge)
-                ?.copyWith(
-              color: isNewThread ? scheme.onSurface : scheme.onSurfaceVariant,
-              fontWeight: isNewThread ? FontWeight.w600 : null,
-            ),
-          ),
-        ],
-        if (attachPreviewLimited) ...[
-          const SizedBox(height: 8),
-          Text(
-            '部分论坛附件图暂无地址，预览可能显示附件码；保存后仍会按原附件提交。',
-            style: textTheme.bodySmall?.copyWith(
-              color: scheme.onSurfaceVariant,
-            ),
-          ),
-        ],
       ],
-    );
-
-    final actions = Padding(
-      padding: const EdgeInsets.fromLTRB(16, 8, 16, 16),
-      child: FilledButton(
-        onPressed: canSubmit ? () => Navigator.of(context).pop(true) : null,
-        child: Text(submitLabel),
-      ),
-    );
-
-    return SafeArea(
-      child: desktop
-          ? ConstrainedBox(
-              constraints: BoxConstraints(maxHeight: maxHeight),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.stretch,
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  Flexible(
-                    child: SingleChildScrollView(
-                      padding: const EdgeInsets.fromLTRB(16, 8, 8, 8),
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.stretch,
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          header,
-                          const SizedBox(height: 12),
-                          Padding(
-                            padding: const EdgeInsets.only(right: 8),
-                            child: postCard,
-                          ),
-                        ],
-                      ),
-                    ),
-                  ),
-                  actions,
-                ],
-              ),
-            )
-          : SizedBox(
-              height: maxHeight,
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.stretch,
-                children: [
-                  Padding(
-                    padding: const EdgeInsets.fromLTRB(16, 12, 16, 0),
-                    child: header,
-                  ),
-                  const SizedBox(height: 12),
-                  Expanded(
-                    child: SingleChildScrollView(
-                      padding: const EdgeInsets.fromLTRB(16, 0, 16, 8),
-                      child: postCard,
-                    ),
-                  ),
-                  actions,
-                ],
-              ),
-            ),
     );
   }
 }

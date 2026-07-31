@@ -20,12 +20,8 @@ Future<void> showUserProfileSheet(
   VoidCallback? onFilterByAuthor,
   bool isSelf = false,
 }) {
-  return showS1AdaptiveSheet<void>(
+  return showS1ProfileSheet<void>(
     context: context,
-    isScrollControlled: true,
-    desktopMaxWidth: 400,
-    desktopPresentation: S1DesktopSheetPresentation.sideSheet,
-    desktopSideSheetFitContent: true,
     builder: (ctx) => _UserProfileSheet(
       future: future,
       onFilterByAuthor: onFilterByAuthor,
@@ -61,27 +57,20 @@ class _UserProfileSheet extends StatelessWidget {
 
         final user = snapshot.data;
         if (user == null) {
-          return SafeArea(
-            child: Padding(
-              padding: const EdgeInsets.fromLTRB(24, 8, 24, 24),
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  Icon(
-                    Icons.error_outline,
-                    size: 40,
-                    color: Theme.of(context).colorScheme.error,
-                  ),
-                  const SizedBox(height: 12),
-                  Text('加载失败', style: Theme.of(context).textTheme.titleMedium),
-                  const SizedBox(height: 16),
-                  FilledButton(
-                    onPressed: () => Navigator.pop(context),
-                    child: const Text('关闭'),
-                  ),
-                ],
-              ),
+          return S1AdaptiveSheetScaffold(
+            footer: S1AdaptiveSheetFooter(
+              primaryLabel: '关闭',
+              onPrimary: () => Navigator.pop(context),
             ),
+            children: [
+              Icon(
+                Icons.error_outline,
+                size: 40,
+                color: Theme.of(context).colorScheme.error,
+              ),
+              const SizedBox(height: 12),
+              Text('加载失败', style: Theme.of(context).textTheme.titleMedium),
+            ],
           );
         }
 
@@ -140,10 +129,10 @@ class _UserProfileContent extends ConsumerWidget {
     final canSendPm = auth.isLoggedIn && !isSelf && !pmBlocked;
     final showFilter = onFilterByAuthor != null;
 
-    return SafeArea(
-      child: SingleChildScrollView(
-        padding: const EdgeInsets.fromLTRB(24, 16, 24, 24),
-        child: Column(
+    return S1AdaptiveSheetScaffold(
+      scrollable: true,
+      children: [
+        Column(
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
@@ -199,7 +188,7 @@ class _UserProfileContent extends ConsumerWidget {
             ],
           ],
         ),
-      ),
+      ],
     );
   }
 }

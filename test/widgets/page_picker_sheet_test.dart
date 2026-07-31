@@ -82,7 +82,7 @@ void main() {
     expect(find.byType(GridView), findsOneWidget);
     expect(find.text('第 1 - 40 楼'), findsOneWidget);
     expect(find.text('第 121 - 160 楼'), findsOneWidget);
-    expect(tester.getSize(find.byType(PagePickerSheet)).height, lessThan(500));
+    expect(tester.getSize(find.byType(PagePickerSheet)).height, lessThan(600));
   });
 
   testWidgets(

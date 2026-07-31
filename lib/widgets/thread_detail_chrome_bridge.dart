@@ -1,4 +1,5 @@
 import 'package:flutter/foundation.dart';
+import 'package:flutter/scheduler.dart';
 
 import '../models/list_density.dart';
 
@@ -40,8 +41,26 @@ class ThreadDetailChromeSnapshot {
 /// Bridges thread-detail toolbar actions to [ForumListScreen]'s split AppBar.
 class ThreadDetailChromeBridge extends ChangeNotifier {
   ThreadDetailChromeSnapshot? _snapshot;
+  bool _notifyScheduled = false;
+  bool _disposed = false;
 
   ThreadDetailChromeSnapshot? get snapshot => _snapshot;
+
+  @override
+  void dispose() {
+    _disposed = true;
+    super.dispose();
+  }
+
+  void _scheduleNotify() {
+    if (_disposed || _notifyScheduled) return;
+    _notifyScheduled = true;
+    SchedulerBinding.instance.addPostFrameCallback((_) {
+      _notifyScheduled = false;
+      if (_disposed) return;
+      notifyListeners();
+    });
+  }
 
   void publish(ThreadDetailChromeSnapshot snapshot) {
     final prev = _snapshot;
@@ -56,12 +75,12 @@ class ThreadDetailChromeBridge extends ChangeNotifier {
       return;
     }
     _snapshot = snapshot;
-    notifyListeners();
+    _scheduleNotify();
   }
 
   void clear() {
     if (_snapshot == null) return;
     _snapshot = null;
-    notifyListeners();
+    _scheduleNotify();
   }
 }

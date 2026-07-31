@@ -527,31 +527,24 @@ class _ImageViewerScreenState extends ConsumerState<ImageViewerScreen> {
     final textTheme = Theme.of(context).textTheme;
     final colorScheme = Theme.of(context).colorScheme;
 
-    showS1AdaptiveSheet<void>(
+    showS1InfoSheet<void>(
       context: context,
-      desktopMaxWidth: 560,
       builder: (context) {
-        return Padding(
-          padding: const EdgeInsets.fromLTRB(24, 8, 24, 24),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text('图片信息', style: textTheme.titleMedium),
-              const SizedBox(height: 16),
-              _infoRow('文件名', _fileName, textTheme, colorScheme),
-              _infoRow('格式', _format, textTheme, colorScheme),
-              if (_width != null && _height != null)
-                _infoRow('尺寸', '$_width × $_height px', textTheme, colorScheme),
-              if (_effectiveBytes != null)
-                _infoRow(
-                  '大小',
-                  _formatSize(_effectiveBytes!.length),
-                  textTheme,
-                  colorScheme,
-                ),
-            ],
-          ),
+        return S1AdaptiveSheetScaffold(
+          title: '图片信息',
+          children: [
+            _infoRow('文件名', _fileName, textTheme, colorScheme),
+            _infoRow('格式', _format, textTheme, colorScheme),
+            if (_width != null && _height != null)
+              _infoRow('尺寸', '$_width × $_height px', textTheme, colorScheme),
+            if (_effectiveBytes != null)
+              _infoRow(
+                '大小',
+                _formatSize(_effectiveBytes!.length),
+                textTheme,
+                colorScheme,
+              ),
+          ],
         );
       },
     );

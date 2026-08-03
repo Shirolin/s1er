@@ -1,13 +1,23 @@
+import 'dart:typed_data';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_cache_manager/flutter_cache_manager.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:image/image.dart' as img;
 import 'package:s1er/models/image_load_policy.dart';
 import 'package:s1er/providers/connectivity_provider.dart';
+import 'package:s1er/providers/image_bytes_provider.dart';
 import 'package:s1er/providers/settings_provider.dart';
 import 'package:s1er/services/s1_image_cache.dart';
 import 'package:s1er/theme/app_theme.dart';
 import 'package:s1er/widgets/image_viewer.dart';
+
+Uint8List _pngBytes({required int width, required int height}) {
+  final image = img.Image(width: width, height: height);
+  img.fill(image, color: img.ColorRgb8(200, 80, 80));
+  return Uint8List.fromList(img.encodePng(image));
+}
 
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
@@ -370,6 +380,88 @@ void main() {
     final maxWidth =
         tester.widget<ConstrainedBox>(constrained.first).constraints.maxWidth;
     expect(maxWidth, 360);
+  });
+
+  testWidgets('long-press inline image opens the action menu', (tester) async {
+    const url = 'https://img.stage1st.com/forum/a.png';
+    final bytes = _pngBytes(width: 60, height: 40);
+
+    await tester.pumpWidget(
+      ProviderScope(
+        overrides: [
+          settingsProvider.overrideWith(
+            () => SettingsNotifier(
+              initial: const AppSettings(showImages: true),
+            ),
+          ),
+          wifiConnectedProvider.overrideWith((ref) async* {
+            yield true;
+          }),
+          imageBytesProvider.overrideWith((ref, u) async {
+            expect(u, url);
+            return bytes;
+          }),
+        ],
+        child: MaterialApp(
+          theme: AppTheme.lightTheme('purple'),
+          home: const Scaffold(
+            body: ImageViewer(imageUrl: url),
+          ),
+        ),
+      ),
+    );
+
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 100));
+    await tester.pump();
+
+    await tester.longPress(find.byType(ImageViewer));
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 500));
+
+    expect(find.text('下载'), findsOneWidget);
+    expect(find.text('分享'), findsOneWidget);
+    expect(find.text('复制图片'), findsOneWidget);
+    expect(find.text('复制链接'), findsOneWidget);
+    expect(find.text('图片信息'), findsOneWidget);
+  });
+
+  testWidgets('emoticon long-press does not open the action menu',
+      (tester) async {
+    await tester.pumpWidget(
+      ProviderScope(
+        overrides: [
+          settingsProvider.overrideWith(
+            () => SettingsNotifier(
+              initial: const AppSettings(showImages: true),
+            ),
+          ),
+          wifiConnectedProvider.overrideWith((ref) async* {
+            yield true;
+          }),
+        ],
+        child: MaterialApp(
+          theme: AppTheme.lightTheme('purple'),
+          home: const Scaffold(
+            body: ImageViewer(
+              imageUrl:
+                  'https://avatar.stage1st.com/000/00/00/01_avatar_small.jpg',
+              isEmoticon: true,
+            ),
+          ),
+        ),
+      ),
+    );
+
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 100));
+    await tester.pump();
+
+    await tester.longPress(find.byType(ImageViewer));
+    await tester.pumpAndSettle();
+
+    expect(find.text('下载'), findsNothing);
+    expect(find.text('复制链接'), findsNothing);
   });
 }
 

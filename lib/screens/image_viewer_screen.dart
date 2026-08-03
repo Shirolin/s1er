@@ -10,13 +10,9 @@ import 'package:go_router/go_router.dart';
 
 import '../config/resource_domains.dart';
 import '../providers/image_bytes_provider.dart';
-import '../providers/settings_provider.dart';
 import '../theme/app_theme.dart';
-import '../utils/gallery_image_saver.dart';
-import '../utils/s1_snack_bar.dart';
-import '../widgets/web_image_stub.dart'
-    if (dart.library.html) '../widgets/web_image_html.dart';
-import '../widgets/s1_adaptive_sheet.dart';
+import '../theme/s1_haptics.dart';
+import '../utils/image_actions.dart';
 import '../widgets/s1_click_region.dart';
 
 enum _ViewerLoadState { loading, ready, error }
@@ -161,27 +157,6 @@ class _ImageViewerScreenState extends ConsumerState<ImageViewerScreen> {
     return ref.read(imageBytesProvider(widget.imageUrl).future);
   }
 
-  String get _fileName {
-    final uri = Uri.parse(widget.imageUrl);
-    final name = uri.pathSegments.isNotEmpty ? uri.pathSegments.last : 'image';
-    return name.contains('.') ? name : '$name.jpg';
-  }
-
-  String get _format {
-    final lower = _fileName.toLowerCase();
-    if (lower.endsWith('.png')) return 'PNG';
-    if (lower.endsWith('.gif')) return 'GIF';
-    if (lower.endsWith('.webp')) return 'WebP';
-    if (lower.endsWith('.bmp')) return 'BMP';
-    return 'JPEG';
-  }
-
-  String _formatSize(int bytes) {
-    if (bytes < 1024) return '$bytes B';
-    if (bytes < 1024 * 1024) return '${(bytes / 1024).toStringAsFixed(1)} KB';
-    return '${(bytes / (1024 * 1024)).toStringAsFixed(1)} MB';
-  }
-
   void _setScaleLabel(double scale) {
     _scaleLabel.value = '${(scale * 100).round()}%';
   }
@@ -264,58 +239,24 @@ class _ImageViewerScreenState extends ConsumerState<ImageViewerScreen> {
     _applyScale(_currentScale / _zoomStep);
   }
 
-  Future<void> _downloadImage(BuildContext context) async {
+  ImageActionsSpec get _actionsSpec => ImageActionsSpec(
+        fullUrl: widget.imageUrl,
+        fileName: fileNameFromUrl(widget.imageUrl),
+        bytes: _effectiveBytes,
+        fetchBytes: _tryFetchBytes,
+        imageWidth: _width,
+        imageHeight: _height,
+      );
+
+  void _showActions(BuildContext context) {
+    showImageActions(context, _actionsSpec);
+  }
+
+  Future<void> _downloadImage() async {
     if (_downloading) return;
-    if (!kIsWeb && !_canSaveToGallery) return;
     setState(() => _downloading = true);
-
-    final messenger = ScaffoldMessenger.of(context);
-
     try {
-      Uint8List bytes;
-      if (_effectiveBytes != null) {
-        bytes = _effectiveBytes!;
-      } else {
-        final fetched = await _tryFetchBytes();
-        if (fetched == null) throw StateError('无法获取图片数据');
-        bytes = fetched;
-      }
-
-      String successMessage = '已保存到相册';
-      if (kIsWeb) {
-        await downloadImageWeb(bytes, _fileName);
-        successMessage = '下载已开始';
-      } else {
-        final settings = ref.read(settingsProvider);
-        final result = await saveImageBytesToGallery(
-          bytes: bytes,
-          fileName: _fileName,
-          customDirectory: settings.customExportPath,
-          saveMode: settings.shareSaveMode,
-        );
-        if (result == SaveImageResultStatus.cancelled) {
-          return;
-        } else if (result == SaveImageResultStatus.fallbackSuccess) {
-          successMessage = '原目录不可用，已自动保存至系统图片文件夹';
-        } else if (settings.customExportPath != null &&
-            settings.customExportPath!.isNotEmpty) {
-          successMessage = '已保存至自定义目录';
-        }
-      }
-
-      if (context.mounted) {
-        messenger.clearSnackBars();
-        S1SnackBar.show(
-          context,
-          message: successMessage,
-          bottomClearance: 16,
-        );
-      }
-    } catch (e) {
-      if (context.mounted) {
-        messenger.clearSnackBars();
-        S1SnackBar.show(context, message: '下载失败: $e', bottomClearance: 16);
-      }
+      await downloadImageBytes(context, _actionsSpec);
     } finally {
       if (mounted) setState(() => _downloading = false);
     }
@@ -363,27 +304,35 @@ class _ImageViewerScreenState extends ConsumerState<ImageViewerScreen> {
             if (provider == null || width == null || height == null) {
               return const Center(child: CircularProgressIndicator());
             }
-            return InteractiveViewer(
-              transformationController: _transformController,
-              constrained: false,
-              minScale: _minScale,
-              maxScale: _maxScale,
-              onInteractionUpdate: _onInteractionUpdate,
-              child: SizedBox(
-                width: width.toDouble(),
-                height: height.toDouble(),
-                child: Image(
-                  image: provider,
-                  fit: BoxFit.fill,
+            return GestureDetector(
+              behavior: HitTestBehavior.opaque,
+              onLongPress: () {
+                S1Haptics.medium();
+                _showActions(context);
+              },
+              onSecondaryTapDown: (_) => _showActions(context),
+              child: InteractiveViewer(
+                transformationController: _transformController,
+                constrained: false,
+                minScale: _minScale,
+                maxScale: _maxScale,
+                onInteractionUpdate: _onInteractionUpdate,
+                child: SizedBox(
                   width: width.toDouble(),
                   height: height.toDouble(),
-                  gaplessPlayback: true,
-                  errorBuilder: (_, __, ___) => Center(
-                    child: Icon(
-                      Icons.broken_image_outlined,
-                      color: colorScheme.onInverseSurface
-                          .withValues(alpha: S1Alpha.viewerScrim),
-                      size: 48,
+                  child: Image(
+                    image: provider,
+                    fit: BoxFit.fill,
+                    width: width.toDouble(),
+                    height: height.toDouble(),
+                    gaplessPlayback: true,
+                    errorBuilder: (_, __, ___) => Center(
+                      child: Icon(
+                        Icons.broken_image_outlined,
+                        color: colorScheme.onInverseSurface
+                            .withValues(alpha: S1Alpha.viewerScrim),
+                        size: 48,
+                      ),
                     ),
                   ),
                 ),
@@ -416,14 +365,13 @@ class _ImageViewerScreenState extends ConsumerState<ImageViewerScreen> {
                 icon: const Icon(Icons.info_outline),
                 tooltip: '图片信息',
                 color: colorScheme.onSurface,
-                onPressed: () => _showInfoSheet(context),
+                onPressed: () => showImageInfoSheet(context, _actionsSpec),
               ),
               if (kIsWeb || _canSaveToGallery)
                 IconButton(
                   tooltip: kIsWeb ? '下载' : '保存到相册',
                   color: colorScheme.onSurface,
-                  onPressed:
-                      _downloading ? null : () => _downloadImage(context),
+                  onPressed: _downloading ? null : _downloadImage,
                   icon: _downloading
                       ? SizedBox(
                           width: 20,
@@ -518,62 +466,6 @@ class _ImageViewerScreenState extends ConsumerState<ImageViewerScreen> {
           _buildTopBar(colorScheme),
           Expanded(child: _buildViewerBody(colorScheme)),
           _buildControlBar(colorScheme, textTheme),
-        ],
-      ),
-    );
-  }
-
-  void _showInfoSheet(BuildContext context) {
-    final textTheme = Theme.of(context).textTheme;
-    final colorScheme = Theme.of(context).colorScheme;
-
-    showS1InfoSheet<void>(
-      context: context,
-      builder: (context) {
-        return S1AdaptiveSheetScaffold(
-          title: '图片信息',
-          children: [
-            _infoRow('文件名', _fileName, textTheme, colorScheme),
-            _infoRow('格式', _format, textTheme, colorScheme),
-            if (_width != null && _height != null)
-              _infoRow('尺寸', '$_width × $_height px', textTheme, colorScheme),
-            if (_effectiveBytes != null)
-              _infoRow(
-                '大小',
-                _formatSize(_effectiveBytes!.length),
-                textTheme,
-                colorScheme,
-              ),
-          ],
-        );
-      },
-    );
-  }
-
-  Widget _infoRow(
-    String label,
-    String value,
-    TextTheme textTheme,
-    ColorScheme colorScheme,
-  ) {
-    return Padding(
-      padding: const EdgeInsets.only(bottom: 12),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text(
-            label,
-            style: textTheme.labelMedium?.copyWith(
-              color: colorScheme.onSurfaceVariant,
-            ),
-          ),
-          const SizedBox(height: 2),
-          Text(
-            value,
-            style: textTheme.bodyMedium,
-            maxLines: 2,
-            overflow: TextOverflow.ellipsis,
-          ),
         ],
       ),
     );

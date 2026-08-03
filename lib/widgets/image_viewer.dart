@@ -12,6 +12,7 @@ import '../providers/image_bytes_provider.dart';
 import '../providers/settings_provider.dart';
 import '../providers/image_cache_provider.dart';
 import '../theme/app_theme.dart';
+import '../utils/image_actions.dart';
 import '../utils/image_load_policy.dart';
 import '../utils/inline_image_decode.dart';
 import 'lazy_visibility_loader.dart';
@@ -483,51 +484,56 @@ class _ImageViewerState extends ConsumerState<ImageViewer> {
     final scheme = Theme.of(context).colorScheme;
     final dpr = MediaQuery.devicePixelRatioOf(context);
 
-    Widget child = Semantics(
-      button: true,
-      label: '查看大图',
-      child: S1ClickRegion(
-        onTap: () => _showFullScreen(context),
-        child: LayoutBuilder(
-          builder: (context, constraints) {
-            final layoutWidth =
-                constraints.hasBoundedWidth ? constraints.maxWidth : 300.0;
-            final decodeWidth = inlineDecodeWidthPx(layoutWidth, dpr);
-            final imageProvider = inlineImageProvider(provider, decodeWidth);
+    Widget child = GestureDetector(
+      behavior: HitTestBehavior.translucent,
+      onSecondaryTapDown: (_) => _showActions(context),
+      child: Semantics(
+        button: true,
+        label: '查看大图',
+        child: S1ClickRegion(
+          onTap: () => _showFullScreen(context),
+          onLongPress: () => _showActions(context),
+          child: LayoutBuilder(
+            builder: (context, constraints) {
+              final layoutWidth =
+                  constraints.hasBoundedWidth ? constraints.maxWidth : 300.0;
+              final decodeWidth = inlineDecodeWidthPx(layoutWidth, dpr);
+              final imageProvider = inlineImageProvider(provider, decodeWidth);
 
-            return Image(
-              key: ValueKey('$_displayUrl-$decodeWidth'),
-              image: imageProvider,
-              fit: BoxFit.contain,
-              gaplessPlayback: true,
-              frameBuilder: (context, child, frame, wasSynchronouslyLoaded) {
-                if (wasSynchronouslyLoaded) return child;
-                return Stack(
-                  alignment: Alignment.center,
-                  children: [
-                    if (frame == null)
-                      const SizedBox(
-                        height: 96,
-                        child: Center(
-                          child: CircularProgressIndicator(strokeWidth: 2),
+              return Image(
+                key: ValueKey('$_displayUrl-$decodeWidth'),
+                image: imageProvider,
+                fit: BoxFit.contain,
+                gaplessPlayback: true,
+                frameBuilder: (context, child, frame, wasSynchronouslyLoaded) {
+                  if (wasSynchronouslyLoaded) return child;
+                  return Stack(
+                    alignment: Alignment.center,
+                    children: [
+                      if (frame == null)
+                        const SizedBox(
+                          height: 96,
+                          child: Center(
+                            child: CircularProgressIndicator(strokeWidth: 2),
+                          ),
                         ),
+                      AnimatedOpacity(
+                        opacity: frame != null ? 1.0 : 0.0,
+                        duration: const Duration(milliseconds: 150),
+                        child: child,
                       ),
-                    AnimatedOpacity(
-                      opacity: frame != null ? 1.0 : 0.0,
-                      duration: const Duration(milliseconds: 150),
-                      child: child,
-                    ),
-                  ],
-                );
-              },
-              errorBuilder: (_, __, ___) {
-                WidgetsBinding.instance.addPostFrameCallback((_) {
-                  if (mounted) _handlePublicImageError();
-                });
-                return _buildError();
-              },
-            );
-          },
+                    ],
+                  );
+                },
+                errorBuilder: (_, __, ___) {
+                  WidgetsBinding.instance.addPostFrameCallback((_) {
+                    if (mounted) _handlePublicImageError();
+                  });
+                  return _buildError();
+                },
+              );
+            },
+          ),
         ),
       ),
     );
@@ -675,6 +681,18 @@ class _ImageViewerState extends ConsumerState<ImageViewer> {
         'imageBytes': imageBytes,
         'resourceType': fullType,
       },
+    );
+  }
+
+  void _showActions(BuildContext context) {
+    showImageActions(
+      context,
+      ImageActionsSpec(
+        fullUrl: _fullUrl,
+        fileName: fileNameFromUrl(_fullUrl),
+        bytes: _displayUrl == _fullUrl ? _bytes : null,
+        fetchBytes: () => ref.read(imageBytesProvider(_fullUrl).future),
+      ),
     );
   }
 }

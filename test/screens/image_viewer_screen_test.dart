@@ -1,7 +1,8 @@
 import 'dart:math' as math;
-import 'dart:typed_data';
 
+import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_cache_manager/flutter_cache_manager.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -323,6 +324,112 @@ void main() {
 
       expect(requested, [full]);
       expect(find.byType(InteractiveViewer), findsOneWidget);
+    });
+  });
+
+  group('ImageViewerScreen long-press menu', () {
+    Future<void> pumpReadyViewer(WidgetTester tester) async {
+      tester.view.physicalSize = const Size(800, 1200);
+      tester.view.devicePixelRatio = 1.0;
+      addTearDown(tester.view.resetPhysicalSize);
+      addTearDown(tester.view.resetDevicePixelRatio);
+
+      final bytes = _pngBytes(width: 400, height: 200);
+      await tester.pumpWidget(
+        ProviderScope(
+          child: MaterialApp(
+            theme: AppTheme.lightTheme('purple'),
+            home: ImageViewerScreen(
+              imageUrl: 'https://img.stage1st.com/forum/photo.png',
+              imageBytes: bytes,
+            ),
+          ),
+        ),
+      );
+      await tester.runAsync(() async {
+        await Future<void>.delayed(const Duration(milliseconds: 100));
+      });
+      await tester.pumpAndSettle();
+    }
+
+    testWidgets('long-press opens the action menu', (tester) async {
+      await pumpReadyViewer(tester);
+      expect(find.byType(InteractiveViewer), findsOneWidget);
+
+      await tester.longPress(find.byType(InteractiveViewer));
+      await tester.pumpAndSettle();
+
+      expect(find.text('下载'), findsOneWidget);
+      expect(find.text('分享'), findsOneWidget);
+      expect(find.text('复制图片'), findsOneWidget);
+      expect(find.text('复制链接'), findsOneWidget);
+      expect(find.text('图片信息'), findsOneWidget);
+    });
+
+    testWidgets('secondary tap (right-click) opens the action menu',
+        (tester) async {
+      await pumpReadyViewer(tester);
+
+      final gesture = await tester.startGesture(
+        tester.getCenter(find.byType(InteractiveViewer)),
+        kind: PointerDeviceKind.mouse,
+        buttons: kSecondaryMouseButton,
+      );
+      await tester.pump();
+      await gesture.up();
+      await tester.pumpAndSettle();
+
+      expect(find.text('复制链接'), findsOneWidget);
+      expect(find.text('图片信息'), findsOneWidget);
+    });
+
+    testWidgets('copy link from menu writes the full URL to clipboard',
+        (tester) async {
+      final clipboard = <String, String?>{};
+      tester.binding.defaultBinaryMessenger.setMockMethodCallHandler(
+        SystemChannels.platform,
+        (call) async {
+          switch (call.method) {
+            case 'Clipboard.setData':
+              clipboard['text'] =
+                  (call.arguments as Map<dynamic, dynamic>)['text'] as String?;
+              return null;
+            case 'Clipboard.getData':
+              return clipboard;
+            default:
+              return null;
+          }
+        },
+      );
+      addTearDown(() {
+        tester.binding.defaultBinaryMessenger
+            .setMockMethodCallHandler(SystemChannels.platform, null);
+      });
+
+      await pumpReadyViewer(tester);
+      await tester.longPress(find.byType(InteractiveViewer));
+      await tester.pumpAndSettle();
+
+      await tester.tap(find.text('复制链接'));
+      await tester.pumpAndSettle();
+
+      final data = await Clipboard.getData('text/plain');
+      expect(data?.text, 'https://img.stage1st.com/forum/photo.png');
+      expect(find.text('已复制图片链接'), findsOneWidget);
+    });
+
+    testWidgets('image info from menu opens the info sheet', (tester) async {
+      await pumpReadyViewer(tester);
+      await tester.longPress(find.byType(InteractiveViewer));
+      await tester.pumpAndSettle();
+
+      await tester.tap(find.text('图片信息'));
+      await tester.pumpAndSettle();
+
+      expect(find.text('文件名'), findsOneWidget);
+      expect(find.text('photo.png'), findsOneWidget);
+      expect(find.text('格式'), findsOneWidget);
+      expect(find.text('400 × 200 px'), findsOneWidget);
     });
   });
 }

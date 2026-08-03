@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:s1er/widgets/thread_detail_chrome_bridge.dart';
 
+import '../helpers/test_theme.dart';
+
 void main() {
   testWidgets('publish during build does not mark ListenableBuilder dirty',
       (tester) async {
@@ -9,8 +11,8 @@ void main() {
     addTearDown(bridge.dispose);
 
     await tester.pumpWidget(
-      MaterialApp(
-        home: Builder(
+      wrapWithAppTheme(
+        Builder(
           builder: (context) {
             bridge.publish(
               const ThreadDetailChromeSnapshot(

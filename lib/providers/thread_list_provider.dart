@@ -1,6 +1,7 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../models/blacklist_record.dart';
 import '../models/thread.dart';
+import '../models/thread_list_query.dart';
 import 'api_service_provider.dart';
 import 'blacklist_provider.dart';
 import '../services/api_service.dart';
@@ -14,6 +15,7 @@ class ThreadListState {
     this.forumName,
     this.threadTypes = const {},
     this.selectedTypeId,
+    this.query = ThreadListQuery.defaults,
     this.isLoading = false,
     this.errorMessage,
   });
@@ -25,6 +27,7 @@ class ThreadListState {
   final String? forumName;
   final Map<String, String> threadTypes;
   final String? selectedTypeId;
+  final ThreadListQuery query;
   final bool isLoading;
   final String? errorMessage;
 
@@ -37,6 +40,7 @@ class ThreadListState {
     Map<String, String>? threadTypes,
     String? selectedTypeId,
     bool clearSelectedType = false,
+    ThreadListQuery? query,
     bool? isLoading,
     String? errorMessage,
     bool clearError = false,
@@ -50,6 +54,7 @@ class ThreadListState {
       threadTypes: threadTypes ?? this.threadTypes,
       selectedTypeId:
           clearSelectedType ? null : (selectedTypeId ?? this.selectedTypeId),
+      query: query ?? this.query,
       isLoading: isLoading ?? this.isLoading,
       errorMessage: clearError ? null : (errorMessage ?? this.errorMessage),
     );
@@ -61,6 +66,7 @@ class ThreadListNotifier extends AsyncNotifier<ThreadListState> {
 
   final String fid;
   String? _selectedTypeId;
+  ThreadListQuery _query = ThreadListQuery.defaults;
   Map<String, String> _threadTypes = const {};
 
   @override
@@ -76,6 +82,7 @@ class ThreadListNotifier extends AsyncNotifier<ThreadListState> {
       fid,
       page: page,
       typeId: _selectedTypeId,
+      query: _query,
     );
     final threads = ApiService.parseThreadList(result);
     final parsedTypes = ApiService.parseThreadTypes(result);
@@ -85,7 +92,7 @@ class ThreadListNotifier extends AsyncNotifier<ThreadListState> {
       result,
       currentPage: page,
       itemCount: threads.length,
-      isFiltered: _selectedTypeId != null,
+      isFiltered: _selectedTypeId != null || !_query.isDefault,
     );
     return ThreadListState(
       threads: filtered,
@@ -95,6 +102,7 @@ class ThreadListNotifier extends AsyncNotifier<ThreadListState> {
       forumName: ApiService.parseForumDisplayName(result),
       threadTypes: _threadTypes,
       selectedTypeId: _selectedTypeId,
+      query: _query,
     );
   }
 
@@ -146,15 +154,11 @@ class ThreadListNotifier extends AsyncNotifier<ThreadListState> {
     _selectedTypeId = normalized;
     if (current != null) {
       state = AsyncValue.data(
-        ThreadListState(
-          threads: current.threads,
-          sourceThreads: current.sourceThreads,
-          currentPage: current.currentPage,
-          totalPages: current.totalPages,
-          forumName: current.forumName,
-          threadTypes: current.threadTypes,
+        current.copyWith(
           selectedTypeId: normalized,
+          clearSelectedType: normalized == null,
           isLoading: true,
+          clearError: true,
         ),
       );
     }
@@ -162,6 +166,34 @@ class ThreadListNotifier extends AsyncNotifier<ThreadListState> {
       state = AsyncValue.data(await _loadPage(1));
     } catch (error) {
       _selectedTypeId = previousType;
+      if (current != null) {
+        state = AsyncValue.data(
+          current.copyWith(isLoading: false, errorMessage: error.toString()),
+        );
+      } else {
+        rethrow;
+      }
+    }
+  }
+
+  Future<void> setQuery(ThreadListQuery query) async {
+    if (_query == query) return;
+    final previousQuery = _query;
+    final current = state.asData?.value;
+    _query = query;
+    if (current != null) {
+      state = AsyncValue.data(
+        current.copyWith(
+          query: query,
+          isLoading: true,
+          clearError: true,
+        ),
+      );
+    }
+    try {
+      state = AsyncValue.data(await _loadPage(1));
+    } catch (error) {
+      _query = previousQuery;
       if (current != null) {
         state = AsyncValue.data(
           current.copyWith(isLoading: false, errorMessage: error.toString()),

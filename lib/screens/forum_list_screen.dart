@@ -21,11 +21,13 @@ import '../widgets/thread_detail_chrome_bridge.dart';
 import '../models/favorite_item.dart';
 import '../models/new_thread_submit_result.dart';
 import '../models/thread.dart';
+import '../models/thread_list_query.dart';
 import '../widgets/pagination_bar.dart';
 import '../widgets/s1_error_view.dart';
 import '../widgets/s1_fab_layout.dart';
 import '../widgets/s1_list_boundary_footer.dart';
 import '../widgets/s1_local_search_bar.dart';
+import '../widgets/s1_menu.dart';
 import '../widgets/s1_swipe_pagination.dart';
 import '../widgets/thread_context_sheet.dart';
 import '../widgets/thread_card.dart';
@@ -584,6 +586,15 @@ class _ForumThreadList extends ConsumerWidget {
     return Column(
       children: [
         if (state.isLoading) const LinearProgressIndicator(),
+        _ThreadSortFilterBar(
+          query: state.query,
+          enabled: !state.isLoading,
+          chipVisualDensity: chipTokens.categoryChipVisualDensity,
+          chipLabelPadding: chipTokens.categoryChipLabelPadding,
+          barPadding: chipTokens.categoryFilterBarPadding,
+          onChanged: (query) =>
+              ref.read(threadListProvider(fid).notifier).setQuery(query),
+        ),
         if (state.threadTypes.isNotEmpty)
           _ThreadTypeFilterBar(
             threadTypes: state.threadTypes,
@@ -633,9 +644,11 @@ class _ForumThreadList extends ConsumerWidget {
                             const SizedBox(height: 48),
                             Center(
                               child: Text(
-                                state.selectedTypeId == null
-                                    ? '暂无帖子'
-                                    : '该分类暂无帖子',
+                                state.selectedTypeId != null
+                                    ? '该分类暂无帖子'
+                                    : !state.query.isDefault
+                                        ? '当前筛选暂无帖子'
+                                        : '暂无帖子',
                               ),
                             ),
                           ],
@@ -704,6 +717,129 @@ class _ForumThreadList extends ConsumerWidget {
           onPageChanged: onPageChanged,
         ),
       ],
+    );
+  }
+}
+
+class _ThreadSortFilterBar extends StatelessWidget {
+  const _ThreadSortFilterBar({
+    required this.query,
+    required this.enabled,
+    required this.chipVisualDensity,
+    required this.chipLabelPadding,
+    required this.barPadding,
+    required this.onChanged,
+  });
+
+  final ThreadListQuery query;
+  final bool enabled;
+  final VisualDensity chipVisualDensity;
+  final EdgeInsetsGeometry chipLabelPadding;
+  final EdgeInsets barPadding;
+  final ValueChanged<ThreadListQuery> onChanged;
+
+  String get _moreLabel {
+    if (!query.preset.isPrimaryChip) return query.preset.label;
+    if (query.preset == ThreadListSortPreset.all && query.hasTimeFilter) {
+      return query.timeLabel;
+    }
+    return '更多';
+  }
+
+  bool get _moreSelected =>
+      !query.preset.isPrimaryChip || query.hasTimeFilter;
+
+  @override
+  Widget build(BuildContext context) {
+    return SingleChildScrollView(
+      scrollDirection: Axis.horizontal,
+      padding: barPadding,
+      child: Row(
+        children: [
+          for (final preset in threadListPrimaryPresets)
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 4),
+              child: FilterChip(
+                label: Text(preset.label),
+                selected: query.preset == preset && preset.isPrimaryChip,
+                showCheckmark: false,
+                side: BorderSide.none,
+                visualDensity: chipVisualDensity,
+                materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                labelPadding: chipLabelPadding,
+                padding: EdgeInsets.zero,
+                onSelected: enabled
+                    ? (_) => onChanged(query.copyWith(preset: preset))
+                    : null,
+              ),
+            ),
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 4),
+            child: MenuAnchor(
+              style: S1MenuSpec.anchoredMenuStyle(context),
+              alignmentOffset: const Offset(0, S1MenuSpec.underAnchorGap),
+              reservedPadding: S1MenuSpec.reservedPadding,
+              crossAxisUnconstrained: false,
+              builder: (context, controller, child) {
+                return FilterChip(
+                  label: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Text(_moreLabel),
+                      Icon(
+                        Icons.arrow_drop_down,
+                        size: 18,
+                        color: Theme.of(context).colorScheme.onSurfaceVariant,
+                      ),
+                    ],
+                  ),
+                  selected: _moreSelected,
+                  showCheckmark: false,
+                  side: BorderSide.none,
+                  visualDensity: chipVisualDensity,
+                  materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                  labelPadding: chipLabelPadding,
+                  padding: EdgeInsets.zero,
+                  onSelected: enabled
+                      ? (_) {
+                          if (controller.isOpen) {
+                            controller.close();
+                          } else {
+                            controller.open();
+                          }
+                        }
+                      : null,
+                );
+              },
+              menuChildren: [
+                for (final preset in threadListMorePresets)
+                  s1MenuItem(
+                    icon: preset == ThreadListSortPreset.replies
+                        ? Icons.chat_bubble_outline
+                        : Icons.visibility_outlined,
+                    label: preset.label,
+                    selected: query.preset == preset,
+                    onPressed: enabled
+                        ? () => onChanged(query.copyWith(preset: preset))
+                        : null,
+                  ),
+                const S1MenuDivider(),
+                for (final option in threadListTimeOptions)
+                  s1MenuItem(
+                    icon: Icons.schedule_outlined,
+                    label: option.label,
+                    selected: query.datelineSeconds == option.seconds,
+                    onPressed: enabled
+                        ? () => onChanged(
+                              query.copyWith(datelineSeconds: option.seconds),
+                            )
+                        : null,
+                  ),
+              ],
+            ),
+          ),
+        ],
+      ),
     );
   }
 }

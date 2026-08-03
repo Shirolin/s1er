@@ -5,6 +5,7 @@ import 'package:dio/dio.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:s1er/models/rate_form.dart';
+import 'package:s1er/models/thread_list_query.dart';
 import 'package:s1er/services/api_service.dart';
 import 'package:s1er/services/http_client.dart';
 
@@ -75,6 +76,38 @@ void main() {
         expect(url.queryParameters.containsKey('filter'), isFalse);
         expect(url.queryParameters.containsKey('typeid'), isFalse);
         expect(url.queryParameters['tpp'], '50');
+      });
+
+      test('merges sort query params into thread list URL', () {
+        final url = Uri.parse(
+          ApiService.buildThreadListUrl(
+            '6',
+            query: const ThreadListQuery(preset: ThreadListSortPreset.digest),
+          ),
+        );
+
+        expect(url.queryParameters['fid'], '6');
+        expect(url.queryParameters['filter'], 'digest');
+        expect(url.queryParameters['digest'], '1');
+        expect(url.queryParameters['tpp'], '50');
+      });
+
+      test('keeps typeid filter when combining with sort query', () {
+        final url = Uri.parse(
+          ApiService.buildThreadListUrl(
+            '6',
+            typeId: '9',
+            query: const ThreadListQuery(
+              preset: ThreadListSortPreset.replies,
+              datelineSeconds: 86400,
+            ),
+          ),
+        );
+
+        expect(url.queryParameters['filter'], 'typeid');
+        expect(url.queryParameters['typeid'], '9');
+        expect(url.queryParameters['orderby'], 'replies');
+        expect(url.queryParameters['dateline'], '86400');
       });
     });
 

@@ -24,6 +24,7 @@ import '../models/pm_send_result.dart';
 import '../models/rate_form.dart';
 import '../models/report_form.dart';
 import '../models/forum_search_query.dart';
+import '../models/thread_list_query.dart';
 import '../models/search_result.dart';
 import '../models/app_exceptions.dart';
 import '../utils/compose_img_tags.dart';
@@ -920,8 +921,14 @@ class ApiService {
     String fid, {
     int page = 1,
     String? typeId,
+    ThreadListQuery query = ThreadListQuery.defaults,
   }) async {
-    final result = await getThreadListRaw(fid, page: page, typeId: typeId);
+    final result = await getThreadListRaw(
+      fid,
+      page: page,
+      typeId: typeId,
+      query: query,
+    );
     return parseThreadList(result);
   }
 
@@ -929,16 +936,14 @@ class ApiService {
     String fid, {
     int page = 1,
     String? typeId,
+    ThreadListQuery query = ThreadListQuery.defaults,
   }) {
     final params = <String, String>{
       'fid': fid,
       'page': page.toString(),
       'tpp': '50',
+      ...query.toForumDisplayParams(typeId: typeId),
     };
-    if (typeId != null && typeId.isNotEmpty) {
-      params['filter'] = 'typeid';
-      params['typeid'] = typeId;
-    }
     return buildApiUrl(
       module: ApiConfig.moduleForumDisplay,
       params: params,
@@ -949,8 +954,14 @@ class ApiService {
     String fid, {
     int page = 1,
     String? typeId,
+    ThreadListQuery query = ThreadListQuery.defaults,
   }) async {
-    final url = buildThreadListUrl(fid, page: page, typeId: typeId);
+    final url = buildThreadListUrl(
+      fid,
+      page: page,
+      typeId: typeId,
+      query: query,
+    );
     final response = await _httpClient.get(url);
     final json = ensureJson(response.data);
     _throwIfNoDataBlocked(json, parseThreadList(json).isNotEmpty);

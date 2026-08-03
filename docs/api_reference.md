@@ -129,6 +129,20 @@ version=3。所有请求走 `ApiConfig.mobileApiUrl`，通过 query params 指�
 - `page`: 页码（从 1 开始）
 - `tpp`: 客户端固定传 `50`
 - 分类筛选时额外传独立参数 `filter=typeid` 与 `typeid={分类 ID}`
+- 排序 / 筛选（Discuz 网页同参；`filter` 单值互斥，有 `typeid` 时 `filter` 固定为 `typeid`，其余作附加参数）：
+
+| UI | 无 typeid 时 | 附加 / 有 typeid 时 |
+|---|---|---|
+| 默认 | （无） | — |
+| 最新 | `filter=author&orderby=dateline` | `orderby=dateline` |
+| 热门 | `filter=heat&orderby=heats` | `orderby=heats` |
+| 热帖 | `filter=hot` | （仅无 typeid 时生效） |
+| 精华 | `filter=digest&digest=1` | `digest=1` |
+| 回复数 | `filter=reply&orderby=replies` | `orderby=replies` |
+| 查看数 | `filter=reply&orderby=views` | `orderby=views` |
+| 时间窗 | `filter=dateline&dateline={秒}&orderby=lastpost`（占用 `filter`） | 仅附加 `dateline={秒}` |
+
+时间窗秒数：`86400` / `172800` / `604800` / `2592000` / `7948800`（一天…三个月）。
 
 响应 `Variables` 新增字段：
 

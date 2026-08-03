@@ -109,8 +109,7 @@ class ThreadListQuery {
   /// 2. 无 [typeId] 且有时间窗：`filter=dateline`（占用 filter）；再附加 orderby / digest。
   /// 3. 否则：按预设写完整 filter + 配套参数。
   Map<String, String> toForumDisplayParams({String? typeId}) {
-    final trimmedType =
-        typeId == null || typeId.isEmpty ? null : typeId.trim();
+    final trimmedType = typeId == null || typeId.isEmpty ? null : typeId.trim();
     final hasType = trimmedType != null && trimmedType.isNotEmpty;
     final params = <String, String>{};
 

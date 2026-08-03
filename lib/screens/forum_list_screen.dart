@@ -746,8 +746,7 @@ class _ThreadSortFilterBar extends StatelessWidget {
     return '更多';
   }
 
-  bool get _moreSelected =>
-      !query.preset.isPrimaryChip || query.hasTimeFilter;
+  bool get _moreSelected => !query.preset.isPrimaryChip || query.hasTimeFilter;
 
   @override
   Widget build(BuildContext context) {

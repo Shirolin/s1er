@@ -1,7 +1,14 @@
-/// Discuz `forumdisplay` 主题列表排序 / 筛选预设（对齐网页顶栏）。
+/// Discuz `forumdisplay` 主题列表排序 / 筛选预设（对齐网页顶栏 +「更多」两轴）。
 enum ThreadListSortPreset {
+  /// 网页「全部主题」：无额外 filter。
   all,
+
+  /// 网页顶栏「最新」：`filter=lastpost&orderby=lastpost`。
+  latest,
+
+  /// 网页「更多 → 排序 → 发帖时间」。
   newest,
+
   heat,
   hot,
   digest,
@@ -9,8 +16,9 @@ enum ThreadListSortPreset {
   views;
 
   String get label => switch (this) {
-        ThreadListSortPreset.all => '默认',
-        ThreadListSortPreset.newest => '最新',
+        ThreadListSortPreset.all => '全部主题',
+        ThreadListSortPreset.latest => '最新',
+        ThreadListSortPreset.newest => '发帖时间',
         ThreadListSortPreset.heat => '热门',
         ThreadListSortPreset.hot => '热帖',
         ThreadListSortPreset.digest => '精华',
@@ -18,15 +26,18 @@ enum ThreadListSortPreset {
         ThreadListSortPreset.views => '查看数',
       };
 
-  /// 主 Chip 条上的预设（不含「更多」里的回复数 / 查看数）。
+  /// 主 Chip 条预设（不含「更多 → 排序」里的发帖时间 / 回复 / 查看）。
   bool get isPrimaryChip => switch (this) {
         ThreadListSortPreset.all ||
-        ThreadListSortPreset.newest ||
+        ThreadListSortPreset.latest ||
         ThreadListSortPreset.heat ||
         ThreadListSortPreset.hot ||
         ThreadListSortPreset.digest =>
           true,
-        ThreadListSortPreset.replies || ThreadListSortPreset.views => false,
+        ThreadListSortPreset.newest ||
+        ThreadListSortPreset.replies ||
+        ThreadListSortPreset.views =>
+          false,
       };
 }
 
@@ -52,13 +63,15 @@ const threadListTimeOptions = <ThreadListTimeOption>[
 
 const threadListPrimaryPresets = <ThreadListSortPreset>[
   ThreadListSortPreset.all,
-  ThreadListSortPreset.newest,
+  ThreadListSortPreset.latest,
   ThreadListSortPreset.heat,
   ThreadListSortPreset.hot,
   ThreadListSortPreset.digest,
 ];
 
-const threadListMorePresets = <ThreadListSortPreset>[
+/// 网页「更多 → 排序」三项。
+const threadListMoreSortPresets = <ThreadListSortPreset>[
+  ThreadListSortPreset.newest,
   ThreadListSortPreset.replies,
   ThreadListSortPreset.views,
 ];
@@ -82,7 +95,7 @@ class ThreadListQuery {
 
   bool get hasTimeFilter => datelineSeconds > 0;
 
-  /// 「更多」Chip 是否应呈选中态（回复/查看，或任意时间窗）。
+  /// 「更多」Chip 选中：排序落在更多项，或任意时间窗。
   bool get moreChipSelected => !preset.isPrimaryChip || hasTimeFilter;
 
   String get timeLabel {
@@ -106,8 +119,12 @@ class ThreadListQuery {
   ///
   /// 组合规则：
   /// 1. 有 [typeId]：始终 `filter=typeid` + `typeid=`；再附加 orderby / digest / dateline。
-  /// 2. 无 [typeId] 且有时间窗：`filter=dateline`（占用 filter）；再附加 orderby / digest。
-  /// 3. 否则：按预设写完整 filter + 配套参数。
+  /// 2. **发帖时间**（`newest`）：始终 `filter=author&orderby=dateline`；
+  ///    时间窗只附加 `dateline=`（按发帖时间截取）。
+  /// 3. **回复数 / 查看数**：始终 `filter=reply` + 对应 orderby；时间窗附加 `dateline=`。
+  /// 4. **最新**（`latest`）无时间窗：`filter=lastpost&orderby=lastpost`。
+  /// 5. 其它预设 + 时间窗：`filter=dateline`（按最后回复截取）+ 预设 extras。
+  /// 6. 无时间窗：按预设写完整 filter。
   Map<String, String> toForumDisplayParams({String? typeId}) {
     final trimmedType = typeId == null || typeId.isEmpty ? null : typeId.trim();
     final hasType = trimmedType != null && trimmedType.isNotEmpty;
@@ -123,12 +140,34 @@ class ThreadListQuery {
       return params;
     }
 
+    // 发帖时间排序：时间窗按「发帖」截取，必须保留 filter=author。
+    if (preset == ThreadListSortPreset.newest) {
+      params['filter'] = 'author';
+      params['orderby'] = 'dateline';
+      if (hasTimeFilter) {
+        params['dateline'] = datelineSeconds.toString();
+      }
+      return params;
+    }
+
+    // 回复/查看：保留 filter=reply，时间窗附加 dateline（按最后回复截取）。
+    if (preset == ThreadListSortPreset.replies ||
+        preset == ThreadListSortPreset.views) {
+      params['filter'] = 'reply';
+      params['orderby'] =
+          preset == ThreadListSortPreset.replies ? 'replies' : 'views';
+      if (hasTimeFilter) {
+        params['dateline'] = datelineSeconds.toString();
+      }
+      return params;
+    }
+
     if (hasTimeFilter) {
       params['filter'] = 'dateline';
       params['dateline'] = datelineSeconds.toString();
       _applyPresetExtras(params, includeFilter: false);
-      // 默认 + 时间窗：与网页一致 orderby=lastpost
-      if (preset == ThreadListSortPreset.all) {
+      if (preset == ThreadListSortPreset.all ||
+          preset == ThreadListSortPreset.latest) {
         params['orderby'] = 'lastpost';
       }
       return params;
@@ -145,6 +184,9 @@ class ThreadListQuery {
     switch (preset) {
       case ThreadListSortPreset.all:
         break;
+      case ThreadListSortPreset.latest:
+        if (includeFilter) params['filter'] = 'lastpost';
+        params['orderby'] = 'lastpost';
       case ThreadListSortPreset.newest:
         if (includeFilter) params['filter'] = 'author';
         params['orderby'] = 'dateline';

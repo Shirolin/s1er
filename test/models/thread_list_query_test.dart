@@ -6,14 +6,31 @@ void main() {
     test('default query emits no filter params', () {
       expect(ThreadListQuery.defaults.toForumDisplayParams(), isEmpty);
       expect(ThreadListQuery.defaults.isDefault, isTrue);
+      expect(ThreadListSortPreset.all.label, '全部主题');
     });
 
-    test('newest without typeId', () {
+    test('latest without typeId', () {
+      const query = ThreadListQuery(preset: ThreadListSortPreset.latest);
+      expect(query.toForumDisplayParams(), {
+        'filter': 'lastpost',
+        'orderby': 'lastpost',
+      });
+      expect(query.preset.isPrimaryChip, isTrue);
+    });
+
+    test('newest (发帖时间) is more-menu sort only', () {
       const query = ThreadListQuery(preset: ThreadListSortPreset.newest);
       expect(query.toForumDisplayParams(), {
         'filter': 'author',
         'orderby': 'dateline',
       });
+      expect(query.preset.isPrimaryChip, isFalse);
+      expect(query.moreChipSelected, isTrue);
+      expect(threadListMoreSortPresets, contains(ThreadListSortPreset.newest));
+      expect(
+        threadListPrimaryPresets,
+        isNot(contains(ThreadListSortPreset.newest)),
+      );
     });
 
     test('heat without typeId', () {
@@ -61,15 +78,52 @@ void main() {
       expect(query.moreChipSelected, isTrue);
     });
 
-    test('time window with newest keeps orderby dateline', () {
+    test('time window with newest keeps author filter for post-time cutoff',
+        () {
       const query = ThreadListQuery(
         preset: ThreadListSortPreset.newest,
         datelineSeconds: 604800,
       );
       expect(query.toForumDisplayParams(), {
-        'filter': 'dateline',
-        'dateline': '604800',
+        'filter': 'author',
         'orderby': 'dateline',
+        'dateline': '604800',
+      });
+    });
+
+    test('one-day newest is post-time within 24h', () {
+      const query = ThreadListQuery(
+        preset: ThreadListSortPreset.newest,
+        datelineSeconds: 86400,
+      );
+      expect(query.toForumDisplayParams(), {
+        'filter': 'author',
+        'orderby': 'dateline',
+        'dateline': '86400',
+      });
+    });
+
+    test('time window with latest uses lastpost orderby', () {
+      const query = ThreadListQuery(
+        preset: ThreadListSortPreset.latest,
+        datelineSeconds: 86400,
+      );
+      expect(query.toForumDisplayParams(), {
+        'filter': 'dateline',
+        'dateline': '86400',
+        'orderby': 'lastpost',
+      });
+    });
+
+    test('time window with replies keeps reply filter', () {
+      const query = ThreadListQuery(
+        preset: ThreadListSortPreset.replies,
+        datelineSeconds: 86400,
+      );
+      expect(query.toForumDisplayParams(), {
+        'filter': 'reply',
+        'orderby': 'replies',
+        'dateline': '86400',
       });
     });
 

@@ -133,16 +133,19 @@ version=3。所有请求走 `ApiConfig.mobileApiUrl`，通过 query params 指�
 
 | UI | 无 typeid 时 | 附加 / 有 typeid 时 |
 |---|---|---|
-| 默认 | （无） | — |
-| 最新 | `filter=author&orderby=dateline` | `orderby=dateline` |
+| 全部主题 | （无） | — |
+| 最新 | `filter=lastpost&orderby=lastpost` | `orderby=lastpost` |
 | 热门 | `filter=heat&orderby=heats` | `orderby=heats` |
 | 热帖 | `filter=hot` | （仅无 typeid 时生效） |
 | 精华 | `filter=digest&digest=1` | `digest=1` |
-| 回复数 | `filter=reply&orderby=replies` | `orderby=replies` |
-| 查看数 | `filter=reply&orderby=views` | `orderby=views` |
-| 时间窗 | `filter=dateline&dateline={秒}&orderby=lastpost`（占用 `filter`） | 仅附加 `dateline={秒}` |
+| 更多→发帖时间 | `filter=author&orderby=dateline` | `orderby=dateline` |
+| 更多→回复数 | `filter=reply&orderby=replies` | `orderby=replies` |
+| 更多→查看数 | `filter=reply&orderby=views` | `orderby=views` |
+| 时间窗（全部主题/最新等） | `filter=dateline&dateline={秒}&orderby=lastpost`（按**最后回复**截取） | 仅附加 `dateline={秒}` |
+| 时间窗 + 发帖时间 | `filter=author&orderby=dateline&dateline={秒}`（按**发帖时间**截取） | `orderby=dateline` + `dateline={秒}` |
+| 时间窗 + 回复/查看 | 保留 `filter=reply` + `orderby`，附加 `dateline={秒}` | 同左的 orderby + `dateline` |
 
-时间窗秒数：`86400` / `172800` / `604800` / `2592000` / `7948800`（一天…三个月）。
+时间窗秒数：`86400` / `172800` / `604800` / `2592000` / `7948800`（一天…三个月）。网页「更多」为 **排序** / **时间** 两轴；发帖时间在排序轴，不在顶栏 Chip。
 
 响应 `Variables` 新增字段：
 

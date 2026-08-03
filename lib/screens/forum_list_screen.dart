@@ -740,16 +740,28 @@ class _ThreadSortFilterBar extends StatelessWidget {
 
   String get _moreLabel {
     if (!query.preset.isPrimaryChip) return query.preset.label;
-    if (query.preset == ThreadListSortPreset.all && query.hasTimeFilter) {
-      return query.timeLabel;
-    }
+    if (query.hasTimeFilter) return query.timeLabel;
     return '更多';
   }
 
   bool get _moreSelected => !query.preset.isPrimaryChip || query.hasTimeFilter;
 
+  IconData _sortIcon(ThreadListSortPreset preset) {
+    return switch (preset) {
+      ThreadListSortPreset.newest => Icons.edit_calendar_outlined,
+      ThreadListSortPreset.replies => Icons.chat_bubble_outline,
+      ThreadListSortPreset.views => Icons.visibility_outlined,
+      _ => Icons.sort,
+    };
+  }
+
   @override
   Widget build(BuildContext context) {
+    final scheme = Theme.of(context).colorScheme;
+    final sectionStyle = Theme.of(context).textTheme.labelMedium?.copyWith(
+          color: scheme.onSurfaceVariant,
+        );
+
     return SingleChildScrollView(
       scrollDirection: Axis.horizontal,
       padding: barPadding,
@@ -788,7 +800,7 @@ class _ThreadSortFilterBar extends StatelessWidget {
                       Icon(
                         Icons.arrow_drop_down,
                         size: 18,
-                        color: Theme.of(context).colorScheme.onSurfaceVariant,
+                        color: scheme.onSurfaceVariant,
                       ),
                     ],
                   ),
@@ -811,11 +823,18 @@ class _ThreadSortFilterBar extends StatelessWidget {
                 );
               },
               menuChildren: [
-                for (final preset in threadListMorePresets)
+                Padding(
+                  padding: const EdgeInsets.fromLTRB(
+                    S1MenuSpec.itemHorizontalPadding,
+                    12,
+                    S1MenuSpec.itemHorizontalPadding,
+                    4,
+                  ),
+                  child: Text('排序', style: sectionStyle),
+                ),
+                for (final preset in threadListMoreSortPresets)
                   s1MenuItem(
-                    icon: preset == ThreadListSortPreset.replies
-                        ? Icons.chat_bubble_outline
-                        : Icons.visibility_outlined,
+                    icon: _sortIcon(preset),
                     label: preset.label,
                     selected: query.preset == preset,
                     onPressed: enabled
@@ -823,6 +842,15 @@ class _ThreadSortFilterBar extends StatelessWidget {
                         : null,
                   ),
                 const S1MenuDivider(),
+                Padding(
+                  padding: const EdgeInsets.fromLTRB(
+                    S1MenuSpec.itemHorizontalPadding,
+                    4,
+                    S1MenuSpec.itemHorizontalPadding,
+                    4,
+                  ),
+                  child: Text('时间', style: sectionStyle),
+                ),
                 for (final option in threadListTimeOptions)
                   s1MenuItem(
                     icon: Icons.schedule_outlined,

@@ -62,18 +62,18 @@ class ThreadCardDensityTokens {
   final EdgeInsets categoryFilterBarPadding;
 
   static const standard = ThreadCardDensityTokens(
-    cardMarginVertical: 4,
-    cardPaddingVertical: 8,
-    titleMetaGap: 8,
+    cardMarginVertical: 5,
+    cardPaddingVertical: 10,
+    titleMetaGap: 11,
     titleMaxLines: 2,
-    titleHeight: 1.45,
+    titleHeight: 1.4,
     progressTop: 6,
-    inlineTag: false,
+    inlineTag: true,
     tagMaxChars: null,
     showProgressBar: true,
     showPageChip: true,
-    categoryChipVisualDensity: VisualDensity.compact,
-    categoryChipLabelPadding: EdgeInsets.symmetric(horizontal: 6),
+    categoryChipVisualDensity: VisualDensity(horizontal: -1, vertical: -2),
+    categoryChipLabelPadding: EdgeInsets.symmetric(horizontal: 5),
     categoryFilterBarPadding: EdgeInsets.symmetric(horizontal: 12, vertical: 6),
   );
 
@@ -204,8 +204,18 @@ class ThreadCard extends ConsumerWidget {
     final hasTag = thread.typeName != null && thread.typeName!.isNotEmpty;
     final isSticky = thread.isSticky;
     final totalPages = _calcTotalPages(thread.replies);
+    final onCardPrimary = selected
+        ? scheme.onSecondaryContainer
+        : isSticky
+            ? scheme.onPrimaryContainer
+            : scheme.onSurface;
+    final onCardSecondary = selected
+        ? scheme.onSecondaryContainer.withValues(alpha: S1Alpha.strong)
+        : isSticky
+            ? scheme.onPrimaryContainer.withValues(alpha: S1Alpha.strong)
+            : scheme.onSurfaceVariant;
     final metaStyle = textTheme.labelSmall?.copyWith(
-      color: scheme.onSurfaceVariant,
+      color: onCardSecondary,
       height: 1.2,
     );
     final typeId = thread.typeId;
@@ -251,6 +261,8 @@ class ThreadCard extends ConsumerWidget {
                   selectedTypeId: selectedTypeId,
                   onTypeFilter: canFilterType ? onTypeFilter : null,
                   isOnTintedCard: isSticky || selected,
+                  titleColor: onCardPrimary,
+                  pinColor: onCardSecondary,
                   scheme: scheme,
                   textTheme: textTheme,
                   tokens: tokens,
@@ -264,6 +276,8 @@ class ThreadCard extends ConsumerWidget {
                   totalPages: totalPages,
                   metaStyle: metaStyle,
                   scheme: scheme,
+                  authorColor: onCardPrimary,
+                  secondaryColor: onCardSecondary,
                   showPageChip: tokens.showPageChip,
                   onPageTap: tokens.showPageChip && totalPages > 1
                       ? () => _showPageSheet(context)
@@ -344,6 +358,8 @@ class _TitleLine extends StatelessWidget {
     required this.selectedTypeId,
     required this.onTypeFilter,
     required this.isOnTintedCard,
+    required this.titleColor,
+    required this.pinColor,
     required this.scheme,
     required this.textTheme,
     required this.tokens,
@@ -356,6 +372,8 @@ class _TitleLine extends StatelessWidget {
   final String? selectedTypeId;
   final ThreadTypeFilterCallback? onTypeFilter;
   final bool isOnTintedCard;
+  final Color titleColor;
+  final Color pinColor;
   final ColorScheme scheme;
   final TextTheme textTheme;
   final ThreadCardDensityTokens tokens;
@@ -365,6 +383,7 @@ class _TitleLine extends StatelessWidget {
     final title = Text(
       subject,
       style: textTheme.titleSmall?.copyWith(
+        color: titleColor,
         height: tokens.titleHeight,
         fontWeight: isSticky ? FontWeight.bold : null,
       ),
@@ -373,7 +392,7 @@ class _TitleLine extends StatelessWidget {
     );
 
     final pin =
-        isSticky ? Icon(Icons.push_pin, size: 13, color: scheme.primary) : null;
+        isSticky ? Icon(Icons.push_pin, size: 13, color: pinColor) : null;
 
     final fullTagName = tagName ?? '';
     final displayTag =
@@ -387,6 +406,7 @@ class _TitleLine extends StatelessWidget {
             selected: typeId != null && selectedTypeId == typeId,
             onTypeFilter: onTypeFilter,
             isOnTintedCard: isOnTintedCard,
+            lowEmphasis: tokens.titleMaxLines > 1,
             chipVisualDensity: tokens.categoryChipVisualDensity,
             chipLabelPadding: tokens.categoryChipLabelPadding,
             scheme: scheme,
@@ -395,17 +415,25 @@ class _TitleLine extends StatelessWidget {
 
     if (tokens.inlineTag) {
       return Row(
-        crossAxisAlignment: CrossAxisAlignment.center,
+        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          if (tag != null) ...[
-            tag,
-            SizedBox(width: tokens.inlineTag ? 4 : 6),
-          ],
           if (pin != null) ...[
-            pin,
+            Padding(
+              padding: EdgeInsets.only(
+                top: (tokens.titleHeight * 14 - 13) / 2,
+              ),
+              child: pin,
+            ),
             const SizedBox(width: 4),
           ],
           Expanded(child: title),
+          if (tag != null) ...[
+            const SizedBox(width: 6),
+            Padding(
+              padding: const EdgeInsets.only(top: 1),
+              child: tag,
+            ),
+          ],
         ],
       );
     }
@@ -453,6 +481,8 @@ class _MetaLine extends StatelessWidget {
     required this.totalPages,
     required this.metaStyle,
     required this.scheme,
+    required this.authorColor,
+    required this.secondaryColor,
     required this.tid,
     required this.liveTotalReplies,
     required this.showPageChip,
@@ -465,6 +495,8 @@ class _MetaLine extends StatelessWidget {
   final int totalPages;
   final TextStyle? metaStyle;
   final ColorScheme scheme;
+  final Color authorColor;
+  final Color secondaryColor;
   final VoidCallback? onPageTap;
   final String tid;
   final int liveTotalReplies;
@@ -484,7 +516,7 @@ class _MetaLine extends StatelessWidget {
                   text: author,
                   style: metaStyle?.copyWith(
                     fontWeight: FontWeight.w500,
-                    color: scheme.onSurface,
+                    color: authorColor,
                   ),
                 ),
                 if (time.isNotEmpty) ...[
@@ -492,7 +524,7 @@ class _MetaLine extends StatelessWidget {
                   TextSpan(
                     text: time,
                     style: metaStyle?.copyWith(
-                      color: scheme.onSurfaceVariant,
+                      color: secondaryColor,
                     ),
                   ),
                 ],
@@ -514,32 +546,32 @@ class _MetaLine extends StatelessWidget {
                 _MetaStat(
                   icon: Icons.visibility_outlined,
                   value: views,
-                  color: scheme.onSurfaceVariant,
+                  color: secondaryColor,
                   textStyle: metaStyle,
                 ),
-                const SizedBox(width: 6),
+                const SizedBox(width: 8),
                 _ReplyMetaStat(
                   replyCount: replyCount,
                   tid: tid,
                   liveTotalReplies: liveTotalReplies,
-                  color: scheme.onSurfaceVariant,
+                  color: secondaryColor,
                   textStyle: metaStyle,
                   scheme: scheme,
                 ),
                 if (showPageChip && totalPages > 1 && onPageTap != null) ...[
-                  const SizedBox(width: 6),
+                  const SizedBox(width: 8),
                   ActionChip(
                     label: CompactLabel.text(
                       '$totalPages页',
                       style: CompactLabel.style(
                         context,
                         base: metaStyle,
-                        color: scheme.onSecondaryContainer,
+                        color: secondaryColor,
                         fontWeight: FontWeight.w500,
                       ),
                     ),
-                    labelPadding: const EdgeInsets.symmetric(horizontal: 6),
-                    backgroundColor: scheme.secondaryContainer,
+                    labelPadding: const EdgeInsets.symmetric(horizontal: 4),
+                    backgroundColor: scheme.surfaceContainerHighest,
                     side: BorderSide.none,
                     visualDensity: VisualDensity.compact,
                     materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
@@ -710,6 +742,7 @@ class _CategoryTag extends StatelessWidget {
     required this.selected,
     required this.onTypeFilter,
     required this.isOnTintedCard,
+    required this.lowEmphasis,
     required this.chipVisualDensity,
     required this.chipLabelPadding,
     required this.scheme,
@@ -720,6 +753,7 @@ class _CategoryTag extends StatelessWidget {
   final bool selected;
   final ThreadTypeFilterCallback? onTypeFilter;
   final bool isOnTintedCard;
+  final bool lowEmphasis;
   final VisualDensity chipVisualDensity;
   final EdgeInsetsGeometry chipLabelPadding;
   final ColorScheme scheme;
@@ -728,15 +762,18 @@ class _CategoryTag extends StatelessWidget {
   Widget build(BuildContext context) {
     final labelStyle = CompactLabel.style(
       context,
-      fontWeight: FontWeight.w600,
+      fontWeight: lowEmphasis ? FontWeight.w500 : FontWeight.w600,
+      color: lowEmphasis ? scheme.onSurfaceVariant : null,
     );
 
     if (onTypeFilter != null && typeId != null) {
       final chipBg = selected
           ? scheme.secondaryContainer
-          : isOnTintedCard
-              ? S1Surface.card(scheme)
-              : scheme.surfaceContainerHighest;
+          : lowEmphasis
+              ? scheme.surfaceContainerHigh
+              : isOnTintedCard
+                  ? S1Surface.card(scheme)
+                  : scheme.surfaceContainerHighest;
 
       final chip = FilterChip(
         label: CompactLabel.text(label, style: labelStyle),

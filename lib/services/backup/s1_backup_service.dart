@@ -67,6 +67,7 @@ class S1BackupService {
     appSettings.putIfAbsent('hapticsEnabled', () => true);
     appSettings.putIfAbsent('threadListDensity', () => 'standard');
     appSettings.putIfAbsent('postListDensity', () => 'standard');
+    appSettings.putIfAbsent('threadListFiltersExpanded', () => true);
     appSettings.putIfAbsent('fontSize', () => 14);
     appSettings.putIfAbsent('collapsedForums', () => <String>[]);
     appSettings.putIfAbsent('hiddenForums', () => <String>[]);

@@ -114,6 +114,7 @@ void main() {
         'shareAdvancedExport': true,
         'threadListDensity': 'compact',
         'postListDensity': 'standard',
+        'threadListFiltersExpanded': false,
       });
       expect(backup['theme_mode'], 'dark');
       expect(backup['collapsed_forums'], isA<List>());
@@ -128,6 +129,7 @@ void main() {
       expect(backup['share_advanced_export'], isTrue);
       expect(backup['thread_list_density'], 'compact');
       expect(backup['post_list_density'], 'standard');
+      expect(backup['thread_list_filters_expanded'], isFalse);
       expect(backup.containsKey('use_dynamic_color'), isFalse);
       expect(backup.containsKey('simulate_dynamic'), isFalse);
 

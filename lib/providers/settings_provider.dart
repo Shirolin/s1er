@@ -34,6 +34,7 @@ class AppSettings {
     this.hapticsEnabled = true,
     this.threadListDensity = ListDensity.standard,
     this.postListDensity = ListDensity.standard,
+    this.threadListFiltersExpanded = false,
     this.fontSize = S1Typography.defaultBodySize,
     this.collapsedForums = const {},
     this.hiddenForums = const {},
@@ -62,6 +63,7 @@ class AppSettings {
   final bool hapticsEnabled;
   final ListDensity threadListDensity;
   final ListDensity postListDensity;
+  final bool threadListFiltersExpanded;
   final int fontSize;
   final Set<String> collapsedForums;
   final Set<String> hiddenForums;
@@ -92,6 +94,7 @@ class AppSettings {
     bool? hapticsEnabled,
     ListDensity? threadListDensity,
     ListDensity? postListDensity,
+    bool? threadListFiltersExpanded,
     int? fontSize,
     Set<String>? collapsedForums,
     Set<String>? hiddenForums,
@@ -120,6 +123,8 @@ class AppSettings {
       hapticsEnabled: hapticsEnabled ?? this.hapticsEnabled,
       threadListDensity: threadListDensity ?? this.threadListDensity,
       postListDensity: postListDensity ?? this.postListDensity,
+      threadListFiltersExpanded:
+          threadListFiltersExpanded ?? this.threadListFiltersExpanded,
       fontSize: fontSize ?? this.fontSize,
       collapsedForums: collapsedForums ?? this.collapsedForums,
       hiddenForums: hiddenForums ?? this.hiddenForums,
@@ -159,6 +164,7 @@ class AppSettings {
         other.hapticsEnabled == hapticsEnabled &&
         other.threadListDensity == threadListDensity &&
         other.postListDensity == postListDensity &&
+        other.threadListFiltersExpanded == threadListFiltersExpanded &&
         other.fontSize == fontSize &&
         _setEquals(other.collapsedForums, collapsedForums) &&
         _setEquals(other.hiddenForums, hiddenForums) &&
@@ -199,6 +205,7 @@ class AppSettings {
         shareImageFormat,
         sharePixelRatio,
         Object.hash(
+          threadListFiltersExpanded,
           shareAdvancedExport,
           shareSaveMode,
           customExportPath,
@@ -361,6 +368,11 @@ class SettingsNotifier extends Notifier<AppSettings> {
       postListDensity: ListDensity.fromStored(
         settingsStore.get<String>('postListDensity'),
       ),
+      threadListFiltersExpanded: settingsStore.get<bool>(
+            'threadListFiltersExpanded',
+            defaultValue: false,
+          ) ??
+          false,
       fontSize: settingsStore.get<int>(
             'fontSize',
             defaultValue: S1Typography.defaultBodySize,
@@ -537,6 +549,11 @@ class SettingsNotifier extends Notifier<AppSettings> {
     _persist('threadListDensity', value.storageKey);
   }
 
+  void setThreadListFiltersExpanded(bool value) {
+    _commit(state.copyWith(threadListFiltersExpanded: value));
+    _persist('threadListFiltersExpanded', value);
+  }
+
   void setPostListDensity(ListDensity value) {
     _commit(state.copyWith(postListDensity: value));
     _persist('postListDensity', value.storageKey);
@@ -645,6 +662,7 @@ class SettingsNotifier extends Notifier<AppSettings> {
       hapticsEnabled: defaults.hapticsEnabled,
       threadListDensity: defaults.threadListDensity,
       postListDensity: defaults.postListDensity,
+      threadListFiltersExpanded: defaults.threadListFiltersExpanded,
       fontSize: defaults.fontSize,
       shareImageFormat: defaults.shareImageFormat,
       sharePixelRatio: defaults.sharePixelRatio,
@@ -668,6 +686,7 @@ class SettingsNotifier extends Notifier<AppSettings> {
     _persist('hapticsEnabled', defaults.hapticsEnabled);
     _persist('threadListDensity', defaults.threadListDensity.storageKey);
     _persist('postListDensity', defaults.postListDensity.storageKey);
+    _persist('threadListFiltersExpanded', defaults.threadListFiltersExpanded);
     _persist('fontSize', defaults.fontSize);
     _persist('shareImageFormat', defaults.shareImageFormat.storageKey);
     _persist('sharePixelRatio', defaults.sharePixelRatio);

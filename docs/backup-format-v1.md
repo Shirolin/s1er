@@ -100,6 +100,7 @@ v1 **不使用** JSONL；列表一律为 JSON 数组。
 | `haptics_enabled` | bool | 交互震动总开关（默认 `true`；无触感硬件的平台可忽略） |
 | `thread_list_density` | string | `standard` / `compact`；版块主题列表密度（默认 `standard`） |
 | `post_list_density` | string | `standard` / `compact`；帖子详情楼层卡片外壳密度（默认 `standard`） |
+| `thread_list_filters_expanded` | bool | 版块主题列表筛选区是否展开（默认 `false`） |
 | `font_size` | int | |
 | `collapsed_forums` | string[] | 版块 id |
 | `hidden_forums` | string[] | 本机屏蔽的版块 id（仅影响首页版块列表；不影响收藏与深链） |

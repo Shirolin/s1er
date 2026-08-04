@@ -217,3 +217,23 @@ class ThreadListQuery {
   @override
   int get hashCode => Object.hash(preset, datelineSeconds);
 }
+
+/// 筛选区收起时的一行摘要。
+///
+/// 全默认且无分类 → `筛选`；否则用 ` · ` 拼接排序标签、时间、分类名。
+String threadListFilterSummary({
+  required ThreadListQuery query,
+  String? typeName,
+}) {
+  final trimmedType = typeName?.trim();
+  final hasType = trimmedType != null && trimmedType.isNotEmpty;
+  if (query.isDefault) {
+    if (hasType) return '全部主题 · 全部时间 · $trimmedType';
+    return '全部主题 · 全部时间';
+  }
+
+  final parts = <String>[query.preset.label];
+  if (query.hasTimeFilter) parts.add(query.timeLabel);
+  if (hasType) parts.add(trimmedType);
+  return parts.join(' · ');
+}

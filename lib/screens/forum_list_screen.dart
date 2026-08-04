@@ -586,26 +586,19 @@ class _ForumThreadList extends ConsumerWidget {
     return Column(
       children: [
         if (state.isLoading) const LinearProgressIndicator(),
-        _ThreadSortFilterBar(
+        _ThreadFiltersSection(
           query: state.query,
+          threadTypes: state.threadTypes,
+          selectedTypeId: state.selectedTypeId,
           enabled: !state.isLoading,
           chipVisualDensity: chipTokens.categoryChipVisualDensity,
           chipLabelPadding: chipTokens.categoryChipLabelPadding,
           barPadding: chipTokens.categoryFilterBarPadding,
-          onChanged: (query) =>
+          onQueryChanged: (query) =>
               ref.read(threadListProvider(fid).notifier).setQuery(query),
+          onTypeSelected: (typeId) =>
+              ref.read(threadListProvider(fid).notifier).selectType(typeId),
         ),
-        if (state.threadTypes.isNotEmpty)
-          _ThreadTypeFilterBar(
-            threadTypes: state.threadTypes,
-            selectedTypeId: state.selectedTypeId,
-            enabled: !state.isLoading,
-            chipVisualDensity: chipTokens.categoryChipVisualDensity,
-            chipLabelPadding: chipTokens.categoryChipLabelPadding,
-            barPadding: chipTokens.categoryFilterBarPadding,
-            onSelected: (typeId) =>
-                ref.read(threadListProvider(fid).notifier).selectType(typeId),
-          ),
         Expanded(
           child: S1ContentFabOverlay(
             fab: S1FabStack(
@@ -721,6 +714,229 @@ class _ForumThreadList extends ConsumerWidget {
   }
 }
 
+class _ThreadFiltersSection extends ConsumerWidget {
+  const _ThreadFiltersSection({
+    required this.query,
+    required this.threadTypes,
+    required this.selectedTypeId,
+    required this.enabled,
+    required this.chipVisualDensity,
+    required this.chipLabelPadding,
+    required this.barPadding,
+    required this.onQueryChanged,
+    required this.onTypeSelected,
+  });
+
+  final ThreadListQuery query;
+  final Map<String, String> threadTypes;
+  final String? selectedTypeId;
+  final bool enabled;
+  final VisualDensity chipVisualDensity;
+  final EdgeInsetsGeometry chipLabelPadding;
+  final EdgeInsets barPadding;
+  final ValueChanged<ThreadListQuery> onQueryChanged;
+  final ValueChanged<String?> onTypeSelected;
+
+  void _toggleExpanded(WidgetRef ref, bool expanded) {
+    S1Haptics.selection();
+    ref.read(settingsProvider.notifier).setThreadListFiltersExpanded(!expanded);
+  }
+
+  bool _hasActiveFilters(String? typeName) {
+    final hasType = typeName != null && typeName.trim().isNotEmpty;
+    return !query.isDefault || hasType;
+  }
+
+  void _resetFilters() {
+    onQueryChanged(ThreadListQuery.defaults);
+    onTypeSelected(null);
+  }
+
+  List<Widget> _buildSummaryActions(
+    BuildContext context, {
+    required String? typeName,
+    required bool enabled,
+  }) {
+    final chips = <Widget>[];
+
+    void addChip({
+      required String label,
+      required VoidCallback? onPressed,
+      required String tooltip,
+      required IconData icon,
+    }) {
+      chips.add(
+        Tooltip(
+          message: tooltip,
+          child: ActionChip(
+            avatar: Icon(icon, size: 16),
+            label: Text(label),
+            onPressed: onPressed,
+            visualDensity: VisualDensity.compact,
+            materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
+          ),
+        ),
+      );
+    }
+
+    if (query.preset != ThreadListSortPreset.all) {
+      addChip(
+        label: query.preset.label,
+        tooltip: '点按恢复为全部主题',
+        icon: Icons.sort,
+        onPressed: enabled
+            ? () => onQueryChanged(
+                  query.copyWith(preset: ThreadListSortPreset.all),
+                )
+            : null,
+      );
+    }
+    if (query.hasTimeFilter) {
+      addChip(
+        label: query.timeLabel,
+        tooltip: '点按恢复为全部时间',
+        icon: Icons.schedule_outlined,
+        onPressed: enabled
+            ? () => onQueryChanged(query.copyWith(datelineSeconds: 0))
+            : null,
+      );
+    }
+    final trimmedType = typeName?.trim();
+    if (trimmedType != null && trimmedType.isNotEmpty) {
+      addChip(
+        label: trimmedType,
+        tooltip: '点按清除分类筛选',
+        icon: Icons.label_outline,
+        onPressed: enabled ? () => onTypeSelected(null) : null,
+      );
+    }
+
+    return chips;
+  }
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final expanded = ref.watch(
+      settingsProvider.select((s) => s.threadListFiltersExpanded),
+    );
+    final typeName =
+        selectedTypeId == null ? null : threadTypes[selectedTypeId];
+    final summary = threadListFilterSummary(
+      query: query,
+      typeName: typeName,
+    );
+    final summaryActions = _buildSummaryActions(
+      context,
+      typeName: typeName,
+      enabled: enabled,
+    );
+    final hasActiveFilters = _hasActiveFilters(typeName);
+    final scheme = Theme.of(context).colorScheme;
+    final textTheme = Theme.of(context).textTheme;
+    final semanticsLabel = expanded ? '筛选（已展开）' : '筛选（已收起）';
+    final semanticsHint = expanded ? '双击收起筛选' : '双击展开筛选';
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        Semantics(
+          button: true,
+          enabled: enabled,
+          expanded: expanded,
+          label: semanticsLabel,
+          hint: semanticsHint,
+          child: Material(
+            color: Colors.transparent,
+            child: InkWell(
+              onTap: enabled ? () => _toggleExpanded(ref, expanded) : null,
+              child: ConstrainedBox(
+                constraints: const BoxConstraints(minHeight: 44),
+                child: Padding(
+                  padding: EdgeInsets.fromLTRB(
+                    barPadding.left,
+                    4,
+                    barPadding.right,
+                    4,
+                  ),
+                  child: Row(
+                    children: [
+                      Expanded(
+                        child: expanded || summaryActions.isEmpty
+                            ? Text(
+                                summary,
+                                style: textTheme.labelLarge?.copyWith(
+                                  color: scheme.onSurfaceVariant,
+                                  fontWeight: FontWeight.w500,
+                                ),
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
+                              )
+                            : Wrap(
+                                spacing: 8,
+                                runSpacing: 4,
+                                children: summaryActions,
+                              ),
+                      ),
+                      if (hasActiveFilters)
+                        IconButton(
+                          tooltip: '重置筛选',
+                          icon: const Icon(Icons.restart_alt),
+                          color: scheme.onSurfaceVariant,
+                          visualDensity: VisualDensity.compact,
+                          iconSize: 20,
+                          padding: EdgeInsets.zero,
+                          constraints: const BoxConstraints.tightFor(
+                            width: 32,
+                            height: 32,
+                          ),
+                          onPressed: enabled ? _resetFilters : null,
+                        ),
+                      Icon(
+                        expanded ? Icons.expand_less : Icons.expand_more,
+                        color: scheme.onSurfaceVariant,
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            ),
+          ),
+        ),
+        AnimatedSize(
+          duration: const Duration(milliseconds: 200),
+          curve: Curves.easeInOut,
+          alignment: Alignment.topCenter,
+          child: expanded
+              ? Column(
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [
+                    _ThreadSortFilterBar(
+                      query: query,
+                      enabled: enabled,
+                      chipVisualDensity: chipVisualDensity,
+                      chipLabelPadding: chipLabelPadding,
+                      barPadding: barPadding,
+                      onChanged: onQueryChanged,
+                    ),
+                    if (threadTypes.isNotEmpty)
+                      _ThreadTypeFilterBar(
+                        threadTypes: threadTypes,
+                        selectedTypeId: selectedTypeId,
+                        enabled: enabled,
+                        chipVisualDensity: chipVisualDensity,
+                        chipLabelPadding: chipLabelPadding,
+                        barPadding: barPadding,
+                        onSelected: onTypeSelected,
+                      ),
+                  ],
+                )
+              : const SizedBox.shrink(),
+        ),
+      ],
+    );
+  }
+}
+
 class _ThreadSortFilterBar extends StatelessWidget {
   const _ThreadSortFilterBar({
     required this.query,
@@ -788,38 +1004,44 @@ class _ThreadSortFilterBar extends StatelessWidget {
             padding: const EdgeInsets.symmetric(horizontal: 4),
             child: MenuAnchor(
               style: S1MenuSpec.anchoredMenuStyle(context),
-              alignmentOffset: const Offset(0, S1MenuSpec.underAnchorGap),
+              alignmentOffset: S1MenuSpec.underAnchorOffset(context),
               reservedPadding: S1MenuSpec.reservedPadding,
               crossAxisUnconstrained: false,
               builder: (context, controller, child) {
-                return FilterChip(
-                  label: Row(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      Text(_moreLabel),
-                      Icon(
-                        Icons.arrow_drop_down,
-                        size: 18,
-                        color: scheme.onSurfaceVariant,
-                      ),
-                    ],
-                  ),
-                  selected: _moreSelected,
-                  showCheckmark: false,
-                  side: BorderSide.none,
-                  visualDensity: chipVisualDensity,
-                  materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
-                  labelPadding: chipLabelPadding,
-                  padding: EdgeInsets.zero,
-                  onSelected: enabled
-                      ? (_) {
-                          if (controller.isOpen) {
-                            controller.close();
-                          } else {
-                            controller.open();
+                return Semantics(
+                  button: true,
+                  enabled: enabled,
+                  label: '更多筛选，当前：$_moreLabel',
+                  hint: '双击打开排序和时间菜单',
+                  child: FilterChip(
+                    label: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Text(_moreLabel),
+                        Icon(
+                          Icons.arrow_drop_down,
+                          size: 18,
+                          color: scheme.onSurfaceVariant,
+                        ),
+                      ],
+                    ),
+                    selected: _moreSelected,
+                    showCheckmark: false,
+                    side: BorderSide.none,
+                    visualDensity: chipVisualDensity,
+                    materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                    labelPadding: chipLabelPadding,
+                    padding: EdgeInsets.zero,
+                    onSelected: enabled
+                        ? (_) {
+                            if (controller.isOpen) {
+                              controller.close();
+                            } else {
+                              controller.open();
+                            }
                           }
-                        }
-                      : null,
+                        : null,
+                  ),
                 );
               },
               menuChildren: [

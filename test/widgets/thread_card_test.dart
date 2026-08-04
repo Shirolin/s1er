@@ -58,13 +58,13 @@ void main() {
     await tester.pumpAndSettle();
   }
 
-  testWidgets('standard density stacks category tag above title',
+  testWidgets('standard density keeps category tag on title row',
       (tester) async {
     await pumpCard(tester, density: ListDensity.standard);
 
     final tagTop = tester.getTopLeft(find.text('NS')).dy;
     final titleTop = tester.getTopLeft(find.text(sampleThread.subject)).dy;
-    expect(titleTop, greaterThan(tagTop + 4));
+    expect((tagTop - titleTop).abs(), lessThan(8));
 
     final text = tester.widget<Text>(find.text(sampleThread.subject));
     expect(text.maxLines, 2);
@@ -129,7 +129,7 @@ void main() {
   test('ThreadCardDensityTokens map density modes', () {
     expect(
       ThreadCardDensityTokens.forDensity(ListDensity.standard).inlineTag,
-      isFalse,
+      isTrue,
     );
     expect(
       ThreadCardDensityTokens.forDensity(ListDensity.compact).inlineTag,

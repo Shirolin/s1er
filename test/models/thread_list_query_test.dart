@@ -163,4 +163,36 @@ void main() {
       expect(threadListTimeOptions.last.label, '三个月');
     });
   });
+
+  group('threadListFilterSummary', () {
+    test('default with no type shows 全部主题 · 全部时间', () {
+      expect(
+        threadListFilterSummary(query: ThreadListQuery.defaults),
+        '全部主题 · 全部时间',
+      );
+    });
+
+    test('joins preset time and type', () {
+      expect(
+        threadListFilterSummary(
+          query: const ThreadListQuery(
+            preset: ThreadListSortPreset.newest,
+            datelineSeconds: 86400,
+          ),
+          typeName: 'NS',
+        ),
+        '发帖时间 · 一天 · NS',
+      );
+    });
+
+    test('type alone appends to 全部主题 · 全部时间', () {
+      expect(
+        threadListFilterSummary(
+          query: ThreadListQuery.defaults,
+          typeName: '动画',
+        ),
+        '全部主题 · 全部时间 · 动画',
+      );
+    });
+  });
 }

@@ -69,7 +69,7 @@ class ThreadCardDensityTokens {
     titleHeight: 1.4,
     progressTop: 6,
     inlineTag: true,
-    tagMaxChars: null,
+    tagMaxChars: 4,
     showProgressBar: true,
     showPageChip: true,
     categoryChipVisualDensity: VisualDensity(horizontal: -1, vertical: -2),

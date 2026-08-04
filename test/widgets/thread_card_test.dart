@@ -358,17 +358,18 @@ void main() {
     expect(find.textContaining('置顶'), findsNothing);
   });
 
-  testWidgets('standard density keeps full category tag', (tester) async {
+  testWidgets('standard density truncates long category tags to 4 chars',
+      (tester) async {
     final longTagThread = Thread(
       tid: '102',
-      subject: '??',
-      author: '??',
+      subject: 'subject',
+      author: 'author',
       authorId: '1',
       dateline: 1700000000,
       views: 100,
       replies: 5,
       fid: '4',
-      typeName: '????????????',
+      typeName: '青黑无脑不要游戏只求一战',
     );
 
     await tester.pumpWidget(
@@ -393,6 +394,7 @@ void main() {
     );
     await tester.pumpAndSettle();
 
-    expect(find.text('????????????'), findsOneWidget);
+    expect(find.text('青黑无脑'), findsOneWidget);
+    expect(find.text('青黑无脑不要游戏只求一战'), findsNothing);
   });
 }

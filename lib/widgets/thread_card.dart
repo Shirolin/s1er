@@ -560,23 +560,12 @@ class _MetaLine extends StatelessWidget {
                 ),
                 if (showPageChip && totalPages > 1 && onPageTap != null) ...[
                   const SizedBox(width: 8),
-                  ActionChip(
-                    label: CompactLabel.text(
-                      '$totalPages页',
-                      style: CompactLabel.style(
-                        context,
-                        base: metaStyle,
-                        color: secondaryColor,
-                        fontWeight: FontWeight.w500,
-                      ),
-                    ),
-                    labelPadding: const EdgeInsets.symmetric(horizontal: 4),
-                    backgroundColor: scheme.surfaceContainerHighest,
-                    side: BorderSide.none,
-                    visualDensity: VisualDensity.compact,
-                    materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
-                    padding: EdgeInsets.zero,
-                    onPressed: onPageTap,
+                  _PageCountButton(
+                    label: '$totalPages页',
+                    color: secondaryColor,
+                    textStyle: metaStyle,
+                    scheme: scheme,
+                    onPressed: onPageTap!,
                   ),
                 ],
               ],
@@ -584,6 +573,59 @@ class _MetaLine extends StatelessWidget {
           ),
         ),
       ],
+    );
+  }
+}
+
+/// 弱 Action：透底 + 淡描边，与分类标签同强调级，但不走 ChipTheme（避免实心填充）。
+class _PageCountButton extends StatelessWidget {
+  const _PageCountButton({
+    required this.label,
+    required this.color,
+    required this.textStyle,
+    required this.scheme,
+    required this.onPressed,
+  });
+
+  final String label;
+  final Color color;
+  final TextStyle? textStyle;
+  final ColorScheme scheme;
+  final VoidCallback onPressed;
+
+  @override
+  Widget build(BuildContext context) {
+    const shape = S1Shape.chipShape;
+    return Semantics(
+      button: true,
+      label: label,
+      child: Material(
+        color: Colors.transparent,
+        shape: shape,
+        child: InkWell(
+          onTap: onPressed,
+          customBorder: shape,
+          child: Container(
+            padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+            decoration: ShapeDecoration(
+              shape: shape.copyWith(
+                side: BorderSide(
+                  color: scheme.outline.withValues(alpha: S1Alpha.subtle),
+                ),
+              ),
+            ),
+            child: CompactLabel.text(
+              label,
+              style: CompactLabel.style(
+                context,
+                base: textStyle,
+                color: color,
+                fontWeight: FontWeight.w500,
+              ),
+            ),
+          ),
+        ),
+      ),
     );
   }
 }

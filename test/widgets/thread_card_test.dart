@@ -168,7 +168,8 @@ void main() {
     expect(find.byType(ActionChip), findsNothing);
   });
 
-  testWidgets('standard density keeps page ActionChip', (tester) async {
+  testWidgets('standard density keeps outlined page count button',
+      (tester) async {
     final multiPageThread = sampleThread.copyWith(replies: 5000);
     await pumpCard(
       tester,
@@ -176,8 +177,17 @@ void main() {
       thread: multiPageThread,
     );
 
-    expect(find.byType(ActionChip), findsOneWidget);
-    expect(find.textContaining('页'), findsOneWidget);
+    expect(find.byType(ActionChip), findsNothing);
+    final pageText = find.textContaining('页');
+    expect(pageText, findsOneWidget);
+    final pageMaterial = tester.widget<Material>(
+      find.ancestor(of: pageText, matching: find.byType(Material)).first,
+    );
+    expect(pageMaterial.color, Colors.transparent);
+    expect(
+      find.ancestor(of: pageText, matching: find.byType(InkWell)),
+      findsWidgets,
+    );
   });
 
   testWidgets('compact density merges reading progress into reply meta',

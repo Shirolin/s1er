@@ -182,20 +182,7 @@ function Step-Build {
     $apkOut = Join-Path $Root 'build\app\outputs\flutter-apk'
 
     if (-not $SkipApk) {
-        # 1) Universal / fat (all ABIs in one file)
-        Write-Host "`n[build] Android universal APK (all ABIs)..." -ForegroundColor Cyan
-        Invoke-FlutterBuild @(
-            'build', 'apk', '--release',
-            '--obfuscate', "--split-debug-info=build/debug-info"
-        )
-        $fatSrc = Join-Path $apkOut 'app-release.apk'
-        if (-not (Test-Path $fatSrc)) { throw "Missing $fatSrc" }
-        if (-not $DryRun) {
-            Copy-Item $fatSrc $arts.Apk -Force
-            Write-Host "Wrote $($arts.Apk)" -ForegroundColor Green
-        }
-
-        # 2) Per-ABI splits (smaller downloads)
+        # 1) Per-ABI splits (smaller downloads)
         Write-Host "`n[build] Android per-ABI APKs (--split-per-abi)..." -ForegroundColor Cyan
         Invoke-FlutterBuild @(
             'build', 'apk', '--release', '--split-per-abi',
@@ -213,6 +200,19 @@ function Step-Build {
                 Copy-Item $src $splitMap[$name] -Force
                 Write-Host "Wrote $($splitMap[$name])" -ForegroundColor Green
             }
+        }
+
+        # 2) Universal / fat (all ABIs in one file)
+        Write-Host "`n[build] Android universal APK (all ABIs)..." -ForegroundColor Cyan
+        Invoke-FlutterBuild @(
+            'build', 'apk', '--release',
+            '--obfuscate', "--split-debug-info=build/debug-info"
+        )
+        $fatSrc = Join-Path $apkOut 'app-release.apk'
+        if (-not (Test-Path $fatSrc)) { throw "Missing $fatSrc" }
+        if (-not $DryRun) {
+            Copy-Item $fatSrc $arts.Apk -Force
+            Write-Host "Wrote $($arts.Apk)" -ForegroundColor Green
         }
     }
 

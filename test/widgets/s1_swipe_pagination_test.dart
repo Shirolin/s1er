@@ -91,6 +91,31 @@ void main() {
     expect(find.text('Page 2'), findsOneWidget);
   });
 
+  testWidgets(
+      'S1SwipePagination adjacent slots use page surface, not scheme.surface',
+      (tester) async {
+    await tester.pumpWidget(
+      buildHarness(
+        currentPage: 2,
+        totalPages: 5,
+        onPageChanged: (_) async {},
+      ),
+    );
+
+    final scheme = AppTheme.lightTheme('purple').colorScheme;
+    final pageColor = S1Surface.page(scheme);
+    final boxes = tester
+        .widgetList<ColoredBox>(find.byType(ColoredBox))
+        .where((box) => box.child is SizedBox)
+        .toList();
+
+    expect(boxes, isNotEmpty);
+    for (final box in boxes) {
+      expect(box.color, pageColor);
+      expect(box.color, isNot(scheme.surface));
+    }
+  });
+
   testWidgets('S1SwipePagination right swipe requests previous page',
       (tester) async {
     int? requestedPage;

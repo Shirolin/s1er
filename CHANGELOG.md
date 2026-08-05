@@ -7,6 +7,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.5.0] - 2026-08-05
+
+### Fixed
+
+- **发帖输入区体验**：禁用大文本框长按放大镜，避免误触选区。
+- **版块翻页指示器**：优化 S1SwipePagination 滑动底色与进度条指示器，避免与版块筛选栏加载指示器双重叠加。
+
+### Changed
+
+- **紧凑列表视觉优化**：优化紧凑密度模式下帖子楼层徽章与菜单按钮布局。
+
 ## [0.4.2] - 2026-07-30
 
 ### Fixed

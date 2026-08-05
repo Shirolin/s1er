@@ -16,6 +16,9 @@ class PostActionMenu extends StatelessWidget {
     this.onMultiShare,
     this.onCopyText,
     this.onSelectText,
+    this.iconButtonConstraints,
+    this.iconSize,
+    this.materialTapTargetSize,
   });
 
   final VoidCallback? onFilterByAuthor;
@@ -28,10 +31,17 @@ class PostActionMenu extends StatelessWidget {
   final VoidCallback? onMultiShare;
   final VoidCallback? onCopyText;
   final VoidCallback? onSelectText;
+  final BoxConstraints? iconButtonConstraints;
+  final double? iconSize;
+  final MaterialTapTargetSize? materialTapTargetSize;
 
   @override
   Widget build(BuildContext context) {
     return S1IconMenuAnchor(
+      iconButtonConstraints: iconButtonConstraints ??
+          const BoxConstraints(minWidth: 40, minHeight: 40),
+      iconSize: iconSize,
+      materialTapTargetSize: materialTapTargetSize,
       menuChildren: [
         s1MenuItem(
           onPressed: onFilterByAuthor,

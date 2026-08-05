@@ -65,6 +65,12 @@ void main() {
       card.margin,
       const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
     );
+    final menuButton = tester.widget<IconButton>(find.byType(IconButton));
+    expect(menuButton.style?.tapTargetSize, MaterialTapTargetSize.shrinkWrap);
+    expect(
+      menuButton.style?.minimumSize?.resolve(const <WidgetState>{}),
+      const Size(32, 32),
+    );
   });
 
   test('PostItemDensityTokens map density modes', () {
@@ -78,7 +84,19 @@ void main() {
     );
     expect(
       PostItemDensityTokens.forDensity(ListDensity.compact).cardPadding,
+      6,
+    );
+    expect(
+      PostItemDensityTokens.forDensity(ListDensity.compact).cardPaddingTop,
+      4,
+    );
+    expect(
+      PostItemDensityTokens.forDensity(ListDensity.compact).dividerHeight,
       8,
+    );
+    expect(
+      PostItemDensityTokens.forDensity(ListDensity.compact).headerActionExtent,
+      32,
     );
   });
 }

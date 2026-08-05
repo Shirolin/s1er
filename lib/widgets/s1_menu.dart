@@ -122,6 +122,8 @@ class S1IconMenuAnchor extends StatelessWidget {
     this.iconButtonPadding = EdgeInsets.zero,
     this.iconButtonConstraints =
         const BoxConstraints(minWidth: 40, minHeight: 40),
+    this.iconSize,
+    this.materialTapTargetSize,
   });
 
   final List<Widget> menuChildren;
@@ -130,10 +132,14 @@ class S1IconMenuAnchor extends StatelessWidget {
   final Offset? alignmentOffset;
   final EdgeInsetsGeometry iconButtonPadding;
   final BoxConstraints iconButtonConstraints;
+  final double? iconSize;
+  final MaterialTapTargetSize? materialTapTargetSize;
 
   @override
   Widget build(BuildContext context) {
     final offset = alignmentOffset ?? S1MenuSpec.underAnchorOffset(context);
+    final minWidth = iconButtonConstraints.minWidth;
+    final minHeight = iconButtonConstraints.minHeight;
     return MenuAnchor(
       style: S1MenuSpec.anchoredMenuStyle(context),
       alignmentOffset: offset,
@@ -142,10 +148,17 @@ class S1IconMenuAnchor extends StatelessWidget {
       menuChildren: menuChildren,
       builder: (context, controller, child) {
         return IconButton(
-          padding: iconButtonPadding,
-          constraints: iconButtonConstraints,
           tooltip: tooltip,
-          icon: Icon(icon),
+          style: IconButton.styleFrom(
+            padding: iconButtonPadding,
+            minimumSize: Size(minWidth, minHeight),
+            maximumSize: Size(minWidth, minHeight),
+            tapTargetSize:
+                materialTapTargetSize ?? MaterialTapTargetSize.padded,
+            visualDensity: VisualDensity.compact,
+            iconSize: iconSize,
+          ),
+          icon: Icon(icon, size: iconSize),
           onPressed: () {
             if (controller.isOpen) {
               controller.close();

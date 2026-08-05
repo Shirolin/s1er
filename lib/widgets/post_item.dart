@@ -29,35 +29,58 @@ class PostItemDensityTokens {
   const PostItemDensityTokens({
     required this.cardMarginVertical,
     required this.cardPadding,
+    required this.cardPaddingTop,
     required this.avatarRadius,
     required this.dividerHeight,
     required this.inlineAuthorMeta,
     required this.narrowColumnGap,
+    required this.headerActionExtent,
+    required this.headerActionIconSize,
+    required this.floorBadgePadding,
   });
 
   final double cardMarginVertical;
+
+  /// 左右与底边内边距。
   final double cardPadding;
+
+  /// 顶边内边距（可与 [cardPadding] 不同，用于光学对称）。
+  final double cardPaddingTop;
   final double avatarRadius;
   final double dividerHeight;
   final bool inlineAuthorMeta;
   final double narrowColumnGap;
 
+  /// Header 右侧菜单按钮最小宽高（对齐头像视觉高度）。
+  final double headerActionExtent;
+  final double headerActionIconSize;
+  final EdgeInsetsGeometry floorBadgePadding;
+
   static const standard = PostItemDensityTokens(
     cardMarginVertical: 4,
     cardPadding: 12,
+    cardPaddingTop: 12,
     avatarRadius: 20,
     dividerHeight: 16,
     inlineAuthorMeta: false,
     narrowColumnGap: 8,
+    headerActionExtent: 40,
+    headerActionIconSize: 24,
+    floorBadgePadding: EdgeInsets.symmetric(horizontal: 6, vertical: 2),
   );
 
   static const compact = PostItemDensityTokens(
     cardMarginVertical: 2,
-    cardPadding: 8,
+    cardPadding: 6,
+    // 顶边收紧、分割区略放宽：纠正「上松下紧」的光学偏差。
+    cardPaddingTop: 4,
     avatarRadius: 16,
     dividerHeight: 8,
     inlineAuthorMeta: true,
     narrowColumnGap: 4,
+    headerActionExtent: 32,
+    headerActionIconSize: 20,
+    floorBadgePadding: EdgeInsets.symmetric(horizontal: 5, vertical: 1),
   );
 
   static PostItemDensityTokens forDensity(ListDensity density) {
@@ -68,6 +91,18 @@ class PostItemDensityTokens {
         return standard;
     }
   }
+
+  EdgeInsets get contentPadding => EdgeInsets.fromLTRB(
+        cardPadding,
+        cardPaddingTop,
+        cardPadding,
+        cardPadding,
+      );
+
+  BoxConstraints get headerActionConstraints => BoxConstraints(
+        minWidth: headerActionExtent,
+        minHeight: headerActionExtent,
+      );
 }
 
 class PostItem extends ConsumerStatefulWidget {
@@ -217,13 +252,14 @@ class _PostItemState extends ConsumerState<PostItem>
             )
           : S1Shape.cardShape,
       child: Padding(
-        padding: EdgeInsets.all(tokens.cardPadding),
+        padding: tokens.contentPadding,
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             _buildAuthorHeader(context, timeStr, floor, tokens),
             Divider(
               height: tokens.dividerHeight,
+              thickness: 1,
               color: scheme.outlineVariant,
             ),
             if (isBanned)
@@ -532,6 +568,9 @@ class _PostItemState extends ConsumerState<PostItem>
       onRate: widget.onRate,
       onAddToBlacklist: widget.onAddToBlacklist,
       onReport: widget.onReport,
+      iconButtonConstraints: tokens.headerActionConstraints,
+      iconSize: tokens.headerActionIconSize,
+      materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
     );
 
     final avatar = Semantics(
@@ -556,7 +595,7 @@ class _PostItemState extends ConsumerState<PostItem>
       spacing: 2,
       runSpacing: 2,
       children: [
-        _FloorBadge(floor: floor),
+        _FloorBadge(floor: floor, padding: tokens.floorBadgePadding),
         menu,
       ],
     );
@@ -576,11 +615,12 @@ class _PostItemState extends ConsumerState<PostItem>
         }
 
         return Row(
+          crossAxisAlignment: CrossAxisAlignment.center,
           children: [
             avatar,
             const SizedBox(width: 8),
             Expanded(child: authorDetails),
-            _FloorBadge(floor: floor),
+            _FloorBadge(floor: floor, padding: tokens.floorBadgePadding),
             const SizedBox(width: 2),
             menu,
           ],
@@ -657,9 +697,13 @@ class _PostRateLogSection extends ConsumerWidget {
 
 /// 楼层号展示徽章（只读，非交互）。
 class _FloorBadge extends StatelessWidget {
-  const _FloorBadge({required this.floor});
+  const _FloorBadge({
+    required this.floor,
+    required this.padding,
+  });
 
   final int floor;
+  final EdgeInsetsGeometry padding;
 
   @override
   Widget build(BuildContext context) {
@@ -677,7 +721,7 @@ class _FloorBadge extends StatelessWidget {
         ),
       ),
       backgroundColor: scheme.secondaryContainer,
-      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+      padding: padding,
     );
   }
 }

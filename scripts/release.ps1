@@ -168,10 +168,10 @@ function Step-BumpName {
     Step-Status
 }
 
-function Invoke-FlutterBuild([string[]]$Args) {
-    Write-Host ("> flutter " + ($Args -join ' ')) -ForegroundColor DarkCyan
+function Invoke-FlutterBuild([string[]]$FlutterArgs) {
+    Write-Host ("> flutter " + ($FlutterArgs -join ' ')) -ForegroundColor DarkCyan
     if ($DryRun) { return }
-    & flutter @Args
+    & flutter $FlutterArgs
     if ($LASTEXITCODE -ne 0) { throw "flutter failed ($LASTEXITCODE)" }
 }
 
@@ -180,6 +180,11 @@ function Step-Build {
     $v = Get-PubspecVersion
     $arts = Get-ArtifactPaths $v
     $apkOut = Join-Path $Root 'build\app\outputs\flutter-apk'
+
+    # 每次打包前强制 clean，防止 Flutter/Gradle 增量缓存导致 APK 内残存旧版本号
+    Write-Host "[build] Cleaning previous build cache..." -ForegroundColor Cyan
+    Invoke-FlutterBuild @('clean')
+    Invoke-FlutterBuild @('pub', 'get')
 
     if (-not $SkipApk) {
         # 1) Per-ABI splits (smaller downloads)

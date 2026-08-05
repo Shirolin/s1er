@@ -213,7 +213,8 @@ flutter run -d chrome --dart-define=TALKER_LOG_LEVEL=all --dart-define=TALKER_MA
 
 > 完整流程见 [docs/release/README.md](docs/release/README.md)。下列为 AI **必须遵守**的硬规则，避免发版脚本与 `latest.json` 再次脱节。
 
-- **发版走 `scripts/release.ps1`**：`build` → 上传 Release 附件 → **`manifest`**（写 `docs/release/latest.json` 直链）。禁止只手改 `latest.json` 而跳过 `manifest`。
+- **发版走 `scripts/release.ps1`**：`build`（内置 `flutter clean` 保证二进制版本正确） → 上传 Release 附件 → **`manifest`**（写 `docs/release/latest.json` 直链）。禁止只手改 `latest.json` 而跳过 `manifest`。
+- **发版前强制验证二进制**：AI 在发版前必须确认 `pubspec.yaml` 已先被更新，禁止基于未 `clean` 的旧产物直接上传 Release。
 - **Android 应用内更新按 ABI 选包**：`UpdateCheckService.resolveAndroidApkUrl` 优先 `androidArm64V8aApk` / `androidArmeabiV7aApk` / `androidX8664Apk`；`androidApk`（universal）仅为回退。**禁止**把应用内更新「简化」为只下 universal，或让 `manifest` 只写 `androidApk`。
 - **`manifest` 必须写入四个 APK 直链**（`release.ps1` 已内置校验，缺字段会抛错）。改发版逻辑时须同步 `docs/release/README.md` 与相关测试。
 - **版本号格式与 `+build` 规则**：`pubspec.yaml` 格式为 `version: name+build`（如 `0.5.0+5`）。`name`（如 `0.5.0`）是面向用户的产品版本；`build`（如 `+5`）对应 Android `versionCode`。受 Android 降级安装机制（`INSTALL_FAILED_VERSION_DOWNGRADE`）限制，**`build` 必须在全项目中严格单调递增**，跨大/小版本时切勿重置为 `+1`。

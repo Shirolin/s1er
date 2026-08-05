@@ -3198,6 +3198,8 @@ class _ComposeMessageField extends StatelessWidget {
         textAlignVertical: TextAlignVertical.top,
         style: textTheme.bodyLarge,
         onTap: onTap,
+        // 正文区几乎全屏；空内容时长按会放大 hint，误触极多。选区/粘贴菜单仍可用。
+        magnifierConfiguration: TextMagnifierConfiguration.disabled,
         decoration: InputDecoration(
           filled: true,
           fillColor: Colors.transparent,

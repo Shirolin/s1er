@@ -101,6 +101,28 @@ void main() {
     expect(find.byType(FilledButton), findsOneWidget);
   });
 
+  testWidgets('compose message field disables text magnifier', (tester) async {
+    await tester.pumpWidget(
+      ProviderScope(
+        overrides: buildOverrides(auth: _LoggedInAuthNotifier.new),
+        child: MaterialApp(
+          theme: AppTheme.lightTheme('purple'),
+          home: const ComposeScreen(
+            tid: '100',
+            fid: '4',
+            subject: '示例主题',
+          ),
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    final field = tester.widget<TextField>(
+      find.widgetWithText(TextField, '输入回复内容…'),
+    );
+    expect(field.magnifierConfiguration, TextMagnifierConfiguration.disabled);
+  });
+
   testWidgets('new thread mode renders title and required category',
       (tester) async {
     await tester.pumpWidget(

@@ -35,6 +35,7 @@ void main() {
     required int totalPages,
     required Future<void> Function(int page) onPageChanged,
     bool enabled = true,
+    bool showPagingIndicator = true,
     Key? key,
     ValueChanged<S1ScrollMetrics>? onScrollMetricsChanged,
     double contentHeight = 800,
@@ -47,6 +48,7 @@ void main() {
           currentPage: currentPage,
           totalPages: totalPages,
           enabled: enabled,
+          showPagingIndicator: showPagingIndicator,
           onPageChanged: onPageChanged,
           onScrollMetricsChanged: onScrollMetricsChanged,
           pageBuilder: (context, scrollController) => ListView(
@@ -102,12 +104,16 @@ void main() {
       ),
     );
 
+    // 拖到一半，让相邻槽进入 viewport 并完成构建。
+    final size = tester.view.physicalSize / tester.view.devicePixelRatio;
+    await tester.drag(find.byType(PageView), Offset(-size.width * 0.4, 0));
+    await tester.pump();
+
     final scheme = AppTheme.lightTheme('purple').colorScheme;
     final pageColor = S1Surface.page(scheme);
-    final boxes = tester
-        .widgetList<ColoredBox>(find.byType(ColoredBox))
-        .where((box) => box.child is SizedBox)
-        .toList();
+    final boxes = tester.widgetList<ColoredBox>(
+      find.byKey(const ValueKey('s1-swipe-slot-placeholder')),
+    );
 
     expect(boxes, isNotEmpty);
     for (final box in boxes) {
@@ -313,6 +319,35 @@ void main() {
     await tester.pump();
 
     expect(find.byType(LinearProgressIndicator), findsOneWidget);
+
+    completer.complete();
+    await tester.pump();
+  });
+
+  testWidgets(
+      'S1SwipePagination can hide paging indicator for parent-owned loading UI',
+      (tester) async {
+    final completer = Completer<void>();
+
+    await tester.pumpWidget(
+      buildHarness(
+        currentPage: 2,
+        totalPages: 5,
+        showPagingIndicator: false,
+        onPageChanged: (_) => completer.future,
+      ),
+    );
+    await tester.pump();
+
+    final size = tester.view.physicalSize / tester.view.devicePixelRatio;
+    await tester.fling(
+      find.byType(PageView),
+      Offset(-size.width, 0),
+      2500,
+    );
+    await tester.pump();
+
+    expect(find.byType(LinearProgressIndicator), findsNothing);
 
     completer.complete();
     await tester.pump();

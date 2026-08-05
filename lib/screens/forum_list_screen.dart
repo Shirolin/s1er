@@ -583,9 +583,17 @@ class _ForumThreadList extends ConsumerWidget {
     );
     final chipTokens = ThreadCardDensityTokens.forDensity(listDensity);
 
+    final scheme = Theme.of(context).colorScheme;
+
     return Column(
       children: [
-        if (state.isLoading) const LinearProgressIndicator(),
+        // 翻页 / 筛选共用一条；关闭 S1SwipePagination 自带条，避免筛选栏上下各一条。
+        if (state.isLoading)
+          LinearProgressIndicator(
+            minHeight: 2,
+            backgroundColor: scheme.surfaceContainer,
+            color: scheme.primary,
+          ),
         _ThreadFiltersSection(
           query: state.query,
           threadTypes: state.threadTypes,
@@ -622,6 +630,7 @@ class _ForumThreadList extends ConsumerWidget {
               key: swipeKey,
               currentPage: state.currentPage,
               totalPages: state.totalPages,
+              showPagingIndicator: false,
               onScrollMetricsChanged: onScrollMetricsChanged,
               onPageChanged: onPageChanged,
               pageBuilder: (context, scrollController) => Scrollbar(

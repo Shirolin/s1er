@@ -31,6 +31,7 @@ class S1SwipePagination extends StatefulWidget {
     this.onBoundaryHit,
     this.boundaryFeedback,
     this.enabled = true,
+    this.showPagingIndicator = true,
   });
 
   /// 当前页码（1-based）。
@@ -56,6 +57,12 @@ class S1SwipePagination extends StatefulWidget {
 
   /// 是否启用左右滑动（单页时自动禁用）。
   final bool enabled;
+
+  /// 滑动翻页时是否在内容区顶部显示进度条。
+  ///
+  /// 父级已用 [state.isLoading] 等统一指示加载时（如版块列表筛选栏上方）应关闭，
+  /// 避免与父级进度条叠成两条。
+  final bool showPagingIndicator;
 
   @override
   State<S1SwipePagination> createState() => S1SwipePaginationState();
@@ -316,6 +323,7 @@ class S1SwipePaginationState extends State<S1SwipePagination> {
 
     // 与 Scaffold / 列表画布同色，避免横滑露出近白的 scheme.surface。
     return ColoredBox(
+      key: const ValueKey('s1-swipe-slot-placeholder'),
       color: S1Surface.page(Theme.of(context).colorScheme),
       child: const SizedBox.expand(),
     );
@@ -327,7 +335,7 @@ class S1SwipePaginationState extends State<S1SwipePagination> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        if (_isPaging)
+        if (_isPaging && widget.showPagingIndicator)
           LinearProgressIndicator(
             minHeight: 2,
             backgroundColor: scheme.surfaceContainer,

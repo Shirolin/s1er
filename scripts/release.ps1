@@ -264,7 +264,7 @@ Build ``$($v.Label)``（关于页：``$($v.Name) ($($v.Build))``）
         return
     }
     # UTF-8 without BOM for gh
-    [System.IO.File]::WriteAllText($path, $body)
+    [System.IO.File]::WriteAllText($path, $body, [System.Text.UTF8Encoding]::new($false))
 }
 
 function Step-Create {

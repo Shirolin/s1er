@@ -216,6 +216,7 @@ flutter run -d chrome --dart-define=TALKER_LOG_LEVEL=all --dart-define=TALKER_MA
 - **发版走 `scripts/release.ps1`**：`build` → 上传 Release 附件 → **`manifest`**（写 `docs/release/latest.json` 直链）。禁止只手改 `latest.json` 而跳过 `manifest`。
 - **Android 应用内更新按 ABI 选包**：`UpdateCheckService.resolveAndroidApkUrl` 优先 `androidArm64V8aApk` / `androidArmeabiV7aApk` / `androidX8664Apk`；`androidApk`（universal）仅为回退。**禁止**把应用内更新「简化」为只下 universal，或让 `manifest` 只写 `androidApk`。
 - **`manifest` 必须写入四个 APK 直链**（`release.ps1` 已内置校验，缺字段会抛错）。改发版逻辑时须同步 `docs/release/README.md` 与相关测试。
+- **版本号格式与 `+build` 规则**：`pubspec.yaml` 格式为 `version: name+build`（如 `0.5.0+5`）。`name`（如 `0.5.0`）是面向用户的产品版本；`build`（如 `+5`）对应 Android `versionCode`。受 Android 降级安装机制（`INSTALL_FAILED_VERSION_DOWNGRADE`）限制，**`build` 必须在全项目中严格单调递增**，跨大/小版本时切勿重置为 `+1`。
 - **版本比较只看 `pubspec` name**（如 `0.3.5`），忽略 `+build`；仅抬 build 不必改 `latest`。
 
 ---

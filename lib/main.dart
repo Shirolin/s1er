@@ -50,8 +50,21 @@ Future<void> _loadEmoticonCatalog() async {
 void _setupErrorHub() {
   final prevOnError = FlutterError.onError;
   final prevPlatformError = PlatformDispatcher.instance.onError;
+  var loggedDisposedViewNoise = false;
 
   FlutterError.onError = (details) {
+    // Web hot-restart frame loop: mute per-frame Talker / presentError spam.
+    if (isFrameLoopEngineNoise(details.exception)) {
+      if (!loggedDisposedViewNoise) {
+        loggedDisposedViewNoise = true;
+        talker.warning(
+          'Web engine disposed EngineFlutterView (often after hot restart). '
+          'Hard-refresh the browser tab to recover.',
+        );
+      }
+      return;
+    }
+
     talker.handle(details.exception, details.stack, 'FlutterError');
 
     // Skip Sentry + presentError for known engine noise (e.g. ViewInsets).
@@ -69,6 +82,17 @@ void _setupErrorHub() {
   };
 
   PlatformDispatcher.instance.onError = (error, stack) {
+    if (isFrameLoopEngineNoise(error)) {
+      if (!loggedDisposedViewNoise) {
+        loggedDisposedViewNoise = true;
+        talker.warning(
+          'Web engine disposed EngineFlutterView (often after hot restart). '
+          'Hard-refresh the browser tab to recover.',
+        );
+      }
+      return true;
+    }
+
     talker.handle(error, stack, 'PlatformDispatcher');
     if (!isIgnorableSentryNoise(error)) {
       unawaited(captureSentryException(error, stack));

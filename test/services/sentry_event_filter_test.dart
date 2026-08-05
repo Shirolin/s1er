@@ -37,6 +37,24 @@ void main() {
         isTrue,
       );
     });
+
+    test('matches disposed EngineFlutterView assertion', () {
+      expect(
+        isIgnorableSentryNoise(
+          AssertionError(kSentryDisposedEngineFlutterView),
+        ),
+        isTrue,
+      );
+      expect(
+        isFrameLoopEngineNoise(
+          AssertionError(
+            'Assertion failed: !isDisposed\n"$kSentryDisposedEngineFlutterView."',
+          ),
+        ),
+        isTrue,
+      );
+      expect(isFrameLoopEngineNoise(AssertionError('other')), isFalse);
+    });
   });
 
   group('shouldDropSentryEvent', () {
@@ -71,7 +89,7 @@ void main() {
     });
 
     test(
-        'drops ViewInsets, debugNeedsLayout, tooltip ticker, and image_viewer markers',
+        'drops ViewInsets, debugNeedsLayout, tooltip ticker, disposed view, and image_viewer markers',
         () {
       expect(
         shouldDropSentryEvent(
@@ -94,6 +112,14 @@ void main() {
           environment: 'production',
           debugUploadAllowed: false,
           haystack: kSentryTooltipTicker,
+        ),
+        isTrue,
+      );
+      expect(
+        shouldDropSentryEvent(
+          environment: 'production',
+          debugUploadAllowed: false,
+          haystack: kSentryDisposedEngineFlutterView,
         ),
         isTrue,
       );

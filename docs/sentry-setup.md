@@ -10,7 +10,7 @@ S1er 使用 [Sentry](https://sentry.io/) 收集运行时的**未处理崩溃与�
 |:---|:---|
 | 未捕获的 Flutter / Dart 异常（Native；Web 经链式 handler） | 已 catch 的业务/网络错误（Talker + 友好文案） |
 | `main` 初始化失败（DB / Cookie / HTTP 启动链） | 单张图片加载/解码失败 |
-| 其它编程错误（经 `beforeSend` 放行） | Web `ViewInsets cannot be negative` 噪声 |
+| 其它编程错误（经 `beforeSend` 放行） | Web `ViewInsets cannot be negative` / `disposed EngineFlutterView` 噪声 |
 | | Debug 构建默认丢弃（除非 `SENTRY_DEBUG_UPLOAD=true`） |
 
 **Performance**：默认 `SENTRY_TRACES_SAMPLE_RATE=0`（不开性能采样）。不把 Talker 全量同步到 Sentry。

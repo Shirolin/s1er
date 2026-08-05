@@ -10,6 +10,13 @@ const kSentryDebugNeedsLayout = '!debugNeedsLayout';
 const kSentryTooltipTicker =
     'SingleTickerProviderStateMixin but multiple tickers were created';
 
+/// Web hot restart / multi-view teardown race (Flutter #175260 / #182377).
+///
+/// Once the implicit view is disposed, every subsequent frame asserts and can
+/// flood logs until the tab is hard-refreshed.
+const kSentryDisposedEngineFlutterView =
+    'Trying to render a disposed EngineFlutterView';
+
 /// Marker left by legacy / mistaken [FlutterError.reportError] paths.
 const kSentryImageViewerLibrary = 'image_viewer_screen';
 
@@ -19,7 +26,14 @@ bool isIgnorableSentryNoise(Object? error) {
   final msg = error.toString();
   return msg.contains(kSentryViewInsetsNoise) ||
       msg.contains(kSentryDebugNeedsLayout) ||
-      msg.contains(kSentryTooltipTicker);
+      msg.contains(kSentryTooltipTicker) ||
+      msg.contains(kSentryDisposedEngineFlutterView);
+}
+
+/// Frame-loop engine noise that must not be logged every frame.
+bool isFrameLoopEngineNoise(Object? error) {
+  if (error == null) return false;
+  return error.toString().contains(kSentryDisposedEngineFlutterView);
 }
 
 /// Pure drop policy for unit tests and [filterSentryEvent].
@@ -40,6 +54,9 @@ bool shouldDropSentryEvent({
     return true;
   }
   if (haystack.contains(kSentryTooltipTicker)) {
+    return true;
+  }
+  if (haystack.contains(kSentryDisposedEngineFlutterView)) {
     return true;
   }
   if (haystack.contains(kSentryImageViewerLibrary)) {

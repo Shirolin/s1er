@@ -33,7 +33,7 @@ class DailySignCard extends StatelessWidget {
       shape: S1Shape.cardShape,
       clipBehavior: Clip.antiAlias,
       child: Padding(
-        padding: const EdgeInsets.fromLTRB(16, 14, 12, 14),
+        padding: EdgeInsets.fromLTRB(16, 14, signed ? 16 : 12, 14),
         child: Row(
           children: [
             Icon(

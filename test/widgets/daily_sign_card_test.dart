@@ -47,5 +47,41 @@ void main() {
     expect(find.text('今日已签到'), findsOneWidget);
     expect(find.text('抱歉，您今日已签到'), findsOneWidget);
     expect(find.text('签到'), findsNothing);
+
+    // 已签到态：右侧内边距回到 16，与左侧对齐（裸 icon 不享受按钮的内边距）。
+    expect(
+      find.byWidgetPredicate(
+        (w) =>
+            w is Padding &&
+            w.padding == const EdgeInsets.fromLTRB(16, 14, 16, 14),
+      ),
+      findsOneWidget,
+    );
+  });
+
+  testWidgets('DailySignCard button state keeps reduced right padding', (
+    tester,
+  ) async {
+    await tester.pumpWidget(
+      MaterialApp(
+        theme: AppTheme.lightTheme('purple'),
+        home: Scaffold(
+          body: DailySignCard(
+            isSubmitting: false,
+            result: null,
+            onSign: () {},
+          ),
+        ),
+      ),
+    );
+
+    expect(
+      find.byWidgetPredicate(
+        (w) =>
+            w is Padding &&
+            w.padding == const EdgeInsets.fromLTRB(16, 14, 12, 14),
+      ),
+      findsOneWidget,
+    );
   });
 }

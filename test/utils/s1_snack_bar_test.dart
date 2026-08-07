@@ -134,4 +134,34 @@ void main() {
     final snackBar = tester.widget<SnackBar>(snackBarFinder);
     expect(snackBar.width, 400.0);
   });
+
+  testWidgets('S1SnackBar with action auto-dismisses after duration',
+      (tester) async {
+    await tester.pumpWidget(
+      buildTestApp(
+        Builder(
+          builder: (context) {
+            return ElevatedButton(
+              onPressed: () => S1SnackBar.show(
+                context,
+                message: '带动作提示',
+                actionLabel: '操作',
+                onAction: () {},
+              ),
+              child: const Text('ShowAction'),
+            );
+          },
+        ),
+      ),
+    );
+
+    await tester.tap(find.text('ShowAction'));
+    await tester.pumpAndSettle();
+    expect(find.text('带动作提示'), findsOneWidget);
+
+    // 带动作时长 4s；到时后应自动隐藏，而非常驻。
+    await tester.pump(const Duration(seconds: 4));
+    await tester.pumpAndSettle();
+    expect(find.text('带动作提示'), findsNothing);
+  });
 }

@@ -84,6 +84,7 @@ abstract class S1SnackBar {
 
     messenger.showSnackBar(
       SnackBar(
+        persist: false,
         content: Row(
           children: [
             Icon(iconData, color: iconColor, size: 20),

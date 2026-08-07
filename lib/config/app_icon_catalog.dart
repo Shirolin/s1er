@@ -82,6 +82,15 @@ abstract final class AppIconCatalog {
       masterPath: 'assets/branding/s1er_logo_xb2.png',
       androidMasterAsIcon: true,
     ),
+    AppIconVariant(
+      id: 'md',
+      label: 'MD',
+      previewAsset: 'assets/branding/s1er_logo_md.png',
+      androidMipmap: 'ic_launcher_md',
+      backgroundColor: '#FDFDFD',
+      masterPath: 'assets/branding/s1er_logo_md.png',
+      androidMasterAsIcon: true,
+    ),
   ];
 
   static AppIconVariant get defaultVariant =>

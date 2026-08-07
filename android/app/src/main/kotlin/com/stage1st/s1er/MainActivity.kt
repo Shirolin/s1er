@@ -21,6 +21,7 @@ class MainActivity : FlutterActivity() {
         "black" to ".IconBlack",
         "white" to ".IconWhite",
         "xb2" to ".IconXb2",
+        "md" to ".IconMd",
     )
 
     override fun configureFlutterEngine(flutterEngine: FlutterEngine) {

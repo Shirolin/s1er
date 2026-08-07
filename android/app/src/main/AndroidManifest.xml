@@ -27,7 +27,7 @@
               />
 
         </activity>
-                                                                                                <!-- APP_ICON_ALIASES_BEGIN -->
+                                                                                                        <!-- APP_ICON_ALIASES_BEGIN -->
         <activity-alias
             android:name=".IconBlack"
             android:enabled="true"
@@ -57,6 +57,18 @@
             android:enabled="false"
             android:exported="true"
             android:icon="@mipmap/ic_launcher_xb2"
+            android:label="S1er"
+            android:targetActivity=".MainActivity">
+            <intent-filter>
+                <action android:name="android.intent.action.MAIN"/>
+                <category android:name="android.intent.category.LAUNCHER"/>
+            </intent-filter>
+        </activity-alias>
+        <activity-alias
+            android:name=".IconMd"
+            android:enabled="false"
+            android:exported="true"
+            android:icon="@mipmap/ic_launcher_md"
             android:label="S1er"
             android:targetActivity=".MainActivity">
             <intent-filter>

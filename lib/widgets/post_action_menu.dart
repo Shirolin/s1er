@@ -16,6 +16,8 @@ class PostActionMenu extends StatelessWidget {
     this.onMultiShare,
     this.onCopyText,
     this.onSelectText,
+    this.onToggleStripStyles,
+    this.stripStylesEnabled = false,
     this.iconButtonConstraints,
     this.iconSize,
     this.materialTapTargetSize,
@@ -31,6 +33,11 @@ class PostActionMenu extends StatelessWidget {
   final VoidCallback? onMultiShare;
   final VoidCallback? onCopyText;
   final VoidCallback? onSelectText;
+
+  /// 本楼「去除 / 恢复特殊样式」开关；[stripStylesEnabled] 为 true 时文案显示
+  /// 「恢复特殊样式」，否则显示「去除特殊样式」。
+  final VoidCallback? onToggleStripStyles;
+  final bool stripStylesEnabled;
   final BoxConstraints? iconButtonConstraints;
   final double? iconSize;
   final MaterialTapTargetSize? materialTapTargetSize;
@@ -72,6 +79,11 @@ class PostActionMenu extends StatelessWidget {
           onPressed: onCopyText,
           icon: Icons.copy_outlined,
           label: '复制全文',
+        ),
+        s1MenuItem(
+          onPressed: onToggleStripStyles,
+          icon: Icons.format_clear,
+          label: stripStylesEnabled ? '恢复特殊样式' : '去除特殊样式',
         ),
         s1MenuItem(
           onPressed: onEdit,

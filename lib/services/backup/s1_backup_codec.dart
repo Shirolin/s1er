@@ -215,6 +215,7 @@ class S1BackupSettingsMapper {
     'postSignatureEnabled': 'post_signature_enabled',
     'postSignatureShowDevice': 'post_signature_show_device',
     'postSignatureCustom': 'post_signature_custom',
+    'stripSpecialStyles': 'strip_special_styles',
   };
 
   static Map<String, dynamic> toBackup(Map<String, Object?> appSettings) {

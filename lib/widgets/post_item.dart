@@ -5,6 +5,7 @@ import '../models/list_density.dart';
 import '../models/post.dart';
 import '../providers/auth_provider.dart';
 import '../providers/settings_provider.dart';
+import '../providers/strip_styles_provider.dart';
 import '../providers/thread_rate_logs_provider.dart';
 import '../providers/user_profile_provider.dart';
 import '../theme/app_theme.dart';
@@ -232,6 +233,15 @@ class _PostItemState extends ConsumerState<PostItem>
     final tokens = PostItemDensityTokens.forDensity(
       ref.watch(settingsProvider.select((s) => s.postListDensity)),
     );
+    final globalStrip = ref.watch(
+      settingsProvider.select((s) => s.stripSpecialStyles),
+    );
+    final inSessionStrip = ref.watch(
+      strippedStylePidsProvider.select(
+        (pids) => pids.contains(widget.post.pid),
+      ),
+    );
+    final effectiveStrip = globalStrip || inSessionStrip;
 
     final selected = widget.shareSelectMode && widget.isShareSelected;
     final card = Card(
@@ -256,7 +266,7 @@ class _PostItemState extends ConsumerState<PostItem>
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            _buildAuthorHeader(context, timeStr, floor, tokens),
+            _buildAuthorHeader(context, timeStr, floor, tokens, effectiveStrip),
             Divider(
               height: tokens.dividerHeight,
               thickness: 1,
@@ -273,6 +283,7 @@ class _PostItemState extends ConsumerState<PostItem>
                 onExpandImages: _expandImages,
                 selectable: false,
                 highlightQuery: widget.highlightQuery,
+                stripSpecialStyles: effectiveStrip,
               ),
             if (widget.tid != null)
               _PostRateLogSection(
@@ -489,7 +500,35 @@ class _PostItemState extends ConsumerState<PostItem>
     S1SnackBar.show(context, message: '已复制');
   }
 
-  void _showSelectTextSheet(BuildContext context) {
+  /// 楼层菜单「去除 / 恢复特殊样式」：本楼优先，其次全局。
+  void _toggleStripStyles(BuildContext context) {
+    final pid = widget.post.pid;
+    final session = ref.read(strippedStylePidsProvider.notifier);
+    if (ref.read(settingsProvider).stripSpecialStyles) {
+      // 因全局开关而剥离 → 恢复时关闭全局。
+      ref.read(settingsProvider.notifier).setStripSpecialStyles(false);
+      S1SnackBar.show(context, message: '已关闭全局去除样式');
+    } else if (session.isStripped(pid)) {
+      session.remove(pid);
+      S1SnackBar.show(context, message: '已恢复本楼样式');
+    } else {
+      session.add(pid);
+      S1SnackBar.showIfMounted(
+        context,
+        message: '已去除本楼特殊样式',
+        actionLabel: '全局生效',
+        onAction: _enableGlobalStrip,
+      );
+    }
+  }
+
+  /// SnackBar「全局生效」：打开全局开关并清空本楼会话集（避免状态堆积）。
+  void _enableGlobalStrip() {
+    ref.read(settingsProvider.notifier).setStripSpecialStyles(true);
+    ref.read(strippedStylePidsProvider.notifier).clear();
+  }
+
+  void _showSelectTextSheet(BuildContext context, {required bool stripStyles}) {
     showS1FormSheet(
       context: context,
       builder: (context) {
@@ -506,6 +545,7 @@ class _PostItemState extends ConsumerState<PostItem>
               imagesExpanded: true,
               selectable: true,
               highlightQuery: widget.highlightQuery,
+              stripSpecialStyles: stripStyles,
             ),
           ],
         );
@@ -518,6 +558,7 @@ class _PostItemState extends ConsumerState<PostItem>
     String timeStr,
     int floor,
     PostItemDensityTokens tokens,
+    bool effectiveStrip,
   ) {
     final canCopy = widget.post.message.trim().isNotEmpty;
     final scheme = Theme.of(context).colorScheme;
@@ -562,8 +603,12 @@ class _PostItemState extends ConsumerState<PostItem>
       onReply: widget.onReply,
       onShare: widget.onShare,
       onMultiShare: widget.onMultiShare,
-      onSelectText: canCopy ? () => _showSelectTextSheet(context) : null,
+      onSelectText: canCopy
+          ? () => _showSelectTextSheet(context, stripStyles: effectiveStrip)
+          : null,
       onCopyText: canCopy ? () => _copyPostText(context) : null,
+      onToggleStripStyles: () => _toggleStripStyles(context),
+      stripStylesEnabled: effectiveStrip,
       onEdit: widget.onEdit,
       onRate: widget.onRate,
       onAddToBlacklist: widget.onAddToBlacklist,

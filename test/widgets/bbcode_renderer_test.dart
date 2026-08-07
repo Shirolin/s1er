@@ -238,6 +238,24 @@ void main() {
       expect(find.textContaining('sized text'), findsOneWidget);
     });
 
+    testWidgets('stripSpecialStyles keeps text while removing author styling',
+        (tester) async {
+      await tester.pumpWidget(
+        _wrapBbcode(
+          BbcodeRenderer(
+            bbcode:
+                '[color=red]red text[/color] [size=20]big[/size] [b]bold[/b]',
+            imageIndexCounter: PostImageIndexCounter(),
+            stripSpecialStyles: true,
+          ),
+        ),
+      );
+      await tester.pump();
+      expect(find.textContaining('red text'), findsOneWidget);
+      expect(find.textContaining('big'), findsOneWidget);
+      expect(find.textContaining('bold'), findsOneWidget);
+    });
+
     testWidgets('renders hide content span without swallowing text',
         (tester) async {
       await tester.pumpWidget(

@@ -49,6 +49,7 @@ class AppSettings {
     this.postSignatureCustom = '',
     this.customFontFileName,
     this.forumSplitListPaneWidth,
+    this.stripSpecialStyles = false,
   });
 
   final String themeMode;
@@ -78,6 +79,9 @@ class AppSettings {
   final String postSignatureCustom;
   final String? customFontFileName;
   final double? forumSplitListPaneWidth;
+
+  /// 全局去除帖子中的作者特殊样式（字色 / 底色 / 字号）。
+  final bool stripSpecialStyles;
 
   double get textScaleFactor => fontSize / S1Typography.defaultBodySize;
 
@@ -109,6 +113,7 @@ class AppSettings {
     String? postSignatureCustom,
     Object? customFontFileName = _Sentinel.value,
     Object? forumSplitListPaneWidth = _Sentinel.value,
+    bool? stripSpecialStyles,
   }) {
     return AppSettings(
       themeMode: themeMode ?? this.themeMode,
@@ -146,6 +151,7 @@ class AppSettings {
       forumSplitListPaneWidth: forumSplitListPaneWidth == _Sentinel.value
           ? this.forumSplitListPaneWidth
           : forumSplitListPaneWidth as double?,
+      stripSpecialStyles: stripSpecialStyles ?? this.stripSpecialStyles,
     );
   }
 
@@ -178,7 +184,8 @@ class AppSettings {
         other.postSignatureShowDevice == postSignatureShowDevice &&
         other.postSignatureCustom == postSignatureCustom &&
         other.customFontFileName == customFontFileName &&
-        other.forumSplitListPaneWidth == forumSplitListPaneWidth;
+        other.forumSplitListPaneWidth == forumSplitListPaneWidth &&
+        other.stripSpecialStyles == stripSpecialStyles;
   }
 
   static bool _setEquals(Set<String> a, Set<String> b) =>
@@ -216,6 +223,7 @@ class AppSettings {
           postSignatureCustom,
           customFontFileName,
           forumSplitListPaneWidth,
+          stripSpecialStyles,
         ),
       );
 }
@@ -424,6 +432,11 @@ class SettingsNotifier extends Notifier<AppSettings> {
           '',
       customFontFileName: settingsStore.get<String>('customFontFileName'),
       forumSplitListPaneWidth: _readForumSplitListPaneWidth(settingsStore),
+      stripSpecialStyles: settingsStore.get<bool>(
+            'stripSpecialStyles',
+            defaultValue: false,
+          ) ??
+          false,
     );
   }
 
@@ -600,6 +613,11 @@ class SettingsNotifier extends Notifier<AppSettings> {
     _persist('postSignatureCustom', value);
   }
 
+  void setStripSpecialStyles(bool value) {
+    _commit(state.copyWith(stripSpecialStyles: value));
+    _persist('stripSpecialStyles', value);
+  }
+
   void toggleForumCollapse(String fid) {
     final collapsed = Set<String>.from(state.collapsedForums);
     if (collapsed.contains(fid)) {
@@ -670,6 +688,7 @@ class SettingsNotifier extends Notifier<AppSettings> {
       shareSaveMode: defaults.shareSaveMode,
       customExportPath: defaults.customExportPath,
       customFontFileName: null,
+      stripSpecialStyles: defaults.stripSpecialStyles,
     );
     _commit(next);
     unawaited(FontImportService.removeCustomFont());
@@ -694,6 +713,7 @@ class SettingsNotifier extends Notifier<AppSettings> {
     _persist('shareSaveMode', defaults.shareSaveMode.name);
     _persist('customExportPath', defaults.customExportPath);
     _persist('customFontFileName', null);
+    _persist('stripSpecialStyles', defaults.stripSpecialStyles);
     // Best-effort native align; failures are logged inside sync.
     // ignore: discarded_futures
     syncAppIconWithNative();

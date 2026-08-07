@@ -10,6 +10,7 @@ import '../models/emoticon_catalog.dart';
 import '../providers/settings_provider.dart';
 import '../theme/app_theme.dart';
 import '../utils/author_color_cache.dart';
+import '../utils/author_style_stripper.dart';
 import '../utils/bbcode_cache.dart';
 import '../utils/bbcode_parser.dart';
 import '../utils/post_image_index_counter.dart';
@@ -68,6 +69,7 @@ class BbcodeRenderer extends ConsumerWidget {
     this.onExpandImages,
     this.selectable = true,
     this.highlightQuery,
+    this.stripSpecialStyles = false,
   });
 
   final String bbcode;
@@ -83,6 +85,10 @@ class BbcodeRenderer extends ConsumerWidget {
 
   /// 非空时在 HTML 文本节点中用 `<mark>` 高亮匹配词（本页搜索）。
   final String? highlightQuery;
+
+  /// 为 true 时剥离作者特殊样式（字色 / 底色 / 字号）并跳过色适配；
+  /// 由调用方按「全局开关 OR 本楼会话标记」计算后传入。
+  final bool stripSpecialStyles;
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -200,6 +206,7 @@ class BbcodeRenderer extends ConsumerWidget {
           deferImages: deferImages,
           currentTid: currentTid,
           highlightQuery: highlightQuery,
+          stripSpecialStyles: stripSpecialStyles,
         ),
       );
     }
@@ -255,6 +262,7 @@ class _MemoizedHtmlBlock extends StatefulWidget {
     this.deferImages = true,
     this.currentTid,
     this.highlightQuery,
+    this.stripSpecialStyles = false,
   });
 
   final String html;
@@ -266,6 +274,7 @@ class _MemoizedHtmlBlock extends StatefulWidget {
   final bool deferImages;
   final String? currentTid;
   final String? highlightQuery;
+  final bool stripSpecialStyles;
   @override
   State<_MemoizedHtmlBlock> createState() => _MemoizedHtmlBlockState();
 }
@@ -280,6 +289,7 @@ class _MemoizedHtmlBlockState extends State<_MemoizedHtmlBlock> {
   late final Key _htmlKey;
 
   String? _cachedHighlightQuery;
+  late bool _cachedStripSpecialStyles;
 
   @override
   void initState() {
@@ -290,6 +300,7 @@ class _MemoizedHtmlBlockState extends State<_MemoizedHtmlBlock> {
     _cachedMaxImages = widget.maxImagesPerPost;
     _cachedImagesExpanded = widget.imagesExpanded;
     _cachedHighlightQuery = widget.highlightQuery;
+    _cachedStripSpecialStyles = widget.stripSpecialStyles;
   }
 
   @override
@@ -299,12 +310,14 @@ class _MemoizedHtmlBlockState extends State<_MemoizedHtmlBlock> {
         widget.showImages != _cachedShowImages ||
         widget.maxImagesPerPost != _cachedMaxImages ||
         widget.imagesExpanded != _cachedImagesExpanded ||
-        widget.highlightQuery != _cachedHighlightQuery) {
+        widget.highlightQuery != _cachedHighlightQuery ||
+        widget.stripSpecialStyles != _cachedStripSpecialStyles) {
       _cachedHtml = widget.html;
       _cachedShowImages = widget.showImages;
       _cachedMaxImages = widget.maxImagesPerPost;
       _cachedImagesExpanded = widget.imagesExpanded;
       _cachedHighlightQuery = widget.highlightQuery;
+      _cachedStripSpecialStyles = widget.stripSpecialStyles;
       _cachedWidget = null;
     }
   }
@@ -336,11 +349,13 @@ class _MemoizedHtmlBlockState extends State<_MemoizedHtmlBlock> {
     final imagesExpanded = widget.imagesExpanded;
 
     final scheme = Theme.of(context).colorScheme;
-    var html = AuthorColorCache.adapt(
-      widget.html,
-      scheme,
-      _cachedThemeToken ?? 0,
-    );
+    var html = widget.stripSpecialStyles
+        ? AuthorStyleStripper.strip(widget.html)
+        : AuthorColorCache.adapt(
+            widget.html,
+            scheme,
+            _cachedThemeToken ?? 0,
+          );
     final highlight = widget.highlightQuery;
     if (highlight != null && highlight.trim().isNotEmpty) {
       html = PageSearch.highlightHtml(html, highlight);

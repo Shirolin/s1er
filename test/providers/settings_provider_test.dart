@@ -44,6 +44,7 @@ void main() {
               fontSize: 18,
               collapsedForums: {'42'},
               hiddenForums: {'7'},
+              stripSpecialStyles: true,
             ),
           ),
         ),
@@ -71,6 +72,7 @@ void main() {
     expect(state.shareAdvancedExport, isFalse);
     expect(state.threadListDensity, ListDensity.standard);
     expect(state.postListDensity, ListDensity.standard);
+    expect(state.stripSpecialStyles, isFalse);
   });
 
   test('setRecordReadingHistory persists to settings store', () async {
@@ -88,6 +90,25 @@ void main() {
     expect(container.read(settingsProvider).recordReadingHistory, isFalse);
     await Future<void>.delayed(const Duration(milliseconds: 50));
     expect(store.get<bool>('recordReadingHistory'), isFalse);
+  });
+
+  test('setStripSpecialStyles persists to settings store', () async {
+    final container = ProviderContainer(
+      overrides: [
+        settingsProvider.overrideWith(
+          () => SettingsNotifier(store: store, initial: const AppSettings()),
+        ),
+      ],
+    );
+    addTearDown(container.dispose);
+
+    expect(container.read(settingsProvider).stripSpecialStyles, isFalse);
+
+    container.read(settingsProvider.notifier).setStripSpecialStyles(true);
+
+    expect(container.read(settingsProvider).stripSpecialStyles, isTrue);
+    await Future<void>.delayed(const Duration(milliseconds: 50));
+    expect(store.get<bool>('stripSpecialStyles'), isTrue);
   });
 
   test('hideForum and unhideForum persist to settings store', () async {

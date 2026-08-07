@@ -6,6 +6,8 @@ import '../models/poll.dart';
 import '../models/post.dart';
 import '../models/share_floor_data.dart';
 import '../providers/image_bytes_provider.dart';
+import '../providers/settings_provider.dart';
+import '../providers/strip_styles_provider.dart';
 import '../theme/app_theme.dart';
 import '../utils/format_utils.dart';
 import '../utils/poll_bar_color.dart';
@@ -243,7 +245,7 @@ class ShareCardHeader extends StatelessWidget {
 }
 
 /// Author row + BBCode body (+ optional poll for floor #1).
-class ShareFloorBlock extends StatelessWidget {
+class ShareFloorBlock extends ConsumerWidget {
   const ShareFloorBlock({
     super.key,
     required this.floor,
@@ -264,11 +266,20 @@ class ShareFloorBlock extends StatelessWidget {
   final double? sliceViewportLogicalHeight;
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
     final scheme = Theme.of(context).colorScheme;
     final post = floor.post;
     final timeStr = formatDateTime(post.dateline);
     final imageIndexCounter = PostImageIndexCounter();
+    final globalStrip = ref.watch(
+      settingsProvider.select((s) => s.stripSpecialStyles),
+    );
+    final inSessionStrip = ref.watch(
+      strippedStylePidsProvider.select(
+        (pids) => pids.contains(post.pid),
+      ),
+    );
+    final effectiveStrip = globalStrip || inSessionStrip;
 
     Widget content = Padding(
       padding: const EdgeInsets.fromLTRB(24, 16, 24, 8),
@@ -295,6 +306,7 @@ class ShareFloorBlock extends StatelessWidget {
               bbcode: post.message,
               imageIndexCounter: imageIndexCounter,
               imagesExpanded: true,
+              stripSpecialStyles: effectiveStrip,
             ),
           ),
           if (poll != null) _SharePollView(poll: poll!),

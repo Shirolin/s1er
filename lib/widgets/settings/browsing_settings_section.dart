@@ -25,6 +25,9 @@ class BrowsingSettingsSection extends ConsumerWidget {
     final postListDensity = ref.watch(
       settingsProvider.select((settings) => settings.postListDensity),
     );
+    final stripSpecialStyles = ref.watch(
+      settingsProvider.select((settings) => settings.stripSpecialStyles),
+    );
     final hiddenCount = ref.watch(
       settingsProvider.select((settings) => settings.hiddenForums.length),
     );
@@ -81,6 +84,26 @@ class BrowsingSettingsSection extends ConsumerWidget {
                   S1Haptics.selection();
                   notifier.setHapticsEnabled(false);
                 }
+              },
+              contentPadding: const EdgeInsets.symmetric(horizontal: 8),
+              shape: const RoundedRectangleBorder(
+                borderRadius: S1Shape.small,
+              ),
+            ),
+            SwitchListTile(
+              secondary: Icon(
+                Icons.format_clear,
+                color: scheme.onSurfaceVariant,
+              ),
+              title: const Text('去除特殊样式'),
+              subtitle: Text(
+                '全局去掉帖子中的彩色字、底色和高亮字号，便于阅读；也可在楼层菜单对本楼临时去除。',
+                style: subtitleStyle,
+              ),
+              value: stripSpecialStyles,
+              onChanged: (value) {
+                S1Haptics.selection();
+                notifier.setStripSpecialStyles(value);
               },
               contentPadding: const EdgeInsets.symmetric(horizontal: 8),
               shape: const RoundedRectangleBorder(

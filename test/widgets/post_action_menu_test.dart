@@ -35,7 +35,7 @@ void main() {
     expect(find.text('加入黑名单'), findsOneWidget);
     expect(find.text('举报'), findsOneWidget);
     expect(find.byType(S1MenuDivider), findsOneWidget);
-    expect(find.byType(MenuItemButton), findsNWidgets(10));
+    expect(find.byType(MenuItemButton), findsNWidgets(11));
 
     await tester.tap(find.text('只看该作者'));
     await tester.pumpAndSettle();
@@ -181,6 +181,55 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(copyTapped, isTrue);
+  });
+
+  testWidgets('PostActionMenu shows strip label when style not stripped',
+      (tester) async {
+    var toggled = false;
+
+    await tester.pumpWidget(
+      MaterialApp(
+        theme: AppTheme.lightTheme('purple'),
+        home: Scaffold(
+          body: PostActionMenu(
+            onFilterByAuthor: () {},
+            onToggleStripStyles: () => toggled = true,
+            stripStylesEnabled: false,
+          ),
+        ),
+      ),
+    );
+
+    await tester.tap(find.byIcon(Icons.more_vert));
+    await tester.pumpAndSettle();
+
+    expect(find.text('去除特殊样式'), findsOneWidget);
+    await tester.tap(find.text('去除特殊样式'));
+    await tester.pumpAndSettle();
+
+    expect(toggled, isTrue);
+  });
+
+  testWidgets('PostActionMenu shows restore label when style stripped',
+      (tester) async {
+    await tester.pumpWidget(
+      MaterialApp(
+        theme: AppTheme.lightTheme('purple'),
+        home: Scaffold(
+          body: PostActionMenu(
+            onFilterByAuthor: () {},
+            onToggleStripStyles: () {},
+            stripStylesEnabled: true,
+          ),
+        ),
+      ),
+    );
+
+    await tester.tap(find.byIcon(Icons.more_vert));
+    await tester.pumpAndSettle();
+
+    expect(find.text('恢复特殊样式'), findsOneWidget);
+    expect(find.text('去除特殊样式'), findsNothing);
   });
 
   testWidgets('PostActionMenu shows disabled labels for unimplemented actions',

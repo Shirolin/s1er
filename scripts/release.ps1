@@ -1,4 +1,4 @@
-# S1er release helper - run ONE step at a time (do not chain long uploads by default).
+﻿# S1er release helper - run ONE step at a time (do not chain long uploads by default).
 #
 # Typical path A (recommended on slow GitHub upload links):
 #   1) .\scripts\release.ps1 bump-build
@@ -50,9 +50,11 @@ $Dist = Join-Path $Root 'dist'
 $RepoSlug = 'Shirolin/s1er'
 
 function Get-PubspecVersion {
-    $line = Select-String -Path $Pubspec -Pattern '^version:\s*(.+)$' | Select-Object -First 1
-    if (-not $line) { throw 'pubspec.yaml: missing version:' }
-    $raw = $line.Matches[0].Groups[1].Value.Trim()
+    # 显式按 UTF-8 读取：PS 5.1 的 Get-Content 默认按系统 ANSI 解码无 BOM 文件，会把非 ASCII 字节读坏
+    $content = [System.IO.File]::ReadAllText($Pubspec, [System.Text.UTF8Encoding]::new($false))
+    $match = [regex]::Match($content, '(?m)^version:\s*(.+)$')
+    if (-not $match.Success) { throw 'pubspec.yaml: missing version:' }
+    $raw = $match.Groups[1].Value.Trim()
     if ($raw -notmatch '^(\d+)\.(\d+)\.(\d+)\+(\d+)$') {
         throw "pubspec.yaml version must look like 0.1.0+1, got: $raw"
     }
@@ -70,14 +72,15 @@ function Get-PubspecVersion {
 
 function Set-PubspecVersion([string]$Name, [int]$Build) {
     $raw = "$Name+$Build"
-    $content = Get-Content $Pubspec -Raw
+    $content = [System.IO.File]::ReadAllText($Pubspec, [System.Text.UTF8Encoding]::new($false))
     $updated = [regex]::Replace($content, '(?m)^version:\s*.+$', "version: $raw")
     if ($updated -eq $content) { throw 'Failed to rewrite pubspec version' }
     if ($DryRun) {
         Write-Host "[dry-run] would set version: $raw" -ForegroundColor Yellow
         return
     }
-    Set-Content -Path $Pubspec -Value $updated -NoNewline
+    # 显式 UTF-8 无 BOM 写入：PS 5.1 的 Set-Content 默认按系统 ANSI 编码，会破坏 pubspec 中的非 ASCII 注释字节
+    [System.IO.File]::WriteAllText($Pubspec, $updated, [System.Text.UTF8Encoding]::new($false))
     Write-Host "pubspec.yaml -> version: $raw" -ForegroundColor Green
 }
 
@@ -163,7 +166,8 @@ function Step-BumpName {
         'major' { $major++; $minor = 0; $patch = 0 }
     }
     $name = "$major.$minor.$patch"
-    Set-PubspecVersion -Name $name -Build 1
+    # build 必须全局单调递增（Android versionCode 防降级 INSTALL_FAILED_VERSION_DOWNGRADE），跨版本不重置为 +1
+    Set-PubspecVersion -Name $name -Build ($v.Build + 1)
     Write-Host "Remember: name changed -> update latest.json (use 'manifest'), append assets/changelog/whats_new.json, and commit." -ForegroundColor Yellow
     Step-Status
 }
@@ -282,8 +286,14 @@ function Step-Create {
         throw 'gh CLI not found. Install GitHub CLI or create the Release manually on github.com'
     }
 
-    $existing = gh release view $v.Tag 2>$null
-    if ($LASTEXITCODE -eq 0) {
+    # PS 5.1 下 $ErrorActionPreference='Stop' 会把原生命令写入 stderr 当作 terminating error
+    # （如 "release not found"），需临时降级后靠 $LASTEXITCODE 判断 release 是否已存在
+    $oldEAP = $ErrorActionPreference
+    $ErrorActionPreference = 'Continue'
+    $null = & gh release view $v.Tag 2>$null
+    $releaseExists = ($LASTEXITCODE -eq 0)
+    $ErrorActionPreference = $oldEAP
+    if ($releaseExists) {
         Write-Host "Release $($v.Tag) already exists." -ForegroundColor Yellow
     } else {
         Write-Host "Creating Release $($v.Tag) (notes only, no assets)..." -ForegroundColor Cyan
@@ -319,9 +329,13 @@ function Step-Upload {
     Write-Host "Uploading $($files.Count) file(s)..." -ForegroundColor Cyan
     if ($DryRun) { return }
 
-    # Ensure release exists
-    gh release view $v.Tag 2>$null | Out-Null
-    if ($LASTEXITCODE -ne 0) {
+    # Ensure release exists (same EAP guard as Step-Create)
+    $oldEAP = $ErrorActionPreference
+    $ErrorActionPreference = 'Continue'
+    $null = & gh release view $v.Tag 2>$null
+    $releaseExists = ($LASTEXITCODE -eq 0)
+    $ErrorActionPreference = $oldEAP
+    if (-not $releaseExists) {
         Step-Create
     }
     foreach ($f in $files) {
@@ -373,7 +387,7 @@ function Step-Manifest {
     $zipUrl = "$baseUrl/$([uri]::EscapeDataString($zipFile))"
     $today = Get-Date -Format 'yyyy-MM-dd'
 
-    $json = Get-Content $Manifest -Raw | ConvertFrom-Json
+    $json = [System.IO.File]::ReadAllText($Manifest, [System.Text.UTF8Encoding]::new($false)) | ConvertFrom-Json
     $nameChanged = $json.latest -ne $v.Name
     $json.latest = $v.Name
     $json.publishedAt = $today
@@ -403,7 +417,7 @@ function Step-Manifest {
     $utf8 = New-Object System.Text.UTF8Encoding $false
     [System.IO.File]::WriteAllText($Manifest, ($out.Trim() + "`n"), $utf8)
 
-    $written = Get-Content $Manifest -Raw | ConvertFrom-Json
+    $written = [System.IO.File]::ReadAllText($Manifest, [System.Text.UTF8Encoding]::new($false)) | ConvertFrom-Json
     Assert-ManifestAndroidChannels $written.channels
 
     Write-Host "Updated $Manifest" -ForegroundColor Green

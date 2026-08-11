@@ -78,16 +78,19 @@ version: 0.1.0+1
 
 ## 半自动分步脚本（推荐）
 
+> 脚本统一用 **PowerShell 7（`pwsh`）** 运行（本机已装；勿用 Windows PowerShell 5.1，默认 ANSI 编解码会读坏 `latest.json` 中文、写坏 pubspec 字节）。
+> `bump-name` 会递增产品版本并**保留单调递增的 build**（不重置为 `+1`），符合 Android `versionCode` 防降级规则。
+
 本机构建与 GitHub 上传拆开，避免长时间干等 CLI 上传（大 APK 在部分网络下极慢；**浏览器拖文件往往更快**）。
 
 ```powershell
-.\scripts\release.ps1 status          # 当前版本与 dist\ 产物
+pwsh -File .\scripts\release.ps1 status          # 当前版本与 dist\ 产物
 # ① 先写更新内容：CHANGELOG.md + whats_new.json + latest.json notes
-.\scripts\release.ps1 bump-name -BumpName patch   # 或 bump-build
-.\scripts\release.ps1 build           # fat + 分架构 APK + Windows zip → dist\（不上传）
-.\scripts\release.ps1 create          # 建空 Release + 打开网页
+pwsh -File .\scripts\release.ps1 bump-name -BumpName patch   # 或 bump-build
+pwsh -File .\scripts\release.ps1 build           # fat + 分架构 APK + Windows zip → dist\（不上传）
+pwsh -File .\scripts\release.ps1 create          # 建空 Release + 打开网页
 # 在网页上把 dist\ 里的 apk / zip 拖上去
-.\scripts\release.ps1 manifest        # 写 latest.json 直链（含四个 Android APK；缺一会报错）
+pwsh -File .\scripts\release.ps1 manifest        # 写 latest.json 直链（含四个 Android APK；缺一会报错）
 # ② 提交到 main
 git add pubspec.yaml docs/release/latest.json assets/changelog/whats_new.json CHANGELOG.md
 git commit --no-verify -m "chore(release): vX.Y.Z+1"
@@ -98,18 +101,18 @@ git push origin main
 
 ```powershell
 # ① 先写更新内容：CHANGELOG.md + whats_new.json + latest.json notes
-.\scripts\release.ps1 bump-name -BumpName patch   # 或 minor / major
-.\scripts\release.ps1 build
-.\scripts\release.ps1 create
+pwsh -File .\scripts\release.ps1 bump-name -BumpName patch   # 或 minor / major
+pwsh -File .\scripts\release.ps1 build
+pwsh -File .\scripts\release.ps1 create
 # 浏览器上传 …
-.\scripts\release.ps1 manifest        # 写 latest.json 直链（含四个 Android APK；缺一会报错）
+pwsh -File .\scripts\release.ps1 manifest        # 写 latest.json 直链（含四个 Android APK；缺一会报错）
 # ② 提交到 main
 git add pubspec.yaml docs/release/latest.json assets/changelog/whats_new.json CHANGELOG.md
 git commit --no-verify -m "chore(release): vX.Y.Z+1"
 git push origin main
 ```
 
-可选：`.\scripts\release.ps1 upload` 用 `gh` 传附件（慢）；`-SkipApk` / `-SkipWindows` 只打一端；`-DryRun` 演练。
+可选：`pwsh -File .\scripts\release.ps1 upload` 用 `gh` 传附件（慢）；`-SkipApk` / `-SkipWindows` 只打一端；`-DryRun` 演练。
 
 ## 本地覆盖
 

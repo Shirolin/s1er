@@ -9,6 +9,16 @@
 
 ---
 
+## Shell 执行环境（Windows 本地）
+
+> 本机脚本执行一律使用 PowerShell 7（`pwsh`），**禁止**用 Windows PowerShell 5.1（`powershell`）直接运行。
+
+- `scripts/*.ps1`（`release.ps1` / `build.ps1` / `start_dev.ps1` / `watch_proxy.ps1` / `install_precommit.ps1`）统一用 `pwsh -File scripts/xxx.ps1` 调用，命令行/文档示例中不得出现 `powershell -File ...`。
+- **原因**：PS 5.1 默认按系统 ANSI 编解码无 BOM 的 UTF-8 文件，会把中文读成乱码、写坏非 ASCII 字节；`$ErrorActionPreference='Stop'` 下把原生命令的 stderr（如 `gh: release not found`）当致命错误中断脚本；且不支持 `&&` / `||`。
+- `scripts/release.ps1` 已兼容双版本（内部显式 UTF-8 读写 + 原生命令 stderr 防护 + UTF-8 BOM）。新增/修改 `.ps1` 脚本时须遵守同样约定；本机已装 pwsh 7.6.4。
+
+---
+
 ## 技术栈锁定
 
 > 所有 AI 生成的代码必须严格遵守以下版本，不得引入未列出的主要依赖。
@@ -176,6 +186,7 @@ flutter run -d chrome --dart-define=TALKER_LOG_LEVEL=all --dart-define=TALKER_MA
 | `TALKER_MAX_HISTORY` | int | `500` | Talker 历史记录上限 |
 | `BBCODE_PROFILE` | bool | `false` | 正文 BBCode parse / Html build 耗时打点（滑动卡顿排查） |
 | `PROXY_PORT` | int | `19080` | Web CORS 代理端口 |
+| `PROXY_AUTH_TOKEN` | String | 空 | 非空时启用本地代理 token 校验（须与代理进程一致） |
 | `CONNECT_TIMEOUT` | int | `20` | Dio 连接超时（秒） |
 | `RECEIVE_TIMEOUT` | int | `30` | Dio 响应超时（秒） |
 | `SEND_TIMEOUT` | int | `30` | Dio 发送超时（秒） |
@@ -185,14 +196,11 @@ flutter run -d chrome --dart-define=TALKER_LOG_LEVEL=all --dart-define=TALKER_MA
 | `SENTRY_DSN` | String | 空 | 非空时启用 Sentry；详见 `docs/sentry-setup.md` |
 | `SENTRY_TRACES_SAMPLE_RATE` | String | `0` | 性能采样 0–1；默认仅错误 |
 | `SENTRY_DEBUG_UPLOAD` | bool | `false` | debug 构建是否实际上传 |
-| `SENTRY_DSN` | String | 空 | 非空时启用 Sentry；详见 `docs/sentry-setup.md` |
-| `SENTRY_TRACES_SAMPLE_RATE` | String | `0` | 性能采样 0–1；默认仅错误 |
-| `SENTRY_DEBUG_UPLOAD` | bool | `false` | debug 构建是否实际上传 |
 
 新增配置项规则：
 1. 在 `EnvConfig` 中添加 `static const` 字段，使用 `Xxx.fromEnvironment('KEY', defaultValue: ...)` 
 2. 使用处引用 `EnvConfig.xxx`，禁止硬编码
-3. 代理端口需与 `scripts/proxy_server.dart` 保持一致
+3. 代理端口与 token 需与 `scripts/proxy_server.dart` 保持一致
 
 ---
 

@@ -6,7 +6,7 @@
 
 [![Flutter](https://badgen.net/badge/Flutter/%3E%3D3.4/02569B)](https://flutter.dev/)
 [![Dart](https://badgen.net/badge/Dart/%3E%3D3.4%20%3C4.0/0175C2)](https://dart.dev/)
-[![Version](https://badgen.net/badge/version/0.3.6/blue)](docs/release/latest.json)
+[![Version](https://badgen.net/badge/version/0.5.1/blue)](docs/release/latest.json)
 [![License: GPL v3+](https://badgen.net/badge/License/GPL%20v3+/blue)](LICENSE)
 
 S1er 是使用 Flutter 开发的第三方 Stage1st（S1）论坛客户端。基于 Discuz! Mobile API 构建，严格遵循 Material Design 3 (Material You) 设计规范，支持多平台跨端运行。
@@ -140,6 +140,31 @@ lib/
 
 ---
 
+## 技术栈
+
+> 核心依赖版本锁定于 [`pubspec.yaml`](pubspec.yaml)，以下为主要技术选型。
+
+| 类别 | 技术选型 |
+|:---|:---|
+| 语言 / 框架 | Dart `>=3.4 <4.0` · Flutter `>=3.4` |
+| 状态管理 | `flutter_riverpod` `3.2.1`（Notifier / AsyncNotifier） |
+| 网络层 | `dio` `^5.4.0` + `S1HttpClient`（限速 2 req/s、Formhash CSRF 防护、统一超时） |
+| Cookie 会话 | `dio_cookie_manager` / `cookie_jar`（`PersistCookieJar` + `flutter_secure_storage` 加密存储） |
+| 路由 | `go_router` `^17.0.0` |
+| 本地结构化存储 | `drift` `^2.34.1` + `drift_flutter`（设置 / 阅读历史 / 投票 / 黑名单） |
+| HTML / BBCode 渲染 | `flutter_html` `^3.0.0` + 自研 BBCode 解析与 HTML 优化渲染 |
+| 图片加载与缓存 | `flutter_cache_manager` / `cached_network_image`（原生磁盘缓存；Web 走浏览器缓存） |
+| 分享卡导出 | `ironpress` `^0.2.0`（Native WebP / JPEG / PNG；Web 走 Canvas / Skia PNG） |
+| 桌面窗口 | `window_manager`（Windows / macOS / Linux 自绘标题栏） |
+| WebView | `webview_flutter` `^4.7.0` |
+| 备份（L1 ZIP） | `archive` / `file_selector` / `share_plus` |
+| 崩溃监控 | `sentry_flutter`（可选，`--dart-define=SENTRY_DSN` 注入） |
+| 工程化 | `flutter_lints` · `build_runner` / `drift_dev` · Talker 日志 · M3 合规审计 |
+
+**设计规范**：全 UI 遵循 Material Design 3（`ColorScheme.fromSeed` 语义色 token、零投影静止表面），由 `scripts/audit_m3.dart` 静态审计强制。
+
+---
+
 ## 快速开始与工作流
 
 ### 环境要求
@@ -193,10 +218,19 @@ flutter run -d web-server --web-port 8080 --web-hostname 0.0.0.0
 |:---|:---:|:---:|:---|
 | `TALKER_ENABLED` | `bool` | `true` | 是否启用 Talker 日志框架 |
 | `TALKER_LOG_LEVEL` | `String` | `error` | 日志级别：`error`（仅错误）/ `all`（全部 HTTP & 状态日志） |
+| `TALKER_MAX_HISTORY` | `int` | `500` | Talker 日志历史条数上限 |
 | `BBCODE_PROFILE` | `bool` | `false` | 是否开启 BBCode 解析与 HTML 渲染耗时打点追踪 |
-| `PROXY_PORT` | `int` | `19080` | Web 端本地 CORS 代理端口 |
-| `DISTRIBUTION` | `String` | `github` | 分发渠道表示（`github` / `play`） |
+| `PROXY_PORT` | `int` | `19080` | Web 端本地 CORS 代理端口（须与代理进程一致） |
+| `PROXY_AUTH_TOKEN` | `String` | 空 | 非空时启用本地代理 token 校验（代理与客户端须一致） |
+| `CONNECT_TIMEOUT` | `int` | `20` | Dio 连接超时（秒） |
+| `RECEIVE_TIMEOUT` | `int` | `30` | Dio 响应超时（秒） |
+| `SEND_TIMEOUT` | `int` | `30` | Dio 发送超时（秒） |
+| `IMAGE_UPLOAD_TIMEOUT` | `int` | `120` | 外链图床上传超时（秒；代理双跳需高于默认值） |
+| `UPDATE_MANIFEST_URL` | `String` | jsDelivr CDN `latest.json` | 应用升级清单主 URL（并发备用 GitHub raw） |
+| `DISTRIBUTION` | `String` | `github` | 分发渠道：`github` / `play`（影响升级 CTA） |
 | `SENTRY_DSN` | `String` | 空 | 异常监控 Sentry DSN 地址（填入即开启 Sentry） |
+| `SENTRY_TRACES_SAMPLE_RATE` | `String` | `0` | Sentry 性能采样率 0–1（默认仅错误） |
+| `SENTRY_DEBUG_UPLOAD` | `bool` | `false` | Debug 构建是否实际上传（防本机误开 DSN 刷配额） |
 
 **常用调试示例**：
 ```bash

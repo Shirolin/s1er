@@ -16,10 +16,14 @@ jobs:
     runs-on: ubuntu-latest
     permissions:
       contents: read
+    env:
+      # Secrets cannot be referenced directly in `if:`; mirror to env first
+      # (docs.github.com/actions/security-guides/using-secrets-in-github-actions).
+      CF_API_TOKEN: ${{ secrets.CF_API_TOKEN }}
     steps:
       - uses: actions/checkout@v4
       - name: Deploy to Cloudflare Pages
-        if: ${{ secrets.CF_API_TOKEN != '' }}
+        if: ${{ env.CF_API_TOKEN != '' }}
         uses: cloudflare/wrangler-action@v3
         with:
           apiToken: ${{ secrets.CF_API_TOKEN }}

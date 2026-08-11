@@ -1,8 +1,8 @@
 # Deploy site/ to Cloudflare Pages on push to main.
 # Alternative to CF Pages native Git integration.
 # Requires the CF_API_TOKEN repository secret (Cloudflare API token with
-# "Cloudflare Pages: Edit" permission). While the secret is absent the job is
-# skipped instead of failing; add the secret to enable the deployment.
+# "Cloudflare Pages: Edit" permission). While the secret is absent the
+# deployment step is skipped instead of failing; add the secret to enable it.
 name: Deploy Cloudflare Pages
 
 on:
@@ -14,13 +14,13 @@ on:
 
 jobs:
   deploy:
-    if: ${{ secrets.CF_API_TOKEN != '' }}
     runs-on: ubuntu-latest
     permissions:
       contents: read
     steps:
       - uses: actions/checkout@v4
       - name: Deploy to Cloudflare Pages
+        if: ${{ secrets.CF_API_TOKEN != '' }}
         uses: cloudflare/wrangler-action@v3
         with:
           apiToken: ${{ secrets.CF_API_TOKEN }}

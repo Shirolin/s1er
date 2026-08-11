@@ -133,6 +133,8 @@ flutter run -d chrome --dart-define=PROXY_PORT=19081
 
 **首次启用**：仓库 Settings → Pages → Build and deployment → Source 选择 **GitHub Actions**。之后推送 `main` 上 `site/**` 的变更（或手动运行 workflow「Deploy site to GitHub Pages」）即可更新站点。
 
+**Cloudflare Pages 镜像（可选）**：workflow「Deploy Cloudflare Pages」在推送 `site/**` 时同步部署到 CF Pages（项目 `s1er`）。需在仓库 Settings → Secrets and variables → Actions 配置 `CF_API_TOKEN`（Cloudflare API token，权限含 "Cloudflare Pages: Edit"）；**未配置时该 job 自动跳过，不会导致 CI 失败**。配置文件为 [`wrangler.jsonc`](../wrangler.jsonc)。
+
 宣传站截图为 `site/assets/screenshots/*.webp`；源图 PNG（含中文文件名）保留在 [`assets/screenshot/`](../assets/screenshot/)。
 
 ## 论坛接口探测

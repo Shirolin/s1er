@@ -102,6 +102,31 @@
         if (key) activate(key);
       });
     });
+
+    // ARIA tabs pattern: roving focus with arrow keys / Home / End.
+    const focusAndActivate = (tab) => {
+      const key = tab.getAttribute("data-showcase");
+      if (!key) return;
+      tab.focus();
+      activate(key);
+    };
+    tabs.forEach((tab, i) => {
+      tab.addEventListener("keydown", (e) => {
+        if (e.key === "ArrowRight" || e.key === "ArrowDown") {
+          e.preventDefault();
+          focusAndActivate(tabs[(i + 1) % tabs.length]);
+        } else if (e.key === "ArrowLeft" || e.key === "ArrowUp") {
+          e.preventDefault();
+          focusAndActivate(tabs[(i - 1 + tabs.length) % tabs.length]);
+        } else if (e.key === "Home") {
+          e.preventDefault();
+          focusAndActivate(tabs[0]);
+        } else if (e.key === "End") {
+          e.preventDefault();
+          focusAndActivate(tabs[tabs.length - 1]);
+        }
+      });
+    });
   }
 
   // —— Version from public latest.json (best-effort) ——
@@ -110,9 +135,8 @@
 
   const applyVersion = (version, notes) => {
     if (!version) return;
-    const label = notes ? `${notes} · v${version}` : `v${version}`;
     versionPills.forEach((el) => {
-      el.textContent = label;
+      el.textContent = `v${version}`;
     });
     versionTexts.forEach((el) => {
       el.textContent = notes ? `当前 v${version} · ${notes}` : `当前 v${version}`;

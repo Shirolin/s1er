@@ -1350,6 +1350,12 @@ a:hover {
   position: relative;
 }
 
+.cta .cta__version {
+  margin-top: -0.75rem;
+  font-size: 0.8125rem;
+  color: var(--ink-faint);
+}
+
 .cta__actions {
   display: flex;
   flex-wrap: wrap;

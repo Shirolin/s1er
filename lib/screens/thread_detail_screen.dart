@@ -680,7 +680,13 @@ class _ThreadDetailScreenState extends ConsumerState<ThreadDetailScreen> {
     final title = subject?.trim().isNotEmpty == true
         ? subject!.trim()
         : '帖子 ${widget.tid}';
-    final ok = notifier.pin(tid: widget.tid, title: title);
+    final replies =
+        ref.read(postProvider(widget.tid)).asData?.value.totalReplies;
+    final ok = notifier.pin(
+      tid: widget.tid,
+      title: title,
+      replies: replies,
+    );
     if (ok) {
       S1SnackBar.show(context, message: '已钉在首页');
     } else {

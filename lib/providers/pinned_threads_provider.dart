@@ -27,7 +27,9 @@ class PinnedThreadsNotifier extends Notifier<List<PinnedThread>> {
   }
 
   /// Pin a thread. Returns `false` if limit (10) reached.
-  bool pin({required String tid, required String title}) {
+  ///
+  /// [replies] 已知时双侧种子（live = lastSeen），刚钉上角标为 0。
+  bool pin({required String tid, required String title, int? replies}) {
     if (tid.isEmpty) return false;
     if (state.any((t) => t.tid == tid)) return true;
     if (state.length >= kMaxPinnedThreadsCount) return false;
@@ -38,6 +40,8 @@ class PinnedThreadsNotifier extends Notifier<List<PinnedThread>> {
       title: title,
       pinnedAt: now,
       displayOrder: state.length,
+      lastKnownReplies: replies,
+      lastSeenReplies: replies,
     );
 
     final next = [...state, newEntry];
@@ -59,6 +63,41 @@ class PinnedThreadsNotifier extends Notifier<List<PinnedThread>> {
 
   bool isPinned(String tid) {
     return state.any((t) => t.tid == tid);
+  }
+
+  /// 版块列表顺带回填 live 回复数（零额外请求）；不改 lastSeen。
+  void mergeReplyCounts(Map<String, int> tidToReplies) {
+    if (tidToReplies.isEmpty || state.isEmpty) return;
+    var changed = false;
+    final next = <PinnedThread>[];
+    for (final thread in state) {
+      final live = tidToReplies[thread.tid];
+      if (live == null || live == thread.lastKnownReplies) {
+        next.add(thread);
+        continue;
+      }
+      changed = true;
+      next.add(thread.copyWith(lastKnownReplies: live));
+    }
+    if (changed) _persist(next);
+  }
+
+  /// 打开置顶帖：live 与 lastSeen 对齐，角标清零。
+  void markOpened(String tid, int replies) {
+    if (tid.isEmpty || replies < 0) return;
+    final index = state.indexWhere((t) => t.tid == tid);
+    if (index < 0) return;
+    final current = state[index];
+    if (current.lastKnownReplies == replies &&
+        current.lastSeenReplies == replies) {
+      return;
+    }
+    final next = [...state];
+    next[index] = current.copyWith(
+      lastKnownReplies: replies,
+      lastSeenReplies: replies,
+    );
+    _persist(next);
   }
 
   void _reindexAndSave(List<PinnedThread> list) {

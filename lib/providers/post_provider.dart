@@ -13,6 +13,7 @@ import '../services/rate_log_service.dart';
 import '../services/talker.dart';
 import '../utils/thread_navigation.dart';
 import 'api_service_provider.dart';
+import 'pinned_threads_provider.dart';
 import 'reading_history_provider.dart';
 import 'settings_provider.dart';
 import 'thread_open_intent_provider.dart';
@@ -217,6 +218,7 @@ class PostNotifier extends AsyncNotifier<PostListState> {
       return _buildStateFromResult(result, page, posts: posts);
     }
     final loaded = _buildStateFromResult(result, page, posts: posts);
+    _syncSeenRepliesAfterLoad(loaded);
 
     // 评分明细只在 HTML viewthread 的 #ratelog_*；Mobile JSON 的 postlist
     // 不含楼层 rate（thread.rate 仅主题级标记）。会话缓存避免同页重复拉取。
@@ -229,6 +231,14 @@ class PostNotifier extends AsyncNotifier<PostListState> {
       }),
     );
     return loaded;
+  }
+
+  /// 打开置顶帖时对齐 live / lastSeen（不碰阅读记录）。
+  void _syncSeenRepliesAfterLoad(PostListState loaded) {
+    if (!ref.mounted) return;
+    ref
+        .read(pinnedThreadsProvider.notifier)
+        .markOpened(tid, loaded.totalReplies);
   }
 
   PostListState _buildStateFromResult(

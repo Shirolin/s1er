@@ -108,7 +108,11 @@ class _ThreadContextSheet extends ConsumerWidget {
       final title = thread.subject.trim().isNotEmpty
           ? thread.subject.trim()
           : '帖子 ${thread.tid}';
-      final ok = notifier.pin(tid: thread.tid, title: title);
+      final ok = notifier.pin(
+        tid: thread.tid,
+        title: title,
+        replies: thread.replies,
+      );
       if (!parentContext.mounted) return;
       if (ok) {
         S1SnackBar.show(parentContext, message: '已钉在首页');

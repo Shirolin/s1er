@@ -181,11 +181,13 @@ v1 **不使用** JSONL；列表一律为 JSON 数组。
   "tid": "2285124",
   "title": "标题",
   "pinned_at": 1710000000,
-  "display_order": 0
+  "display_order": 0,
+  "last_known_replies": 120,
+  "last_seen_replies": 100
 }
 ```
 
-设备级本地置顶（非论坛官方置顶）；`display_order` 升序。导入时若 `contents` 含 `pinned_threads`，空数组表示清空本地置顶列表。
+设备级本地置顶（非论坛官方置顶）；`display_order` 升序。`last_known_replies` / `last_seen_replies` 均可选（live 与上次打开时的回复数，用于首页置顶「新增回复」角标）。导入时若 `contents` 含 `pinned_threads`，空数组表示清空本地置顶列表。客户端导出也可能写 camelCase（`pinnedAt` / `displayOrder` / `lastKnownReplies` / `lastSeenReplies`）；导入两端均接受。
 
 ---
 

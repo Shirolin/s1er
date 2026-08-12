@@ -2,6 +2,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:drift/native.dart';
 
+import 'package:s1er/models/pinned_thread.dart';
 import 'package:s1er/providers/pinned_threads_provider.dart';
 import 'package:s1er/providers/settings_provider.dart';
 import 'package:s1er/services/app_database.dart';
@@ -34,6 +35,78 @@ void main() {
     return container;
   }
 
+  group('pinnedNewReplyCount', () {
+    test('returns delta when live is ahead of lastSeen', () {
+      expect(
+        pinnedNewReplyCount(liveReplies: 120, lastSeenReplies: 100),
+        20,
+      );
+    });
+
+    test('returns null when equal, behind, or missing side', () {
+      expect(
+        pinnedNewReplyCount(liveReplies: 100, lastSeenReplies: 100),
+        isNull,
+      );
+      expect(
+        pinnedNewReplyCount(liveReplies: 90, lastSeenReplies: 100),
+        isNull,
+      );
+      expect(
+        pinnedNewReplyCount(liveReplies: null, lastSeenReplies: 100),
+        isNull,
+      );
+      expect(
+        pinnedNewReplyCount(liveReplies: 120, lastSeenReplies: null),
+        isNull,
+      );
+    });
+  });
+
+  group('PinnedThread JSON', () {
+    test('round-trips lastKnown and lastSeen camelCase', () {
+      const original = PinnedThread(
+        tid: '1',
+        title: 't',
+        pinnedAt: 2,
+        displayOrder: 0,
+        lastKnownReplies: 42,
+        lastSeenReplies: 40,
+      );
+      final restored = PinnedThread.fromJson(original.toJson());
+      expect(restored.lastKnownReplies, 42);
+      expect(restored.lastSeenReplies, 40);
+      expect(restored.toJson().containsKey('lastKnownReplies'), isTrue);
+      expect(restored.toJson().containsKey('lastSeenReplies'), isTrue);
+    });
+
+    test('reads snake_case reply fields and pin fields', () {
+      final restored = PinnedThread.fromJson({
+        'tid': '9',
+        'title': 'x',
+        'pinned_at': 3,
+        'display_order': 1,
+        'last_known_replies': 7,
+        'last_seen_replies': 5,
+      });
+      expect(restored.pinnedAt, 3);
+      expect(restored.displayOrder, 1);
+      expect(restored.lastKnownReplies, 7);
+      expect(restored.lastSeenReplies, 5);
+    });
+
+    test('omits optional reply fields when null', () {
+      const thread = PinnedThread(
+        tid: '1',
+        title: 't',
+        pinnedAt: 1,
+        displayOrder: 0,
+      );
+      expect(thread.toJson().containsKey('lastKnownReplies'), isFalse);
+      expect(thread.toJson().containsKey('lastSeenReplies'), isFalse);
+    });
+  });
+
   group('PinnedThreadsNotifier', () {
     test('initial state is empty', () {
       final container = createContainer();
@@ -53,6 +126,22 @@ void main() {
       expect(threads.first.tid, equals('123456'));
       expect(threads.first.title, equals('测试帖子'));
       expect(notifier.isPinned('123456'), isTrue);
+    });
+
+    test('pin seeds both live and lastSeen', () {
+      final container = createContainer();
+      final notifier = container.read(pinnedThreadsProvider.notifier);
+      notifier.pin(tid: '1', title: 't', replies: 55);
+      final pinned = container.read(pinnedThreadsProvider).single;
+      expect(pinned.lastKnownReplies, 55);
+      expect(pinned.lastSeenReplies, 55);
+      expect(
+        pinnedNewReplyCount(
+          liveReplies: pinned.lastKnownReplies,
+          lastSeenReplies: pinned.lastSeenReplies,
+        ),
+        isNull,
+      );
     });
 
     test('pin thread limit (max 10)', () {
@@ -103,6 +192,47 @@ void main() {
       expect(updated[1].displayOrder, equals(1));
     });
 
+    test('mergeReplyCounts updates live only, not lastSeen', () {
+      final container = createContainer();
+      final notifier = container.read(pinnedThreadsProvider.notifier);
+      notifier.pin(tid: '1', title: 'a', replies: 10);
+      notifier.pin(tid: '2', title: 'b', replies: 10);
+
+      notifier.mergeReplyCounts({'1': 30, '99': 999, '2': 10});
+
+      final threads = container.read(pinnedThreadsProvider);
+      final one = threads.firstWhere((t) => t.tid == '1');
+      final two = threads.firstWhere((t) => t.tid == '2');
+      expect(one.lastKnownReplies, 30);
+      expect(one.lastSeenReplies, 10);
+      expect(two.lastKnownReplies, 10);
+      expect(two.lastSeenReplies, 10);
+    });
+
+    test('markOpened aligns live and lastSeen for pinned tid only', () {
+      final container = createContainer();
+      final notifier = container.read(pinnedThreadsProvider.notifier);
+      notifier.pin(tid: '1', title: 'a', replies: 10);
+      notifier.pin(tid: '2', title: 'b');
+      notifier.mergeReplyCounts({'1': 40});
+
+      notifier.markOpened('1', 40);
+      notifier.markOpened('missing', 1);
+
+      final threads = container.read(pinnedThreadsProvider);
+      final one = threads.firstWhere((t) => t.tid == '1');
+      expect(one.lastKnownReplies, 40);
+      expect(one.lastSeenReplies, 40);
+      expect(
+        pinnedNewReplyCount(
+          liveReplies: one.lastKnownReplies,
+          lastSeenReplies: one.lastSeenReplies,
+        ),
+        isNull,
+      );
+      expect(threads.firstWhere((t) => t.tid == '2').lastKnownReplies, isNull);
+    });
+
     test('build trims over-limit entries from storage', () async {
       final overLimit = List.generate(
         12,
@@ -126,7 +256,7 @@ void main() {
     test('export and import pinnedThreads', () async {
       final container = createContainer();
       final notifier = container.read(pinnedThreadsProvider.notifier);
-      notifier.pin(tid: '999', title: '备份测试帖');
+      notifier.pin(tid: '999', title: '备份测试帖', replies: 12);
 
       final backupService = S1BackupService(localData);
       final packageInfo = PackageInfo(
@@ -141,7 +271,6 @@ void main() {
         packageInfo: packageInfo,
       );
 
-      // Create a fresh DB + AppLocalData and import
       final newDb = AppDatabase.forTesting(NativeDatabase.memory());
       final newLocalData = AppLocalData(newDb);
       await newLocalData.load();
@@ -152,6 +281,8 @@ void main() {
       expect(newLocalData.pinnedThreads.length, equals(1));
       expect(newLocalData.pinnedThreads.first['tid'], equals('999'));
       expect(newLocalData.pinnedThreads.first['title'], equals('备份测试帖'));
+      expect(newLocalData.pinnedThreads.first['lastKnownReplies'], equals(12));
+      expect(newLocalData.pinnedThreads.first['lastSeenReplies'], equals(12));
 
       await newDb.close();
     });

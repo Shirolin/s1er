@@ -5,6 +5,8 @@ import 'package:go_router/go_router.dart';
 import '../models/pinned_thread.dart';
 import '../providers/pinned_threads_provider.dart';
 import '../theme/s1_haptics.dart';
+import '../utils/compact_label.dart';
+import '../utils/format_utils.dart';
 import '../utils/s1_snack_bar.dart';
 import 's1_adaptive_sheet.dart';
 
@@ -189,6 +191,7 @@ class _PinnedThreadsSectionState extends ConsumerState<PinnedThreadsSection> {
                               overflow: TextOverflow.ellipsis,
                             ),
                           ),
+                          _PinnedNewReplyBadge(thread: thread),
                           const SizedBox(width: 8),
                           Icon(
                             Icons.chevron_right,
@@ -202,6 +205,40 @@ class _PinnedThreadsSectionState extends ConsumerState<PinnedThreadsSection> {
               ],
             ),
         ],
+      ),
+    );
+  }
+}
+
+class _PinnedNewReplyBadge extends StatelessWidget {
+  const _PinnedNewReplyBadge({required this.thread});
+
+  final PinnedThread thread;
+
+  @override
+  Widget build(BuildContext context) {
+    final newCount = pinnedNewReplyCount(
+      liveReplies: thread.lastKnownReplies,
+      lastSeenReplies: thread.lastSeenReplies,
+    );
+    if (newCount == null) return const SizedBox.shrink();
+
+    final scheme = Theme.of(context).colorScheme;
+    final textTheme = Theme.of(context).textTheme;
+    return Padding(
+      padding: const EdgeInsets.only(left: 8),
+      child: Badge(
+        label: CompactLabel.text(
+          formatFullCount(newCount),
+          style: CompactLabel.style(
+            context,
+            base: textTheme.labelSmall,
+            color: scheme.onError,
+            fontWeight: FontWeight.w600,
+          ),
+        ),
+        backgroundColor: scheme.error,
+        padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 1),
       ),
     );
   }

@@ -4,6 +4,7 @@ import '../models/thread.dart';
 import '../models/thread_list_query.dart';
 import 'api_service_provider.dart';
 import 'blacklist_provider.dart';
+import 'pinned_threads_provider.dart';
 import 'settings_provider.dart';
 import '../services/api_service.dart';
 
@@ -99,6 +100,7 @@ class ThreadListNotifier extends AsyncNotifier<ThreadListState> {
       itemCount: threads.length,
       isFiltered: _selectedTypeId != null || !_query.isDefault,
     );
+    _mergePinnedReplyCounts(threads);
     return ThreadListState(
       threads: filtered,
       sourceThreads: threads,
@@ -109,6 +111,20 @@ class ThreadListNotifier extends AsyncNotifier<ThreadListState> {
       selectedTypeId: _selectedTypeId,
       query: _query,
     );
+  }
+
+  void _mergePinnedReplyCounts(List<Thread> threads) {
+    if (!ref.mounted || threads.isEmpty) return;
+    final pinned = ref.read(pinnedThreadsProvider);
+    if (pinned.isEmpty) return;
+    final pinnedTids = {for (final p in pinned) p.tid};
+    final updates = <String, int>{};
+    for (final thread in threads) {
+      if (!pinnedTids.contains(thread.tid)) continue;
+      updates[thread.tid] = thread.replies;
+    }
+    if (updates.isEmpty) return;
+    ref.read(pinnedThreadsProvider.notifier).mergeReplyCounts(updates);
   }
 
   List<Thread> _filterThreads(List<Thread> threads) {

@@ -8,6 +8,7 @@ import '../config/env_config.dart';
 import '../models/app_exceptions.dart';
 import '../models/app_update_manifest.dart';
 import '../utils/abi_detector.dart';
+import '../utils/semver.dart';
 import 'talker.dart';
 
 /// 拉取远端升级清单（独立 Dio，不走论坛 [S1HttpClient]）。
@@ -83,8 +84,11 @@ class UpdateCheckService {
       return _fetchSingleUrl(_manifestUrls.first);
     }
 
-    // 多源并发竞态（Fastest-Wins）：谁先成功返回合法清单就使用谁
+    // 多源并发（Newest-Wins）：收集全部成功源，取版本最新者。
+    // 避免 jsDelivr 等 CDN 分支缓存的旧清单「先到先得」盖过较新的备用源
+    // （曾导致发版后检测不到更新）。
     final completer = Completer<AppUpdateManifest>();
+    final successes = <AppUpdateManifest>[];
     var pendingCount = _manifestUrls.length;
     Object? lastError;
     StackTrace? lastStack;
@@ -99,8 +103,10 @@ class UpdateCheckService {
 
       unawaited(
         _fetchSingleUrl(urlWithTimestamp).then((manifest) {
-          if (!completer.isCompleted) {
-            completer.complete(manifest);
+          successes.add(manifest);
+          pendingCount--;
+          if (pendingCount == 0 && !completer.isCompleted) {
+            completer.complete(_newestOf(successes));
           }
         }).catchError((Object e, StackTrace st) {
           pendingCount--;
@@ -111,7 +117,7 @@ class UpdateCheckService {
           } else if (e is FormatException) {
             lastMessage = '更新清单格式无效';
           }
-          if (pendingCount == 0 && !completer.isCompleted) {
+          if (pendingCount == 0 && successes.isEmpty && !completer.isCompleted) {
             if (lastError is FormatException) {
               completer.completeError(lastError!, lastStack);
             } else {
@@ -126,6 +132,21 @@ class UpdateCheckService {
     }
 
     return completer.future;
+  }
+
+  /// 全部成功清单里取版本最新者；个别源版本无法解析时保留当前最优（先到先得兜底）。
+  static AppUpdateManifest _newestOf(List<AppUpdateManifest> manifests) {
+    var best = manifests.first;
+    for (final candidate in manifests.skip(1)) {
+      try {
+        if (Semver.isGreaterThan(candidate.latest, best.latest)) {
+          best = candidate;
+        }
+      } on FormatException {
+        // 无法比较时沿用当前最优。
+      }
+    }
+    return best;
   }
 
   Future<AppUpdateManifest> _fetchSingleUrl(String url) async {

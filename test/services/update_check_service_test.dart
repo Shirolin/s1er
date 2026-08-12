@@ -368,21 +368,22 @@ void main() {
       );
     });
 
-    test('fetchManifest uses fastest winning response (Fastest-Wins)',
-        () async {
+    test('fetchManifest picks newest version even from slower source '
+        '(Newest-Wins)', () async {
+      // 慢源（raw）返回较新 3.0.0，快源（jsDelivr 旧缓存）返回旧 1.0.0。
       final payloadSlow = {
-        'latest': '1.0.0-slow',
+        'latest': '3.0.0',
         'minSupported': '1.0.0',
-        'notes': 'Slow',
+        'notes': 'Slow-new',
         'publishedAt': '2026-07-17',
         'channels': {
           'github': 'https://github.com/Shirolin/s1er/releases/latest',
         },
       };
       final payloadFast = {
-        'latest': '2.0.0-fast',
+        'latest': '1.0.0',
         'minSupported': '1.0.0',
-        'notes': 'Fast',
+        'notes': 'Fast-stale',
         'publishedAt': '2026-07-17',
         'channels': {
           'github': 'https://github.com/Shirolin/s1er/releases/latest',
@@ -405,7 +406,48 @@ void main() {
       );
 
       final manifest = await service.fetchManifest();
-      expect(manifest.latest, '2.0.0-fast');
+      expect(manifest.latest, '3.0.0');
+    });
+
+    test('fetchManifest keeps newest even when it arrives first '
+        '(Newest-Wins)', () async {
+      // 快源返回较新 2.0.0，慢源返回旧 1.0.0 → 仍取 2.0.0。
+      final payloadSlow = {
+        'latest': '1.0.0',
+        'minSupported': '1.0.0',
+        'notes': 'Slow-stale',
+        'publishedAt': '2026-07-17',
+        'channels': {
+          'github': 'https://github.com/Shirolin/s1er/releases/latest',
+        },
+      };
+      final payloadFast = {
+        'latest': '2.0.0',
+        'minSupported': '1.0.0',
+        'notes': 'Fast-new',
+        'publishedAt': '2026-07-17',
+        'channels': {
+          'github': 'https://github.com/Shirolin/s1er/releases/latest',
+        },
+      };
+
+      final dio = Dio()
+        ..httpClientAdapter = _RaceAdapter(
+          slowUrlSubstring: 'raw.githubusercontent.com',
+          slowPayload: payloadSlow,
+          fastPayload: payloadFast,
+        );
+
+      final service = UpdateCheckService(
+        dio: dio,
+        manifestUrls: [
+          'https://raw.githubusercontent.com/Shirolin/s1er/main/docs/release/latest.json',
+          'https://cdn.jsdelivr.net/gh/Shirolin/s1er@main/docs/release/latest.json',
+        ],
+      );
+
+      final manifest = await service.fetchManifest();
+      expect(manifest.latest, '2.0.0');
     });
 
     test('static docs/release/latest.json contains valid per-ABI APK URLs', () {

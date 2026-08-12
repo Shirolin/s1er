@@ -106,6 +106,57 @@ void main() {
       expect(state.isLoading, isFalse);
       expect(state.errorMessage, isNotNull);
     });
+
+    test('hides sticky threads when global setting is on', () async {
+      container.read(settingsProvider.notifier).setHideStickyThreads(true);
+      final sub = container.listen(threadListProvider('6'), (_, __) {});
+      addTearDown(sub.close);
+
+      await container.read(threadListProvider('6').future);
+
+      final state = container.read(threadListProvider('6')).asData!.value;
+      expect(
+        state.threads.map((t) => t.subject),
+        ['Thread 1'],
+        reason: 'sticky thread should be filtered out',
+      );
+      expect(
+        state.sourceThreads.map((t) => t.subject),
+        ['Thread 1', 'Sticky 1'],
+        reason: 'sourceThreads keeps raw server data',
+      );
+    });
+
+    test('toggling hide sticky live-refilters current page', () async {
+      final sub = container.listen(threadListProvider('6'), (_, __) {});
+      addTearDown(sub.close);
+
+      await container.read(threadListProvider('6').future);
+      var state = container.read(threadListProvider('6')).asData!.value;
+      expect(
+        state.threads.map((t) => t.subject),
+        ['Thread 1', 'Sticky 1'],
+      );
+
+      container.read(settingsProvider.notifier).setHideStickyThreads(true);
+
+      state = container.read(threadListProvider('6')).asData!.value;
+      expect(state.threads.map((t) => t.subject), ['Thread 1']);
+      expect(state.sourceThreads, hasLength(2));
+    });
+
+    test('per-forum override can hide sticky even when global is off',
+        () async {
+      container.read(settingsProvider.notifier).toggleHideStickyForum('6');
+      final sub = container.listen(threadListProvider('6'), (_, __) {});
+      addTearDown(sub.close);
+
+      await container.read(threadListProvider('6').future);
+
+      final state = container.read(threadListProvider('6')).asData!.value;
+      expect(state.threads.map((t) => t.subject), ['Thread 1']);
+      expect(state.sourceThreads, hasLength(2));
+    });
   });
 }
 
@@ -147,6 +198,17 @@ class _ThreadListAdapter implements HttpClientAdapter {
             'subject': 'Thread $page',
             'author': 'user',
             'authorid': '1',
+            'dbdateline': '1700000000',
+            'views': '1',
+            'replies': '0',
+            'typeid': '8',
+          },
+          {
+            'tid': 'sticky-$page',
+            'subject': 'Sticky $page',
+            'author': 'mod',
+            'authorid': '2',
+            'displayorder': '3',
             'dbdateline': '1700000000',
             'views': '1',
             'replies': '0',

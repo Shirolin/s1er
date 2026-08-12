@@ -4,6 +4,7 @@ import '../models/thread.dart';
 import '../models/thread_list_query.dart';
 import 'api_service_provider.dart';
 import 'blacklist_provider.dart';
+import 'settings_provider.dart';
 import '../services/api_service.dart';
 
 class ThreadListState {
@@ -72,6 +73,10 @@ class ThreadListNotifier extends AsyncNotifier<ThreadListState> {
   @override
   Future<ThreadListState> build() {
     ref.listen(blacklistProvider, (_, __) => _refilterCurrentPage());
+    ref.listen(
+      settingsProvider.select((s) => s.hideStickyEffectiveFor(fid)),
+      (_, __) => _refilterCurrentPage(),
+    );
     return _loadPage(1);
   }
 
@@ -107,15 +112,14 @@ class ThreadListNotifier extends AsyncNotifier<ThreadListState> {
   }
 
   List<Thread> _filterThreads(List<Thread> threads) {
-    return threads
-        .where(
-          (t) =>
-              t.authorId.isEmpty ||
-              !ref
-                  .read(blacklistServiceProvider)
-                  .hasScope(t.authorId, BlacklistRecord.scopeThread),
-        )
-        .toList();
+    final hideSticky = ref.read(settingsProvider).hideStickyEffectiveFor(fid);
+    return threads.where((t) {
+      if (hideSticky && t.isSticky) return false;
+      return t.authorId.isEmpty ||
+          !ref
+              .read(blacklistServiceProvider)
+              .hasScope(t.authorId, BlacklistRecord.scopeThread);
+    }).toList();
   }
 
   void _refilterCurrentPage() {

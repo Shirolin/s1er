@@ -45,6 +45,8 @@ void main() {
               collapsedForums: {'42'},
               hiddenForums: {'7'},
               stripSpecialStyles: true,
+              hideStickyThreads: true,
+              hideStickyForumOverrides: {'9'},
             ),
           ),
         ),
@@ -73,6 +75,8 @@ void main() {
     expect(state.threadListDensity, ListDensity.standard);
     expect(state.postListDensity, ListDensity.standard);
     expect(state.stripSpecialStyles, isFalse);
+    expect(state.hideStickyThreads, isFalse);
+    expect(state.hideStickyForumOverrides, isEmpty);
   });
 
   test('setRecordReadingHistory persists to settings store', () async {
@@ -109,6 +113,82 @@ void main() {
     expect(container.read(settingsProvider).stripSpecialStyles, isTrue);
     await Future<void>.delayed(const Duration(milliseconds: 50));
     expect(store.get<bool>('stripSpecialStyles'), isTrue);
+  });
+
+  test('setHideStickyThreads persists to settings store', () async {
+    final container = ProviderContainer(
+      overrides: [
+        settingsProvider.overrideWith(
+          () => SettingsNotifier(store: store, initial: const AppSettings()),
+        ),
+      ],
+    );
+    addTearDown(container.dispose);
+
+    expect(container.read(settingsProvider).hideStickyThreads, isFalse);
+
+    container.read(settingsProvider.notifier).setHideStickyThreads(true);
+
+    expect(container.read(settingsProvider).hideStickyThreads, isTrue);
+    await Future<void>.delayed(const Duration(milliseconds: 50));
+    expect(store.get<bool>('hideStickyThreads'), isTrue);
+  });
+
+  test('toggleHideStickyForum toggles override and persists', () async {
+    final container = ProviderContainer(
+      overrides: [
+        settingsProvider.overrideWith(
+          () => SettingsNotifier(store: store, initial: const AppSettings()),
+        ),
+      ],
+    );
+    addTearDown(container.dispose);
+
+    final notifier = container.read(settingsProvider.notifier);
+    notifier.toggleHideStickyForum('6');
+    expect(
+      container.read(settingsProvider).hideStickyForumOverrides,
+      const {'6'},
+    );
+    await Future<void>.delayed(const Duration(milliseconds: 50));
+    expect(store.get<List>('hideStickyForumOverrides'), ['6']);
+
+    notifier.toggleHideStickyForum('6');
+    expect(
+      container.read(settingsProvider).hideStickyForumOverrides,
+      isEmpty,
+    );
+    await Future<void>.delayed(const Duration(milliseconds: 50));
+    expect(store.get<List>('hideStickyForumOverrides'), isEmpty);
+
+    notifier.toggleHideStickyForum('');
+    expect(
+      container.read(settingsProvider).hideStickyForumOverrides,
+      isEmpty,
+    );
+  });
+
+  test('hideStickyEffectiveFor is global XOR per-forum override', () {
+    const off = AppSettings();
+    expect(off.hideStickyEffectiveFor('6'), isFalse);
+    expect(off.hideStickyEffectiveFor('7'), isFalse);
+
+    const globalOn = AppSettings(hideStickyThreads: true);
+    expect(globalOn.hideStickyEffectiveFor('6'), isTrue);
+    expect(globalOn.hideStickyEffectiveFor('7'), isTrue);
+
+    const overridden = AppSettings(
+      hideStickyForumOverrides: {'6'},
+    );
+    expect(overridden.hideStickyEffectiveFor('6'), isTrue);
+    expect(overridden.hideStickyEffectiveFor('7'), isFalse);
+
+    const globalOnOverridden = AppSettings(
+      hideStickyThreads: true,
+      hideStickyForumOverrides: {'6'},
+    );
+    expect(globalOnOverridden.hideStickyEffectiveFor('6'), isFalse);
+    expect(globalOnOverridden.hideStickyEffectiveFor('7'), isTrue);
   });
 
   test('hideForum and unhideForum persist to settings store', () async {

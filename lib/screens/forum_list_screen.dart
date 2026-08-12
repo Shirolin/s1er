@@ -305,6 +305,14 @@ class _ForumListScreenState extends ConsumerState<ForumListScreen> {
                   onThreadListDensityChanged: (density) => ref
                       .read(settingsProvider.notifier)
                       .setThreadListDensity(density),
+                  hideStickyThreads: ref.watch(
+                    settingsProvider.select(
+                      (s) => s.hideStickyEffectiveFor(widget.fid),
+                    ),
+                  ),
+                  onToggleHideStickyThreads: () => ref
+                      .read(settingsProvider.notifier)
+                      .toggleHideStickyForum(widget.fid),
                   onHideForum: () async {
                     final confirmed = await confirmHideForum(context);
                     if (!confirmed || !context.mounted) return;

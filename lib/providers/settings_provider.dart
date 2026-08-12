@@ -50,6 +50,8 @@ class AppSettings {
     this.customFontFileName,
     this.forumSplitListPaneWidth,
     this.stripSpecialStyles = false,
+    this.hideStickyThreads = false,
+    this.hideStickyForumOverrides = const {},
   });
 
   final String themeMode;
@@ -83,6 +85,16 @@ class AppSettings {
   /// 全局去除帖子中的作者特殊样式（字色 / 底色 / 字号）。
   final bool stripSpecialStyles;
 
+  /// 全局默认隐藏各版块置顶帖。
+  final bool hideStickyThreads;
+
+  /// 与全局相反的板块例外（fid 列表）：包含某 fid 表示该版块单独覆盖全局开关。
+  final Set<String> hideStickyForumOverrides;
+
+  /// 某版块实际生效的「隐藏置顶帖」值（全局 XOR 板块例外）。
+  bool hideStickyEffectiveFor(String fid) =>
+      hideStickyThreads != hideStickyForumOverrides.contains(fid);
+
   double get textScaleFactor => fontSize / S1Typography.defaultBodySize;
 
   AppSettings copyWith({
@@ -114,6 +126,8 @@ class AppSettings {
     Object? customFontFileName = _Sentinel.value,
     Object? forumSplitListPaneWidth = _Sentinel.value,
     bool? stripSpecialStyles,
+    bool? hideStickyThreads,
+    Set<String>? hideStickyForumOverrides,
   }) {
     return AppSettings(
       themeMode: themeMode ?? this.themeMode,
@@ -152,6 +166,9 @@ class AppSettings {
           ? this.forumSplitListPaneWidth
           : forumSplitListPaneWidth as double?,
       stripSpecialStyles: stripSpecialStyles ?? this.stripSpecialStyles,
+      hideStickyThreads: hideStickyThreads ?? this.hideStickyThreads,
+      hideStickyForumOverrides:
+          hideStickyForumOverrides ?? this.hideStickyForumOverrides,
     );
   }
 
@@ -185,7 +202,12 @@ class AppSettings {
         other.postSignatureCustom == postSignatureCustom &&
         other.customFontFileName == customFontFileName &&
         other.forumSplitListPaneWidth == forumSplitListPaneWidth &&
-        other.stripSpecialStyles == stripSpecialStyles;
+        other.stripSpecialStyles == stripSpecialStyles &&
+        other.hideStickyThreads == hideStickyThreads &&
+        _setEquals(
+          other.hideStickyForumOverrides,
+          hideStickyForumOverrides,
+        );
   }
 
   static bool _setEquals(Set<String> a, Set<String> b) =>
@@ -224,6 +246,8 @@ class AppSettings {
           customFontFileName,
           forumSplitListPaneWidth,
           stripSpecialStyles,
+          hideStickyThreads,
+          Object.hashAllUnordered(hideStickyForumOverrides),
         ),
       );
 }
@@ -437,6 +461,16 @@ class SettingsNotifier extends Notifier<AppSettings> {
             defaultValue: false,
           ) ??
           false,
+      hideStickyThreads: settingsStore.get<bool>(
+            'hideStickyThreads',
+            defaultValue: false,
+          ) ??
+          false,
+      hideStickyForumOverrides: Set<String>.from(
+        (settingsStore.get<List<dynamic>>('hideStickyForumOverrides'))
+                ?.cast<String>() ??
+            [],
+      ),
     );
   }
 
@@ -618,6 +652,23 @@ class SettingsNotifier extends Notifier<AppSettings> {
     _persist('stripSpecialStyles', value);
   }
 
+  void setHideStickyThreads(bool value) {
+    _commit(state.copyWith(hideStickyThreads: value));
+    _persist('hideStickyThreads', value);
+  }
+
+  void toggleHideStickyForum(String fid) {
+    if (fid.isEmpty) return;
+    final overrides = Set<String>.from(state.hideStickyForumOverrides);
+    if (overrides.contains(fid)) {
+      overrides.remove(fid);
+    } else {
+      overrides.add(fid);
+    }
+    _commit(state.copyWith(hideStickyForumOverrides: overrides));
+    _persist('hideStickyForumOverrides', overrides.toList());
+  }
+
   void toggleForumCollapse(String fid) {
     final collapsed = Set<String>.from(state.collapsedForums);
     if (collapsed.contains(fid)) {
@@ -689,6 +740,8 @@ class SettingsNotifier extends Notifier<AppSettings> {
       customExportPath: defaults.customExportPath,
       customFontFileName: null,
       stripSpecialStyles: defaults.stripSpecialStyles,
+      hideStickyThreads: defaults.hideStickyThreads,
+      hideStickyForumOverrides: defaults.hideStickyForumOverrides,
     );
     _commit(next);
     unawaited(FontImportService.removeCustomFont());
@@ -714,6 +767,11 @@ class SettingsNotifier extends Notifier<AppSettings> {
     _persist('customExportPath', defaults.customExportPath);
     _persist('customFontFileName', null);
     _persist('stripSpecialStyles', defaults.stripSpecialStyles);
+    _persist('hideStickyThreads', defaults.hideStickyThreads);
+    _persist(
+      'hideStickyForumOverrides',
+      defaults.hideStickyForumOverrides.toList(),
+    );
     // Best-effort native align; failures are logged inside sync.
     // ignore: discarded_futures
     syncAppIconWithNative();

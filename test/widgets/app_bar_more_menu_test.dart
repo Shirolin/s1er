@@ -21,6 +21,8 @@ void main() {
     ValueChanged<ListDensity>? onThreadListDensityChanged,
     ListDensity? postListDensity,
     ValueChanged<ListDensity>? onPostListDensityChanged,
+    bool? hideStickyThreads,
+    VoidCallback? onToggleHideStickyThreads,
   }) {
     return tester.pumpWidget(
       MaterialApp(
@@ -42,6 +44,8 @@ void main() {
                 onThreadListDensityChanged: onThreadListDensityChanged,
                 postListDensity: postListDensity,
                 onPostListDensityChanged: onPostListDensityChanged,
+                hideStickyThreads: hideStickyThreads,
+                onToggleHideStickyThreads: onToggleHideStickyThreads,
               ),
             ],
           ),
@@ -169,6 +173,51 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(hideCalled, isTrue);
+  });
+
+  testWidgets('shows and triggers hide sticky threads toggle when provided',
+      (tester) async {
+    var toggled = false;
+    await pumpMenu(
+      tester,
+      launcher: (url, {mode = LaunchMode.platformDefault}) async => true,
+      hideStickyThreads: false,
+      onToggleHideStickyThreads: () => toggled = true,
+    );
+
+    await openMoreMenu(tester);
+
+    expect(find.text('隐藏置顶帖'), findsOneWidget);
+    await tester.tap(find.text('隐藏置顶帖'));
+    await tester.pumpAndSettle();
+
+    expect(toggled, isTrue);
+  });
+
+  testWidgets('shows show sticky label when hiding is active', (tester) async {
+    await pumpMenu(
+      tester,
+      launcher: (url, {mode = LaunchMode.platformDefault}) async => true,
+      hideStickyThreads: true,
+      onToggleHideStickyThreads: () {},
+    );
+
+    await openMoreMenu(tester);
+
+    expect(find.text('显示置顶帖'), findsOneWidget);
+    expect(find.text('隐藏置顶帖'), findsNothing);
+  });
+
+  testWidgets('hides hide sticky toggle by default', (tester) async {
+    await pumpMenu(
+      tester,
+      launcher: (url, {mode = LaunchMode.platformDefault}) async => true,
+    );
+
+    await openMoreMenu(tester);
+
+    expect(find.text('隐藏置顶帖'), findsNothing);
+    expect(find.text('显示置顶帖'), findsNothing);
   });
 
   testWidgets('shows thread list density toggles when provided',

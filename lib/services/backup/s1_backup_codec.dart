@@ -216,6 +216,8 @@ class S1BackupSettingsMapper {
     'postSignatureShowDevice': 'post_signature_show_device',
     'postSignatureCustom': 'post_signature_custom',
     'stripSpecialStyles': 'strip_special_styles',
+    'hideStickyThreads': 'hide_sticky_threads',
+    'hideStickyForumOverrides': 'hide_sticky_forum_overrides',
   };
 
   static Map<String, dynamic> toBackup(Map<String, Object?> appSettings) {
@@ -248,7 +250,8 @@ class S1BackupSettingsMapper {
       final value = entry.value;
       if ((appKey == 'collapsedForums' ||
               appKey == 'hiddenForums' ||
-              appKey == 'favoriteForumOrder') &&
+              appKey == 'favoriteForumOrder' ||
+              appKey == 'hideStickyForumOverrides') &&
           value is List) {
         out[appKey] = value.map((e) => e.toString()).toList();
       } else if (appKey == 'imageLoadPolicy' && value is String) {

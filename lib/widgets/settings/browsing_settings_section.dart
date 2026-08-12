@@ -28,6 +28,9 @@ class BrowsingSettingsSection extends ConsumerWidget {
     final stripSpecialStyles = ref.watch(
       settingsProvider.select((settings) => settings.stripSpecialStyles),
     );
+    final hideStickyThreads = ref.watch(
+      settingsProvider.select((settings) => settings.hideStickyThreads),
+    );
     final hiddenCount = ref.watch(
       settingsProvider.select((settings) => settings.hiddenForums.length),
     );
@@ -104,6 +107,26 @@ class BrowsingSettingsSection extends ConsumerWidget {
               onChanged: (value) {
                 S1Haptics.selection();
                 notifier.setStripSpecialStyles(value);
+              },
+              contentPadding: const EdgeInsets.symmetric(horizontal: 8),
+              shape: const RoundedRectangleBorder(
+                borderRadius: S1Shape.small,
+              ),
+            ),
+            SwitchListTile(
+              secondary: Icon(
+                Icons.vertical_align_top,
+                color: scheme.onSurfaceVariant,
+              ),
+              title: const Text('隐藏置顶帖'),
+              subtitle: Text(
+                '默认隐藏各版块置顶帖，可在版块更多菜单中单独覆盖。',
+                style: subtitleStyle,
+              ),
+              value: hideStickyThreads,
+              onChanged: (value) {
+                S1Haptics.selection();
+                notifier.setHideStickyThreads(value);
               },
               contentPadding: const EdgeInsets.symmetric(horizontal: 8),
               shape: const RoundedRectangleBorder(

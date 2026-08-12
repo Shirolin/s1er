@@ -115,6 +115,8 @@ void main() {
         'threadListDensity': 'compact',
         'postListDensity': 'standard',
         'threadListFiltersExpanded': false,
+        'hideStickyThreads': true,
+        'hideStickyForumOverrides': {'4', '9'},
       });
       expect(backup['theme_mode'], 'dark');
       expect(backup['collapsed_forums'], isA<List>());
@@ -130,6 +132,11 @@ void main() {
       expect(backup['thread_list_density'], 'compact');
       expect(backup['post_list_density'], 'standard');
       expect(backup['thread_list_filters_expanded'], isFalse);
+      expect(backup['hide_sticky_threads'], isTrue);
+      expect(
+        backup['hide_sticky_forum_overrides'],
+        unorderedEquals(['4', '9']),
+      );
       expect(backup.containsKey('use_dynamic_color'), isFalse);
       expect(backup.containsKey('simulate_dynamic'), isFalse);
 
@@ -149,6 +156,8 @@ void main() {
       expect(app['sharePixelRatio'], 2);
       expect(app['shareAdvancedExport'], isTrue);
       expect(app['hiddenForums'], ['75', '6']);
+      expect(app['hideStickyThreads'], isTrue);
+      expect(app['hideStickyForumOverrides'], ['4', '9']);
       expect(app.containsKey('useDynamicColor'), isFalse);
       expect(app.containsKey('simulateDynamic'), isFalse);
       expect(app.containsKey('unknown_field'), isFalse);

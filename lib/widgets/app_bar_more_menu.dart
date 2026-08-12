@@ -31,6 +31,8 @@ class AppBarMoreMenu extends StatelessWidget {
     this.onThreadListDensityChanged,
     this.postListDensity,
     this.onPostListDensityChanged,
+    this.hideStickyThreads,
+    this.onToggleHideStickyThreads,
   });
 
   final VoidCallback? onRefresh;
@@ -57,6 +59,10 @@ class AppBarMoreMenu extends StatelessWidget {
   final ListDensity? postListDensity;
   final ValueChanged<ListDensity>? onPostListDensityChanged;
 
+  /// When both are set, show a hide/show sticky threads toggle.
+  final bool? hideStickyThreads;
+  final VoidCallback? onToggleHideStickyThreads;
+
   bool get _showThreadListDensity =>
       threadListDensity != null && onThreadListDensityChanged != null;
 
@@ -64,6 +70,9 @@ class AppBarMoreMenu extends StatelessWidget {
       postListDensity != null && onPostListDensityChanged != null;
 
   bool get _showPinToggle => isPinned != null && onTogglePin != null;
+
+  bool get _showHideStickyToggle =>
+      hideStickyThreads != null && onToggleHideStickyThreads != null;
 
   Future<void> _copyPageLink(BuildContext context) async {
     try {
@@ -219,6 +228,16 @@ class AppBarMoreMenu extends StatelessWidget {
             icon: Icons.visibility_off_outlined,
             label: '屏蔽此版块',
             destructive: true,
+          ),
+        if (_showHideStickyToggle)
+          s1MenuItem(
+            onPressed: () {
+              S1Haptics.selection();
+              onToggleHideStickyThreads!();
+            },
+            icon: Icons.vertical_align_top,
+            label: hideStickyThreads! ? '显示置顶帖' : '隐藏置顶帖',
+            selected: hideStickyThreads!,
           ),
         if (_showThreadListDensity) ...[
           const S1MenuDivider(),

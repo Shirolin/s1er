@@ -1,6 +1,13 @@
 {
   "entries": [
     {
+      "version": "0.5.4",
+      "date": "2026-08-12",
+      "highlights": [
+        "修复更新检测被 CDN 旧缓存遮蔽的问题（多源取最新版本）"
+      ]
+    },
+    {
       "version": "0.5.3",
       "date": "2026-08-12",
       "highlights": [

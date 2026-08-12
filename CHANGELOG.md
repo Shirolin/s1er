@@ -7,6 +7,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.5.4] - 2026-08-12
+
+### Fixed
+
+- **更新检查不再被 CDN 旧缓存遮蔽**：多清单源并发时改取版本最新者（Newest-Wins），CDN 分支缓存的旧清单不再「先到先得」盖过 GitHub raw 的新清单（曾导致发版后检测不到更新）。
+
 ## [0.5.3] - 2026-08-12
 
 ### Fixed

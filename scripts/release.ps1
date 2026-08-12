@@ -13,7 +13,7 @@
 #
 # Options:
 #   -Version 0.1.1     Set product name before bump-build / when creating tag
-#   -BumpName patch|minor|major   Change name (and reset build to 1) instead of +build only
+#   -BumpName patch|minor|major   Change name (build keeps monotonic +1) instead of +build only
 #   -SkipApk / -SkipWindows       Limit build platforms
 #   -DryRun
 
@@ -107,7 +107,7 @@ S1er release.ps1 - step-by-step (preferred)
 
   status       Show current version + dist artifacts
   bump-build   Only increase +build (parentheses). Does NOT change latest.json need.
-  bump-name    Require -BumpName patch|minor|major (resets build to 1)
+  bump-name    Require -BumpName patch|minor|major (build keeps monotonic +1)
   build        fat APK + per-ABI APKs + windows -> dist\  (NO upload)
   create       gh release create TAG with notes only; opens browser + dist\
   upload       gh release upload dist artifacts (SLOW on some networks)

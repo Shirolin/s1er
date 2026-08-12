@@ -7,6 +7,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.5.3] - 2026-08-12
+
+### Fixed
+
+- **置顶帖角标配色**：新增回复数角标改用主题色调（primaryContainer），与楼层阅读角标一致，暖色主题下不再刺眼。
+
 ## [0.5.2] - 2026-08-12
 
 ### Added

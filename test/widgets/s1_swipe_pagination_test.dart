@@ -6,6 +6,8 @@ import 'package:s1er/theme/app_theme.dart';
 import 'package:s1er/utils/boundary_feedback.dart';
 import 'package:s1er/widgets/s1_fab_layout.dart';
 import 'package:s1er/widgets/s1_swipe_pagination.dart';
+import 'package:s1er/widgets/skeleton/list_row_skeleton.dart';
+import 'package:s1er/widgets/skeleton/s1_swipe_adjacent_skeleton.dart';
 
 void main() {
   Future<void> swipeToNextPage(WidgetTester tester) async {
@@ -93,8 +95,7 @@ void main() {
     expect(find.text('Page 2'), findsOneWidget);
   });
 
-  testWidgets(
-      'S1SwipePagination adjacent slots use page surface, not scheme.surface',
+  testWidgets('S1SwipePagination adjacent slots show skeleton on page surface',
       (tester) async {
     await tester.pumpWidget(
       buildHarness(
@@ -103,23 +104,28 @@ void main() {
         onPageChanged: (_) async {},
       ),
     );
+    await tester.pump();
 
     // 拖到一半，让相邻槽进入 viewport 并完成构建。
     final size = tester.view.physicalSize / tester.view.devicePixelRatio;
     await tester.drag(find.byType(PageView), Offset(-size.width * 0.4, 0));
     await tester.pump();
 
+    expect(find.byType(S1SwipeAdjacentSkeleton), findsAtLeastNWidgets(1));
+    expect(find.byType(ListRowSkeleton), findsWidgets);
+
     final scheme = AppTheme.lightTheme('purple').colorScheme;
     final pageColor = S1Surface.page(scheme);
-    final boxes = tester.widgetList<ColoredBox>(
-      find.byKey(const ValueKey('s1-swipe-slot-placeholder')),
+    final skeletonRoot = tester.widget<ColoredBox>(
+      find
+          .descendant(
+            of: find.byType(S1SwipeAdjacentSkeleton).first,
+            matching: find.byType(ColoredBox),
+          )
+          .first,
     );
-
-    expect(boxes, isNotEmpty);
-    for (final box in boxes) {
-      expect(box.color, pageColor);
-      expect(box.color, isNot(scheme.surface));
-    }
+    expect(skeletonRoot.color, pageColor);
+    expect(skeletonRoot.color, isNot(scheme.surface));
   });
 
   testWidgets('S1SwipePagination right swipe requests previous page',

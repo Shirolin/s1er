@@ -1,11 +1,14 @@
 import 'package:flutter/material.dart';
 
-import '../theme/app_theme.dart';
 import '../theme/s1_haptics.dart';
 import '../utils/boundary_feedback.dart';
 import '../utils/scroll_motion.dart';
 import 's1_fab_layout.dart';
 import 's1_scroll_boundary_listener.dart';
+import 'skeleton/s1_swipe_adjacent_skeleton.dart';
+
+export 'skeleton/s1_swipe_adjacent_skeleton.dart'
+    show S1SwipeAdjacentSkeletonStyle;
 
 typedef S1PageBuilder = Widget Function(
   BuildContext context,
@@ -32,6 +35,7 @@ class S1SwipePagination extends StatefulWidget {
     this.boundaryFeedback,
     this.enabled = true,
     this.showPagingIndicator = true,
+    this.adjacentSkeletonStyle = S1SwipeAdjacentSkeletonStyle.generic,
   });
 
   /// 当前页码（1-based）。
@@ -63,6 +67,9 @@ class S1SwipePagination extends StatefulWidget {
   /// 父级已用 [state.isLoading] 等统一指示加载时（如版块列表筛选栏上方）应关闭，
   /// 避免与父级进度条叠成两条。
   final bool showPagingIndicator;
+
+  /// 左右侧槽横滑预览用的列表骨架样式（不含真实邻页数据）。
+  final S1SwipeAdjacentSkeletonStyle adjacentSkeletonStyle;
 
   @override
   State<S1SwipePagination> createState() => S1SwipePaginationState();
@@ -321,11 +328,9 @@ class S1SwipePaginationState extends State<S1SwipePagination> {
       );
     }
 
-    // 与 Scaffold / 列表画布同色，避免横滑露出近白的 scheme.surface。
-    return ColoredBox(
-      key: const ValueKey('s1-swipe-slot-placeholder'),
-      color: S1Surface.page(Theme.of(context).colorScheme),
-      child: const SizedBox.expand(),
+    return KeyedSubtree(
+      key: ValueKey('s1-swipe-slot-skeleton-$slot'),
+      child: S1SwipeAdjacentSkeleton(style: widget.adjacentSkeletonStyle),
     );
   }
 

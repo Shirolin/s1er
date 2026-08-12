@@ -1339,6 +1339,7 @@ class _ThreadDetailScreenState extends ConsumerState<ThreadDetailScreen> {
                   key: _swipeKey,
                   currentPage: state.currentPage,
                   totalPages: state.totalPages,
+                  adjacentSkeletonStyle: S1SwipeAdjacentSkeletonStyle.postItem,
                   onScrollMetricsChanged: _onScrollMetricsChanged,
                   onPageChanged: _goToPage,
                   pageBuilder: (context, scrollController) =>

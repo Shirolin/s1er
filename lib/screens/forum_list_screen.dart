@@ -639,6 +639,7 @@ class _ForumThreadList extends ConsumerWidget {
               currentPage: state.currentPage,
               totalPages: state.totalPages,
               showPagingIndicator: false,
+              adjacentSkeletonStyle: S1SwipeAdjacentSkeletonStyle.threadCard,
               onScrollMetricsChanged: onScrollMetricsChanged,
               onPageChanged: onPageChanged,
               pageBuilder: (context, scrollController) => Scrollbar(

@@ -351,6 +351,8 @@ class _PmConversationScreenState extends ConsumerState<PmConversationScreen> {
                     key: _swipeKey,
                     currentPage: state.currentPage,
                     totalPages: state.totalPages,
+                    adjacentSkeletonStyle:
+                        S1SwipeAdjacentSkeletonStyle.pmBubble,
                     onPageChanged: (page) =>
                         ref.read(provider.notifier).goToPage(page),
                     pageBuilder: (context, scrollController) => Center(

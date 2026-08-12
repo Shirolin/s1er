@@ -233,11 +233,11 @@ class _PinnedNewReplyBadge extends StatelessWidget {
           style: CompactLabel.style(
             context,
             base: textTheme.labelSmall,
-            color: scheme.onError,
+            color: scheme.onPrimaryContainer,
             fontWeight: FontWeight.w600,
           ),
         ),
-        backgroundColor: scheme.error,
+        backgroundColor: scheme.primaryContainer,
         padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 1),
       ),
     );

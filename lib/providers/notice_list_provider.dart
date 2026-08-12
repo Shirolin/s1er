@@ -61,9 +61,7 @@ class NoticeListNotifier extends AsyncNotifier<NoticeListState> {
   Future<NoticeListState> _loadPage(NoticeFeed feed, int page) async {
     final result = await _apiService.getNoticeList(feed: feed, page: page);
     if (feed == NoticeFeed.mypost) {
-      ref
-          .read(unreadCountProvider.notifier)
-          .mergeMypostFromList(result.items);
+      ref.read(unreadCountProvider.notifier).mergeMypostFromList(result.items);
     }
     final next = NoticeListState(
       items: result.items,

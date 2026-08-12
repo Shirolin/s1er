@@ -3,13 +3,60 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:drift/native.dart';
 
 import 'package:s1er/models/pinned_thread.dart';
+import 'package:s1er/providers/api_service_provider.dart';
 import 'package:s1er/providers/pinned_threads_provider.dart';
 import 'package:s1er/providers/settings_provider.dart';
+import 'package:s1er/services/api_service.dart';
 import 'package:s1er/services/app_database.dart';
 import 'package:s1er/services/app_local_data.dart';
 import 'package:s1er/services/backup/s1_backup_codec.dart';
 import 'package:s1er/services/backup/s1_backup_service.dart';
 import 'package:package_info_plus/package_info_plus.dart';
+
+class _FakePinnedSyncApi extends Fake implements ApiService {
+  _FakePinnedSyncApi({this.replies = 88});
+
+  int fetchCount = 0;
+  final int replies;
+
+  @override
+  Future<int?> fetchThreadReplies(String tid) async {
+    fetchCount++;
+    return replies;
+  }
+}
+
+class _NullReplyPinnedSyncApi extends Fake implements ApiService {
+  int fetchCount = 0;
+
+  @override
+  Future<int?> fetchThreadReplies(String tid) async {
+    fetchCount++;
+    return null;
+  }
+}
+
+class _FailingPinnedSyncApi extends Fake implements ApiService {
+  int fetchCount = 0;
+
+  @override
+  Future<int?> fetchThreadReplies(String tid) async {
+    fetchCount++;
+    throw StateError('fetch failed');
+  }
+}
+
+class _CountingLocalData extends AppLocalData {
+  _CountingLocalData(super.db);
+
+  int savePinnedThreadsCalls = 0;
+
+  @override
+  void savePinnedThreads(List<Map<String, dynamic>> items) {
+    savePinnedThreadsCalls++;
+    super.savePinnedThreads(items);
+  }
+}
 
 void main() {
   late AppDatabase db;
@@ -104,6 +151,29 @@ void main() {
       );
       expect(thread.toJson().containsKey('lastKnownReplies'), isFalse);
       expect(thread.toJson().containsKey('lastSeenReplies'), isFalse);
+      expect(thread.toJson().containsKey('lastFetchedAt'), isFalse);
+    });
+
+    test('round-trips lastFetchedAt', () {
+      const original = PinnedThread(
+        tid: '1',
+        title: 't',
+        pinnedAt: 2,
+        displayOrder: 0,
+        lastFetchedAt: 1710000000,
+      );
+      final restored = PinnedThread.fromJson(original.toJson());
+      expect(restored.lastFetchedAt, 1710000000);
+      expect(
+        PinnedThread.fromJson({
+          'tid': '1',
+          'title': 't',
+          'pinned_at': 2,
+          'display_order': 0,
+          'last_fetched_at': 99,
+        }).lastFetchedAt,
+        99,
+      );
     });
   });
 
@@ -135,11 +205,43 @@ void main() {
       final pinned = container.read(pinnedThreadsProvider).single;
       expect(pinned.lastKnownReplies, 55);
       expect(pinned.lastSeenReplies, 55);
+      expect(pinned.lastFetchedAt, isNotNull);
       expect(
         pinnedNewReplyCount(
           liveReplies: pinned.lastKnownReplies,
           lastSeenReplies: pinned.lastSeenReplies,
         ),
+        isNull,
+      );
+    });
+
+    test('pin with replies stamps CD and skips sync', () async {
+      final fakeApi = _FakePinnedSyncApi();
+      final container = ProviderContainer(
+        overrides: [
+          localDataProvider.overrideWithValue(localData),
+          apiServiceProvider.overrideWithValue(fakeApi),
+        ],
+      );
+      addTearDown(container.dispose);
+
+      final notifier = container.read(pinnedThreadsProvider.notifier);
+      notifier.pin(tid: '1', title: 't', replies: 55);
+
+      await notifier.syncAllStaleReplyCounts(
+        startupDelay: Duration.zero,
+        interval: Duration.zero,
+      );
+
+      expect(fakeApi.fetchCount, 0);
+    });
+
+    test('pin without replies leaves lastFetchedAt null', () {
+      final container = createContainer();
+      final notifier = container.read(pinnedThreadsProvider.notifier);
+      notifier.pin(tid: '1', title: 't');
+      expect(
+        container.read(pinnedThreadsProvider).single.lastFetchedAt,
         isNull,
       );
     });
@@ -205,8 +307,52 @@ void main() {
       final two = threads.firstWhere((t) => t.tid == '2');
       expect(one.lastKnownReplies, 30);
       expect(one.lastSeenReplies, 10);
+      expect(one.lastFetchedAt, isNotNull);
       expect(two.lastKnownReplies, 10);
       expect(two.lastSeenReplies, 10);
+      expect(two.lastFetchedAt, isNotNull);
+    });
+
+    test('mergeReplyCounts persists once for multiple pins', () async {
+      final countingLocalData = _CountingLocalData(db);
+      await countingLocalData.load();
+      final container = ProviderContainer(
+        overrides: [
+          localDataProvider.overrideWithValue(countingLocalData),
+        ],
+      );
+      addTearDown(container.dispose);
+
+      final notifier = container.read(pinnedThreadsProvider.notifier);
+      notifier.pin(tid: '1', title: 'a', replies: 10);
+      notifier.pin(tid: '2', title: 'b', replies: 20);
+      countingLocalData.savePinnedThreadsCalls = 0;
+
+      notifier.mergeReplyCounts({'1': 30, '2': 25});
+
+      expect(countingLocalData.savePinnedThreadsCalls, 1);
+    });
+
+    test('mergeReplyCounts then sync skips within CD', () async {
+      final fakeApi = _FakePinnedSyncApi();
+      final container = ProviderContainer(
+        overrides: [
+          localDataProvider.overrideWithValue(localData),
+          apiServiceProvider.overrideWithValue(fakeApi),
+        ],
+      );
+      addTearDown(container.dispose);
+
+      final notifier = container.read(pinnedThreadsProvider.notifier);
+      notifier.pin(tid: '1', title: 'a', replies: 10);
+      notifier.mergeReplyCounts({'1': 30});
+
+      await notifier.syncAllStaleReplyCounts(
+        startupDelay: Duration.zero,
+        interval: Duration.zero,
+      );
+
+      expect(fakeApi.fetchCount, 0);
     });
 
     test('markOpened aligns live and lastSeen for pinned tid only', () {
@@ -231,6 +377,204 @@ void main() {
         isNull,
       );
       expect(threads.firstWhere((t) => t.tid == '2').lastKnownReplies, isNull);
+    });
+
+    test('markOpened stamps lastFetchedAt and skips sync within CD', () async {
+      final fakeApi = _FakePinnedSyncApi();
+      final container = ProviderContainer(
+        overrides: [
+          localDataProvider.overrideWithValue(localData),
+          apiServiceProvider.overrideWithValue(fakeApi),
+        ],
+      );
+      addTearDown(container.dispose);
+
+      final notifier = container.read(pinnedThreadsProvider.notifier);
+      notifier.pin(tid: '1', title: 'a', replies: 10);
+      notifier.markOpened('1', 40);
+
+      final opened = container.read(pinnedThreadsProvider).single;
+      expect(opened.lastKnownReplies, 40);
+      expect(opened.lastSeenReplies, 40);
+      expect(opened.lastFetchedAt, isNotNull);
+
+      await notifier.syncAllStaleReplyCounts(
+        startupDelay: Duration.zero,
+        interval: Duration.zero,
+      );
+
+      expect(fakeApi.fetchCount, 0);
+    });
+
+    test('applyLiveReplies seeds lastSeen when missing', () {
+      final container = createContainer();
+      final notifier = container.read(pinnedThreadsProvider.notifier);
+      notifier.pin(tid: '1', title: 'a');
+
+      notifier.applyLiveReplies('1', 25);
+
+      final pinned = container.read(pinnedThreadsProvider).single;
+      expect(pinned.lastKnownReplies, 25);
+      expect(pinned.lastSeenReplies, 25);
+      expect(
+        pinnedNewReplyCount(
+          liveReplies: pinned.lastKnownReplies,
+          lastSeenReplies: pinned.lastSeenReplies,
+        ),
+        isNull,
+      );
+    });
+
+    test('applyLiveReplies updates live only when lastSeen exists', () {
+      final container = createContainer();
+      final notifier = container.read(pinnedThreadsProvider.notifier);
+      notifier.pin(tid: '1', title: 'a', replies: 10);
+
+      notifier.applyLiveReplies('1', 40);
+
+      final pinned = container.read(pinnedThreadsProvider).single;
+      expect(pinned.lastKnownReplies, 40);
+      expect(pinned.lastSeenReplies, 10);
+      expect(
+        pinnedNewReplyCount(
+          liveReplies: pinned.lastKnownReplies,
+          lastSeenReplies: pinned.lastSeenReplies,
+        ),
+        30,
+      );
+    });
+
+    test('applyLiveReplies records lastFetchedAt', () {
+      final container = createContainer();
+      final notifier = container.read(pinnedThreadsProvider.notifier);
+      notifier.pin(tid: '1', title: 'a', replies: 10);
+
+      notifier.applyLiveReplies('1', 10, lastFetchedAt: 12345);
+
+      expect(
+        container.read(pinnedThreadsProvider).single.lastFetchedAt,
+        12345,
+      );
+    });
+
+    test('syncAllStaleReplyCounts skips pins within CD', () async {
+      final now = DateTime.now().millisecondsSinceEpoch ~/ 1000;
+      localData.savePinnedThreads([
+        {
+          'tid': '1',
+          'title': 'a',
+          'pinned_at': 1,
+          'display_order': 0,
+          'last_fetched_at': now,
+        },
+      ]);
+      await localData.load();
+
+      final fakeApi = _FakePinnedSyncApi();
+      final container = ProviderContainer(
+        overrides: [
+          localDataProvider.overrideWithValue(localData),
+          apiServiceProvider.overrideWithValue(fakeApi),
+        ],
+      );
+      addTearDown(container.dispose);
+
+      await container
+          .read(pinnedThreadsProvider.notifier)
+          .syncAllStaleReplyCounts(
+            startupDelay: Duration.zero,
+            interval: Duration.zero,
+          );
+
+      expect(fakeApi.fetchCount, 0);
+    });
+
+    test('syncAllStaleReplyCounts fetches when CD expired', () async {
+      final now = DateTime.now().millisecondsSinceEpoch ~/ 1000;
+      localData.savePinnedThreads([
+        {
+          'tid': '1',
+          'title': 'a',
+          'pinned_at': 1,
+          'display_order': 0,
+          'last_fetched_at': now - kPinnedReplyFetchCooldownSeconds - 1,
+        },
+      ]);
+      await localData.load();
+
+      final fakeApi = _FakePinnedSyncApi(replies: 77);
+      final container = ProviderContainer(
+        overrides: [
+          localDataProvider.overrideWithValue(localData),
+          apiServiceProvider.overrideWithValue(fakeApi),
+        ],
+      );
+      addTearDown(container.dispose);
+
+      await container
+          .read(pinnedThreadsProvider.notifier)
+          .syncAllStaleReplyCounts(
+            startupDelay: Duration.zero,
+            interval: Duration.zero,
+          );
+
+      expect(fakeApi.fetchCount, 1);
+      final pinned = container.read(pinnedThreadsProvider).single;
+      expect(pinned.lastKnownReplies, 77);
+      expect(pinned.lastSeenReplies, 77);
+      expect(pinned.lastFetchedAt, isNotNull);
+    });
+
+    test('syncAllStaleReplyCounts stamps CD when fetch returns null', () async {
+      final fakeApi = _NullReplyPinnedSyncApi();
+      final container = ProviderContainer(
+        overrides: [
+          localDataProvider.overrideWithValue(localData),
+          apiServiceProvider.overrideWithValue(fakeApi),
+        ],
+      );
+      addTearDown(container.dispose);
+
+      container.read(pinnedThreadsProvider.notifier).pin(tid: '1', title: 'a');
+
+      await container
+          .read(pinnedThreadsProvider.notifier)
+          .syncAllStaleReplyCounts(
+            startupDelay: Duration.zero,
+            interval: Duration.zero,
+          );
+
+      expect(fakeApi.fetchCount, 1);
+      expect(
+        container.read(pinnedThreadsProvider).single.lastFetchedAt,
+        isNotNull,
+      );
+    });
+
+    test('syncAllStaleReplyCounts stamps CD when fetch throws', () async {
+      final fakeApi = _FailingPinnedSyncApi();
+      final container = ProviderContainer(
+        overrides: [
+          localDataProvider.overrideWithValue(localData),
+          apiServiceProvider.overrideWithValue(fakeApi),
+        ],
+      );
+      addTearDown(container.dispose);
+
+      container.read(pinnedThreadsProvider.notifier).pin(tid: '1', title: 'a');
+
+      await container
+          .read(pinnedThreadsProvider.notifier)
+          .syncAllStaleReplyCounts(
+            startupDelay: Duration.zero,
+            interval: Duration.zero,
+          );
+
+      expect(fakeApi.fetchCount, 1);
+      expect(
+        container.read(pinnedThreadsProvider).single.lastFetchedAt,
+        isNotNull,
+      );
     });
 
     test('build trims over-limit entries from storage', () async {

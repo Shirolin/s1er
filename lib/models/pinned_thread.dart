@@ -6,6 +6,7 @@ class PinnedThread {
     required this.displayOrder,
     this.lastKnownReplies,
     this.lastSeenReplies,
+    this.lastFetchedAt,
   });
 
   factory PinnedThread.fromJson(Map<String, dynamic> json) {
@@ -26,6 +27,9 @@ class PinnedThread {
       lastSeenReplies: _parseOptionalInt(
         json['lastSeenReplies'] ?? json['last_seen_replies'],
       ),
+      lastFetchedAt: _parseOptionalInt(
+        json['lastFetchedAt'] ?? json['last_fetched_at'],
+      ),
     );
   }
 
@@ -40,6 +44,9 @@ class PinnedThread {
   /// 上次打开该置顶帖时记下的回复数（对齐 S1-Next lastCountWhenView）。
   final int? lastSeenReplies;
 
+  /// 上次按 tid 主动拉取回复数的时间（秒）；用于单帖 CD。
+  final int? lastFetchedAt;
+
   Map<String, dynamic> toJson() => {
         'tid': tid,
         'title': title,
@@ -47,6 +54,7 @@ class PinnedThread {
         'displayOrder': displayOrder,
         if (lastKnownReplies != null) 'lastKnownReplies': lastKnownReplies,
         if (lastSeenReplies != null) 'lastSeenReplies': lastSeenReplies,
+        if (lastFetchedAt != null) 'lastFetchedAt': lastFetchedAt,
       };
 
   PinnedThread copyWith({
@@ -58,6 +66,8 @@ class PinnedThread {
     bool clearLastKnownReplies = false,
     int? lastSeenReplies,
     bool clearLastSeenReplies = false,
+    int? lastFetchedAt,
+    bool clearLastFetchedAt = false,
   }) {
     return PinnedThread(
       tid: tid ?? this.tid,
@@ -70,6 +80,8 @@ class PinnedThread {
       lastSeenReplies: clearLastSeenReplies
           ? null
           : (lastSeenReplies ?? this.lastSeenReplies),
+      lastFetchedAt:
+          clearLastFetchedAt ? null : (lastFetchedAt ?? this.lastFetchedAt),
     );
   }
 

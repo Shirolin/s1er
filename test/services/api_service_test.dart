@@ -111,6 +111,23 @@ void main() {
       });
     });
 
+    group('parseThreadReplies', () {
+      test('reads Variables.thread.replies', () {
+        expect(
+          ApiService.parseThreadReplies({
+            'Variables': {
+              'thread': {'replies': '42'},
+            },
+          }),
+          42,
+        );
+      });
+
+      test('returns null when replies missing', () {
+        expect(ApiService.parseThreadReplies({'Variables': {}}), isNull);
+      });
+    });
+
     group('parseThreadList', () {
       test('parses thread list from JSON', () {
         final json = {

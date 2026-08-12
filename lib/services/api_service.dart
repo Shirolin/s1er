@@ -990,6 +990,23 @@ class ApiService {
     return json;
   }
 
+  /// 从 viewthread JSON 解析主题回复数（`Variables.thread.replies`）。
+  static int? parseThreadReplies(Map<String, dynamic> json) {
+    final variablesRaw = json['Variables'];
+    if (variablesRaw is! Map) return null;
+    final variables = Map<String, dynamic>.from(variablesRaw);
+    final threadRaw = variables['thread'];
+    if (threadRaw is! Map) return null;
+    final thread = Map<String, dynamic>.from(threadRaw);
+    return int.tryParse(thread['replies']?.toString() ?? '');
+  }
+
+  /// 按 tid 拉取第 1 页并只返回回复数（完整 viewthread，客户端只解析 replies）。
+  Future<int?> fetchThreadReplies(String tid) async {
+    final result = await getThreadDetail(tid, page: 1);
+    return parseThreadReplies(result);
+  }
+
   /// API 登录：返回 null 表示成功，否则返回错误信息。
   ///
   /// [questionId] / [answer] 为 Discuz 安全提问（未设置时传 `0` / 空串）。

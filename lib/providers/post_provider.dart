@@ -236,9 +236,9 @@ class PostNotifier extends AsyncNotifier<PostListState> {
   /// 打开置顶帖时对齐 live / lastSeen（不碰阅读记录）。
   void _syncSeenRepliesAfterLoad(PostListState loaded) {
     if (!ref.mounted) return;
-    ref
-        .read(pinnedThreadsProvider.notifier)
-        .markOpened(tid, loaded.totalReplies);
+    final notifier = ref.read(pinnedThreadsProvider.notifier);
+    if (!notifier.isPinned(tid)) return;
+    notifier.markOpened(tid, loaded.totalReplies);
   }
 
   PostListState _buildStateFromResult(

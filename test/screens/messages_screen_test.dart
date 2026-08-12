@@ -2,7 +2,9 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:go_router/go_router.dart';
+import 'package:s1er/models/unread_count.dart';
 import 'package:s1er/providers/messages_segment_provider.dart';
+import 'package:s1er/providers/unread_count_provider.dart';
 import 'package:s1er/screens/messages_screen.dart';
 import '../helpers/messages_test_helpers.dart';
 import '../helpers/test_theme.dart';
@@ -100,6 +102,53 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(find.text('thread 2253488 pid=69899250'), findsOneWidget);
+  });
+
+  testWidgets('notice tap marks mypost notice read for badge', (tester) async {
+    late UnreadCount unread;
+    final router = GoRouter(
+      routes: [
+        GoRoute(
+          path: '/',
+          builder: (context, state) => const Scaffold(
+            body: MessagesScreen(),
+          ),
+        ),
+        GoRoute(
+          path: '/thread/:tid',
+          builder: (context, state) => const Scaffold(body: Text('thread')),
+        ),
+      ],
+    );
+
+    await tester.pumpWidget(
+      ProviderScope(
+        overrides: messagesProviderOverrides(
+          noticeState: sampleNoticeListState(isNew: true),
+        ),
+        child: MaterialApp.router(
+          theme: ThemeData(useMaterial3: true),
+          routerConfig: router,
+          builder: (context, child) {
+            return Consumer(
+              builder: (context, ref, _) {
+                unread = ref.watch(unreadCountProvider);
+                return child!;
+              },
+            );
+          },
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    expect(unread.newmypost, 1);
+
+    await tester.tap(find.text('JOJOROY'));
+    await tester.pumpAndSettle();
+
+    expect(unread.newmypost, 0);
+    expect(find.text('thread'), findsOneWidget);
   });
 
   testWidgets('pm tap navigates to in-app conversation route', (tester) async {

@@ -2,6 +2,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../models/notice_item.dart';
 import '../services/api_service.dart';
 import 'api_service_provider.dart';
+import 'unread_count_provider.dart';
 
 class NoticeListState {
   NoticeListState({
@@ -41,7 +42,16 @@ class NoticeListNotifier extends AsyncNotifier<NoticeListState> {
   Future<NoticeListState> build() async {
     if (seed != null) {
       _cache[seed!.feed] = seed!;
-      return seed!;
+      final seeded = seed!;
+      // Yield so merge is not a sync side-effect during provider build.
+      await Future<void>.value();
+      if (!ref.mounted) return seeded;
+      if (seeded.feed == NoticeFeed.mypost) {
+        ref
+            .read(unreadCountProvider.notifier)
+            .mergeMypostFromList(seeded.items);
+      }
+      return seeded;
     }
     return _loadPage(NoticeFeed.mypost, 1);
   }
@@ -50,6 +60,11 @@ class NoticeListNotifier extends AsyncNotifier<NoticeListState> {
 
   Future<NoticeListState> _loadPage(NoticeFeed feed, int page) async {
     final result = await _apiService.getNoticeList(feed: feed, page: page);
+    if (feed == NoticeFeed.mypost) {
+      ref
+          .read(unreadCountProvider.notifier)
+          .mergeMypostFromList(result.items);
+    }
     final next = NoticeListState(
       items: result.items,
       currentPage: result.currentPage,

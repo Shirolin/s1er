@@ -22,6 +22,7 @@ PmListState samplePmListState() {
 NoticeListState sampleNoticeListState({
   int currentPage = 1,
   int totalPages = 3,
+  bool isNew = false,
 }) {
   return NoticeListState(
     items: [
@@ -34,6 +35,7 @@ NoticeListState sampleNoticeListState({
         tid: '2253488',
         pid: '69899250',
         type: NoticeType.reply,
+        isNew: isNew,
       ),
     ],
     currentPage: currentPage,

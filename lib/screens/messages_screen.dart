@@ -6,6 +6,7 @@ import '../models/thread_destination.dart';
 import '../providers/messages_segment_provider.dart';
 import '../providers/notice_list_provider.dart';
 import '../providers/pm_list_provider.dart';
+import '../providers/unread_count_provider.dart';
 import '../theme/app_theme.dart';
 import '../theme/s1_haptics.dart';
 import '../utils/thread_navigation.dart';
@@ -213,6 +214,9 @@ class _NoticeListBody extends ConsumerWidget {
                               item: item,
                               onTap: () {
                                 if (!item.canNavigate) return;
+                                ref
+                                    .read(unreadCountProvider.notifier)
+                                    .markMypostRead(item.id);
                                 final pid = item.pid;
                                 final destination =
                                     pid != null && pid.isNotEmpty

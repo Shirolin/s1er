@@ -128,6 +128,50 @@ void main() {
     expect(skeletonRoot.color, isNot(scheme.surface));
   });
 
+  testWidgets(
+      'S1SwipePagination first page hides prev-slot skeleton when dragging right',
+      (tester) async {
+    await tester.pumpWidget(
+      buildHarness(
+        currentPage: 1,
+        totalPages: 5,
+        onPageChanged: (_) async {},
+      ),
+    );
+    await tester.pump();
+
+    final size = tester.view.physicalSize / tester.view.devicePixelRatio;
+    await tester.drag(find.byType(PageView), Offset(size.width * 0.4, 0));
+    await tester.pump();
+
+    expect(
+      find.byKey(const ValueKey('s1-swipe-slot-skeleton-0')),
+      findsNothing,
+    );
+  });
+
+  testWidgets(
+      'S1SwipePagination last page hides next-slot skeleton when dragging left',
+      (tester) async {
+    await tester.pumpWidget(
+      buildHarness(
+        currentPage: 5,
+        totalPages: 5,
+        onPageChanged: (_) async {},
+      ),
+    );
+    await tester.pump();
+
+    final size = tester.view.physicalSize / tester.view.devicePixelRatio;
+    await tester.drag(find.byType(PageView), Offset(-size.width * 0.4, 0));
+    await tester.pump();
+
+    expect(
+      find.byKey(const ValueKey('s1-swipe-slot-skeleton-2')),
+      findsNothing,
+    );
+  });
+
   testWidgets('S1SwipePagination right swipe requests previous page',
       (tester) async {
     int? requestedPage;

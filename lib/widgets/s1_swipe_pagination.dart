@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+import '../theme/app_theme.dart';
 import '../theme/s1_haptics.dart';
 import '../utils/boundary_feedback.dart';
 import '../utils/scroll_motion.dart';
@@ -325,6 +326,17 @@ class S1SwipePaginationState extends State<S1SwipePagination> {
           feedback: _boundaryFeedback,
           child: widget.pageBuilder(context, _scrollController),
         ),
+      );
+    }
+
+    final canShowSkeleton =
+        slot < _centerSlot ? _canSwipeToPrevious : _canSwipeToNext;
+
+    if (!canShowSkeleton) {
+      return ColoredBox(
+        key: ValueKey('s1-swipe-slot-placeholder-$slot'),
+        color: S1Surface.page(Theme.of(context).colorScheme),
+        child: const SizedBox.expand(),
       );
     }
 

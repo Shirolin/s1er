@@ -137,28 +137,29 @@ void main() {
       final dark = AppTheme.darkTheme('sand');
       final darkScheme = dark.colorScheme;
       expect(dark.scaffoldBackgroundColor, darkScheme.surfaceContainerLowest);
-      expect(dark.cardTheme.color, darkScheme.surfaceContainerHigh);
+      expect(dark.cardTheme.color, darkScheme.surfaceContainer);
       expect(
         S1Surface.reading(darkScheme),
         darkScheme.surfaceContainer,
       );
+      expect(S1Surface.reading(darkScheme), S1Surface.card(darkScheme));
       expect(
         S1Surface.reading(darkScheme),
         isNot(darkScheme.surfaceContainerLow),
+      );
+      expect(
+        S1Surface.reading(darkScheme),
+        isNot(darkScheme.surfaceContainerHigh),
       );
       expect(
         S1Surface.reading(darkScheme).computeLuminance(),
         greaterThan(S1Surface.page(darkScheme).computeLuminance()),
       );
       expect(
-        S1Surface.reading(darkScheme).computeLuminance(),
-        lessThan(S1Surface.card(darkScheme).computeLuminance()),
-      );
-      expect(
         S1BottomBarStyle.background(darkScheme),
         darkScheme.surfaceContainerLowest,
       );
-      // 深色嵌套：High 亮于 Container 阅读面（与 card 同档）；条目 Highest 再抬一档。
+      // 深色嵌套：High 亮于 Container 内容卡；条目 Highest 再抬一档。
       expect(
         S1Surface.nestedPanel(darkScheme),
         darkScheme.surfaceContainerHigh,
@@ -169,7 +170,7 @@ void main() {
       );
       expect(
         S1Surface.nestedPanel(darkScheme),
-        S1Surface.card(darkScheme),
+        isNot(S1Surface.card(darkScheme)),
       );
       expect(
         S1Surface.nestedPanel(darkScheme),

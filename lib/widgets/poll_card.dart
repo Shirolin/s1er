@@ -125,7 +125,7 @@ class _PollCardState extends ConsumerState<PollCard> {
         vertical: 4,
       ),
       elevation: 0,
-      color: S1Surface.card(scheme),
+      color: S1Surface.reading(scheme),
       shape: S1ReadingCardStyle.shape(
         context,
         enabled: compactListFullBleed,

@@ -1695,7 +1695,7 @@ class _BlockedPostPlaceholder extends ConsumerWidget {
         vertical: tokens.cardMarginVertical,
       ),
       elevation: 0,
-      color: S1Surface.card(scheme),
+      color: S1Surface.reading(scheme),
       shape: S1ReadingCardStyle.shape(
         context,
         enabled: compactListFullBleed,

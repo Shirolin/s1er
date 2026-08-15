@@ -98,6 +98,11 @@ void main() {
         light.floatingActionButtonTheme.backgroundColor,
         lightScheme.tertiaryContainer,
       );
+      expect(
+        S1Surface.reading(lightScheme),
+        lightScheme.surfaceContainerLow,
+      );
+      expect(S1Surface.reading(lightScheme), S1Surface.card(lightScheme));
       // 卡内嵌套：浅色 High/Highest，深于 Low 帖卡。
       expect(
         S1Surface.nestedPanel(lightScheme),
@@ -110,6 +115,10 @@ void main() {
       expect(
         S1Surface.nestedPanel(lightScheme),
         isNot(S1Surface.card(lightScheme)),
+      );
+      expect(
+        S1Surface.nestedPanel(lightScheme),
+        isNot(S1Surface.reading(lightScheme)),
       );
       // 弱浮层：与帖卡、画布均错开。
       expect(
@@ -130,13 +139,25 @@ void main() {
       expect(dark.scaffoldBackgroundColor, darkScheme.surfaceContainerLowest);
       expect(dark.cardTheme.color, darkScheme.surfaceContainerHigh);
       expect(
+        S1Surface.reading(darkScheme),
+        darkScheme.surfaceContainerLow,
+      );
+      expect(
+        S1Surface.reading(darkScheme).computeLuminance(),
+        greaterThan(S1Surface.page(darkScheme).computeLuminance()),
+      );
+      expect(
+        S1Surface.reading(darkScheme).computeLuminance(),
+        lessThan(S1Surface.card(darkScheme).computeLuminance()),
+      );
+      expect(
         S1BottomBarStyle.background(darkScheme),
         darkScheme.surfaceContainerLowest,
       );
-      // 深色嵌套：Low 面板亮于 High 帖卡；条目 Highest 再沉一档。
+      // 深色嵌套：Container 略亮于 Low 阅读面；条目 Highest 再抬一档。
       expect(
         S1Surface.nestedPanel(darkScheme),
-        darkScheme.surfaceContainerLow,
+        darkScheme.surfaceContainer,
       );
       expect(
         S1Surface.nestedPanelItem(darkScheme),
@@ -145,6 +166,10 @@ void main() {
       expect(
         S1Surface.nestedPanel(darkScheme),
         isNot(S1Surface.card(darkScheme)),
+      );
+      expect(
+        S1Surface.nestedPanel(darkScheme),
+        isNot(S1Surface.reading(darkScheme)),
       );
       expect(
         S1Surface.floatingControl(darkScheme),

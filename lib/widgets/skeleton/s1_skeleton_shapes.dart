@@ -10,7 +10,7 @@ abstract class S1SkeletonShapes {
 
   static Color barColor(ColorScheme scheme) => scheme.surfaceContainerHighest;
 
-  static Color cardColor(ColorScheme scheme) => scheme.surfaceContainerLow;
+  static Color cardColor(ColorScheme scheme) => S1Surface.reading(scheme);
 }
 
 class S1SkeletonBar extends StatelessWidget {

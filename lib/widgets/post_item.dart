@@ -259,7 +259,7 @@ class _PostItemState extends ConsumerState<PostItem>
           ? scheme.secondaryContainer.withValues(alpha: S1Alpha.half)
           : widget.isHighlighted
               ? scheme.primaryContainer.withValues(alpha: S1Alpha.half)
-              : S1Surface.card(scheme),
+              : S1Surface.reading(scheme),
       shape: S1ReadingCardStyle.shape(
         context,
         enabled: compactListFullBleed,

@@ -155,32 +155,32 @@ class BrowsingSettingsSection extends ConsumerWidget {
               onTap: () => context.push('/hidden-forums'),
             ),
             const SizedBox(height: 8),
-            SwitchListTile(
-              secondary: Icon(
-                Icons.view_agenda_outlined,
-                color: scheme.onSurfaceVariant,
-              ),
-              title: const Text('窄屏列表铺满'),
-              subtitle: Text(
-                '仅竖屏手机去掉主题列表和楼层卡片的左右边距与圆角。平板和桌面不受影响。',
-                style: subtitleStyle,
-              ),
-              value: compactListFullBleed,
-              onChanged: (value) {
-                S1Haptics.selection();
-                notifier.setCompactListFullBleed(value);
-              },
-              contentPadding: const EdgeInsets.symmetric(horizontal: 8),
-              shape: const RoundedRectangleBorder(
-                borderRadius: S1Shape.small,
-              ),
-            ),
-            const SizedBox(height: 8),
             Padding(
               padding: const EdgeInsets.symmetric(horizontal: 8),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
+                  SwitchListTile(
+                    secondary: Icon(
+                      Icons.view_agenda_outlined,
+                      color: scheme.onSurfaceVariant,
+                    ),
+                    title: const Text('窄屏列表铺满'),
+                    subtitle: Text(
+                      '窗口宽度不足 600 时去掉主题列表和楼层卡片的左右边距与圆角（一般是竖屏手机）。',
+                      style: subtitleStyle,
+                    ),
+                    value: compactListFullBleed,
+                    onChanged: (value) {
+                      S1Haptics.selection();
+                      notifier.setCompactListFullBleed(value);
+                    },
+                    contentPadding: EdgeInsets.zero,
+                    shape: const RoundedRectangleBorder(
+                      borderRadius: S1Shape.small,
+                    ),
+                  ),
+                  const SizedBox(height: 16),
                   Text('主题列表密度', style: textTheme.titleSmall),
                   const SizedBox(height: 4),
                   Text(

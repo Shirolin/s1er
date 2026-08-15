@@ -59,6 +59,7 @@ import '../models/share_floor_data.dart';
 import '../utils/share_floor_selection.dart';
 import '../theme/app_theme.dart';
 import '../theme/s1_haptics.dart';
+import '../theme/s1_reading_card_style.dart';
 
 bool shouldRecordReadingProgress(AppSettings settings, AuthState auth) {
   if (!settings.recordReadingHistory) {
@@ -1683,18 +1684,28 @@ class _BlockedPostPlaceholder extends ConsumerWidget {
     final tokens = PostItemDensityTokens.forDensity(
       ref.watch(settingsProvider.select((s) => s.postListDensity)),
     );
+    final compactListFullBleed = ref.watch(
+      settingsProvider.select((s) => s.compactListFullBleed),
+    );
 
     return Card(
-      margin: EdgeInsets.symmetric(
-        horizontal: 8,
+      margin: S1ReadingCardStyle.margin(
+        context,
+        enabled: compactListFullBleed,
         vertical: tokens.cardMarginVertical,
       ),
       elevation: 0,
       color: S1Surface.card(scheme),
-      shape: S1Shape.cardShape,
+      shape: S1ReadingCardStyle.shape(
+        context,
+        enabled: compactListFullBleed,
+      ),
       child: InkWell(
         onTap: onExpand,
-        borderRadius: S1Shape.medium,
+        borderRadius: S1ReadingCardStyle.inkBorderRadius(
+          context,
+          enabled: compactListFullBleed,
+        ),
         child: Padding(
           padding: EdgeInsets.symmetric(
             horizontal: tokens.cardPadding,

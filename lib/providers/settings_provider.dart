@@ -34,6 +34,7 @@ class AppSettings {
     this.hapticsEnabled = true,
     this.threadListDensity = ListDensity.standard,
     this.postListDensity = ListDensity.standard,
+    this.compactListFullBleed = false,
     this.threadListFiltersExpanded = false,
     this.fontSize = S1Typography.defaultBodySize,
     this.collapsedForums = const {},
@@ -66,6 +67,9 @@ class AppSettings {
   final bool hapticsEnabled;
   final ListDensity threadListDensity;
   final ListDensity postListDensity;
+
+  /// Compact windows (≤599dp): thread list / post floors go edge-to-edge.
+  final bool compactListFullBleed;
   final bool threadListFiltersExpanded;
   final int fontSize;
   final Set<String> collapsedForums;
@@ -110,6 +114,7 @@ class AppSettings {
     bool? hapticsEnabled,
     ListDensity? threadListDensity,
     ListDensity? postListDensity,
+    bool? compactListFullBleed,
     bool? threadListFiltersExpanded,
     int? fontSize,
     Set<String>? collapsedForums,
@@ -142,6 +147,7 @@ class AppSettings {
       hapticsEnabled: hapticsEnabled ?? this.hapticsEnabled,
       threadListDensity: threadListDensity ?? this.threadListDensity,
       postListDensity: postListDensity ?? this.postListDensity,
+      compactListFullBleed: compactListFullBleed ?? this.compactListFullBleed,
       threadListFiltersExpanded:
           threadListFiltersExpanded ?? this.threadListFiltersExpanded,
       fontSize: fontSize ?? this.fontSize,
@@ -187,6 +193,7 @@ class AppSettings {
         other.hapticsEnabled == hapticsEnabled &&
         other.threadListDensity == threadListDensity &&
         other.postListDensity == postListDensity &&
+        other.compactListFullBleed == compactListFullBleed &&
         other.threadListFiltersExpanded == threadListFiltersExpanded &&
         other.fontSize == fontSize &&
         _setEquals(other.collapsedForums, collapsedForums) &&
@@ -234,6 +241,7 @@ class AppSettings {
         shareImageFormat,
         sharePixelRatio,
         Object.hash(
+          compactListFullBleed,
           threadListFiltersExpanded,
           shareAdvancedExport,
           shareSaveMode,
@@ -400,6 +408,11 @@ class SettingsNotifier extends Notifier<AppSettings> {
       postListDensity: ListDensity.fromStored(
         settingsStore.get<String>('postListDensity'),
       ),
+      compactListFullBleed: settingsStore.get<bool>(
+            'compactListFullBleed',
+            defaultValue: false,
+          ) ??
+          false,
       threadListFiltersExpanded: settingsStore.get<bool>(
             'threadListFiltersExpanded',
             defaultValue: false,
@@ -606,6 +619,11 @@ class SettingsNotifier extends Notifier<AppSettings> {
     _persist('postListDensity', value.storageKey);
   }
 
+  void setCompactListFullBleed(bool value) {
+    _commit(state.copyWith(compactListFullBleed: value));
+    _persist('compactListFullBleed', value);
+  }
+
   void setForumSplitListPaneWidth(double? value) {
     _commit(state.copyWith(forumSplitListPaneWidth: value));
     _persist('forumSplitListPaneWidth', value);
@@ -731,6 +749,7 @@ class SettingsNotifier extends Notifier<AppSettings> {
       hapticsEnabled: defaults.hapticsEnabled,
       threadListDensity: defaults.threadListDensity,
       postListDensity: defaults.postListDensity,
+      compactListFullBleed: defaults.compactListFullBleed,
       threadListFiltersExpanded: defaults.threadListFiltersExpanded,
       fontSize: defaults.fontSize,
       shareImageFormat: defaults.shareImageFormat,
@@ -758,6 +777,7 @@ class SettingsNotifier extends Notifier<AppSettings> {
     _persist('hapticsEnabled', defaults.hapticsEnabled);
     _persist('threadListDensity', defaults.threadListDensity.storageKey);
     _persist('postListDensity', defaults.postListDensity.storageKey);
+    _persist('compactListFullBleed', defaults.compactListFullBleed);
     _persist('threadListFiltersExpanded', defaults.threadListFiltersExpanded);
     _persist('fontSize', defaults.fontSize);
     _persist('shareImageFormat', defaults.shareImageFormat.storageKey);

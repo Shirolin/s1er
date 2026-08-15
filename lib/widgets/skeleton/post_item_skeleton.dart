@@ -1,18 +1,24 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../providers/settings_provider.dart';
 import 's1_skeleton_shapes.dart';
 import 's1_viewport_skeleton_list.dart';
 
 /// 对齐 [PostItem] 的帖子楼层骨架。
-class PostItemSkeleton extends StatelessWidget {
+class PostItemSkeleton extends ConsumerWidget {
   const PostItemSkeleton({super.key});
 
   static const estimatedHeight = 168.0;
 
   @override
-  Widget build(BuildContext context) {
-    return const S1SkeletonCard(
-      child: Column(
+  Widget build(BuildContext context, WidgetRef ref) {
+    final compactListFullBleed = ref.watch(
+      settingsProvider.select((s) => s.compactListFullBleed),
+    );
+    return S1SkeletonCard(
+      compactListFullBleed: compactListFullBleed,
+      child: const Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Row(

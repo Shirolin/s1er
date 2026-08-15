@@ -114,6 +114,7 @@ void main() {
         'shareAdvancedExport': true,
         'threadListDensity': 'compact',
         'postListDensity': 'standard',
+        'compactListFullBleed': true,
         'threadListFiltersExpanded': false,
         'hideStickyThreads': true,
         'hideStickyForumOverrides': {'4', '9'},
@@ -131,6 +132,7 @@ void main() {
       expect(backup['share_advanced_export'], isTrue);
       expect(backup['thread_list_density'], 'compact');
       expect(backup['post_list_density'], 'standard');
+      expect(backup['compact_list_full_bleed'], isTrue);
       expect(backup['thread_list_filters_expanded'], isFalse);
       expect(backup['hide_sticky_threads'], isTrue);
       expect(
@@ -155,6 +157,7 @@ void main() {
       expect(app['shareImageFormat'], 'webp');
       expect(app['sharePixelRatio'], 2);
       expect(app['shareAdvancedExport'], isTrue);
+      expect(app['compactListFullBleed'], isTrue);
       expect(app['hiddenForums'], ['75', '6']);
       expect(app['hideStickyThreads'], isTrue);
       expect(app['hideStickyForumOverrides'], ['4', '9']);

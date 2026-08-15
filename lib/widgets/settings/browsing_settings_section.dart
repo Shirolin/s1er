@@ -25,6 +25,9 @@ class BrowsingSettingsSection extends ConsumerWidget {
     final postListDensity = ref.watch(
       settingsProvider.select((settings) => settings.postListDensity),
     );
+    final compactListFullBleed = ref.watch(
+      settingsProvider.select((settings) => settings.compactListFullBleed),
+    );
     final stripSpecialStyles = ref.watch(
       settingsProvider.select((settings) => settings.stripSpecialStyles),
     );
@@ -157,6 +160,27 @@ class BrowsingSettingsSection extends ConsumerWidget {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
+                  SwitchListTile(
+                    secondary: Icon(
+                      Icons.view_agenda_outlined,
+                      color: scheme.onSurfaceVariant,
+                    ),
+                    title: const Text('窄屏列表铺满'),
+                    subtitle: Text(
+                      '窗口宽度不足 600 时去掉主题列表和楼层卡片的左右边距与圆角（一般是竖屏手机）。',
+                      style: subtitleStyle,
+                    ),
+                    value: compactListFullBleed,
+                    onChanged: (value) {
+                      S1Haptics.selection();
+                      notifier.setCompactListFullBleed(value);
+                    },
+                    contentPadding: EdgeInsets.zero,
+                    shape: const RoundedRectangleBorder(
+                      borderRadius: S1Shape.small,
+                    ),
+                  ),
+                  const SizedBox(height: 16),
                   Text('主题列表密度', style: textTheme.titleSmall),
                   const SizedBox(height: 4),
                   Text(

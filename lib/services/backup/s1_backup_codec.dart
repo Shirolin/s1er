@@ -203,6 +203,7 @@ class S1BackupSettingsMapper {
     'hapticsEnabled': 'haptics_enabled',
     'threadListDensity': 'thread_list_density',
     'postListDensity': 'post_list_density',
+    'compactListFullBleed': 'compact_list_full_bleed',
     'threadListFiltersExpanded': 'thread_list_filters_expanded',
     'forumSplitListPaneWidth': 'forum_split_list_pane_width',
     'fontSize': 'font_size',

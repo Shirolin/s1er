@@ -6,6 +6,7 @@ import 'package:s1er/models/reading_record.dart';
 import 'package:s1er/models/thread.dart';
 import 'package:s1er/providers/reading_history_provider.dart';
 import 'package:s1er/providers/settings_provider.dart';
+import 'package:s1er/theme/app_theme.dart';
 import 'package:s1er/widgets/thread_card.dart';
 
 import '../helpers/test_theme.dart';
@@ -27,6 +28,7 @@ void main() {
   Future<void> pumpCard(
     WidgetTester tester, {
     required ListDensity density,
+    bool compactListFullBleed = false,
     Thread? thread,
     String? selectedTypeId,
     ThreadTypeFilterCallback? onTypeFilter,
@@ -38,7 +40,10 @@ void main() {
         overrides: [
           settingsProvider.overrideWith(
             () => SettingsNotifier(
-              initial: AppSettings(threadListDensity: density),
+              initial: AppSettings(
+                threadListDensity: density,
+                compactListFullBleed: compactListFullBleed,
+              ),
             ),
           ),
           readingRecordProvider(t.tid).overrideWithValue(record),
@@ -406,5 +411,57 @@ void main() {
 
     expect(find.text('青黑无脑'), findsOneWidget);
     expect(find.text('青黑无脑不要游戏只求一战'), findsNothing);
+  });
+
+  testWidgets('compact full-bleed drops side margin and radius',
+      (tester) async {
+    tester.view.physicalSize = const Size(400, 800);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
+    await pumpCard(
+      tester,
+      density: ListDensity.standard,
+      compactListFullBleed: true,
+    );
+
+    final card = tester.widget<Card>(find.byType(Card).first);
+    expect(card.margin, const EdgeInsets.symmetric(vertical: 5));
+    final shape = card.shape as RoundedRectangleBorder;
+    expect(shape.borderRadius, BorderRadius.zero);
+  });
+
+  testWidgets('full-bleed setting ignored on medium windows', (tester) async {
+    tester.view.physicalSize = const Size(800, 800);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
+    await tester.pumpWidget(
+      ProviderScope(
+        overrides: [
+          settingsProvider.overrideWith(
+            () => SettingsNotifier(
+              initial: const AppSettings(compactListFullBleed: true),
+            ),
+          ),
+          readingRecordProvider(sampleThread.tid).overrideWithValue(null),
+        ],
+        child: wrapWithAppTheme(
+          SizedBox(
+            width: 800,
+            child: ThreadCard(thread: sampleThread),
+          ),
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    final card = tester.widget<Card>(find.byType(Card).first);
+    expect(
+      card.margin,
+      const EdgeInsets.symmetric(horizontal: 8, vertical: 5),
+    );
+    final shape = card.shape as RoundedRectangleBorder;
+    expect(shape.borderRadius, S1Shape.medium);
   });
 }

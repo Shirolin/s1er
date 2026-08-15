@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../../theme/app_theme.dart';
+import '../../theme/s1_reading_card_style.dart';
 
 /// M3 骨架基础形状（色取自 [ColorScheme] / [TextTheme]）。
 abstract class S1SkeletonShapes {
@@ -66,23 +67,32 @@ class S1SkeletonCard extends StatelessWidget {
   const S1SkeletonCard({
     super.key,
     required this.child,
-    this.margin = const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
+    this.verticalMargin = 4,
     this.padding = const EdgeInsets.all(12),
+    this.compactListFullBleed = false,
   });
 
   final Widget child;
-  final EdgeInsetsGeometry margin;
+  final double verticalMargin;
   final EdgeInsetsGeometry padding;
+  final bool compactListFullBleed;
 
   @override
   Widget build(BuildContext context) {
     final scheme = Theme.of(context).colorScheme;
     return Padding(
-      padding: margin,
+      padding: S1ReadingCardStyle.margin(
+        context,
+        enabled: compactListFullBleed,
+        vertical: verticalMargin,
+      ),
       child: DecoratedBox(
         decoration: BoxDecoration(
           color: S1SkeletonShapes.cardColor(scheme),
-          borderRadius: S1Shape.medium,
+          borderRadius: S1ReadingCardStyle.inkBorderRadius(
+            context,
+            enabled: compactListFullBleed,
+          ),
         ),
         child: Padding(padding: padding, child: child),
       ),

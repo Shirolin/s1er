@@ -5,8 +5,10 @@ import '../models/poll.dart';
 import '../providers/auth_provider.dart';
 import '../providers/poll_vote_provider.dart';
 import '../providers/post_provider.dart';
+import '../providers/settings_provider.dart';
 import '../theme/app_theme.dart';
 import '../theme/s1_haptics.dart';
+import '../theme/s1_reading_card_style.dart';
 import '../utils/format_utils.dart';
 import '../utils/poll_bar_color.dart';
 import '../utils/s1_snack_bar.dart';
@@ -112,12 +114,22 @@ class _PollCardState extends ConsumerState<PollCard> {
     );
     final showResults = poll.showResults;
     final canInteract = poll.canVote && isLoggedIn;
+    final compactListFullBleed = ref.watch(
+      settingsProvider.select((s) => s.compactListFullBleed),
+    );
 
     return Card(
-      margin: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+      margin: S1ReadingCardStyle.margin(
+        context,
+        enabled: compactListFullBleed,
+        vertical: 4,
+      ),
       elevation: 0,
       color: S1Surface.card(scheme),
-      shape: S1Shape.cardShape,
+      shape: S1ReadingCardStyle.shape(
+        context,
+        enabled: compactListFullBleed,
+      ),
       child: Padding(
         padding: const EdgeInsets.fromLTRB(12, 12, 12, 16),
         child: Column(

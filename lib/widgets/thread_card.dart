@@ -243,7 +243,7 @@ class ThreadCard extends ConsumerWidget {
             ? scheme.secondaryContainer
             : isSticky
                 ? scheme.primaryContainer
-                : S1Surface.card(scheme),
+                : S1Surface.reading(scheme),
         shape: S1ReadingCardStyle.shape(
           context,
           enabled: compactListFullBleed,

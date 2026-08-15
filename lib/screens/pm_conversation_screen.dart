@@ -126,7 +126,7 @@ class _PmComposer extends StatelessWidget {
     return SafeArea(
       top: false,
       child: Material(
-        color: isDesktop ? scheme.surface : scheme.surfaceContainer,
+        color: isDesktop ? S1Surface.page(scheme) : scheme.surfaceContainer,
         child: isDesktop
             ? Center(
                 child: ConstrainedBox(

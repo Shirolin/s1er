@@ -321,6 +321,8 @@ class AppTheme {
       textTheme: textTheme,
       primaryTextTheme: textTheme,
       scaffoldBackgroundColor: S1Surface.page(colorScheme),
+      // 默认 Material / 路由空隙走画布，避免浅色 `scheme.surface` 近白闪一下。
+      canvasColor: S1Surface.page(colorScheme),
       appBarTheme: AppBarTheme(
         centerTitle: true,
         elevation: 0,

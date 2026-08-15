@@ -1413,7 +1413,7 @@ class _ThreadDetailScreenState extends ConsumerState<ThreadDetailScreen> {
             children: [
               if (widget.suppressAppBar && _shareSelectMode)
                 Material(
-                  color: scheme.surface,
+                  color: S1Surface.page(scheme),
                   elevation: 0,
                   child: SafeArea(
                     bottom: false,

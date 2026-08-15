@@ -77,6 +77,8 @@ void main() {
         light.scaffoldBackgroundColor,
         lightScheme.surfaceContainerHighest,
       );
+      expect(light.canvasColor, S1Surface.page(lightScheme));
+      expect(light.canvasColor, isNot(lightScheme.surface));
       expect(light.cardTheme.color, lightScheme.surfaceContainerLow);
       expect(
         light.appBarTheme.backgroundColor,
@@ -137,6 +139,7 @@ void main() {
       final dark = AppTheme.darkTheme('sand');
       final darkScheme = dark.colorScheme;
       expect(dark.scaffoldBackgroundColor, darkScheme.surfaceContainerLowest);
+      expect(dark.canvasColor, S1Surface.page(darkScheme));
       expect(dark.cardTheme.color, darkScheme.surfaceContainer);
       expect(
         S1Surface.reading(darkScheme),

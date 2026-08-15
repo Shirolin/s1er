@@ -38,6 +38,24 @@ void main() {
     expect(find.text('skeleton-item'), findsNWidgets(4));
   });
 
+  testWidgets('ThreadLocateSkeleton uses page surface not scheme.surface',
+      (tester) async {
+    await tester.pumpWidget(wrap(const ThreadLocateSkeleton()));
+    await tester.pump();
+
+    final scheme = AppTheme.lightTheme('purple').colorScheme;
+    final box = tester.widget<ColoredBox>(
+      find
+          .descendant(
+            of: find.byType(ThreadLocateSkeleton),
+            matching: find.byType(ColoredBox),
+          )
+          .first,
+    );
+    expect(box.color, S1Surface.page(scheme));
+    expect(box.color, isNot(scheme.surface));
+  });
+
   testWidgets('list skeleton widgets pump without error', (tester) async {
     const widgets = <Widget>[
       S1AsyncListLoading(child: PostItemSkeletonList()),

@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:s1er/theme/app_theme.dart';
 import 'package:s1er/widgets/skeleton/forum_index_skeleton.dart';
@@ -11,9 +12,11 @@ import 'package:s1er/widgets/thread_locate_skeleton.dart';
 
 void main() {
   Widget wrap(Widget child) {
-    return MaterialApp(
-      theme: AppTheme.lightTheme('purple'),
-      home: Scaffold(body: child),
+    return ProviderScope(
+      child: MaterialApp(
+        theme: AppTheme.lightTheme('purple'),
+        home: Scaffold(body: child),
+      ),
     );
   }
 

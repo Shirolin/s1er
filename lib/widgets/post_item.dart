@@ -10,6 +10,7 @@ import '../providers/thread_rate_logs_provider.dart';
 import '../providers/user_profile_provider.dart';
 import '../theme/app_theme.dart';
 import '../theme/s1_haptics.dart';
+import '../theme/s1_reading_card_style.dart';
 import '../utils/banned_post_detector.dart';
 import '../utils/compact_label.dart';
 import '../utils/format_utils.dart';
@@ -233,6 +234,9 @@ class _PostItemState extends ConsumerState<PostItem>
     final tokens = PostItemDensityTokens.forDensity(
       ref.watch(settingsProvider.select((s) => s.postListDensity)),
     );
+    final compactListFullBleed = ref.watch(
+      settingsProvider.select((s) => s.compactListFullBleed),
+    );
     final globalStrip = ref.watch(
       settingsProvider.select((s) => s.stripSpecialStyles),
     );
@@ -245,8 +249,9 @@ class _PostItemState extends ConsumerState<PostItem>
 
     final selected = widget.shareSelectMode && widget.isShareSelected;
     final card = Card(
-      margin: EdgeInsets.symmetric(
-        horizontal: 8,
+      margin: S1ReadingCardStyle.margin(
+        context,
+        enabled: compactListFullBleed,
         vertical: tokens.cardMarginVertical,
       ),
       elevation: 0,
@@ -255,12 +260,13 @@ class _PostItemState extends ConsumerState<PostItem>
           : widget.isHighlighted
               ? scheme.primaryContainer.withValues(alpha: S1Alpha.half)
               : S1Surface.card(scheme),
-      shape: selected
-          ? RoundedRectangleBorder(
-              borderRadius: S1Shape.medium,
-              side: BorderSide(color: scheme.secondary, width: 1.5),
-            )
-          : S1Shape.cardShape,
+      shape: S1ReadingCardStyle.shape(
+        context,
+        enabled: compactListFullBleed,
+        side: selected
+            ? BorderSide(color: scheme.secondary, width: 1.5)
+            : BorderSide.none,
+      ),
       child: Padding(
         padding: tokens.contentPadding,
         child: Column(

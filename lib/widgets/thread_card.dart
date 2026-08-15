@@ -8,6 +8,7 @@ import '../providers/reading_history_provider.dart';
 import '../providers/settings_provider.dart';
 import '../theme/app_theme.dart';
 import '../theme/s1_haptics.dart';
+import '../theme/s1_reading_card_style.dart';
 import '../models/thread_destination.dart';
 import '../utils/compact_label.dart';
 import '../utils/format_utils.dart';
@@ -200,6 +201,9 @@ class ThreadCard extends ConsumerWidget {
     final density = ref.watch(
       settingsProvider.select((s) => s.threadListDensity),
     );
+    final compactListFullBleed = ref.watch(
+      settingsProvider.select((s) => s.compactListFullBleed),
+    );
     final tokens = ThreadCardDensityTokens.forDensity(density);
     final hasTag = thread.typeName != null && thread.typeName!.isNotEmpty;
     final isSticky = thread.isSticky;
@@ -227,8 +231,9 @@ class ThreadCard extends ConsumerWidget {
       button: true,
       label: thread.subject,
       child: Card(
-        margin: EdgeInsets.symmetric(
-          horizontal: 8,
+        margin: S1ReadingCardStyle.margin(
+          context,
+          enabled: compactListFullBleed,
           vertical: tokens.cardMarginVertical,
         ),
         elevation: 0,
@@ -239,11 +244,17 @@ class ThreadCard extends ConsumerWidget {
             : isSticky
                 ? scheme.primaryContainer
                 : S1Surface.card(scheme),
-        shape: S1Shape.cardShape,
+        shape: S1ReadingCardStyle.shape(
+          context,
+          enabled: compactListFullBleed,
+        ),
         clipBehavior: Clip.antiAlias,
         child: InkWell(
           onTap: () => _handleTap(context, ref),
-          borderRadius: S1Shape.medium,
+          borderRadius: S1ReadingCardStyle.inkBorderRadius(
+            context,
+            enabled: compactListFullBleed,
+          ),
           child: Padding(
             padding: EdgeInsets.symmetric(
               horizontal: 12,

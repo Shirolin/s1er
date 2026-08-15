@@ -22,13 +22,17 @@ void main() {
   Future<void> pumpPost(
     WidgetTester tester, {
     required ListDensity density,
+    bool compactListFullBleed = false,
   }) async {
     await tester.pumpWidget(
       ProviderScope(
         overrides: [
           settingsProvider.overrideWith(
             () => SettingsNotifier(
-              initial: AppSettings(postListDensity: density),
+              initial: AppSettings(
+                postListDensity: density,
+                compactListFullBleed: compactListFullBleed,
+              ),
             ),
           ),
         ],
@@ -98,5 +102,22 @@ void main() {
       PostItemDensityTokens.forDensity(ListDensity.compact).headerActionExtent,
       32,
     );
+  });
+
+  testWidgets('compact full-bleed drops post card side margin and radius',
+      (tester) async {
+    tester.view.physicalSize = const Size(400, 800);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
+    await pumpPost(
+      tester,
+      density: ListDensity.standard,
+      compactListFullBleed: true,
+    );
+    final card = tester.widget<Card>(find.byType(Card).first);
+    expect(card.margin, const EdgeInsets.symmetric(vertical: 4));
+    final shape = card.shape as RoundedRectangleBorder;
+    expect(shape.borderRadius, BorderRadius.zero);
   });
 }

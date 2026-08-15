@@ -74,6 +74,7 @@ void main() {
     expect(state.shareAdvancedExport, isFalse);
     expect(state.threadListDensity, ListDensity.standard);
     expect(state.postListDensity, ListDensity.standard);
+    expect(state.compactListFullBleed, isFalse);
     expect(state.stripSpecialStyles, isFalse);
     expect(state.hideStickyThreads, isFalse);
     expect(state.hideStickyForumOverrides, isEmpty);
@@ -310,6 +311,23 @@ void main() {
     expect(store.get<String>('postListDensity'), 'compact');
   });
 
+  test('setCompactListFullBleed persists to settings store', () async {
+    final container = ProviderContainer(
+      overrides: [
+        settingsProvider.overrideWith(
+          () => SettingsNotifier(store: store, initial: const AppSettings()),
+        ),
+      ],
+    );
+    addTearDown(container.dispose);
+
+    expect(container.read(settingsProvider).compactListFullBleed, isFalse);
+    container.read(settingsProvider.notifier).setCompactListFullBleed(true);
+    expect(container.read(settingsProvider).compactListFullBleed, isTrue);
+    await Future<void>.delayed(const Duration(milliseconds: 50));
+    expect(store.get<bool>('compactListFullBleed'), isTrue);
+  });
+
   test('setThreadListFiltersExpanded persists', () async {
     final container = ProviderContainer(
       overrides: [
@@ -345,6 +363,7 @@ void main() {
             initial: const AppSettings(
               threadListDensity: ListDensity.compact,
               postListDensity: ListDensity.compact,
+              compactListFullBleed: true,
               threadListFiltersExpanded: false,
             ),
           ),
@@ -357,6 +376,7 @@ void main() {
     final state = container.read(settingsProvider);
     expect(state.threadListDensity, ListDensity.standard);
     expect(state.postListDensity, ListDensity.standard);
+    expect(state.compactListFullBleed, isFalse);
     expect(state.threadListFiltersExpanded, isFalse);
   });
 

@@ -36,15 +36,15 @@ abstract class S1Shape {
 ///
 /// 浅色（与 Reply `Color.kt` / 列表卡用法一致的可映射关系）：
 /// 1. **画布** [page] = [ColorScheme.surfaceContainerHighest]（`#EDE0D4`）
-/// 2. **内容浮层** [card] = [ColorScheme.surfaceContainerLow]（`#FFF1E5` 奶油沙；
-///    Reply 未选中列表卡用 `surfaceVariant`≈此档，避免 `surface` 过白）
-/// 3. **阅读面** [reading] = 与 [card] 同档 Low（主题列表 / 楼层）
-/// 4. **卡内嵌套** [nestedPanel] / [nestedPanelItem] = High / Highest（评分区等）
-/// 5. **强调** = `primaryContainer`（选中）/ `secondaryContainer`（打开）等
+/// 2. **内容卡 / 阅读面** [card] / [reading] = [ColorScheme.surfaceContainerLow]
+///    （`#FFF1E5` 奶油沙；Reply 未选中列表卡用 `surfaceVariant`≈此档）
+/// 3. **卡内嵌套** [nestedPanel] / [nestedPanelItem] = High / Highest（评分区等）
+/// 4. **强调** = `primaryContainer`（选中）/ `secondaryContainer`（打开）等
 ///
-/// 深色：page=Lowest，reading=Container（OLED/LCD 折中；低于 High 灯板），
-/// card=High（设置等稀疏卡），nestedPanel=High，nestedPanelItem=Highest。
-/// 弱浮层 [floatingControl]：浅色 High（对 Low 卡 / Highest 画布），深色 Highest（对 High 卡 / Lowest 画布）。
+/// 深色：page=Lowest，card=reading=Container（分组卡与阅读面同一档），
+/// nestedPanel=High，nestedPanelItem=Highest。
+/// 弱浮层 [floatingControl]：浅色 High（对 Low 卡 / Highest 画布），
+/// 深色 Highest（对 Container 卡 / Lowest 画布）。
 /// FAB 用 `tertiaryContainer`（Reply 薄荷绿）。导航铬件与画布同色。
 abstract class S1Surface {
   static Color page(ColorScheme scheme) => scheme.brightness == Brightness.light
@@ -53,14 +53,10 @@ abstract class S1Surface {
 
   static Color card(ColorScheme scheme) => scheme.brightness == Brightness.light
       ? scheme.surfaceContainerLow
-      : scheme.surfaceContainerHigh;
+      : scheme.surfaceContainer;
 
-  /// 主题列表 / 帖内楼层等大面积阅读底：浅色与 [card] 同档 Low；
-  /// 深色用 Container（低于 [card] 的 High，高于画布邻档 Low，兼顾 OLED 近黑压阶与 LCD 灯板）。
-  static Color reading(ColorScheme scheme) =>
-      scheme.brightness == Brightness.light
-          ? scheme.surfaceContainerLow
-          : scheme.surfaceContainer;
+  /// 主题列表 / 帖内楼层等大面积阅读底：与 [card] 同档。
+  static Color reading(ColorScheme scheme) => card(scheme);
 
   /// 贴在 [reading] 内的嵌套面板（评分区等）：浅色更深、深色略亮，与阅读面错开。
   static Color nestedPanel(ColorScheme scheme) => scheme.surfaceContainerHigh;

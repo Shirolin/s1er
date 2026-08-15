@@ -140,7 +140,11 @@ void main() {
       expect(dark.cardTheme.color, darkScheme.surfaceContainerHigh);
       expect(
         S1Surface.reading(darkScheme),
-        darkScheme.surfaceContainerLow,
+        darkScheme.surfaceContainer,
+      );
+      expect(
+        S1Surface.reading(darkScheme),
+        isNot(darkScheme.surfaceContainerLow),
       );
       expect(
         S1Surface.reading(darkScheme).computeLuminance(),
@@ -154,10 +158,10 @@ void main() {
         S1BottomBarStyle.background(darkScheme),
         darkScheme.surfaceContainerLowest,
       );
-      // 深色嵌套：Container 略亮于 Low 阅读面；条目 Highest 再抬一档。
+      // 深色嵌套：High 亮于 Container 阅读面（与 card 同档）；条目 Highest 再抬一档。
       expect(
         S1Surface.nestedPanel(darkScheme),
-        darkScheme.surfaceContainer,
+        darkScheme.surfaceContainerHigh,
       );
       expect(
         S1Surface.nestedPanelItem(darkScheme),
@@ -165,7 +169,7 @@ void main() {
       );
       expect(
         S1Surface.nestedPanel(darkScheme),
-        isNot(S1Surface.card(darkScheme)),
+        S1Surface.card(darkScheme),
       );
       expect(
         S1Surface.nestedPanel(darkScheme),

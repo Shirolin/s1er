@@ -1041,6 +1041,48 @@ class _ThreadDetailScreenState extends ConsumerState<ThreadDetailScreen> {
     );
   }
 
+  Widget _buildPostPageList(
+    ScrollController scrollController,
+    PostListState state,
+    List<({Post post, int originalIndex})> visible,
+    bool hasPageQuery,
+  ) {
+    const physics = AlwaysScrollableScrollPhysics();
+    if (state.posts.isEmpty) {
+      return ListView(
+        controller: scrollController,
+        physics: physics,
+        children: const [
+          SizedBox(height: 48),
+          Center(child: Text('暂无回复')),
+        ],
+      );
+    }
+    if (visible.isEmpty && hasPageQuery) {
+      return ListView(
+        controller: scrollController,
+        physics: physics,
+        children: const [
+          SizedBox(height: 48),
+          Center(child: Text('本页无匹配回复')),
+        ],
+      );
+    }
+    return ListView.builder(
+      controller: scrollController,
+      physics: physics,
+      scrollCacheExtent: S1FabLayout.threadDetailScrollCacheExtent,
+      padding: S1FabLayout.threadDetailScrollBottomPadding,
+      itemCount: _detailItemCount(state, visible),
+      itemBuilder: (context, index) => _buildDetailItem(
+        context,
+        state,
+        visible,
+        index,
+      ),
+    );
+  }
+
   /// 抓拍当前阅读位并压入跳转栈；无可用页码时跳过（首屏 ?pid= 不入栈）。
   void _captureInThreadJump() {
     final state = ref.read(postProvider(widget.tid)).asData?.value;
@@ -1343,37 +1385,29 @@ class _ThreadDetailScreenState extends ConsumerState<ThreadDetailScreen> {
                   adjacentSkeletonStyle: S1SwipeAdjacentSkeletonStyle.postItem,
                   onScrollMetricsChanged: _onScrollMetricsChanged,
                   onPageChanged: _goToPage,
-                  pageBuilder: (context, scrollController) =>
-                      ScrollPointerGateHost(
-                    child: Scrollbar(
-                      controller: scrollController,
-                      child: state.posts.isEmpty
-                          ? const Center(child: Text('暂无回复'))
-                          : visible.isEmpty && hasPageQuery
-                              ? ListView(
-                                  controller: scrollController,
-                                  children: const [
-                                    SizedBox(height: 48),
-                                    Center(child: Text('本页无匹配回复')),
-                                  ],
-                                )
-                              : ListView.builder(
-                                  controller: scrollController,
-                                  scrollCacheExtent:
-                                      S1FabLayout.threadDetailScrollCacheExtent,
-                                  padding: S1FabLayout
-                                      .threadDetailScrollBottomPadding,
-                                  itemCount: _detailItemCount(state, visible),
-                                  itemBuilder: (context, index) =>
-                                      _buildDetailItem(
-                                    context,
-                                    state,
-                                    visible,
-                                    index,
-                                  ),
+                  pageBuilder: (context, scrollController) {
+                    final list = _buildPostPageList(
+                      scrollController,
+                      state,
+                      visible,
+                      hasPageQuery,
+                    );
+                    return ScrollPointerGateHost(
+                      child: Scrollbar(
+                        controller: scrollController,
+                        child: _shareSelectMode
+                            ? list
+                            : RefreshIndicator(
+                                onRefresh: () => S1Haptics.wrapRefresh(
+                                  () => ref
+                                      .read(postProvider(widget.tid).notifier)
+                                      .refresh(),
                                 ),
-                    ),
-                  ),
+                                child: list,
+                              ),
+                      ),
+                    );
+                  },
                 ),
                 if (showLocateOverlay)
                   const Positioned.fill(

@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import '../config/api_config.dart';
@@ -17,7 +18,9 @@ import '../models/notice_item.dart';
 import '../theme/app_theme.dart';
 import '../theme/s1_haptics.dart';
 import '../utils/forum_index_view.dart';
+import '../utils/home_root_back.dart';
 import '../utils/s1_snack_bar.dart';
+import '../widgets/s1_fab_layout.dart';
 import '../widgets/app_bar_more_menu.dart';
 import '../widgets/favorite_confirm_dialog.dart';
 import '../widgets/hide_forum_confirm_dialog.dart';
@@ -73,6 +76,50 @@ class _HomeScreenBody extends ConsumerStatefulWidget {
 
 class _HomeScreenBodyState extends ConsumerState<_HomeScreenBody> {
   int _fallbackTab = 0;
+  DateTime? _exitArmedAt;
+
+  void _handleHomeRootPop({
+    required bool didPop,
+    required bool isForumTab,
+    required bool isMessagesTab,
+    required GoRouter? router,
+    required bool showNavBar,
+  }) {
+    if (didPop) return;
+    final action = resolveHomeRootBack(
+      isForumTab: isForumTab,
+      now: DateTime.now(),
+      lastExitArmedAt: _exitArmedAt,
+      canExitApp: Theme.of(context).platform == TargetPlatform.android,
+    );
+    switch (action) {
+      case HomeRootBackAction.goForum:
+        _exitArmedAt = null;
+        if (isMessagesTab) {
+          ref.read(messagesSegmentProvider.notifier).select(0);
+        }
+        if (router == null) {
+          setState(() => _fallbackTab = 0);
+        } else {
+          context.go('/');
+        }
+      case HomeRootBackAction.armExit:
+        _exitArmedAt = DateTime.now();
+        S1SnackBar.show(
+          context,
+          message: HomeRootBack.snackMessage,
+          duration: HomeRootBack.window,
+          bottomClearance: showNavBar
+              ? kBottomNavigationBarHeight + S1FabLayout.snackBarGap
+              : null,
+        );
+      case HomeRootBackAction.exit:
+        _exitArmedAt = null;
+        SystemNavigator.pop();
+      case HomeRootBackAction.ignore:
+        break;
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -122,126 +169,140 @@ class _HomeScreenBodyState extends ConsumerState<_HomeScreenBody> {
     final unreadDisplay = isLoggedIn
         ? ref.watch(unreadCountProvider.select((c) => c.displayBadge))
         : '';
+    final showNavBar = router == null || !context.isMediumOrAbove;
 
-    return Scaffold(
-      appBar: AppBar(
-        elevation: 0,
-        title: Text(
-          isProfileTab
-              ? '个人资料'
-              : isMessagesTab
-                  ? '消息'
-                  : 'Stage1st',
-        ),
-        actions: isProfileTab
-            ? [
-                if (isLoggedIn)
-                  AppBarMoreMenu(
-                    onRefresh: () =>
-                        ref.read(authStateProvider.notifier).refreshProfile(),
-                    browserUrl: '${ApiConfig.baseUrl}/home.php?mod=space',
-                  ),
-              ]
-            : isMessagesTab
-                ? [
+    return PopScope(
+      canPop: false,
+      onPopInvokedWithResult: (didPop, result) {
+        _handleHomeRootPop(
+          didPop: didPop,
+          isForumTab: selectedTab == 0,
+          isMessagesTab: isMessagesTab,
+          router: router,
+          showNavBar: showNavBar,
+        );
+      },
+      child: Scaffold(
+        appBar: AppBar(
+          elevation: 0,
+          title: Text(
+            isProfileTab
+                ? '个人资料'
+                : isMessagesTab
+                    ? '消息'
+                    : 'Stage1st',
+          ),
+          actions: isProfileTab
+              ? [
+                  if (isLoggedIn)
                     AppBarMoreMenu(
-                      onRefresh: () {
-                        ref.read(pmListProvider.notifier).refresh();
-                        ref.read(noticeListProvider.notifier).refresh();
-                      },
-                      browserUrl: messagesBrowserUrl(
-                        messagesSegment,
-                        noticeFeed: noticeFeed,
-                        page: messagesPage,
-                      ),
+                      onRefresh: () =>
+                          ref.read(authStateProvider.notifier).refreshProfile(),
+                      browserUrl: '${ApiConfig.baseUrl}/home.php?mod=space',
                     ),
-                  ]
-                : [
-                    if (isLoggedIn)
+                ]
+              : isMessagesTab
+                  ? [
                       AppBarMoreMenu(
-                        onRefresh: () =>
-                            ref.read(forumListProvider.notifier).refresh(),
-                        browserUrl: ApiConfig.baseUrl,
-                      )
-                    else
-                      Padding(
-                        padding: const EdgeInsets.only(right: 16),
-                        child: FilledButton.tonal(
-                          onPressed: () => context.push('/login'),
-                          child: const Text('登录'),
+                        onRefresh: () {
+                          ref.read(pmListProvider.notifier).refresh();
+                          ref.read(noticeListProvider.notifier).refresh();
+                        },
+                        browserUrl: messagesBrowserUrl(
+                          messagesSegment,
+                          noticeFeed: noticeFeed,
+                          page: messagesPage,
                         ),
                       ),
-                  ],
-      ),
-      body: S1ContentWidth(
-        child: isLoggedIn
-            ? selectedTab == 0
-                ? const _ForumTab()
-                : selectedTab == 1
-                    ? const SearchScreen()
-                    : selectedTab == 2
-                        ? const MessagesScreen()
-                        : const ProfileBody(
-                            key: ValueKey('profile-logged-in'),
-                          )
-            : selectedTab == 0
-                ? const _ForumTab()
-                : const ProfileBody(key: ValueKey('profile-guest')),
-      ),
-      bottomNavigationBar: router != null && context.isMediumOrAbove
-          ? null
-          : S1HomeNavChrome(
-              child: NavigationBar(
-                selectedIndex: selectedTab,
-                onDestinationSelected: (index) {
-                  S1Haptics.selection();
-                  if (selectedTab == 2 && index != 2) {
-                    ref.read(messagesSegmentProvider.notifier).select(0);
-                  }
-                  if (router == null) {
-                    setState(() => _fallbackTab = index);
-                    return;
-                  }
-                  final tab = isLoggedIn
-                      ? const ['forum', 'search', 'messages', 'profile'][index]
-                      : const ['forum', 'profile'][index];
-                  context.go(tab == 'forum' ? '/' : '/?tab=$tab');
-                },
-                destinations: isLoggedIn
-                    ? [
-                        const NavigationDestination(
-                          icon: Icon(Icons.forum),
-                          label: '论坛',
-                        ),
-                        const NavigationDestination(
-                          icon: Icon(Icons.search),
-                          label: '搜索',
-                        ),
-                        NavigationDestination(
-                          icon: Badge(
-                            label: Text(unreadDisplay),
-                            isLabelVisible: unreadTotal > 0,
-                            child: const Icon(Icons.message),
+                    ]
+                  : [
+                      if (isLoggedIn)
+                        AppBarMoreMenu(
+                          onRefresh: () =>
+                              ref.read(forumListProvider.notifier).refresh(),
+                          browserUrl: ApiConfig.baseUrl,
+                        )
+                      else
+                        Padding(
+                          padding: const EdgeInsets.only(right: 16),
+                          child: FilledButton.tonal(
+                            onPressed: () => context.push('/login'),
+                            child: const Text('登录'),
                           ),
-                          label: '消息',
                         ),
-                        const NavigationDestination(
-                          icon: Icon(Icons.person),
-                          label: '我的',
-                        ),
-                      ]
-                    : const [
-                        NavigationDestination(
-                          icon: Icon(Icons.forum),
-                          label: '论坛',
-                        ),
-                        NavigationDestination(
-                          icon: Icon(Icons.person),
-                          label: '我的',
-                        ),
-                      ],
+                    ],
+        ),
+        body: S1ContentWidth(
+          child: isLoggedIn
+              ? selectedTab == 0
+                  ? const _ForumTab()
+                  : selectedTab == 1
+                      ? const SearchScreen()
+                      : selectedTab == 2
+                          ? const MessagesScreen()
+                          : const ProfileBody(
+                              key: ValueKey('profile-logged-in'),
+                            )
+              : selectedTab == 0
+                  ? const _ForumTab()
+                  : const ProfileBody(key: ValueKey('profile-guest')),
+        ),
+        bottomNavigationBar: router != null && context.isMediumOrAbove
+            ? null
+            : S1HomeNavChrome(
+                child: NavigationBar(
+                  selectedIndex: selectedTab,
+                  onDestinationSelected: (index) {
+                    S1Haptics.selection();
+                    if (selectedTab == 2 && index != 2) {
+                      ref.read(messagesSegmentProvider.notifier).select(0);
+                    }
+                    if (router == null) {
+                      setState(() => _fallbackTab = index);
+                      return;
+                    }
+                    final tabs = isLoggedIn
+                        ? const ['forum', 'search', 'messages', 'profile']
+                        : const ['forum', 'profile'];
+                    final tab = tabs[index];
+                    context.go(tab == 'forum' ? '/' : '/?tab=$tab');
+                  },
+                  destinations: isLoggedIn
+                      ? [
+                          const NavigationDestination(
+                            icon: Icon(Icons.forum),
+                            label: '论坛',
+                          ),
+                          const NavigationDestination(
+                            icon: Icon(Icons.search),
+                            label: '搜索',
+                          ),
+                          NavigationDestination(
+                            icon: Badge(
+                              label: Text(unreadDisplay),
+                              isLabelVisible: unreadTotal > 0,
+                              child: const Icon(Icons.message),
+                            ),
+                            label: '消息',
+                          ),
+                          const NavigationDestination(
+                            icon: Icon(Icons.person),
+                            label: '我的',
+                          ),
+                        ]
+                      : const [
+                          NavigationDestination(
+                            icon: Icon(Icons.forum),
+                            label: '论坛',
+                          ),
+                          NavigationDestination(
+                            icon: Icon(Icons.person),
+                            label: '我的',
+                          ),
+                        ],
+                ),
               ),
-            ),
+      ),
     );
   }
 }

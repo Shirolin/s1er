@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:go_router/go_router.dart';
@@ -11,6 +12,7 @@ import 'package:s1er/providers/messages_segment_provider.dart';
 import 'package:s1er/providers/settings_provider.dart';
 import 'package:s1er/screens/home_screen.dart';
 import 'package:s1er/theme/app_theme.dart';
+import 'package:s1er/utils/home_root_back.dart';
 import 'package:drift/native.dart';
 import 'package:s1er/services/app_database.dart';
 import 'package:s1er/services/app_local_data.dart';
@@ -199,6 +201,83 @@ void main() {
     await tester.pumpAndSettle();
     expect(find.text('我对 Kiyohara_Yasuke 说'), findsOneWidget);
     expect(messagesBrowserUrl(1), contains('do=pm'));
+  });
+
+  testWidgets('system back from search returns to forum tab', (tester) async {
+    await tester.pumpWidget(
+      ProviderScope(
+        overrides: [
+          authStateProvider.overrideWith(_LoggedInAuthNotifier.new),
+          forumListProvider.overrideWith(_GuestForumListNotifier.new),
+          settingsProvider.overrideWith(
+            () => SettingsNotifier(initial: const AppSettings()),
+          ),
+          ...messagesProviderOverrides(),
+        ],
+        child: MaterialApp(
+          theme: AppTheme.lightTheme('purple'),
+          home: const HomeScreen(),
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.text('搜索'));
+    await tester.pumpAndSettle();
+    expect(find.text('搜索主题与帖子'), findsOneWidget);
+
+    await tester.binding.handlePopRoute();
+    await tester.pumpAndSettle();
+
+    expect(find.text('搜索主题与帖子'), findsNothing);
+    expect(find.text('主论坛'), findsOneWidget);
+    expect(find.text(HomeRootBack.snackMessage), findsNothing);
+  });
+
+  testWidgets('forum tab first back shows exit hint without leaving',
+      (tester) async {
+    final platformCalls = <String>[];
+    tester.binding.defaultBinaryMessenger.setMockMethodCallHandler(
+      SystemChannels.platform,
+      (call) async {
+        platformCalls.add(call.method);
+        return null;
+      },
+    );
+    addTearDown(() {
+      tester.binding.defaultBinaryMessenger.setMockMethodCallHandler(
+        SystemChannels.platform,
+        null,
+      );
+    });
+
+    await tester.pumpWidget(
+      ProviderScope(
+        overrides: [
+          authStateProvider.overrideWith(_LoggedInAuthNotifier.new),
+          forumListProvider.overrideWith(_GuestForumListNotifier.new),
+          settingsProvider.overrideWith(
+            () => SettingsNotifier(initial: const AppSettings()),
+          ),
+          ...messagesProviderOverrides(),
+        ],
+        child: MaterialApp(
+          theme: AppTheme.lightTheme('purple').copyWith(
+            platform: TargetPlatform.android,
+          ),
+          home: const HomeScreen(),
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+    expect(find.text('主论坛'), findsOneWidget);
+
+    await tester.binding.handlePopRoute();
+    await tester.pump();
+
+    expect(find.text(HomeRootBack.snackMessage), findsOneWidget);
+    expect(find.text('主论坛'), findsOneWidget);
+    expect(platformCalls, isNot(contains('SystemNavigator.pop')));
   });
 
   testWidgets('guest profile tab then login resets to forum tab without error',

@@ -53,7 +53,7 @@ class PostItemDensityTokens {
   final bool inlineAuthorMeta;
   final double narrowColumnGap;
 
-  /// Header 右侧菜单按钮最小宽高（对齐头像视觉高度）。
+  /// Header 右侧菜单按钮最小宽高（对齐头像直径）。
   final double headerActionExtent;
   final double headerActionIconSize;
   final EdgeInsetsGeometry floorBadgePadding;
@@ -62,12 +62,12 @@ class PostItemDensityTokens {
     cardMarginVertical: 4,
     cardPadding: 12,
     cardPaddingTop: 12,
-    avatarRadius: 20,
+    avatarRadius: 16,
     dividerHeight: 16,
     inlineAuthorMeta: false,
     narrowColumnGap: 8,
-    headerActionExtent: 40,
-    headerActionIconSize: 24,
+    headerActionExtent: 32,
+    headerActionIconSize: 20,
     floorBadgePadding: EdgeInsets.symmetric(horizontal: 6, vertical: 2),
   );
 

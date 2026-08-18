@@ -23,7 +23,7 @@ class PostItemSkeleton extends ConsumerWidget {
         children: [
           Row(
             children: [
-              S1SkeletonCircle(size: 40),
+              S1SkeletonCircle(size: 32),
               SizedBox(width: 12),
               Expanded(
                 child: Column(

@@ -47,19 +47,24 @@ void main() {
     await tester.pumpAndSettle();
   }
 
-  testWidgets('standard post density uses larger avatar chrome',
+  testWidgets('standard post density matches 32dp avatar chrome',
       (tester) async {
     await pumpPost(tester, density: ListDensity.standard);
     final avatar = tester.widget<WebAvatar>(find.byType(WebAvatar));
     final card = tester.widget<Card>(find.byType(Card).first);
-    expect(avatar.radius, 20);
+    expect(avatar.radius, 16);
     expect(
       card.margin,
       const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
     );
+    final menuButton = tester.widget<IconButton>(find.byType(IconButton));
+    expect(
+      menuButton.style?.minimumSize?.resolve(const <WidgetState>{}),
+      const Size(32, 32),
+    );
   });
 
-  testWidgets('compact post density uses smaller avatar chrome',
+  testWidgets('compact post density uses tighter padding than standard',
       (tester) async {
     await pumpPost(tester, density: ListDensity.compact);
     final avatar = tester.widget<WebAvatar>(find.byType(WebAvatar));
@@ -80,7 +85,11 @@ void main() {
   test('PostItemDensityTokens map density modes', () {
     expect(
       PostItemDensityTokens.forDensity(ListDensity.standard).avatarRadius,
-      20,
+      16,
+    );
+    expect(
+      PostItemDensityTokens.forDensity(ListDensity.standard).headerActionExtent,
+      32,
     );
     expect(
       PostItemDensityTokens.forDensity(ListDensity.compact).inlineAuthorMeta,

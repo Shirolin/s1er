@@ -688,7 +688,7 @@ class _PostItemState extends ConsumerState<PostItem>
     final textTheme = Theme.of(context).textTheme;
     final scheme = Theme.of(context).colorScheme;
     final nameStyle =
-        textTheme.bodyMedium?.copyWith(fontWeight: FontWeight.bold);
+        textTheme.bodySmall?.copyWith(fontWeight: FontWeight.w600);
     final timeStyle = textTheme.labelSmall?.copyWith(
       color: scheme.onSurfaceVariant,
     );

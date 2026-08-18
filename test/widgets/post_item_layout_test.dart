@@ -7,6 +7,41 @@ import 'package:s1er/widgets/post_item.dart';
 import '../helpers/test_theme.dart';
 
 void main() {
+  testWidgets('PostItem author name is one step smaller than body',
+      (tester) async {
+    await tester.pumpWidget(
+      ProviderScope(
+        child: wrapWithAppTheme(
+          PostItem(
+            post: Post.fromJson({
+              'pid': 'author-type-1',
+              'message': 'body copy',
+              'author': 'AliceAuthor',
+              'authorid': '1',
+              'dbdateline': '1700001000',
+              'number': '1',
+            }),
+          ),
+        ),
+      ),
+    );
+    await tester.pump();
+
+    final authorFinder = find.text('AliceAuthor');
+    expect(authorFinder, findsOneWidget);
+
+    final authorText = tester.widget<Text>(authorFinder);
+    final theme = Theme.of(tester.element(authorFinder));
+    final bodySmallSize = theme.textTheme.bodySmall?.fontSize;
+    final bodyMediumSize = theme.textTheme.bodyMedium?.fontSize;
+
+    expect(authorText.style?.fontSize, bodySmallSize);
+    expect(bodySmallSize, isNotNull);
+    expect(bodyMediumSize, isNotNull);
+    expect(bodySmallSize!, lessThan(bodyMediumSize!));
+    expect(authorText.style?.fontWeight, FontWeight.w600);
+  });
+
   testWidgets('PostItem avoids header overflow under narrow constraints',
       (tester) async {
     await tester.pumpWidget(

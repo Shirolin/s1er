@@ -347,6 +347,58 @@ void main() {
     expect(edges.first, BoundaryEdge.lastPage);
   });
 
+  testWidgets('last-page left swipe refreshes after a second gesture',
+      (tester) async {
+    var now = DateTime(2026, 7, 23, 12);
+    var refreshCount = 0;
+    final messages = <String>[];
+
+    await tester.pumpWidget(
+      MaterialApp(
+        theme: AppTheme.lightTheme('purple'),
+        home: Scaffold(
+          body: S1SwipePagination(
+            currentPage: 5,
+            totalPages: 5,
+            onPageChanged: (_) async {},
+            onTerminalRefresh: () async {
+              refreshCount++;
+            },
+            boundaryFeedback: BoundaryFeedbackController(
+              clock: () => now,
+              onHaptic: () {},
+              onShowMessage: (_, message) => messages.add(message),
+            ),
+            pageBuilder: (context, scrollController) => ListView(
+              controller: scrollController,
+              children: const [
+                SizedBox(height: 800, child: Center(child: Text('Page 5'))),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+    await tester.pump();
+
+    final size = tester.view.physicalSize / tester.view.devicePixelRatio;
+    Future<void> swipeLeftPastEnd() async {
+      await tester.drag(find.byType(PageView), Offset(-size.width * 0.35, 0));
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 50));
+    }
+
+    await swipeLeftPastEnd();
+    expect(refreshCount, 0);
+    expect(messages, isEmpty);
+
+    now = now.add(const Duration(milliseconds: 500));
+    await tester.pump(const Duration(milliseconds: 400));
+    await swipeLeftPastEnd();
+    expect(refreshCount, 1);
+    expect(messages, isEmpty);
+  });
+
   testWidgets('S1SwipePagination shows loading bar while paging',
       (tester) async {
     final completer = Completer<void>();

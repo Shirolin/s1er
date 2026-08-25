@@ -189,7 +189,7 @@ void main() {
       await _pumpThread(tester: tester, tid: '202', notifier: notifier);
 
       expect(find.text('最后一贴'), findsOneWidget);
-      expect(find.text('已是末页 · 再拉刷新'), findsOneWidget);
+      expect(find.text('已是末页 · 再拉或左滑刷新'), findsOneWidget);
 
       final pagination = tester.widget<S1SwipePagination>(
         find.byType(S1SwipePagination),

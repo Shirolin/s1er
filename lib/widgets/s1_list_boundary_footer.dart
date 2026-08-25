@@ -27,7 +27,7 @@ class S1ListBoundaryFooter extends StatelessWidget {
   final S1ListBoundaryKind kind;
   final EdgeInsetsGeometry padding;
 
-  /// 末页/列表末端可再拉刷新时，在文案后追加「再拉刷新」。
+  /// 末页可再拉 / 左滑刷新、单页列表末端可再拉刷新时追加引导。
   final bool refreshHint;
 
   static String labelFor(S1ListBoundaryKind kind, {bool refreshHint = false}) {
@@ -37,9 +37,10 @@ class S1ListBoundaryFooter extends StatelessWidget {
       S1ListBoundaryKind.listEnd => '已经到底',
       S1ListBoundaryKind.noMore => '没有更多了',
     };
-    if (refreshHint &&
-        (kind == S1ListBoundaryKind.lastPage ||
-            kind == S1ListBoundaryKind.listEnd)) {
+    if (refreshHint && kind == S1ListBoundaryKind.lastPage) {
+      return '$base · 再拉或左滑刷新';
+    }
+    if (refreshHint && kind == S1ListBoundaryKind.listEnd) {
       return '$base · 再拉刷新';
     }
     return base;

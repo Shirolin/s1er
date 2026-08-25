@@ -1,6 +1,5 @@
 import 'dart:async';
 
-import 'package:flutter/foundation.dart';
 import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
 
@@ -87,10 +86,10 @@ class _S1TerminalLeftSwipeState extends State<S1TerminalLeftSwipe> {
           () => _AtBottomHorizontalDragGestureRecognizer(
             isEnabled: _isAtBottom,
             debugOwner: this,
-            gestureSettings: MediaQuery.maybeGestureSettingsOf(context),
           ),
           (recognizer) {
             recognizer
+              ..gestureSettings = MediaQuery.maybeGestureSettingsOf(context)
               ..onStart = _onStart
               ..onUpdate = _onUpdate
               ..onEnd = _onEnd
@@ -109,7 +108,6 @@ class _AtBottomHorizontalDragGestureRecognizer
   _AtBottomHorizontalDragGestureRecognizer({
     required this.isEnabled,
     super.debugOwner,
-    super.gestureSettings,
   });
 
   final ValueGetter<bool> isEnabled;

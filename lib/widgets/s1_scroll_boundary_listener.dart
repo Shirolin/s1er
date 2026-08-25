@@ -6,8 +6,8 @@ import '../utils/boundary_feedback.dart';
 
 /// 纵滑触底越界监听：仅在 [isTerminal] 时反馈（末页 / 无更多）。
 ///
-/// 传入 [onRefresh] 时，冷却窗内第二次触底改为触发刷新，而不再弹出默认文案；
-/// 同一连续手势只刷新一次。
+/// 传入 [onRefresh] 时，第一次触底只给触觉；松手后再拉一次（冷却窗内）才刷新。
+/// 同一手势里的回弹 / 惯性 overscroll 不会触发刷新。
 class S1ScrollBoundaryListener extends StatefulWidget {
   const S1ScrollBoundaryListener({
     super.key,
@@ -27,7 +27,7 @@ class S1ScrollBoundaryListener extends StatefulWidget {
   final String? message;
   final BoundaryEdge edge;
 
-  /// 末页触底再拉：冷却窗内第二次越界时触发。
+  /// 末页触底再拉：上一次触底手势结束后的下一次越界时触发。
   final Future<void> Function()? onRefresh;
 
   @override
@@ -37,10 +37,16 @@ class S1ScrollBoundaryListener extends StatefulWidget {
 
 class _S1ScrollBoundaryListenerState extends State<S1ScrollBoundaryListener> {
   bool _refreshDispatchedThisGesture = false;
+  bool _sawTerminalOverscrollThisGesture = false;
+  bool _endedSinceTerminalHit = false;
 
   bool _onNotification(ScrollNotification notification) {
     if (notification is ScrollEndNotification) {
       _refreshDispatchedThisGesture = false;
+      if (_sawTerminalOverscrollThisGesture) {
+        _endedSinceTerminalHit = true;
+      }
+      _sawTerminalOverscrollThisGesture = false;
       return false;
     }
     if (!widget.isTerminal) return false;
@@ -51,6 +57,7 @@ class _S1ScrollBoundaryListenerState extends State<S1ScrollBoundaryListener> {
     if (!metrics.hasPixels || !metrics.hasContentDimensions) return false;
     if (metrics.pixels < metrics.maxScrollExtent - 1) return false;
 
+    _sawTerminalOverscrollThisGesture = true;
     final repeating = widget.feedback.hit(
       context,
       widget.edge,
@@ -59,9 +66,14 @@ class _S1ScrollBoundaryListenerState extends State<S1ScrollBoundaryListener> {
     );
     if (repeating &&
         widget.onRefresh != null &&
+        _endedSinceTerminalHit &&
         !_refreshDispatchedThisGesture) {
       _refreshDispatchedThisGesture = true;
+      _endedSinceTerminalHit = false;
       unawaited(widget.onRefresh!());
+    } else if (!repeating) {
+      // 新的「第一次触底」：丢掉更早一次滚动留下的 ended，避免同一次回弹刷新。
+      _endedSinceTerminalHit = false;
     }
     return false;
   }

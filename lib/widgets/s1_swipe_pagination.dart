@@ -61,7 +61,7 @@ class S1SwipePagination extends StatefulWidget {
   /// 越界节流控制器；为 null 时使用内部默认实例。
   final BoundaryFeedbackController? boundaryFeedback;
 
-  /// 末页纵滑触底再拉：冷却窗内第二次越界时刷新当前页（由父级实现）。
+  /// 末页纵滑触底再拉：松手后再拉一次时刷新当前页（由父级实现）。
   final Future<void> Function()? onTerminalRefresh;
 
   /// 是否启用左右滑动（单页时自动禁用）。

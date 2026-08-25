@@ -15,8 +15,17 @@ void main() {
     await tester.pump();
   }
 
+  Future<void> dispatchScrollEnd(WidgetTester tester) async {
+    final scrollable = tester.state<ScrollableState>(find.byType(Scrollable));
+    ScrollEndNotification(
+      metrics: scrollable.position,
+      context: scrollable.context,
+    ).dispatch(scrollable.context);
+    await tester.pump();
+  }
+
   testWidgets(
-    'repeat terminal overscroll triggers onRefresh once per gesture',
+    'second gesture after ScrollEnd triggers onRefresh once',
     (tester) async {
       var now = DateTime(2026, 7, 23, 12);
       var refreshCount = 0;
@@ -52,12 +61,17 @@ void main() {
 
       now = now.add(const Duration(milliseconds: 500));
       await dispatchEndOverscroll(tester);
+      expect(refreshCount, 0, reason: 'same-gesture bounce must not refresh');
+
+      await dispatchScrollEnd(tester);
+      now = now.add(const Duration(milliseconds: 500));
+      await dispatchEndOverscroll(tester);
       expect(refreshCount, 1);
       expect(messages, isEmpty);
 
       now = now.add(const Duration(milliseconds: 500));
       await dispatchEndOverscroll(tester);
-      expect(refreshCount, 1);
+      expect(refreshCount, 1, reason: 'same second gesture only refreshes once');
     },
   );
 
@@ -90,6 +104,7 @@ void main() {
     );
 
     await dispatchEndOverscroll(tester);
+    await dispatchScrollEnd(tester);
     now = now.add(const Duration(milliseconds: 500));
     await dispatchEndOverscroll(tester);
     expect(refreshCount, 0);

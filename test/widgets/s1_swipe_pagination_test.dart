@@ -6,6 +6,7 @@ import 'package:s1er/theme/app_theme.dart';
 import 'package:s1er/utils/boundary_feedback.dart';
 import 'package:s1er/widgets/s1_fab_layout.dart';
 import 'package:s1er/widgets/s1_swipe_pagination.dart';
+import 'package:s1er/widgets/s1_terminal_left_swipe.dart';
 import 'package:s1er/widgets/skeleton/list_row_skeleton.dart';
 import 'package:s1er/widgets/skeleton/s1_swipe_adjacent_skeleton.dart';
 
@@ -345,6 +346,226 @@ void main() {
 
     expect(edges, isNotEmpty);
     expect(edges.first, BoundaryEdge.lastPage);
+  });
+
+  testWidgets('last-page left swipe refreshes on the first gesture',
+      (tester) async {
+    var refreshCount = 0;
+    final messages = <String>[];
+
+    await tester.pumpWidget(
+      MaterialApp(
+        theme: AppTheme.lightTheme('purple'),
+        home: Scaffold(
+          body: S1SwipePagination(
+            currentPage: 5,
+            totalPages: 5,
+            onPageChanged: (_) async {},
+            onTerminalRefresh: () async {
+              refreshCount++;
+            },
+            boundaryFeedback: BoundaryFeedbackController(
+              onHaptic: () {},
+              onShowMessage: (_, message) => messages.add(message),
+            ),
+            pageBuilder: (context, scrollController) => ListView(
+              controller: scrollController,
+              children: const [
+                SizedBox(height: 800, child: Center(child: Text('Page 5'))),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+    await tester.pump();
+
+    final size = tester.view.physicalSize / tester.view.devicePixelRatio;
+    await tester.drag(find.byType(PageView), Offset(-size.width * 0.35, 0));
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 50));
+
+    expect(refreshCount, 1);
+    expect(messages, isEmpty);
+  });
+
+  testWidgets('single-page thread with onTerminalRefresh has no PageView',
+      (tester) async {
+    var refreshCount = 0;
+
+    await tester.pumpWidget(
+      MaterialApp(
+        theme: AppTheme.lightTheme('purple'),
+        home: Scaffold(
+          body: S1SwipePagination(
+            currentPage: 1,
+            totalPages: 1,
+            onPageChanged: (_) async {},
+            onTerminalRefresh: () async {
+              refreshCount++;
+            },
+            boundaryFeedback: BoundaryFeedbackController(
+              onHaptic: () {},
+              onShowMessage: (_, __) {},
+            ),
+            pageBuilder: (context, scrollController) => ListView(
+              controller: scrollController,
+              children: const [
+                SizedBox(height: 800, child: Center(child: Text('Page 1'))),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    expect(find.byType(PageView), findsNothing);
+    expect(find.byType(S1TerminalLeftSwipe), findsOneWidget);
+
+    final controller =
+        tester.widget<ListView>(find.byType(ListView)).controller!;
+    controller.jumpTo(controller.position.maxScrollExtent);
+    await tester.pump();
+
+    await tester.drag(find.byType(ListView), const Offset(-80, 0));
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 50));
+
+    expect(refreshCount, 1);
+  });
+
+  testWidgets(
+      'single-page left swipe does not refresh before reaching the bottom',
+      (tester) async {
+    var refreshCount = 0;
+
+    await tester.pumpWidget(
+      MaterialApp(
+        theme: AppTheme.lightTheme('purple'),
+        home: Scaffold(
+          body: S1SwipePagination(
+            currentPage: 1,
+            totalPages: 1,
+            onPageChanged: (_) async {},
+            onTerminalRefresh: () async {
+              refreshCount++;
+            },
+            boundaryFeedback: BoundaryFeedbackController(
+              onHaptic: () {},
+              onShowMessage: (_, __) {},
+            ),
+            pageBuilder: (context, scrollController) => ListView(
+              controller: scrollController,
+              children: const [
+                SizedBox(height: 2000, child: Center(child: Text('Page 1'))),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    expect(find.byType(PageView), findsNothing);
+
+    final controller =
+        tester.widget<ListView>(find.byType(ListView)).controller!;
+    expect(controller.offset, 0);
+    expect(controller.position.maxScrollExtent, greaterThan(1));
+
+    await tester.drag(find.byType(ListView), const Offset(-80, 0));
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 50));
+
+    expect(refreshCount, 0);
+  });
+
+  testWidgets('single-page right swipe at bottom does not refresh',
+      (tester) async {
+    var refreshCount = 0;
+
+    await tester.pumpWidget(
+      MaterialApp(
+        theme: AppTheme.lightTheme('purple'),
+        home: Scaffold(
+          body: S1SwipePagination(
+            currentPage: 1,
+            totalPages: 1,
+            onPageChanged: (_) async {},
+            onTerminalRefresh: () async {
+              refreshCount++;
+            },
+            boundaryFeedback: BoundaryFeedbackController(
+              onHaptic: () {},
+              onShowMessage: (_, __) {},
+            ),
+            pageBuilder: (context, scrollController) => ListView(
+              controller: scrollController,
+              children: const [
+                SizedBox(height: 800, child: Center(child: Text('Page 1'))),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    final controller =
+        tester.widget<ListView>(find.byType(ListView)).controller!;
+    controller.jumpTo(controller.position.maxScrollExtent);
+    await tester.pump();
+
+    await tester.drag(find.byType(ListView), const Offset(80, 0));
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 50));
+
+    expect(refreshCount, 0);
+  });
+
+  testWidgets(
+      'first-page right swipe does not refresh even with onTerminalRefresh',
+      (tester) async {
+    var refreshCount = 0;
+    var pageRequests = 0;
+
+    await tester.pumpWidget(
+      MaterialApp(
+        theme: AppTheme.lightTheme('purple'),
+        home: Scaffold(
+          body: S1SwipePagination(
+            currentPage: 1,
+            totalPages: 3,
+            onPageChanged: (_) async {
+              pageRequests++;
+            },
+            onTerminalRefresh: () async {
+              refreshCount++;
+            },
+            boundaryFeedback: BoundaryFeedbackController(
+              onHaptic: () {},
+              onShowMessage: (_, __) {},
+            ),
+            pageBuilder: (context, scrollController) => ListView(
+              controller: scrollController,
+              children: const [
+                SizedBox(height: 800, child: Center(child: Text('Page 1'))),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+    await tester.pump();
+
+    final size = tester.view.physicalSize / tester.view.devicePixelRatio;
+    await tester.drag(find.byType(PageView), Offset(size.width * 0.35, 0));
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 50));
+
+    expect(refreshCount, 0);
+    expect(pageRequests, 0);
   });
 
   testWidgets('S1SwipePagination shows loading bar while paging',

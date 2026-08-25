@@ -27,6 +27,38 @@ void main() {
     expect(find.text('没有更多了'), findsOneWidget);
   });
 
+  testWidgets('S1ListBoundaryFooter appends refresh hint on terminal kinds', (
+    tester,
+  ) async {
+    await tester.pumpWidget(
+      MaterialApp(
+        theme: AppTheme.lightTheme('purple'),
+        home: const Scaffold(
+          body: Column(
+            children: [
+              S1ListBoundaryFooter(
+                kind: S1ListBoundaryKind.pageContinue,
+                refreshHint: true,
+              ),
+              S1ListBoundaryFooter(
+                kind: S1ListBoundaryKind.lastPage,
+                refreshHint: true,
+              ),
+              S1ListBoundaryFooter(
+                kind: S1ListBoundaryKind.listEnd,
+                refreshHint: true,
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+
+    expect(find.text('本页到底 · 左滑或点下一页'), findsOneWidget);
+    expect(find.text('已是末页 · 再拉或左滑刷新'), findsOneWidget);
+    expect(find.text('已经到底 · 再拉或左滑刷新'), findsOneWidget);
+  });
+
   test('pagedBoundaryKind maps pages', () {
     expect(
       pagedBoundaryKind(currentPage: 1, totalPages: 1),

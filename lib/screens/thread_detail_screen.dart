@@ -100,6 +100,30 @@ int resolveFloorInPageForProgress({
   return raw < minFloorInPage ? minFloorInPage : raw;
 }
 
+/// 末页触底刷新后的去向：页数增加则跳新末页，同页有新楼则滚到底，否则提示无新回复。
+enum ThreadEndRefreshOutcome {
+  jumpedToNewLastPage,
+  scrolledToNewPosts,
+  noNewReplies,
+}
+
+ThreadEndRefreshOutcome resolveThreadEndRefreshOutcome({
+  required int previousReplyCount,
+  required int previousPostCount,
+  required int currentPage,
+  required int totalPages,
+  required int totalReplies,
+  required int postCount,
+}) {
+  if (currentPage < totalPages) {
+    return ThreadEndRefreshOutcome.jumpedToNewLastPage;
+  }
+  if (totalReplies > previousReplyCount || postCount > previousPostCount) {
+    return ThreadEndRefreshOutcome.scrolledToNewPosts;
+  }
+  return ThreadEndRefreshOutcome.noNewReplies;
+}
+
 /// 滚动 FAB 显隐状态（用 [ValueNotifier] 更新，避免重建列表）。
 class _ScrollFabVisibility {
   const _ScrollFabVisibility({
@@ -184,6 +208,9 @@ class _ThreadDetailScreenState extends ConsumerState<ThreadDetailScreen> {
 
   /// 本次进入详情后的页内阅读位（页码 → 页内 1-based 楼层），翻回该页时恢复。
   final Map<int, int> _pageFloorMemory = {};
+
+  /// 末页触底刷新进行中，避免同一手势重复打接口。
+  bool _endRefreshing = false;
 
   void _enterShareSelectMode(Post post, int displayFloor) {
     setState(() {
@@ -669,6 +696,46 @@ class _ThreadDetailScreenState extends ConsumerState<ThreadDetailScreen> {
     }
   }
 
+  /// 末端主动上划 / 左滑：刷新当前页；有新页则跳到新末页，同页有新楼则滚到底。
+  Future<void> _refreshFromEnd() async {
+    if (_endRefreshing || _shareSelectMode) return;
+    _endRefreshing = true;
+    try {
+      final before = ref.read(postProvider(widget.tid)).asData?.value;
+      if (before == null) return;
+
+      await S1Haptics.wrapRefresh(
+        () => ref.read(postProvider(widget.tid).notifier).refresh(),
+      );
+      if (!mounted) return;
+
+      final after = ref.read(postProvider(widget.tid)).asData?.value;
+      if (after == null) return;
+
+      final outcome = resolveThreadEndRefreshOutcome(
+        previousReplyCount: before.totalReplies,
+        previousPostCount: before.posts.length,
+        currentPage: after.currentPage,
+        totalPages: after.totalPages,
+        totalReplies: after.totalReplies,
+        postCount: after.posts.length,
+      );
+      switch (outcome) {
+        case ThreadEndRefreshOutcome.jumpedToNewLastPage:
+          await _goToPage(after.totalPages, scrollToBottom: true);
+        case ThreadEndRefreshOutcome.scrolledToNewPosts:
+          await WidgetsBinding.instance.endOfFrame;
+          if (!mounted) return;
+          await _scrollToBottomImpl();
+        case ThreadEndRefreshOutcome.noNewReplies:
+          S1SnackBar.show(context, message: '已经到底');
+      }
+    } finally {
+      _endRefreshing = false;
+      _swipeKey.currentState?.resetBoundaryFeedback();
+    }
+  }
+
   void _toggleThreadPin(BuildContext context, {String? subject}) {
     S1Haptics.selection();
     final notifier = ref.read(pinnedThreadsProvider.notifier);
@@ -876,6 +943,7 @@ class _ThreadDetailScreenState extends ConsumerState<ThreadDetailScreen> {
           currentPage: state.currentPage,
           totalPages: state.totalPages,
         ),
+        refreshHint: state.currentPage >= state.totalPages,
       );
     }
 
@@ -1385,6 +1453,7 @@ class _ThreadDetailScreenState extends ConsumerState<ThreadDetailScreen> {
                   adjacentSkeletonStyle: S1SwipeAdjacentSkeletonStyle.postItem,
                   onScrollMetricsChanged: _onScrollMetricsChanged,
                   onPageChanged: _goToPage,
+                  onTerminalRefresh: _shareSelectMode ? null : _refreshFromEnd,
                   pageBuilder: (context, scrollController) {
                     final list = _buildPostPageList(
                       scrollController,

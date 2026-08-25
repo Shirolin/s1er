@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 
 import '../theme/app_theme.dart';
@@ -6,6 +8,7 @@ import '../utils/boundary_feedback.dart';
 import '../utils/scroll_motion.dart';
 import 's1_fab_layout.dart';
 import 's1_scroll_boundary_listener.dart';
+import 's1_terminal_left_swipe.dart';
 import 'skeleton/s1_swipe_adjacent_skeleton.dart';
 
 export 'skeleton/s1_swipe_adjacent_skeleton.dart'
@@ -34,6 +37,7 @@ class S1SwipePagination extends StatefulWidget {
     this.onScrollMetricsChanged,
     this.onBoundaryHit,
     this.boundaryFeedback,
+    this.onTerminalRefresh,
     this.enabled = true,
     this.showPagingIndicator = true,
     this.adjacentSkeletonStyle = S1SwipeAdjacentSkeletonStyle.generic,
@@ -60,7 +64,12 @@ class S1SwipePagination extends StatefulWidget {
   /// 越界节流控制器；为 null 时使用内部默认实例。
   final BoundaryFeedbackController? boundaryFeedback;
 
-  /// 是否启用左右滑动（单页时自动禁用）。
+  /// 末页左滑一次、或纵滑触底继续上划：刷新当前页（由父级实现）。
+  ///
+  /// 单页不启用 [PageView]；触底后的左滑由 [S1TerminalLeftSwipe] 处理。
+  final Future<void> Function()? onTerminalRefresh;
+
+  /// 是否启用左右滑动翻页。单页自动禁用 [PageView]。
   final bool enabled;
 
   /// 滑动翻页时是否在内容区顶部显示进度条。
@@ -82,6 +91,7 @@ class S1SwipePaginationState extends State<S1SwipePagination> {
   late PageController _pageController;
   late ScrollController _scrollController;
   late BoundaryFeedbackController _boundaryFeedback;
+  bool _lastPageRefreshDispatchedThisGesture = false;
   bool _isPaging = false;
   int? _pendingPage;
 
@@ -107,6 +117,7 @@ class S1SwipePaginationState extends State<S1SwipePagination> {
     if (oldWidget.currentPage != widget.currentPage &&
         widget.currentPage != _pendingPage) {
       _boundaryFeedback.reset();
+      _lastPageRefreshDispatchedThisGesture = false;
       _resetScrollForPageChange();
     }
   }
@@ -206,6 +217,12 @@ class S1SwipePaginationState extends State<S1SwipePagination> {
     }
   }
 
+  /// 刷新完成后复位触底节流，便于下一次手势重新走触觉 → 刷新。
+  void resetBoundaryFeedback() {
+    _boundaryFeedback.reset();
+    _lastPageRefreshDispatchedThisGesture = false;
+  }
+
   /// 将当前页滚动到底部。
   ///
   /// [ListView.builder] 等在滚动中会逐步构建子项，[maxScrollExtent] 可能在
@@ -233,12 +250,27 @@ class S1SwipePaginationState extends State<S1SwipePagination> {
   void _onHorizontalBoundaryBlocked(BoundaryEdge edge) {
     widget.onBoundaryHit?.call(edge);
     if (!mounted) return;
+    if (edge == BoundaryEdge.lastPage && widget.onTerminalRefresh != null) {
+      final result = _boundaryFeedback.hit(
+        context,
+        edge,
+        showMessage: false,
+        haptic: false,
+      );
+      if (result != BoundaryHitResult.ignored &&
+          !_lastPageRefreshDispatchedThisGesture) {
+        _lastPageRefreshDispatchedThisGesture = true;
+        unawaited(widget.onTerminalRefresh!());
+      }
+      return;
+    }
     _boundaryFeedback.hit(context, edge);
   }
 
   bool _onPageViewScrollNotification(ScrollNotification notification) {
     if (notification.depth != 0) return false;
     if (notification is ScrollEndNotification) {
+      _lastPageRefreshDispatchedThisGesture = false;
       _snapToNearestSlot();
       return false;
     }
@@ -324,6 +356,7 @@ class S1SwipePaginationState extends State<S1SwipePagination> {
         child: S1ScrollBoundaryListener(
           isTerminal: widget.currentPage >= widget.totalPages,
           feedback: _boundaryFeedback,
+          onRefresh: widget.onTerminalRefresh,
           child: widget.pageBuilder(context, _scrollController),
         ),
       );
@@ -385,11 +418,22 @@ class S1SwipePaginationState extends State<S1SwipePagination> {
   }
 
   Widget _buildSinglePageBody(BuildContext context) {
-    return S1ScrollBoundaryListener(
+    Widget body = S1ScrollBoundaryListener(
       isTerminal: true,
       feedback: _boundaryFeedback,
+      onRefresh: widget.onTerminalRefresh,
       child: widget.pageBuilder(context, _scrollController),
     );
+    final onRefresh = widget.onTerminalRefresh;
+    if (onRefresh != null) {
+      body = S1TerminalLeftSwipe(
+        scrollController: _scrollController,
+        feedback: _boundaryFeedback,
+        onRefresh: onRefresh,
+        child: body,
+      );
+    }
+    return body;
   }
 
   @override

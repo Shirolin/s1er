@@ -19,6 +19,16 @@ enum BoundaryEdge {
 ///
 /// 同一连续手势内的高频回调（overscroll）会被 [gestureDebounce] 吞掉，
 /// 避免一次拖拽就立刻弹出文案。
+enum BoundaryHitResult {
+  /// 过近的重复 hit，忽略。
+  ignored,
+
+  /// 该方向的首次受理。
+  first,
+
+  /// 冷却窗内再次越界。
+  repeat,
+}
 class BoundaryFeedbackController {
   BoundaryFeedbackController({
     this.repeatWindow = const Duration(milliseconds: 1500),
@@ -46,18 +56,20 @@ class BoundaryFeedbackController {
   BoundaryEdge? _lastEdge;
   DateTime? _lastAt;
 
-  /// 处理一次越界。返回是否展示了文案（便于测试）。
-  bool hit(
+  /// 处理一次越界。返回 [BoundaryHitResult]（便于测试 / 接刷新）。
+  BoundaryHitResult hit(
     BuildContext context,
     BoundaryEdge edge, {
     String? message,
+    bool showMessage = true,
+    bool haptic = true,
   }) {
     final now = _clock();
     final text = message ?? defaultMessage(edge);
     final sinceLast = _lastAt == null ? null : now.difference(_lastAt!);
 
     if (_lastEdge == edge && sinceLast != null && sinceLast < gestureDebounce) {
-      return false;
+      return BoundaryHitResult.ignored;
     }
 
     final isRepeat =
@@ -67,16 +79,20 @@ class BoundaryFeedbackController {
     _lastAt = now;
 
     if (isRepeat) {
-      _show(context, text);
-      return true;
+      if (showMessage) {
+        _show(context, text);
+      }
+      return BoundaryHitResult.repeat;
     }
 
-    if (_onHaptic != null) {
-      _onHaptic();
-    } else {
-      S1Haptics.light();
+    if (haptic) {
+      if (_onHaptic != null) {
+        _onHaptic();
+      } else {
+        S1Haptics.light();
+      }
     }
-    return false;
+    return BoundaryHitResult.first;
   }
 
   void _show(BuildContext context, String message) {

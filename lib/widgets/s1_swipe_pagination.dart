@@ -8,6 +8,7 @@ import '../utils/boundary_feedback.dart';
 import '../utils/scroll_motion.dart';
 import 's1_fab_layout.dart';
 import 's1_scroll_boundary_listener.dart';
+import 's1_terminal_left_swipe.dart';
 import 'skeleton/s1_swipe_adjacent_skeleton.dart';
 
 export 'skeleton/s1_swipe_adjacent_skeleton.dart'
@@ -63,12 +64,12 @@ class S1SwipePagination extends StatefulWidget {
   /// 越界节流控制器；为 null 时使用内部默认实例。
   final BoundaryFeedbackController? boundaryFeedback;
 
-  /// 末页左滑一次、或纵滑触底松手再拉：刷新当前页（由父级实现）。
+  /// 末页左滑一次、或纵滑触底继续上划：刷新当前页（由父级实现）。
   ///
-  /// 非空时即使只有一页也启用横滑，以便单页帖左滑刷新。
+  /// 单页不启用 [PageView]；触底后的左滑由 [S1TerminalLeftSwipe] 处理。
   final Future<void> Function()? onTerminalRefresh;
 
-  /// 是否启用左右滑动。无 [onTerminalRefresh] 时单页自动禁用。
+  /// 是否启用左右滑动翻页。单页自动禁用 [PageView]。
   final bool enabled;
 
   /// 滑动翻页时是否在内容区顶部显示进度条。
@@ -239,9 +240,7 @@ class S1SwipePaginationState extends State<S1SwipePagination> {
 
   bool get _canSwipeToNext => widget.currentPage < widget.totalPages;
 
-  bool get _usePageView =>
-      widget.enabled &&
-      (widget.totalPages > 1 || widget.onTerminalRefresh != null);
+  bool get _usePageView => widget.enabled && widget.totalPages > 1;
 
   ScrollPhysics get _pagePhysics => BoundedSwipePaginationPhysics(
         getCurrentPage: () => widget.currentPage,
@@ -394,7 +393,7 @@ class S1SwipePaginationState extends State<S1SwipePagination> {
           ),
         Expanded(
           child: Semantics(
-            label: widget.totalPages > 1 ? '左右滑动可翻页' : '左滑可刷新',
+            label: '左右滑动可翻页',
             child: NotificationListener<ScrollNotification>(
               onNotification: _onPageViewScrollNotification,
               child: PageView(
@@ -419,12 +418,22 @@ class S1SwipePaginationState extends State<S1SwipePagination> {
   }
 
   Widget _buildSinglePageBody(BuildContext context) {
-    return S1ScrollBoundaryListener(
+    Widget body = S1ScrollBoundaryListener(
       isTerminal: true,
       feedback: _boundaryFeedback,
       onRefresh: widget.onTerminalRefresh,
       child: widget.pageBuilder(context, _scrollController),
     );
+    final onRefresh = widget.onTerminalRefresh;
+    if (onRefresh != null) {
+      body = S1TerminalLeftSwipe(
+        scrollController: _scrollController,
+        feedback: _boundaryFeedback,
+        onRefresh: onRefresh,
+        child: body,
+      );
+    }
+    return body;
   }
 
   @override

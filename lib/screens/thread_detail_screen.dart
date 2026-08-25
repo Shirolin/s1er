@@ -696,7 +696,7 @@ class _ThreadDetailScreenState extends ConsumerState<ThreadDetailScreen> {
     }
   }
 
-  /// 末页触底再拉：刷新当前页；有新页则跳到新末页，同页有新楼则滚到底。
+  /// 末端主动上划 / 左滑：刷新当前页；有新页则跳到新末页，同页有新楼则滚到底。
   Future<void> _refreshFromEnd() async {
     if (_endRefreshing || _shareSelectMode) return;
     _endRefreshing = true;
@@ -1453,8 +1453,7 @@ class _ThreadDetailScreenState extends ConsumerState<ThreadDetailScreen> {
                   adjacentSkeletonStyle: S1SwipeAdjacentSkeletonStyle.postItem,
                   onScrollMetricsChanged: _onScrollMetricsChanged,
                   onPageChanged: _goToPage,
-                  onTerminalRefresh:
-                      _shareSelectMode ? null : _refreshFromEnd,
+                  onTerminalRefresh: _shareSelectMode ? null : _refreshFromEnd,
                   pageBuilder: (context, scrollController) {
                     final list = _buildPostPageList(
                       scrollController,

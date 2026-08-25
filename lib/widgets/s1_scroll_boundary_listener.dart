@@ -3,12 +3,11 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 
 import '../utils/boundary_feedback.dart';
-import '../utils/terminal_refresh_arming.dart';
 
 /// 纵滑触底越界监听：仅在 [isTerminal] 时反馈（末页 / 无更多）。
 ///
-/// 传入 [onRefresh] 时，第一次触底只给触觉；松手后再拉一次（冷却窗内）才刷新。
-/// 同一手势里的回弹 / 惯性 overscroll 不会触发刷新。
+/// 传入 [onRefresh] 时，手指还在拖的正向 overscroll 立刻刷新一次；
+/// 甩到底的惯性 / 回弹（[OverscrollNotification.dragDetails] 为空）只给触觉，不请求。
 class S1ScrollBoundaryListener extends StatefulWidget {
   const S1ScrollBoundaryListener({
     super.key,
@@ -28,7 +27,7 @@ class S1ScrollBoundaryListener extends StatefulWidget {
   final String? message;
   final BoundaryEdge edge;
 
-  /// 末页触底再拉：上一次触底手势结束后的下一次越界时触发。
+  /// 末端主动上划：同一手势只触发一次。
   final Future<void> Function()? onRefresh;
 
   @override
@@ -37,11 +36,11 @@ class S1ScrollBoundaryListener extends StatefulWidget {
 }
 
 class _S1ScrollBoundaryListenerState extends State<S1ScrollBoundaryListener> {
-  final _arming = TerminalRefreshArming();
+  bool _refreshDispatchedThisGesture = false;
 
   bool _onNotification(ScrollNotification notification) {
     if (notification is ScrollEndNotification) {
-      _arming.onScrollEnd();
+      _refreshDispatchedThisGesture = false;
       return false;
     }
     if (!widget.isTerminal) return false;
@@ -52,17 +51,16 @@ class _S1ScrollBoundaryListenerState extends State<S1ScrollBoundaryListener> {
     if (!metrics.hasPixels || !metrics.hasContentDimensions) return false;
     if (metrics.pixels < metrics.maxScrollExtent - 1) return false;
 
-    final result = widget.feedback.hit(
+    widget.feedback.hit(
       context,
       widget.edge,
       message: widget.message,
       showMessage: widget.onRefresh == null,
     );
-    if (result == BoundaryHitResult.ignored) return false;
     if (widget.onRefresh != null &&
-        _arming.shouldRefresh(
-          repeating: result == BoundaryHitResult.repeat,
-        )) {
+        notification.dragDetails != null &&
+        !_refreshDispatchedThisGesture) {
+      _refreshDispatchedThisGesture = true;
       unawaited(widget.onRefresh!());
     }
     return false;

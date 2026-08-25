@@ -5,12 +5,16 @@ import 'package:s1er/utils/boundary_feedback.dart';
 import 'package:s1er/widgets/s1_scroll_boundary_listener.dart';
 
 void main() {
-  Future<void> dispatchEndOverscroll(WidgetTester tester) async {
+  Future<void> dispatchEndOverscroll(
+    WidgetTester tester, {
+    DragUpdateDetails? dragDetails,
+  }) async {
     final scrollable = tester.state<ScrollableState>(find.byType(Scrollable));
     OverscrollNotification(
       metrics: scrollable.position,
       overscroll: 24,
       context: scrollable.context,
+      dragDetails: dragDetails,
     ).dispatch(scrollable.context);
     await tester.pump();
   }
@@ -24,8 +28,15 @@ void main() {
     await tester.pump();
   }
 
+  DragUpdateDetails dragUp() {
+    return DragUpdateDetails(
+      globalPosition: Offset.zero,
+      delta: const Offset(0, -24),
+    );
+  }
+
   testWidgets(
-    'second gesture after ScrollEnd triggers onRefresh once',
+    'dragDetails overscroll refreshes once; bounce does not',
     (tester) async {
       var now = DateTime(2026, 7, 23, 12);
       var refreshCount = 0;
@@ -56,22 +67,21 @@ void main() {
       );
 
       await dispatchEndOverscroll(tester);
-      expect(refreshCount, 0);
+      expect(refreshCount, 0, reason: 'ballistic bounce must not refresh');
       expect(messages, isEmpty);
 
       now = now.add(const Duration(milliseconds: 500));
-      await dispatchEndOverscroll(tester);
-      expect(refreshCount, 0, reason: 'same-gesture bounce must not refresh');
+      await dispatchEndOverscroll(tester, dragDetails: dragUp());
+      expect(refreshCount, 1);
+
+      now = now.add(const Duration(milliseconds: 500));
+      await dispatchEndOverscroll(tester, dragDetails: dragUp());
+      expect(refreshCount, 1, reason: 'same gesture only refreshes once');
 
       await dispatchScrollEnd(tester);
       now = now.add(const Duration(milliseconds: 500));
-      await dispatchEndOverscroll(tester);
-      expect(refreshCount, 1);
-      expect(messages, isEmpty);
-
-      now = now.add(const Duration(milliseconds: 500));
-      await dispatchEndOverscroll(tester);
-      expect(refreshCount, 1, reason: 'same second gesture only refreshes once');
+      await dispatchEndOverscroll(tester, dragDetails: dragUp());
+      expect(refreshCount, 2);
     },
   );
 
@@ -103,10 +113,7 @@ void main() {
       ),
     );
 
-    await dispatchEndOverscroll(tester);
-    await dispatchScrollEnd(tester);
-    now = now.add(const Duration(milliseconds: 500));
-    await dispatchEndOverscroll(tester);
+    await dispatchEndOverscroll(tester, dragDetails: dragUp());
     expect(refreshCount, 0);
   });
 }

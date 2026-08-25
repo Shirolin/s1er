@@ -52,14 +52,17 @@ class _S1ScrollBoundaryListenerState extends State<S1ScrollBoundaryListener> {
     if (!metrics.hasPixels || !metrics.hasContentDimensions) return false;
     if (metrics.pixels < metrics.maxScrollExtent - 1) return false;
 
-    final repeating = widget.feedback.hit(
+    final result = widget.feedback.hit(
       context,
       widget.edge,
       message: widget.message,
       showMessage: widget.onRefresh == null,
     );
+    if (result == BoundaryHitResult.ignored) return false;
     if (widget.onRefresh != null &&
-        _arming.shouldRefresh(repeating: repeating)) {
+        _arming.shouldRefresh(
+          repeating: result == BoundaryHitResult.repeat,
+        )) {
       unawaited(widget.onRefresh!());
     }
     return false;

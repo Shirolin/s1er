@@ -37,11 +37,10 @@ class S1ListBoundaryFooter extends StatelessWidget {
       S1ListBoundaryKind.listEnd => '已经到底',
       S1ListBoundaryKind.noMore => '没有更多了',
     };
-    if (refreshHint && kind == S1ListBoundaryKind.lastPage) {
+    if (refreshHint &&
+        (kind == S1ListBoundaryKind.lastPage ||
+            kind == S1ListBoundaryKind.listEnd)) {
       return '$base · 再拉或左滑刷新';
-    }
-    if (refreshHint && kind == S1ListBoundaryKind.listEnd) {
-      return '$base · 再拉刷新';
     }
     return base;
   }

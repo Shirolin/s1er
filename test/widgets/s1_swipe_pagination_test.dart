@@ -347,9 +347,8 @@ void main() {
     expect(edges.first, BoundaryEdge.lastPage);
   });
 
-  testWidgets('last-page left swipe refreshes after a second gesture',
+  testWidgets('last-page left swipe refreshes on the first gesture',
       (tester) async {
-    var now = DateTime(2026, 7, 23, 12);
     var refreshCount = 0;
     final messages = <String>[];
 
@@ -365,7 +364,6 @@ void main() {
               refreshCount++;
             },
             boundaryFeedback: BoundaryFeedbackController(
-              clock: () => now,
               onHaptic: () {},
               onShowMessage: (_, message) => messages.add(message),
             ),
@@ -382,21 +380,98 @@ void main() {
     await tester.pump();
 
     final size = tester.view.physicalSize / tester.view.devicePixelRatio;
-    Future<void> swipeLeftPastEnd() async {
-      await tester.drag(find.byType(PageView), Offset(-size.width * 0.35, 0));
-      await tester.pump();
-      await tester.pump(const Duration(milliseconds: 50));
-    }
+    await tester.drag(find.byType(PageView), Offset(-size.width * 0.35, 0));
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 50));
 
-    await swipeLeftPastEnd();
-    expect(refreshCount, 0);
-    expect(messages, isEmpty);
-
-    now = now.add(const Duration(milliseconds: 500));
-    await tester.pump(const Duration(milliseconds: 400));
-    await swipeLeftPastEnd();
     expect(refreshCount, 1);
     expect(messages, isEmpty);
+  });
+
+  testWidgets(
+      'single-page thread with onTerminalRefresh keeps PageView for left swipe',
+      (tester) async {
+    var refreshCount = 0;
+
+    await tester.pumpWidget(
+      MaterialApp(
+        theme: AppTheme.lightTheme('purple'),
+        home: Scaffold(
+          body: S1SwipePagination(
+            currentPage: 1,
+            totalPages: 1,
+            onPageChanged: (_) async {},
+            onTerminalRefresh: () async {
+              refreshCount++;
+            },
+            boundaryFeedback: BoundaryFeedbackController(
+              onHaptic: () {},
+              onShowMessage: (_, __) {},
+            ),
+            pageBuilder: (context, scrollController) => ListView(
+              controller: scrollController,
+              children: const [
+                SizedBox(height: 800, child: Center(child: Text('Page 1'))),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+    await tester.pump();
+
+    expect(find.byType(PageView), findsOneWidget);
+
+    final size = tester.view.physicalSize / tester.view.devicePixelRatio;
+    await tester.drag(find.byType(PageView), Offset(-size.width * 0.35, 0));
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 50));
+
+    expect(refreshCount, 1);
+  });
+
+  testWidgets(
+      'first-page right swipe does not refresh even with onTerminalRefresh',
+      (tester) async {
+    var refreshCount = 0;
+    var pageRequests = 0;
+
+    await tester.pumpWidget(
+      MaterialApp(
+        theme: AppTheme.lightTheme('purple'),
+        home: Scaffold(
+          body: S1SwipePagination(
+            currentPage: 1,
+            totalPages: 3,
+            onPageChanged: (_) async {
+              pageRequests++;
+            },
+            onTerminalRefresh: () async {
+              refreshCount++;
+            },
+            boundaryFeedback: BoundaryFeedbackController(
+              onHaptic: () {},
+              onShowMessage: (_, __) {},
+            ),
+            pageBuilder: (context, scrollController) => ListView(
+              controller: scrollController,
+              children: const [
+                SizedBox(height: 800, child: Center(child: Text('Page 1'))),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+    await tester.pump();
+
+    final size = tester.view.physicalSize / tester.view.devicePixelRatio;
+    await tester.drag(find.byType(PageView), Offset(size.width * 0.35, 0));
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 50));
+
+    expect(refreshCount, 0);
+    expect(pageRequests, 0);
   });
 
   testWidgets('S1SwipePagination shows loading bar while paging',

@@ -56,7 +56,7 @@ void main() {
 
     expect(find.text('本页到底 · 左滑或点下一页'), findsOneWidget);
     expect(find.text('已是末页 · 再拉或左滑刷新'), findsOneWidget);
-    expect(find.text('已经到底 · 再拉刷新'), findsOneWidget);
+    expect(find.text('已经到底 · 再拉或左滑刷新'), findsOneWidget);
   });
 
   test('pagedBoundaryKind maps pages', () {

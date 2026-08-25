@@ -3,8 +3,9 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:s1er/utils/boundary_feedback.dart';
 
 void main() {
-  testWidgets('first hit haptics only; repeat in window shows message',
-      (tester) async {
+  testWidgets('first hit haptics only; repeat in window shows message', (
+    tester,
+  ) async {
     var now = DateTime(2026, 7, 23, 12);
     var hapticCount = 0;
     final messages = <String>[];
@@ -73,6 +74,52 @@ void main() {
       BoundaryFeedbackController.defaultMessage(BoundaryEdge.listEnd),
       '已经到底',
     );
+  });
+
+  testWidgets('repeat hit with showMessage false skips snackbar', (
+    tester,
+  ) async {
+    var now = DateTime(2026, 7, 23, 12);
+    var hapticCount = 0;
+    final messages = <String>[];
+
+    final controller = BoundaryFeedbackController(
+      clock: () => now,
+      onHaptic: () => hapticCount++,
+      onShowMessage: (_, message) => messages.add(message),
+    );
+
+    await tester.pumpWidget(
+      MaterialApp(
+        home: Builder(
+          builder: (context) {
+            return Scaffold(
+              body: Center(
+                child: TextButton(
+                  onPressed: () => controller.hit(
+                    context,
+                    BoundaryEdge.listEnd,
+                    showMessage: false,
+                  ),
+                  child: const Text('hit'),
+                ),
+              ),
+            );
+          },
+        ),
+      ),
+    );
+
+    await tester.tap(find.text('hit'));
+    await tester.pump();
+    expect(hapticCount, 1);
+    expect(messages, isEmpty);
+
+    now = now.add(const Duration(milliseconds: 500));
+    await tester.tap(find.text('hit'));
+    await tester.pump();
+    expect(hapticCount, 1);
+    expect(messages, isEmpty);
   });
 
   test('reset clears throttle', () {

@@ -46,11 +46,12 @@ class BoundaryFeedbackController {
   BoundaryEdge? _lastEdge;
   DateTime? _lastAt;
 
-  /// 处理一次越界。返回是否展示了文案（便于测试）。
+  /// 处理一次越界。返回是否为冷却窗内的再次越界（便于测试 / 接刷新）。
   bool hit(
     BuildContext context,
     BoundaryEdge edge, {
     String? message,
+    bool showMessage = true,
   }) {
     final now = _clock();
     final text = message ?? defaultMessage(edge);
@@ -67,7 +68,9 @@ class BoundaryFeedbackController {
     _lastAt = now;
 
     if (isRepeat) {
-      _show(context, text);
+      if (showMessage) {
+        _show(context, text);
+      }
       return true;
     }
 

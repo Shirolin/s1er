@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- **帖子详情末页再拉刷新**：滑到末页（含未满页）底部再拉，第二次触底会刷新当前页；有新页则跳到最新，同页有新楼则滚到底。
+
 ## [0.5.5] - 2026-08-18
 
 ### Added

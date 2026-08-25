@@ -21,25 +21,35 @@ class S1ListBoundaryFooter extends StatelessWidget {
     super.key,
     required this.kind,
     this.padding = const EdgeInsets.fromLTRB(16, 20, 16, 12),
+    this.refreshHint = false,
   });
 
   final S1ListBoundaryKind kind;
   final EdgeInsetsGeometry padding;
 
-  static String labelFor(S1ListBoundaryKind kind) {
-    return switch (kind) {
+  /// 末页/列表末端可再拉刷新时，在文案后追加「再拉刷新」。
+  final bool refreshHint;
+
+  static String labelFor(S1ListBoundaryKind kind, {bool refreshHint = false}) {
+    final base = switch (kind) {
       S1ListBoundaryKind.pageContinue => '本页到底 · 左滑或点下一页',
       S1ListBoundaryKind.lastPage => '已是末页',
       S1ListBoundaryKind.listEnd => '已经到底',
       S1ListBoundaryKind.noMore => '没有更多了',
     };
+    if (refreshHint &&
+        (kind == S1ListBoundaryKind.lastPage ||
+            kind == S1ListBoundaryKind.listEnd)) {
+      return '$base · 再拉刷新';
+    }
+    return base;
   }
 
   @override
   Widget build(BuildContext context) {
     final scheme = Theme.of(context).colorScheme;
     final textTheme = Theme.of(context).textTheme;
-    final label = labelFor(kind);
+    final label = labelFor(kind, refreshHint: refreshHint);
 
     return Semantics(
       label: label,

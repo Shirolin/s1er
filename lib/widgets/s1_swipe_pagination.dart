@@ -34,6 +34,7 @@ class S1SwipePagination extends StatefulWidget {
     this.onScrollMetricsChanged,
     this.onBoundaryHit,
     this.boundaryFeedback,
+    this.onTerminalRefresh,
     this.enabled = true,
     this.showPagingIndicator = true,
     this.adjacentSkeletonStyle = S1SwipeAdjacentSkeletonStyle.generic,
@@ -59,6 +60,9 @@ class S1SwipePagination extends StatefulWidget {
 
   /// 越界节流控制器；为 null 时使用内部默认实例。
   final BoundaryFeedbackController? boundaryFeedback;
+
+  /// 末页纵滑触底再拉：冷却窗内第二次越界时刷新当前页（由父级实现）。
+  final Future<void> Function()? onTerminalRefresh;
 
   /// 是否启用左右滑动（单页时自动禁用）。
   final bool enabled;
@@ -206,6 +210,11 @@ class S1SwipePaginationState extends State<S1SwipePagination> {
     }
   }
 
+  /// 刷新完成后复位触底节流，便于下一次手势重新走触觉 → 刷新。
+  void resetBoundaryFeedback() {
+    _boundaryFeedback.reset();
+  }
+
   /// 将当前页滚动到底部。
   ///
   /// [ListView.builder] 等在滚动中会逐步构建子项，[maxScrollExtent] 可能在
@@ -324,6 +333,7 @@ class S1SwipePaginationState extends State<S1SwipePagination> {
         child: S1ScrollBoundaryListener(
           isTerminal: widget.currentPage >= widget.totalPages,
           feedback: _boundaryFeedback,
+          onRefresh: widget.onTerminalRefresh,
           child: widget.pageBuilder(context, _scrollController),
         ),
       );
@@ -388,6 +398,7 @@ class S1SwipePaginationState extends State<S1SwipePagination> {
     return S1ScrollBoundaryListener(
       isTerminal: true,
       feedback: _boundaryFeedback,
+      onRefresh: widget.onTerminalRefresh,
       child: widget.pageBuilder(context, _scrollController),
     );
   }

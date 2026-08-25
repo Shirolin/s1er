@@ -48,6 +48,9 @@ class S1Constants {
   static const int inlineImageDecodeMinPx = 200;
   static const int inlineImageDecodeMaxPx = 1600;
 
+  /// 帖内 inline 图片最大显示高度（逻辑像素），防止异常纵横比撑爆楼层。
+  static const double inlineImageMaxDisplayHeight = 600;
+
   /// 多楼层分享：层数软顶（UX 刹车；真正 OOM 靠像素硬顶）。
   static const int shareMaxSelectedFloors = 10;
 

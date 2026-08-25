@@ -1,3 +1,5 @@
+import 'data_uri.dart';
+
 /// Resolves preview (inline) vs full (tap-to-view) URLs for post images.
 class PostImageUrls {
   const PostImageUrls({
@@ -45,12 +47,7 @@ class PostImageUrls {
     );
   }
 
-  static String _normalizeUrl(String url) {
-    return url
-        .replaceAll('&amp;', '&')
-        .replaceAll('&#39;', "'")
-        .replaceAll('&quot;', '"');
-  }
+  static String _normalizeUrl(String url) => DataUri.normalizeImageUrl(url);
 
   static String? _normalizeOptionalUrl(String? url) {
     if (url == null) return null;

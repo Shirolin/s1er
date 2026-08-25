@@ -65,5 +65,13 @@ void main() {
       expect(urls.fullUrl, contains('aid=123'));
       expect(urls.fullUrl, isNot(contains('&amp;')));
     });
+
+    test('fixes malformed http://data: inline image src', () {
+      const src = 'http://data:image/png;base64,AAAA';
+      final urls = PostImageUrls.resolve(src: src);
+
+      expect(urls.previewUrl, 'data:image/png;base64,AAAA');
+      expect(urls.fullUrl, 'data:image/png;base64,AAAA');
+    });
   });
 }

@@ -1,3 +1,4 @@
+import 'dart:convert';
 import 'dart:typed_data';
 
 import 'package:flutter/material.dart';
@@ -380,6 +381,77 @@ void main() {
     final maxWidth =
         tester.widget<ConstrainedBox>(constrained.first).constraints.maxWidth;
     expect(maxWidth, 360);
+  });
+
+  testWidgets('ImageViewer decodes malformed http://data: inline image',
+      (tester) async {
+    final bytes = _pngBytes(width: 120, height: 40);
+    final malformed = 'http://data:image/png;base64,${base64Encode(bytes)}';
+
+    await tester.pumpWidget(
+      ProviderScope(
+        overrides: [
+          settingsProvider.overrideWith(
+            () => SettingsNotifier(
+              initial: const AppSettings(showImages: true),
+            ),
+          ),
+          wifiConnectedProvider.overrideWith((ref) async* {
+            yield true;
+          }),
+        ],
+        child: MaterialApp(
+          theme: AppTheme.lightTheme('purple'),
+          home: Scaffold(
+            body: SizedBox(
+              width: 360,
+              child: ImageViewer(imageUrl: malformed),
+            ),
+          ),
+        ),
+      ),
+    );
+
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 100));
+    await tester.pump();
+
+    expect(find.byType(Image), findsWidgets);
+    expect(find.byIcon(Icons.broken_image_outlined), findsNothing);
+  });
+
+  testWidgets('failed inline image keeps compact error placeholder',
+      (tester) async {
+    await tester.pumpWidget(
+      ProviderScope(
+        overrides: [
+          settingsProvider.overrideWith(
+            () => SettingsNotifier(
+              initial: const AppSettings(showImages: true),
+            ),
+          ),
+        ],
+        child: MaterialApp(
+          theme: AppTheme.lightTheme('purple'),
+          home: const Scaffold(
+            body: SizedBox(
+              width: 360,
+              child: ImageViewer(imageUrl: 'data:image/png;base64,!!!'),
+            ),
+          ),
+        ),
+      ),
+    );
+
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 100));
+    await tester.pump();
+
+    expect(find.byIcon(Icons.broken_image_outlined), findsOneWidget);
+    final errorBox = tester.renderObject<RenderBox>(
+      find.byIcon(Icons.broken_image_outlined),
+    );
+    expect(errorBox.size.height, lessThan(120));
   });
 
   testWidgets('long-press inline image opens the action menu', (tester) async {

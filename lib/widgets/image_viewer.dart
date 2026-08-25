@@ -6,12 +6,14 @@ import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+import '../config/constants.dart';
 import '../config/resource_domains.dart';
 import '../providers/connectivity_provider.dart';
 import '../providers/image_bytes_provider.dart';
 import '../providers/settings_provider.dart';
 import '../providers/image_cache_provider.dart';
 import '../theme/app_theme.dart';
+import '../utils/data_uri.dart';
 import '../utils/image_actions.dart';
 import '../utils/image_load_policy.dart';
 import '../utils/inline_image_decode.dart';
@@ -77,9 +79,10 @@ class _ImageViewerState extends ConsumerState<ImageViewer> {
   late ResourceType _resourceType;
   late String _displayUrl;
 
-  String get _previewUrl => widget.imageUrl;
+  String get _previewUrl => DataUri.normalizeImageUrl(widget.imageUrl);
 
-  String get _fullUrl => widget.fullImageUrl ?? widget.imageUrl;
+  String get _fullUrl =>
+      DataUri.normalizeImageUrl(widget.fullImageUrl ?? widget.imageUrl);
 
   bool get _hasDistinctFull => _previewUrl != _fullUrl;
 
@@ -125,6 +128,7 @@ class _ImageViewerState extends ConsumerState<ImageViewer> {
   }
 
   ResourceType _resolveType(String url) {
+    if (DataUri.isDataUri(url)) return ResourceType.publicAsset;
     final host = Uri.parse(url).host;
     return ResourceDomains.match(host)?.type ?? ResourceType.publicAsset;
   }
@@ -169,6 +173,11 @@ class _ImageViewerState extends ConsumerState<ImageViewer> {
   }
 
   Future<void> _loadFromDiskOrNetwork(String url) async {
+    if (DataUri.isDataUri(url)) {
+      await _loadDataUri(url);
+      return;
+    }
+
     try {
       final disk = await getCachedImageBytes(url);
       if (!mounted) return;
@@ -220,6 +229,37 @@ class _ImageViewerState extends ConsumerState<ImageViewer> {
     }
 
     await _loadAuthOrProxied(url);
+  }
+
+  Future<void> _loadDataUri(String url) async {
+    if (!mounted) return;
+    if (!_shouldAutoLoad()) {
+      setState(() {
+        _loading = false;
+        _deferredLoad = true;
+        _networkLoadAllowed = false;
+        _imageProvider = null;
+      });
+      return;
+    }
+
+    setState(() => _loading = true);
+
+    final bytes = DataUri.decode(url);
+    if (!mounted) return;
+    if (bytes == null) {
+      setState(() => _loading = false);
+      return;
+    }
+
+    _putInMemoryCache(url, bytes);
+    setState(() {
+      _bytes = bytes;
+      _imageProvider = _providerCache[url];
+      _loading = false;
+      _deferredLoad = false;
+      _networkLoadAllowed = true;
+    });
   }
 
   void _requestManualLoad() {
@@ -418,6 +458,10 @@ class _ImageViewerState extends ConsumerState<ImageViewer> {
       return _wrapDeferred(_wrapBlockImage(_buildImage(_imageProvider!)));
     }
 
+    if (DataUri.isDataUri(_displayUrl)) {
+      return _wrapDeferred(_wrapBlockImage(_buildError()));
+    }
+
     if (_resourceType == ResourceType.publicAsset) {
       // On Web, CachedNetworkImageProvider renders via browser <img> elements.
       // Cross-origin images taint Flutter's <canvas>, which breaks
@@ -461,8 +505,7 @@ class _ImageViewerState extends ConsumerState<ImageViewer> {
                 constraints.maxWidth > 0
             ? constraints.maxWidth
             : 300.0;
-        return Align(
-          alignment: Alignment.center,
+        return Center(
           child: ConstrainedBox(
             constraints: BoxConstraints(maxWidth: maxWidth),
             child: child,
@@ -500,37 +543,43 @@ class _ImageViewerState extends ConsumerState<ImageViewer> {
               final decodeWidth = inlineDecodeWidthPx(layoutWidth, dpr);
               final imageProvider = inlineImageProvider(provider, decodeWidth);
 
-              return Image(
-                key: ValueKey('$_displayUrl-$decodeWidth'),
-                image: imageProvider,
-                fit: BoxFit.contain,
-                gaplessPlayback: true,
-                frameBuilder: (context, child, frame, wasSynchronouslyLoaded) {
-                  if (wasSynchronouslyLoaded) return child;
-                  return Stack(
-                    alignment: Alignment.center,
-                    children: [
-                      if (frame == null)
-                        const SizedBox(
-                          height: 96,
-                          child: Center(
-                            child: CircularProgressIndicator(strokeWidth: 2),
-                          ),
+              return ConstrainedBox(
+                constraints: BoxConstraints(
+                  maxWidth: layoutWidth,
+                  maxHeight: S1Constants.inlineImageMaxDisplayHeight,
+                ),
+                child: Image(
+                  key: ValueKey('$_displayUrl-$decodeWidth'),
+                  image: imageProvider,
+                  fit: BoxFit.contain,
+                  gaplessPlayback: true,
+                  frameBuilder:
+                      (context, child, frame, wasSynchronouslyLoaded) {
+                    if (wasSynchronouslyLoaded) return child;
+                    // 加载中不把 child 放进布局树：opacity:0 仍会参与 Stack 尺寸，
+                    // 异常/失败图片的固有高度会把占位撑成「超长条」。
+                    if (frame == null) {
+                      return const SizedBox(
+                        width: double.infinity,
+                        height: 96,
+                        child: Center(
+                          child: CircularProgressIndicator(strokeWidth: 2),
                         ),
-                      AnimatedOpacity(
-                        opacity: frame != null ? 1.0 : 0.0,
-                        duration: const Duration(milliseconds: 150),
-                        child: child,
-                      ),
-                    ],
-                  );
-                },
-                errorBuilder: (_, __, ___) {
-                  WidgetsBinding.instance.addPostFrameCallback((_) {
-                    if (mounted) _handlePublicImageError();
-                  });
-                  return _buildError();
-                },
+                      );
+                    }
+                    return AnimatedOpacity(
+                      opacity: 1.0,
+                      duration: const Duration(milliseconds: 150),
+                      child: child,
+                    );
+                  },
+                  errorBuilder: (_, __, ___) {
+                    WidgetsBinding.instance.addPostFrameCallback((_) {
+                      if (mounted) _handlePublicImageError();
+                    });
+                    return _buildError();
+                  },
+                ),
               );
             },
           ),

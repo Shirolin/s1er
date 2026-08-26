@@ -352,6 +352,156 @@ void main() {
       );
     });
 
+    test('canInAppWindowsDownload requires windows zip', () {
+      final m = AppUpdateManifest.fromJson({
+        'latest': '1.0.0',
+        'channels': {
+          'windows': 'https://github.com/example/releases/download/v1/app.zip',
+        },
+      });
+      expect(
+        UpdateCheckService.canInAppWindowsDownload(
+          manifest: m,
+          distribution: 'github',
+          isWeb: false,
+          platform: TargetPlatform.windows,
+        ),
+        isTrue,
+      );
+      expect(
+        UpdateCheckService.canInAppDownload(
+          manifest: m,
+          distribution: 'github',
+          isWeb: false,
+          platform: TargetPlatform.windows,
+        ),
+        isTrue,
+      );
+      expect(
+        UpdateCheckService.canInAppWindowsDownload(
+          manifest: m,
+          distribution: 'github',
+          isWeb: false,
+          platform: TargetPlatform.android,
+        ),
+        isFalse,
+      );
+      expect(
+        UpdateCheckService.canInAppWindowsDownload(
+          manifest: m,
+          distribution: 'play',
+          isWeb: false,
+          platform: TargetPlatform.windows,
+        ),
+        isFalse,
+      );
+    });
+
+    test('canInAppWindowsDownload accepts zip path with query string', () {
+      final m = AppUpdateManifest.fromJson({
+        'latest': '1.0.0',
+        'channels': {
+          'windows':
+              'https://github.com/example/releases/download/v1/app.zip?token=abc',
+        },
+      });
+      expect(
+        UpdateCheckService.canInAppWindowsDownload(
+          manifest: m,
+          distribution: 'github',
+          isWeb: false,
+          platform: TargetPlatform.windows,
+        ),
+        isTrue,
+      );
+      expect(
+        UpdateCheckService.pathEndsWithZip(
+          'https://example.com/pkg.zip?download=1',
+        ),
+        isTrue,
+      );
+      expect(
+        UpdateCheckService.pathEndsWithZip(
+          'https://example.com/pkg.zip.txt',
+        ),
+        isFalse,
+      );
+    });
+
+    test('isGitHubReleaseAssetUrl detects APK release assets', () {
+      expect(
+        UpdateCheckService.isGitHubReleaseAssetUrl(
+          'https://github.com/Shirolin/s1er/releases/download/v0.6.0/app.apk',
+        ),
+        isTrue,
+      );
+      expect(
+        UpdateCheckService.isGitHubReleaseAssetUrl(
+          'https://github.com/Shirolin/s1er/releases/latest',
+        ),
+        isFalse,
+      );
+    });
+
+    test('resolveBrowserFallbackUrl prefers GitHub releases page for APKs', () {
+      final m = AppUpdateManifest.fromJson({
+        'latest': '1.0.0',
+        'channels': {
+          'github': 'https://github.com/example/releases/latest',
+          'androidApk':
+              'https://github.com/example/releases/download/v1/app.apk',
+        },
+      });
+      expect(
+        UpdateCheckService.resolveBrowserFallbackUrl(
+          m,
+          downloadUrl:
+              'https://github.com/example/releases/download/v1/app.apk',
+        ),
+        'https://github.com/example/releases/latest',
+      );
+      expect(
+        UpdateCheckService.resolveBrowserFallbackUrl(
+          m,
+          downloadUrl: 'https://github.com/example/releases/latest',
+        ),
+        'https://github.com/example/releases/latest',
+      );
+    });
+
+    test('apkFileNameFromUrl decodes plus and sanitizes', () {
+      expect(
+        UpdateCheckService.apkFileNameFromUrl(
+          'https://github.com/Shirolin/s1er/releases/download/v0.6.0/'
+          's1er-0.6.0%2B11-android-arm64-v8a.apk',
+        ),
+        's1er-0.6.0+11-android-arm64-v8a.apk',
+      );
+      expect(
+        UpdateCheckService.apkFileNameFromUrl(
+          'https://github.com/Shirolin/s1er/releases/latest',
+        ),
+        's1er-update.apk',
+      );
+    });
+
+    // Kotlin 侧对照清单（MainActivity.allowedDownloadHosts）：
+    // github.com, www.github.com, raw.githubusercontent.com,
+    // objects.githubusercontent.com, release-assets.githubusercontent.com,
+    // cdn.jsdelivr.net, play.google.com
+    test('allowedDownloadHosts documents kotlin sync contract', () {
+      const expectedHosts = {
+        'github.com',
+        'www.github.com',
+        'raw.githubusercontent.com',
+        'objects.githubusercontent.com',
+        'release-assets.githubusercontent.com',
+        'cdn.jsdelivr.net',
+        'play.google.com',
+      };
+      expect(UpdateCheckService.allowedDownloadHosts, expectedHosts);
+    });
+
     test('default manifestUrls include both raw and jsDelivr fallback', () {
       final service = UpdateCheckService(
         manifestUrl: UpdateCheckService.jsDelivrManifestUrl,

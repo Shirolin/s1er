@@ -141,8 +141,10 @@ flutter run --dart-define=DISTRIBUTION=play
 
 Android（非 Play）升级 Dialog：
 
-- **立即更新**：应用内按设备 ABI 下载对应 APK（优先 `androidArm64V8aApk` / `androidArmeabiV7aApk` / `androidX8664Apk`；清单缺字段或识别失败时回退 `androidApk` universal）
-- **网盘下载**：外链打开 `channels.androidNetdisk`（不解析网盘直链）；`channels.netdiskHint` 展示提取码等说明
+- **立即更新**：应用内按设备 ABI 下载对应 APK（优先 `androidArm64V8aApk` / `androidArmeabiV7aApk` / `androidX8664Apk`；清单缺字段或识别失败时回退 `androidApk` universal）。下载在收到完整 `Content-Length` 后即结束，不等 GitHub CDN 关闭连接（否则会超时失败）。
+- **系统下载**（应用内直链失败后的 Android 备选）：交给系统 DownloadManager，完成后调起安装。**不要**用浏览器打开 GitHub `releases/download/*.apk` 直链——手机 Chrome 常会卡在 100% 且不出安装按钮。
+- **下载主机白名单**：`UpdateCheckService.allowedDownloadHosts`（Dart）与 `MainActivity.kt` 的 `allowedDownloadHosts` 须保持同步；改任一侧后跑 `update_check_service_test` 并人工核对另一侧。
+- **网盘下载**：外链打开 `channels.androidNetdisk`（不解析网盘直链）；`channels.netdiskHint` 展示提取码等说明。国内网络下这是最稳的安装包来源。
 
 `latest.json` 示例（节选）：
 
@@ -158,3 +160,15 @@ Android（非 Play）升级 Dialog：
 ```
 
 无网盘时 `androidNetdisk` / `netdiskHint` 可保持 `null`；非法主机不会显示网盘按钮。`release.ps1 manifest` 会保留已有网盘字段，并重写全部 APK 与 Windows 直链。
+
+### Windows 绿色包
+
+产物仍是 `s1er-…-windows-x64.zip`（解压后运行 `s1er.exe`）。客户端在 Windows 上若清单含合法 `channels.windows` `.zip` 直链，升级 Dialog 的主按钮为 **立即更新**：
+
+1. 应用内下载 ZIP（与 Android 相同的「收满即结束」逻辑）
+2. 解压到临时目录，确认包内有合法的 `s1er.exe`（PE 头）
+3. 拉起脚本：等待当前进程退出并解锁 → 把安装目录改名为 `*.s1er-bak`（`$backupReady`），把新目录移到原路径 → 以安装目录为工作目录启动新 `s1er.exe` → 删除备份和临时文件（ZIP / 解压目录 / 脚本）
+4. 任一失败（进程超时、exe 仍被锁定、rename/move 失败、新 exe 缺失）都会保留原安装目录或从 `.s1er-bak` 回滚、拉起旧程序，并清理临时文件；rename 尚未成功时**不会**删除当前安装目录。日志写在 `%TEMP%\s1er-update.log`
+5. 用户数据在 `%APPDATA%`，不在安装目录里，覆盖程序文件不会清登录态
+
+下次点更新时会先清掉上次留下的 `s1er-update-extract-*` 和覆盖脚本。失败时仍可「浏览器打开」ZIP。调试/`build\windows\runner` 开发目录、以及没有写入权限的目录（如 Program Files）会拒绝覆盖。

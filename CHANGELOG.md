@@ -5,6 +5,18 @@ All notable changes to S1er will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [Unreleased]
+
+### Added
+
+- **Windows 应用内覆盖更新**：绿色解压包也可点「立即更新」。下载 ZIP 后自动解压到临时目录，退出进程后脚本把安装目录改名为备份、把新目录移到原路径再启动；失败则回滚并拉起旧程序。登录和设置在 `%APPDATA%`，不会被覆盖。成功或失败都会删除 ZIP、解压目录和脚本；下次更新还会清掉上次残留。安装在 Program Files 等无写权限目录时会提示改放到普通文件夹。
+
+### Fixed
+
+- **更新安装包下载卡在 100%**：GitHub 直链常在字节传完后不关闭连接。应用内下载改为收满 Content-Length 即完成，失败后 Android 走系统下载器而不是用浏览器打开 APK 直链（Chrome 会一直转圈不出安装按钮）。
+- **应用内更新健壮性**：Windows 覆盖脚本在 rename 失败时不再误删安装目录；exe 仍被锁定时中止对换；安装中隐藏「取消」；重复点击「立即更新」不会并发下载；Android 系统下载 Receiver 改为非导出并校验主机白名单；Windows `.zip` 判定忽略 URL query。
+- **应用内更新状态机**：不支持平台抛异常前不再占位 `downloading`；Provider dispose 早退时中止后续状态写入（Dialog 关闭仍由 `reset()` 清状态）；Windows 覆盖脚本 `Start-S1erExe` 避免遮蔽 PowerShell `$args`。
+
 ## [0.6.0] - 2026-08-26
 
 ### Added

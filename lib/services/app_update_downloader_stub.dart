@@ -26,6 +26,7 @@ class AppUpdateDownloader {
     required List<String> urls,
     required String versionLabel,
     void Function(double progress)? onProgress,
+    String extension = 'apk',
   }) async {
     throw const UpdateCheckException('当前平台不支持应用内下载');
   }

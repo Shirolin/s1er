@@ -4,6 +4,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:url_launcher/url_launcher.dart';
 
 import '../app.dart' show rootNavigatorKey;
+import '../providers/talker_provider.dart';
 import '../providers/update_check_provider.dart';
 import '../providers/update_download_provider.dart';
 import '../utils/post_link_resolver.dart';
@@ -14,7 +15,7 @@ typedef ExternalUrlLauncher = Future<bool> Function(
   LaunchMode mode,
 });
 
-/// M3 升级提醒：Android 可应用内下载；网盘为国内备选；其它平台外链。
+/// M3 升级提醒：Android / Windows 可应用内更新；网盘为国内备选；其它平台外链。
 Future<void> showAppUpdateDialog(
   BuildContext context, {
   required UpdateEvaluation evaluation,
@@ -87,10 +88,15 @@ class _AppUpdateDialogBody extends ConsumerStatefulWidget {
 class _AppUpdateDialogBodyState extends ConsumerState<_AppUpdateDialogBody> {
   UpdateEvaluation get evaluation => widget.evaluation;
 
-  bool get _useInApp =>
+  bool get _useInApp => !kIsWeb && evaluation.canInAppDownload;
+
+  bool get _useAndroidSystemDownload =>
       !kIsWeb &&
       defaultTargetPlatform == TargetPlatform.android &&
       evaluation.canInAppDownload;
+
+  String get _externalDownloadLabel =>
+      _useAndroidSystemDownload ? '系统下载' : '浏览器打开';
 
   Future<void> _openExternal(String url, {String? snackAfter}) async {
     final uri = Uri.tryParse(url);
@@ -135,13 +141,39 @@ class _AppUpdateDialogBodyState extends ConsumerState<_AppUpdateDialogBody> {
       }
       return;
     }
-    await _openExternal(url);
+
+    if (_useAndroidSystemDownload && evaluation.isDownloadUrlAllowed) {
+      try {
+        await ref.read(appUpdateInstallerProvider).enqueueSystemDownload(
+              url: url,
+              fileName: evaluation.apkFileNameForDownload,
+            );
+        if (mounted) {
+          S1SnackBar.show(
+            context,
+            message: '已交给系统下载，完成后会调起安装；也可在通知栏点开',
+          );
+        }
+        return;
+      } on Object catch (e, st) {
+        ref
+            .read(talkerProvider)
+            .warning('System APK download enqueue failed: $e $st');
+      }
+    }
+
+    final fallback = evaluation.resolveBrowserFallbackUrl();
+    await _openExternal(
+      fallback,
+      snackAfter:
+          fallback != url ? '已打开发布页。手机浏览器打开 GitHub 安装包常会卡在 100%，请改用网盘' : null,
+    );
   }
 
   Future<void> _startInApp() async {
     final notifier = ref.read(updateDownloadProvider.notifier);
     try {
-      await notifier.startAndroidUpdate(evaluation);
+      await notifier.startInAppUpdate(evaluation);
       final phase = ref.read(updateDownloadProvider).phase;
       if (phase == UpdateDownloadPhase.idle && mounted) {
         // 安装器已调起
@@ -210,7 +242,7 @@ class _AppUpdateDialogBodyState extends ConsumerState<_AppUpdateDialogBody> {
 
     if (downloading) {
       final label = download.phase == UpdateDownloadPhase.installing
-          ? '正在调起安装…'
+          ? (download.message ?? '正在调起安装…')
           : '正在下载… ${(download.progress * 100).clamp(0, 100).toStringAsFixed(0)}%';
       return Column(
         mainAxisSize: MainAxisSize.min,
@@ -249,10 +281,21 @@ class _AppUpdateDialogBodyState extends ConsumerState<_AppUpdateDialogBody> {
             ? '${download.message}\n\n直链下载失败，可能是网络受限。'
             : '直链下载失败，可能是网络受限。',
       );
-      if (evaluation.hasNetdisk) {
+      if (!kIsWeb && defaultTargetPlatform == TargetPlatform.android) {
+        buffer.write('\n手机浏览器打开 GitHub 安装包常会卡在 100% 不出安装按钮。');
+        if (evaluation.hasNetdisk) {
+          buffer.write('可用网盘获取安装包。');
+        } else {
+          buffer.write('可尝试系统下载或打开发布页。');
+        }
+      } else if (!kIsWeb && defaultTargetPlatform == TargetPlatform.windows) {
+        buffer.write(
+          '\n可用浏览器打开 ZIP 手动解压覆盖；若已尝试应用内覆盖，请查看 %TEMP%\\s1er-update.log。',
+        );
+      } else if (evaluation.hasNetdisk) {
         buffer.write('可用网盘获取安装包。');
       } else {
-        buffer.write('可尝试浏览器打开下载页。');
+        buffer.write('可尝试打开发布页。');
       }
       if (hint != null) {
         buffer.write('\n\n');
@@ -287,14 +330,16 @@ class _AppUpdateDialogBodyState extends ConsumerState<_AppUpdateDialogBody> {
     final actions = <Widget>[];
 
     if (downloading) {
-      actions.add(
-        TextButton(
-          onPressed: () {
-            ref.read(updateDownloadProvider.notifier).cancelDownload();
-          },
-          child: const Text('取消'),
-        ),
-      );
+      if (download.phase == UpdateDownloadPhase.downloading) {
+        actions.add(
+          TextButton(
+            onPressed: () {
+              ref.read(updateDownloadProvider.notifier).cancelDownload();
+            },
+            child: const Text('取消'),
+          ),
+        );
+      }
       if (evaluation.hasNetdisk) {
         actions.add(
           TextButton(
@@ -348,7 +393,7 @@ class _AppUpdateDialogBodyState extends ConsumerState<_AppUpdateDialogBody> {
         actions.add(
           TextButton(
             onPressed: _openBrowserDownload,
-            child: const Text('浏览器打开'),
+            child: Text(_externalDownloadLabel),
           ),
         );
         actions.add(
@@ -367,7 +412,7 @@ class _AppUpdateDialogBodyState extends ConsumerState<_AppUpdateDialogBody> {
               await _openBrowserDownload();
               if (mounted) Navigator.of(context).pop();
             },
-            child: const Text('浏览器打开'),
+            child: Text(_externalDownloadLabel),
           ),
         );
       }

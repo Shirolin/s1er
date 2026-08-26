@@ -177,6 +177,9 @@ class UpdateCheckService {
   }
 
   /// 允许的升级下载 / 商店 / 清单镜像主机（https only）。
+  ///
+  /// 须与 Android [`MainActivity.kt`](../../android/app/src/main/kotlin/com/stage1st/s1er/MainActivity.kt)
+  /// 的 `allowedDownloadHosts` 保持同步（系统 DownloadManager 纵深防御）。
   static const Set<String> allowedDownloadHosts = {
     'github.com',
     'www.github.com',
@@ -298,11 +301,98 @@ class UpdateCheckService {
     return apk != null && apk.isNotEmpty;
   }
 
+  /// Windows 绿色包应用内覆盖是否可用（非 Play、有合法 `.zip` 直链）。
+  static bool canInAppWindowsDownload({
+    required AppUpdateManifest manifest,
+    String distribution = EnvConfig.distribution,
+    bool isWeb = kIsWeb,
+    TargetPlatform? platform,
+  }) {
+    if (isWeb) return false;
+    if (distribution.trim().toLowerCase() == 'play') return false;
+    final target = platform ?? defaultTargetPlatform;
+    if (target != TargetPlatform.windows) return false;
+    final url = resolveDownloadUrl(
+      manifest,
+      distribution: distribution,
+      isWeb: false,
+      platform: TargetPlatform.windows,
+    );
+    return _pathEndsWithZip(url);
+  }
+
+  /// 按 URI path 判断是否为 `.zip`（忽略 query / fragment）。
+  static bool pathEndsWithZip(String url) => _pathEndsWithZip(url);
+
+  static bool _pathEndsWithZip(String url) {
+    final trimmed = url.trim();
+    if (trimmed.isEmpty) return false;
+    final uri = Uri.tryParse(trimmed);
+    if (uri == null) return false;
+    return uri.path.toLowerCase().endsWith('.zip');
+  }
+
+  /// Android APK 或 Windows ZIP 的应用内更新。
+  static bool canInAppDownload({
+    required AppUpdateManifest manifest,
+    String distribution = EnvConfig.distribution,
+    bool isWeb = kIsWeb,
+    TargetPlatform? platform,
+    String? abiOverride,
+  }) {
+    return canInAppAndroidDownload(
+          manifest: manifest,
+          distribution: distribution,
+          isWeb: isWeb,
+          platform: platform,
+          abiOverride: abiOverride,
+        ) ||
+        canInAppWindowsDownload(
+          manifest: manifest,
+          distribution: distribution,
+          isWeb: isWeb,
+          platform: platform,
+        );
+  }
+
   static bool isAllowedDownloadUrl(String url) =>
       _sanitizeUrl(url, allowedDownloadHosts) != null;
 
   static bool isAllowedNetdiskUrl(String url) =>
       _sanitizeUrl(url, allowedNetdiskHosts) != null;
+
+  /// GitHub `releases/download/...apk` 直链。手机 Chrome 打开后常卡在 100%。
+  static bool isGitHubReleaseAssetUrl(String url) {
+    final uri = Uri.tryParse(url.trim());
+    if (uri == null || uri.scheme.toLowerCase() != 'https') return false;
+    final host = uri.host.toLowerCase();
+    if (host != 'github.com' && host != 'www.github.com') return false;
+    final path = uri.path.toLowerCase();
+    return path.contains('/releases/download/') && path.endsWith('.apk');
+  }
+
+  /// 交给系统浏览器时的地址：GitHub APK 直链改开发布页，避免 Chrome 卡在 100%。
+  static String resolveBrowserFallbackUrl(
+    AppUpdateManifest manifest, {
+    required String downloadUrl,
+  }) {
+    if (!isGitHubReleaseAssetUrl(downloadUrl)) return downloadUrl;
+    return _sanitizeUrl(manifest.channels.github, allowedDownloadHosts) ??
+        downloadUrl;
+  }
+
+  /// 从 APK 直链提取安全文件名（供系统下载器使用）。
+  static String apkFileNameFromUrl(
+    String url, {
+    String fallback = 's1er-update.apk',
+  }) {
+    final uri = Uri.tryParse(url.trim());
+    if (uri == null || uri.pathSegments.isEmpty) return fallback;
+    final decoded = Uri.decodeComponent(uri.pathSegments.last);
+    if (!decoded.toLowerCase().endsWith('.apk')) return fallback;
+    final safe = decoded.replaceAll(RegExp(r'[^\w.\-+]'), '_');
+    return safe.isEmpty ? fallback : safe;
+  }
 
   static String? _sanitizeUrl(String? url, Set<String> allowedHosts) {
     if (url == null) return null;

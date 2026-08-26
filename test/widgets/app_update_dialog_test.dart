@@ -1,7 +1,9 @@
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:s1er/models/app_exceptions.dart';
 import 'package:s1er/models/app_update_manifest.dart';
 import 'package:s1er/providers/update_check_provider.dart';
 import 'package:s1er/providers/update_download_provider.dart';
@@ -103,22 +105,152 @@ void main() {
 
   testWidgets('failed download elevates netdisk as primary CTA',
       (tester) async {
-    final manifest = manifestWith(
-      androidApk:
-          'https://github.com/Shirolin/s1er/releases/download/v2/app.apk',
-      androidNetdisk: 'https://pan.baidu.com/s/xxxx',
-      netdiskHint: '提取码：zz',
-    );
-    final evaluation = evaluationFor(
-      manifest,
-      canInApp: true,
-      downloadUrl:
-          'https://github.com/Shirolin/s1er/releases/download/v2/app.apk',
-    );
+    debugDefaultTargetPlatformOverride = TargetPlatform.android;
+    try {
+      final manifest = manifestWith(
+        androidApk:
+            'https://github.com/Shirolin/s1er/releases/download/v2/app.apk',
+        androidNetdisk: 'https://pan.baidu.com/s/xxxx',
+        netdiskHint: '提取码：zz',
+      );
+      final evaluation = evaluationFor(
+        manifest,
+        canInApp: true,
+        downloadUrl:
+            'https://github.com/Shirolin/s1er/releases/download/v2/app.apk',
+      );
+
+      final container = ProviderContainer(
+        overrides: [
+          updateDownloadProvider.overrideWith(_FailedDownloadNotifier.new),
+        ],
+      );
+      addTearDown(container.dispose);
+
+      await tester.pumpWidget(
+        UncontrolledProviderScope(
+          container: container,
+          child: wrapWithAppTheme(
+            Builder(
+              builder: (context) {
+                return Scaffold(
+                  body: FilledButton(
+                    onPressed: () {
+                      showAppUpdateDialog(
+                        context,
+                        evaluation: evaluation,
+                        onPromptInteracted: ({targetVersion}) {},
+                        onIgnoreVersion: (_) {},
+                        container: container,
+                        launchUrlFn: (
+                          uri, {
+                          mode = LaunchMode.platformDefault,
+                        }) async =>
+                            true,
+                      );
+                    },
+                    child: const Text('open'),
+                  ),
+                );
+              },
+            ),
+          ),
+        ),
+      );
+
+      await tester.tap(find.text('open'));
+      await tester.pumpAndSettle();
+
+      expect(find.text('立即更新'), findsOneWidget);
+      await tester.tap(find.text('立即更新'));
+      await tester.pumpAndSettle();
+
+      expect(find.text('下载失败'), findsOneWidget);
+      expect(find.textContaining('网络受限'), findsOneWidget);
+      expect(find.textContaining('卡在 100%'), findsOneWidget);
+      expect(find.text('网盘下载'), findsOneWidget);
+      expect(find.text('重试'), findsOneWidget);
+      expect(find.text('系统下载'), findsOneWidget);
+      expect(find.text('浏览器打开'), findsNothing);
+
+      // Primary filled netdisk
+      final netdiskButton = tester.widget<FilledButton>(
+        find.widgetWithText(FilledButton, '网盘下载'),
+      );
+      expect(netdiskButton.onPressed, isNotNull);
+    } finally {
+      debugDefaultTargetPlatformOverride = null;
+    }
+  });
+
+  testWidgets('failed download on Windows shows zip manual hint',
+      (tester) async {
+    debugDefaultTargetPlatformOverride = TargetPlatform.windows;
+    try {
+      final manifest = manifestWith();
+      final evaluation = UpdateEvaluation(
+        availability: UpdateAvailability.optional,
+        localVersion: '1.0.0',
+        manifest: manifest,
+        downloadUrl:
+            'https://github.com/Shirolin/s1er/releases/download/v2/app.zip',
+        canInAppDownload: true,
+        shouldShowDialog: true,
+      );
+
+      final container = ProviderContainer(
+        overrides: [
+          updateDownloadProvider.overrideWith(_FailedDownloadNotifier.new),
+        ],
+      );
+      addTearDown(container.dispose);
+
+      await tester.pumpWidget(
+        UncontrolledProviderScope(
+          container: container,
+          child: wrapWithAppTheme(
+            Builder(
+              builder: (context) {
+                return Scaffold(
+                  body: FilledButton(
+                    onPressed: () {
+                      showAppUpdateDialog(
+                        context,
+                        evaluation: evaluation,
+                        onPromptInteracted: ({targetVersion}) {},
+                        onIgnoreVersion: (_) {},
+                        container: container,
+                      );
+                    },
+                    child: const Text('open'),
+                  ),
+                );
+              },
+            ),
+          ),
+        ),
+      );
+
+      await tester.tap(find.text('open'));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('立即更新'));
+      await tester.pumpAndSettle();
+
+      expect(find.text('下载失败'), findsOneWidget);
+      expect(find.textContaining('s1er-update.log'), findsOneWidget);
+      expect(find.textContaining('卡在 100%'), findsNothing);
+    } finally {
+      debugDefaultTargetPlatformOverride = null;
+    }
+  });
+
+  testWidgets('installing phase hides cancel button', (tester) async {
+    final manifest = manifestWith();
+    final evaluation = evaluationFor(manifest, canInApp: true);
 
     final container = ProviderContainer(
       overrides: [
-        updateDownloadProvider.overrideWith(_FailedDownloadNotifier.new),
+        updateDownloadProvider.overrideWith(_InstallingDownloadNotifier.new),
       ],
     );
     addTearDown(container.dispose);
@@ -138,11 +270,6 @@ void main() {
                       onPromptInteracted: ({targetVersion}) {},
                       onIgnoreVersion: (_) {},
                       container: container,
-                      launchUrlFn: (
-                        uri, {
-                        mode = LaunchMode.platformDefault,
-                      }) async =>
-                          true,
                     );
                   },
                   child: const Text('open'),
@@ -155,23 +282,10 @@ void main() {
     );
 
     await tester.tap(find.text('open'));
-    await tester.pumpAndSettle();
+    await tester.pump();
 
-    expect(find.text('立即更新'), findsOneWidget);
-    await tester.tap(find.text('立即更新'));
-    await tester.pumpAndSettle();
-
-    expect(find.text('下载失败'), findsOneWidget);
-    expect(find.textContaining('网络受限'), findsOneWidget);
-    expect(find.text('网盘下载'), findsOneWidget);
-    expect(find.text('重试'), findsOneWidget);
-    expect(find.text('浏览器打开'), findsOneWidget);
-
-    // Primary filled netdisk
-    final netdiskButton = tester.widget<FilledButton>(
-      find.widgetWithText(FilledButton, '网盘下载'),
-    );
-    expect(netdiskButton.onPressed, isNotNull);
+    expect(find.textContaining('覆盖安装'), findsOneWidget);
+    expect(find.text('取消'), findsNothing);
   });
 
   testWidgets('illegal netdisk host hides netdisk button', (tester) async {
@@ -224,6 +338,78 @@ void main() {
     expect(find.text('去更新'), findsOneWidget);
   });
 
+  testWidgets('failed 系统下载 enqueues via installer instead of opening APK URL',
+      (tester) async {
+    final installer = _EnqueueInstaller();
+    final opened = <Uri>[];
+    final manifest = manifestWith(
+      androidApk:
+          'https://github.com/Shirolin/s1er/releases/download/v2/app.apk',
+      androidNetdisk: 'https://pan.baidu.com/s/xxxx',
+    );
+    final evaluation = evaluationFor(
+      manifest,
+      canInApp: true,
+      downloadUrl:
+          'https://github.com/Shirolin/s1er/releases/download/v2/app.apk',
+    );
+
+    final container = ProviderContainer(
+      overrides: [
+        updateDownloadProvider.overrideWith(_FailedDownloadNotifier.new),
+        appUpdateInstallerProvider.overrideWith((ref) => installer),
+      ],
+    );
+    addTearDown(container.dispose);
+
+    await tester.pumpWidget(
+      UncontrolledProviderScope(
+        container: container,
+        child: wrapWithAppTheme(
+          Builder(
+            builder: (context) {
+              return Scaffold(
+                body: FilledButton(
+                  onPressed: () {
+                    showAppUpdateDialog(
+                      context,
+                      evaluation: evaluation,
+                      onPromptInteracted: ({targetVersion}) {},
+                      onIgnoreVersion: (_) {},
+                      container: container,
+                      launchUrlFn: (
+                        uri, {
+                        mode = LaunchMode.platformDefault,
+                      }) async {
+                        opened.add(uri);
+                        return true;
+                      },
+                    );
+                  },
+                  child: const Text('open'),
+                ),
+              );
+            },
+          ),
+        ),
+      ),
+    );
+
+    await tester.tap(find.text('open'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('立即更新'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('系统下载'));
+    await tester.pumpAndSettle();
+
+    expect(
+      installer.urls,
+      ['https://github.com/Shirolin/s1er/releases/download/v2/app.apk'],
+    );
+    expect(opened, isEmpty);
+    expect(find.textContaining('已交给系统下载'), findsOneWidget);
+  });
+
   test('AppUpdateInstaller installApk invokes channel', () async {
     const channel = MethodChannel('com.stage1st.s1er/apk_installer');
     final log = <MethodCall>[];
@@ -249,14 +435,92 @@ void main() {
       containsAll(['canInstallPackages', 'installApk']),
     );
   });
+
+  test('AppUpdateInstaller enqueueSystemDownload invokes channel', () async {
+    const channel = MethodChannel('com.stage1st.s1er/apk_installer');
+    final log = <MethodCall>[];
+    TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
+        .setMockMethodCallHandler(channel, (call) async {
+      log.add(call);
+      return null;
+    });
+    addTearDown(() {
+      TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
+          .setMockMethodCallHandler(channel, null);
+    });
+
+    final installer = AppUpdateInstaller(
+      channel: channel,
+      platform: TargetPlatform.android,
+    );
+    await installer.enqueueSystemDownload(
+      url: 'https://github.com/Shirolin/s1er/releases/download/v1/app.apk',
+      fileName: 'app.apk',
+    );
+    expect(log, hasLength(1));
+    expect(log.single.method, 'enqueueApkDownload');
+    expect(
+      log.single.arguments,
+      {
+        'url': 'https://github.com/Shirolin/s1er/releases/download/v1/app.apk',
+        'fileName': 'app.apk',
+      },
+    );
+  });
+
+  test('AppUpdateInstaller enqueueSystemDownload rejects disallowed host',
+      () async {
+    final installer = AppUpdateInstaller(
+      platform: TargetPlatform.android,
+    );
+    expect(
+      () => installer.enqueueSystemDownload(
+        url: 'https://evil.example/app.apk',
+        fileName: 'app.apk',
+      ),
+      throwsA(
+        isA<UpdateCheckException>().having(
+          (e) => e.message,
+          'message',
+          '下载地址无效',
+        ),
+      ),
+    );
+  });
 }
 
 class _FailedDownloadNotifier extends UpdateDownloadNotifier {
   @override
-  Future<void> startAndroidUpdate(UpdateEvaluation evaluation) async {
+  Future<void> startInAppUpdate(UpdateEvaluation evaluation) async {
     state = const UpdateDownloadState(
       phase: UpdateDownloadPhase.failed,
       message: '下载超时',
     );
+  }
+}
+
+class _InstallingDownloadNotifier extends UpdateDownloadNotifier {
+  @override
+  UpdateDownloadState build() => const UpdateDownloadState(
+        phase: UpdateDownloadPhase.installing,
+        progress: 1,
+        message: '正在覆盖安装并重启…',
+      );
+}
+
+class _EnqueueInstaller extends AppUpdateInstaller {
+  _EnqueueInstaller() : super(platform: TargetPlatform.android);
+
+  final urls = <String>[];
+
+  @override
+  bool get isSupported => true;
+
+  @override
+  Future<void> enqueueSystemDownload({
+    required String url,
+    required String fileName,
+  }) async {
+    urls.add(url);
   }
 }

@@ -37,7 +37,7 @@ class UpdateEvaluation {
   /// 白名单校验后的网盘外链；空则不展示网盘按钮。
   final String netdiskUrl;
 
-  /// Android 非 Play 且有合法 APK 直链时为 true。
+  /// Android APK 或 Windows ZIP 的应用内更新。
   final bool canInAppDownload;
 
   /// 是否应展示升级 Dialog（启动自动 / 手动均适用）。
@@ -57,6 +57,18 @@ class UpdateEvaluation {
   bool get isUpdate =>
       availability == UpdateAvailability.force ||
       availability == UpdateAvailability.optional;
+
+  bool get isDownloadUrlAllowed =>
+      UpdateCheckService.isAllowedDownloadUrl(downloadUrl);
+
+  String get apkFileNameForDownload =>
+      UpdateCheckService.apkFileNameFromUrl(downloadUrl);
+
+  String resolveBrowserFallbackUrl() =>
+      UpdateCheckService.resolveBrowserFallbackUrl(
+        manifest,
+        downloadUrl: downloadUrl,
+      );
 }
 
 /// 纯函数：比较本地版本与清单，结合忽略 / 冷却决定是否弹窗。
@@ -274,7 +286,7 @@ class UpdateCheckNotifier extends Notifier<UpdateCheckState> {
       platform: defaultTargetPlatform,
     );
     final netdiskUrl = UpdateCheckService.resolveNetdiskUrl(manifest);
-    final canInApp = UpdateCheckService.canInAppAndroidDownload(
+    final canInApp = UpdateCheckService.canInAppDownload(
       manifest: manifest,
       distribution: EnvConfig.distribution,
       isWeb: kIsWeb,

@@ -5,11 +5,15 @@ All notable changes to S1er will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [Unreleased]
+## [0.6.0] - 2026-08-26
 
 ### Added
 
 - **帖子详情末端刷新**：滑到末页（含未满页、单页帖）后继续上划即刷新当前页，甩到底回弹不请求；多页末页左滑一次即刷；单页帖不套横滑翻页，仅已触底时左滑可刷新。有新页则跳到最新，同页有新楼则滚到底。
+
+### Fixed
+
+- **帖子图片加载修复**：支持解码内联 base64 data URI 图片；规范化畸形的 `http://data:` 链接；图片加载失败时显示紧凑错误占位，不再撑大楼层布局。
 
 ## [0.5.5] - 2026-08-18
 

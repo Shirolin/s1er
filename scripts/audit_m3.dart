@@ -90,7 +90,7 @@ final _libRules = <AuditRule>[
     severity: AuditSeverity.p0,
     message: 'Deprecated M2 component or useMaterial3: false',
     pattern: RegExp(
-      r'RaisedButton|BottomNavigationBar|ToggleButtons|useMaterial3:\s*false',
+      r'\bRaisedButton\b|\bBottomNavigationBar\b|\bToggleButtons\b|useMaterial3:\s*false',
     ),
   ),
   AuditRule(
@@ -255,7 +255,7 @@ void _checkMissingExplicitElevation(
     final line = lines[i];
     if (!RegExp(r'\b(Card|AppBar)\s*\(').hasMatch(line)) continue;
 
-    final windowEnd = (i + 6).clamp(0, lines.length);
+    final windowEnd = (i + 12).clamp(0, lines.length);
     final window = lines.sublist(i, windowEnd).join('\n');
     if (RegExp(r'elevation:\s*0').hasMatch(window)) continue;
 

@@ -29,6 +29,7 @@ enum BoundaryHitResult {
   /// 冷却窗内再次越界。
   repeat,
 }
+
 class BoundaryFeedbackController {
   BoundaryFeedbackController({
     this.repeatWindow = const Duration(milliseconds: 1500),

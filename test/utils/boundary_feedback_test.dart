@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:s1er/utils/boundary_feedback.dart';
+import '../helpers/test_theme.dart';
 
 void main() {
   testWidgets('first hit haptics only; repeat in window shows message', (
@@ -17,16 +18,13 @@ void main() {
     );
 
     await tester.pumpWidget(
-      MaterialApp(
-        home: Builder(
+      wrapWithAppTheme(
+        Builder(
           builder: (context) {
-            return Scaffold(
-              body: Center(
-                child: TextButton(
-                  onPressed: () =>
-                      controller.hit(context, BoundaryEdge.lastPage),
-                  child: const Text('hit'),
-                ),
+            return Center(
+              child: TextButton(
+                onPressed: () => controller.hit(context, BoundaryEdge.lastPage),
+                child: const Text('hit'),
               ),
             );
           },
@@ -90,19 +88,17 @@ void main() {
     );
 
     await tester.pumpWidget(
-      MaterialApp(
-        home: Builder(
+      wrapWithAppTheme(
+        Builder(
           builder: (context) {
-            return Scaffold(
-              body: Center(
-                child: TextButton(
-                  onPressed: () => controller.hit(
-                    context,
-                    BoundaryEdge.listEnd,
-                    showMessage: false,
-                  ),
-                  child: const Text('hit'),
+            return Center(
+              child: TextButton(
+                onPressed: () => controller.hit(
+                  context,
+                  BoundaryEdge.listEnd,
+                  showMessage: false,
                 ),
+                child: const Text('hit'),
               ),
             );
           },

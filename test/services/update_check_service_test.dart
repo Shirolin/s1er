@@ -368,7 +368,8 @@ void main() {
       );
     });
 
-    test('fetchManifest picks newest version even from slower source '
+    test(
+        'fetchManifest picks newest version even from slower source '
         '(Newest-Wins)', () async {
       // 慢源（raw）返回较新 3.0.0，快源（jsDelivr 旧缓存）返回旧 1.0.0。
       final payloadSlow = {
@@ -409,7 +410,8 @@ void main() {
       expect(manifest.latest, '3.0.0');
     });
 
-    test('fetchManifest keeps newest even when it arrives first '
+    test(
+        'fetchManifest keeps newest even when it arrives first '
         '(Newest-Wins)', () async {
       // 快源返回较新 2.0.0，慢源返回旧 1.0.0 → 仍取 2.0.0。
       final payloadSlow = {

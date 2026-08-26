@@ -69,7 +69,9 @@ void main() {
 
     final tagTop = tester.getTopLeft(find.text('NS')).dy;
     final titleTop = tester.getTopLeft(find.text(sampleThread.subject)).dy;
-    expect((tagTop - titleTop).abs(), lessThan(8));
+    // Chip 高度随 Flutter 框架版本度量略有漂移（曾为 24，现为 28），
+    // 阈值与 compact 用例一致取 12，仅约束「标签与标题同行」。
+    expect((tagTop - titleTop).abs(), lessThan(12));
 
     final text = tester.widget<Text>(find.text(sampleThread.subject));
     expect(text.maxLines, 2);

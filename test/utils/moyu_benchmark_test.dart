@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:s1er/theme/app_theme.dart';
 import 'package:s1er/utils/bbcode_parser.dart';
 import 'package:s1er/utils/post_image_index_counter.dart';
 import 'package:s1er/widgets/bbcode_renderer.dart';
@@ -40,6 +41,7 @@ void main() {
     await tester.pumpWidget(
       ProviderScope(
         child: MaterialApp(
+          theme: AppTheme.lightTheme('sand'),
           home: Scaffold(
             body: BbcodeRenderer(
               bbcode: moyuMessage,

@@ -117,7 +117,9 @@ class UpdateCheckService {
           } else if (e is FormatException) {
             lastMessage = '更新清单格式无效';
           }
-          if (pendingCount == 0 && successes.isEmpty && !completer.isCompleted) {
+          if (pendingCount == 0 &&
+              successes.isEmpty &&
+              !completer.isCompleted) {
             if (lastError is FormatException) {
               completer.completeError(lastError!, lastStack);
             } else {

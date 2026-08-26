@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:s1er/theme/app_theme.dart';
 import 'package:s1er/theme/s1_reading_card_style.dart';
+import '../helpers/test_theme.dart';
 
 void main() {
   Future<BuildContext> pumpAt(WidgetTester tester, {required Size size}) async {
@@ -12,8 +13,8 @@ void main() {
 
     late BuildContext captured;
     await tester.pumpWidget(
-      MaterialApp(
-        home: Builder(
+      wrapWithAppTheme(
+        Builder(
           builder: (context) {
             captured = context;
             return const SizedBox.shrink();

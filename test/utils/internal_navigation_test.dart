@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:go_router/go_router.dart';
+import 'package:s1er/theme/app_theme.dart';
 import 'package:s1er/utils/internal_navigation.dart';
 
 void main() {
@@ -21,7 +22,12 @@ void main() {
       ],
     );
 
-    await tester.pumpWidget(MaterialApp.router(routerConfig: router));
+    await tester.pumpWidget(
+      MaterialApp.router(
+        theme: AppTheme.lightTheme('sand'),
+        routerConfig: router,
+      ),
+    );
     await tester.pumpAndSettle();
 
     final ctx = tester.element(find.text('tid=100'));
@@ -48,7 +54,12 @@ void main() {
       ],
     );
 
-    await tester.pumpWidget(MaterialApp.router(routerConfig: router));
+    await tester.pumpWidget(
+      MaterialApp.router(
+        theme: AppTheme.lightTheme('sand'),
+        routerConfig: router,
+      ),
+    );
     await tester.pumpAndSettle();
 
     final ctx = tester.element(find.text('tid=100'));

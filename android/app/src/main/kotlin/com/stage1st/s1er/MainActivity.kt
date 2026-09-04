@@ -241,7 +241,7 @@ class MainActivity : FlutterActivity() {
     private fun isAllowedDownloadHost(url: String): Boolean {
         val uri = Uri.parse(url.trim())
         if (uri.scheme?.lowercase() != "https") return false
-        if (uri.userInfo.isNotEmpty()) return false
+        if (!uri.userInfo.isNullOrEmpty()) return false
         val host = uri.host?.lowercase() ?: return false
         if (uri.port != -1 && uri.port != 443) return false
         return host in allowedDownloadHosts

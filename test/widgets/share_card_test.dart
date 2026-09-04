@@ -49,9 +49,18 @@ Post _post({
 }
 
 void main() {
-  test('threadUrlFor builds page-1 forum URL', () {
+  test('threadUrlFor builds findpost URL when pid is set', () {
     expect(
       ShareCard.threadUrlFor('2254107'),
+      'https://stage1st.com/2b/thread-2254107-1-1.html',
+    );
+    expect(
+      ShareCard.threadUrlFor('2254107', pid: '69941195'),
+      'https://stage1st.com/2b/forum.php?mod=redirect&goto=findpost'
+      '&pid=69941195&ptid=2254107',
+    );
+    expect(
+      ShareCard.threadUrlFor('2254107', pid: ''),
       'https://stage1st.com/2b/thread-2254107-1-1.html',
     );
     expect(ShareCard.threadUrlFor(null), isNull);
@@ -81,7 +90,7 @@ void main() {
     );
     expect(find.byType(QrImageView), findsNothing);
     expect(
-      find.byKey(ValueKey(ShareCard.threadUrlFor('2254107')!)),
+      find.byKey(ValueKey(ShareCard.threadUrlFor('2254107', pid: '123')!)),
       findsNothing,
     );
   });
@@ -289,9 +298,39 @@ void main() {
 
     expect(find.byType(QrImageView), findsOneWidget);
     expect(
-      find.byKey(ValueKey(ShareCard.threadUrlFor('2254107')!)),
+      find.byKey(ValueKey(ShareCard.threadUrlFor('2254107', pid: '1')!)),
       findsOneWidget,
     );
+  });
+
+  testWidgets('QR semantics is floor link when pid is set', (tester) async {
+    await tester.pumpWidget(
+      wrap(
+        const SingleChildScrollView(
+          child: ShareCardFooter(tid: '2254107', pid: '1'),
+        ),
+      ),
+    );
+    await tester.pump();
+
+    expect(find.bySemanticsLabel('楼层链接二维码'), findsOneWidget);
+    expect(find.bySemanticsLabel('帖子链接二维码'), findsNothing);
+  });
+
+  testWidgets('QR semantics is thread link when pid is missing',
+      (tester) async {
+    await tester.pumpWidget(
+      wrap(
+        const SingleChildScrollView(
+          child: ShareCardFooter(tid: '2254107'),
+        ),
+      ),
+    );
+    await tester.pump();
+
+    expect(find.byType(QrImageView), findsOneWidget);
+    expect(find.bySemanticsLabel('帖子链接二维码'), findsOneWidget);
+    expect(find.bySemanticsLabel('楼层链接二维码'), findsNothing);
   });
 
   testWidgets('hides QR when showQr is false', (tester) async {
@@ -310,7 +349,7 @@ void main() {
 
     expect(find.byType(QrImageView), findsNothing);
     expect(
-      find.byKey(ValueKey(ShareCard.threadUrlFor('2254107')!)),
+      find.byKey(ValueKey(ShareCard.threadUrlFor('2254107', pid: '1')!)),
       findsNothing,
     );
   });

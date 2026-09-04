@@ -40,6 +40,11 @@ void main() {
       'https://stage1st.com/2b/thread-2254107-3-1.html',
     );
     expect(
+      ApiConfig.threadFindpostUrl(tid: '2254107', pid: '69941195'),
+      'https://stage1st.com/2b/forum.php?mod=redirect&goto=findpost'
+      '&pid=69941195&ptid=2254107',
+    );
+    expect(
       ApiConfig.forumBrowserUrl(fid: '4', page: 2),
       'https://stage1st.com/2b/forum-4-2.html',
     );

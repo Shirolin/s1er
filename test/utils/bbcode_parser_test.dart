@@ -31,6 +31,45 @@ void main() {
       expect(parsed, contains('data-full="https://p.sda1.dev/'));
     });
 
+    test('album-wrapped aimg uses img src and drops viewthread href', () {
+      final html = File('test/fixtures/post_images/discuz_album_aimg.html')
+          .readAsStringSync();
+      final parsed = BbcodeParser.parse(html);
+
+      expect(parsed, contains('class="post-image"'));
+      expect(
+        parsed,
+        contains(
+          'data-preview="https://img.stage1st.com/forum/202609/04/161112dww7htno7lgfcyet.png"',
+        ),
+      );
+      expect(
+        parsed,
+        contains(
+          'data-full="https://img.stage1st.com/forum/202609/04/161112dww7htno7lgfcyet.png"',
+        ),
+      );
+      expect(parsed, isNot(contains('from=album')));
+      expect(parsed, isNot(contains('class="orange"')));
+      expect(parsed, isNot(contains('<img')));
+    });
+
+    test('mixed text+img anchor keeps the text link and lifts the image', () {
+      const src = 'https://img.stage1st.com/forum/202609/04/a.png';
+      final parsed = BbcodeParser.parse(
+        '<a href="https://example.com/page">查看<img src="$src" /></a>',
+      );
+
+      expect(parsed, contains('class="post-image"'));
+      expect(parsed, contains('data-preview="$src"'));
+      expect(parsed, contains('href="https://example.com/page"'));
+      expect(parsed, contains('查看'));
+      expect(
+        parsed.indexOf('class="post-image"'),
+        greaterThan(parsed.indexOf('</a>')),
+      );
+    });
+
     test('[img] bbcode keeps single URL for stage1st attachment', () {
       const src = 'https://img.stage1st.com/forum/2024/01/a.png';
       final parsed = BbcodeParser.parse('[img]$src[/img]');

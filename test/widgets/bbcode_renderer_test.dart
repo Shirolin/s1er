@@ -8,6 +8,7 @@ import 'package:s1er/utils/bbcode_parser.dart';
 import 'package:s1er/utils/post_image_index_counter.dart';
 import 'package:s1er/widgets/emoticon_widget.dart';
 import 'package:s1er/widgets/bbcode_renderer.dart';
+import 'package:s1er/widgets/image_viewer.dart';
 
 Widget _wrapBbcode(
   Widget child, {
@@ -284,6 +285,28 @@ void main() {
       );
       await tester.pump();
       expect(find.textContaining('locked'), findsOneWidget);
+    });
+
+    testWidgets('renders Discuz album-wrapped aimg as ImageViewer',
+        (tester) async {
+      const html =
+          '<a href="forum.php?mod=viewthread&amp;tid=2282979&amp;aid=2134958'
+          '&amp;from=album&amp;page=93&amp;mobile=2" class="orange">'
+          '<img id="aimg_2134958" '
+          'src="https://img.stage1st.com/forum/202609/04/161112dww7htno7lgfcyet.png" '
+          'alt="image.png" /></a>';
+
+      await tester.pumpWidget(
+        _wrapBbcode(
+          BbcodeRenderer(
+            bbcode: html,
+            imageIndexCounter: PostImageIndexCounter(),
+          ),
+        ),
+      );
+      await tester.pump();
+
+      expect(find.byType(ImageViewer), findsOneWidget);
     });
 
     testWidgets('renders near-black author color text in dark theme',

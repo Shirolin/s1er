@@ -92,9 +92,15 @@ class ShareCard extends StatelessWidget {
   /// Share-card body size (logical px).
   static const double shareBodySize = 18;
 
-  /// Theme page-1 URL encoded into the footer QR, or null when [tid] is empty.
-  static String? threadUrlFor(String? tid) {
+  /// Forum URL encoded into the footer QR, or null when [tid] is empty.
+  ///
+  /// Prefers Discuz `findpost` when [pid] is set so a scan opens that floor.
+  /// Multi-floor cards pass the first selected floor's pid.
+  static String? threadUrlFor(String? tid, {String? pid}) {
     if (tid == null || tid.isEmpty) return null;
+    if (pid != null && pid.isNotEmpty) {
+      return ApiConfig.threadFindpostUrl(tid: tid, pid: pid);
+    }
     return ApiConfig.threadBrowserUrl(tid: tid, page: 1);
   }
 
@@ -146,6 +152,7 @@ class ShareCard extends StatelessWidget {
                       ShareCardFooter(
                         captureKey: captureKeys?.footer,
                         tid: tid,
+                        pid: floors.first.post.pid,
                         showQr: showQr,
                       ),
                     ],
@@ -404,18 +411,20 @@ class ShareCardFooter extends StatelessWidget {
     super.key,
     this.captureKey,
     this.tid,
+    this.pid,
     this.showQr = true,
   });
 
   final GlobalKey? captureKey;
   final String? tid;
+  final String? pid;
   final bool showQr;
 
   @override
   Widget build(BuildContext context) {
     final scheme = Theme.of(context).colorScheme;
     final textTheme = Theme.of(context).textTheme;
-    final threadUrl = showQr ? ShareCard.threadUrlFor(tid) : null;
+    final threadUrl = showQr ? ShareCard.threadUrlFor(tid, pid: pid) : null;
 
     final attributionText = Text(
       '来自 ${S1Constants.appName} 客户端',
@@ -462,7 +471,10 @@ class ShareCardFooter extends StatelessWidget {
                   ),
                 ),
                 const SizedBox(width: 12),
-                _ShareThreadQr(data: threadUrl),
+                _ShareThreadQr(
+                  data: threadUrl,
+                  isFloorLink: pid?.isNotEmpty == true,
+                ),
               ],
             ),
         ],
@@ -481,9 +493,13 @@ class ShareCardFooter extends StatelessWidget {
 }
 
 class _ShareThreadQr extends StatelessWidget {
-  const _ShareThreadQr({required this.data});
+  const _ShareThreadQr({
+    required this.data,
+    required this.isFloorLink,
+  });
 
   final String data;
+  final bool isFloorLink;
 
   @override
   Widget build(BuildContext context) {
@@ -493,34 +509,41 @@ class _ShareThreadQr extends StatelessWidget {
         isDark ? scheme.inverseSurface : scheme.surfaceContainerLowest;
     final foreground = isDark ? scheme.onInverseSurface : scheme.onSurface;
 
-    return DecoratedBox(
-      key: ValueKey(data),
-      decoration: BoxDecoration(
-        borderRadius: S1Shape.extraSmall,
-        color: background,
-        border: Border.all(color: scheme.outlineVariant),
-      ),
-      child: ClipRRect(
-        borderRadius: S1Shape.extraSmall,
-        child: SizedBox(
-          width: ShareCard.qrSize,
-          height: ShareCard.qrSize,
-          child: QrImageView(
-            data: data,
-            version: QrVersions.auto,
-            size: ShareCard.qrSize,
-            padding: const EdgeInsets.all(ShareCard.qrQuietZone),
-            backgroundColor: background,
-            gapless: true,
-            errorCorrectionLevel: QrErrorCorrectLevel.M,
-            semanticsLabel: '帖子链接二维码',
-            eyeStyle: QrEyeStyle(
-              eyeShape: QrEyeShape.square,
-              color: foreground,
-            ),
-            dataModuleStyle: QrDataModuleStyle(
-              dataModuleShape: QrDataModuleShape.square,
-              color: foreground,
+    final label = isFloorLink ? '楼层链接二维码' : '帖子链接二维码';
+
+    return Semantics(
+      container: true,
+      label: label,
+      child: DecoratedBox(
+        key: ValueKey(data),
+        decoration: BoxDecoration(
+          borderRadius: S1Shape.extraSmall,
+          color: background,
+          border: Border.all(color: scheme.outlineVariant),
+        ),
+        child: ClipRRect(
+          borderRadius: S1Shape.extraSmall,
+          child: SizedBox(
+            width: ShareCard.qrSize,
+            height: ShareCard.qrSize,
+            child: ExcludeSemantics(
+              child: QrImageView(
+                data: data,
+                version: QrVersions.auto,
+                size: ShareCard.qrSize,
+                padding: const EdgeInsets.all(ShareCard.qrQuietZone),
+                backgroundColor: background,
+                gapless: true,
+                errorCorrectionLevel: QrErrorCorrectLevel.M,
+                eyeStyle: QrEyeStyle(
+                  eyeShape: QrEyeShape.square,
+                  color: foreground,
+                ),
+                dataModuleStyle: QrDataModuleStyle(
+                  dataModuleShape: QrDataModuleShape.square,
+                  color: foreground,
+                ),
+              ),
             ),
           ),
         ),

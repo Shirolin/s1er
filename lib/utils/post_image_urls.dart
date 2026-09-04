@@ -69,7 +69,29 @@ class PostImageUrls {
     final uri = Uri.tryParse(url);
     if (uri == null) return false;
     if (uri.host.isEmpty) return false;
-    return true;
+    // Discuz album / viewthread HTML is not an image (e.g. from=album&aid=).
+    return _looksLikeImageUrl(uri);
+  }
+
+  static bool _looksLikeImageUrl(Uri uri) {
+    final mod = uri.queryParameters['mod'];
+    if (mod == 'image') return true;
+    if (uri.queryParameters['from'] == 'album') return false;
+    if (mod == 'viewthread' ||
+        mod == 'redirect' ||
+        mod == 'forumdisplay' ||
+        mod == 'post') {
+      return false;
+    }
+    if (uri.path.toLowerCase().contains('forum.php') && mod != 'image') {
+      return false;
+    }
+
+    final path = uri.path.toLowerCase();
+    return RegExp(
+      r'\.(jpe?g|png|gif|webp|bmp)(?:\.thumb\.(jpe?g|png))?$',
+      caseSensitive: false,
+    ).hasMatch(path);
   }
 
   static bool _looksLikeThumbUrl(String url) {

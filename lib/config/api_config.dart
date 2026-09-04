@@ -178,6 +178,13 @@ class ApiConfig {
   static String threadBrowserUrl({required String tid, required int page}) =>
       '$baseUrl/thread-$tid-$page-1.html';
 
+  /// Discuz 按 pid 跳楼：浏览器会 302 到所在页并定位该楼。
+  static String threadFindpostUrl({
+    required String tid,
+    required String pid,
+  }) =>
+      '$forumPostUrl?mod=redirect&goto=findpost&pid=$pid&ptid=$tid';
+
   static String forumBrowserUrl({required String fid, required int page}) =>
       '$baseUrl/forum-$fid-$page.html';
 

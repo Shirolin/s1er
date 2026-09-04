@@ -66,6 +66,20 @@ void main() {
       expect(urls.fullUrl, isNot(contains('&amp;')));
     });
 
+    test('ignores Discuz album viewthread href as full image URL', () {
+      const src =
+          'https://img.stage1st.com/forum/202609/04/161112dww7htno7lgfcyet.png';
+      const href =
+          'https://stage1st.com/2b/forum.php?mod=viewthread&tid=2282979'
+          '&aid=2134958&from=album&page=93&mobile=2';
+
+      final urls = PostImageUrls.resolve(src: src, linkHref: href);
+
+      expect(urls.previewUrl, src);
+      expect(urls.fullUrl, src);
+      expect(urls.hasDistinctFull, isFalse);
+    });
+
     test('fixes malformed http://data: inline image src', () {
       const src = 'http://data:image/png;base64,AAAA';
       final urls = PostImageUrls.resolve(src: src);

@@ -224,6 +224,14 @@ class BbcodeParser {
       }
     });
 
+    // Bare `<a class="orange"><img id="aimg_*"></a>` (Discuz album / zoom)
+    // is not wrapped in div.img. Convert remaining <img> and lift them out
+    // of the anchor so flutter_html can render post-image spans.
+    _processStandaloneImages(
+      fragment,
+      imageIndexCounter: imageIndexCounter,
+    );
+
     // 扁平化合并连续相同属性的 HTML 标签，减少 DOM 节点数量
     HtmlOptimizer.flatten(fragment);
 
@@ -241,7 +249,48 @@ class BbcodeParser {
   }) {
     final img = div.querySelector('img');
     if (img == null) return null;
+    final anchor = div.querySelector('a');
+    return _replacementForImgElement(
+      img,
+      imageIndexCounter: imageIndexCounter,
+      linkHref: anchor?.attributes['href'],
+    );
+  }
 
+  /// Convert leftover `<img>` (not already handled via `div.img`).
+  static void _processStandaloneImages(
+    DocumentFragment fragment, {
+    PostImageIndexCounter? imageIndexCounter,
+  }) {
+    for (final img in fragment.querySelectorAll('img').toList()) {
+      if (img.parent == null) continue;
+      final parent = img.parent;
+      final href = parent is Element && parent.localName == 'a'
+          ? parent.attributes['href']
+          : null;
+      final replacement = _replacementForImgElement(
+        img,
+        imageIndexCounter: imageIndexCounter,
+        linkHref: href,
+      );
+      if (replacement == null) continue;
+
+      img.replaceWith(replacement);
+      if (parent is Element && parent.localName == 'a') {
+        if (_anchorWrapsOnly(parent, replacement)) {
+          parent.replaceWith(replacement);
+        } else {
+          _liftOutOfAnchor(replacement, parent);
+        }
+      }
+    }
+  }
+
+  static Element? _replacementForImgElement(
+    Element img, {
+    PostImageIndexCounter? imageIndexCounter,
+    String? linkHref,
+  }) {
     final src = img.attributes['src'] ?? '';
     if (src.isEmpty) return null;
 
@@ -249,12 +298,38 @@ class BbcodeParser {
       return _emoticonSpan(src);
     }
 
-    final anchor = div.querySelector('a');
-    final href = anchor?.attributes['href'];
     return _postImageSpan(
-      PostImageUrls.resolve(src: src, linkHref: href),
+      PostImageUrls.resolve(src: src, linkHref: linkHref),
       imageIndexCounter: imageIndexCounter,
     );
+  }
+
+  /// Move [node] to immediately after [anchor] (same parentNode, including
+  /// a DocumentFragment root).
+  static void _liftOutOfAnchor(Element node, Element anchor) {
+    final grandparent = anchor.parentNode;
+    if (grandparent == null) return;
+    final siblings = grandparent.nodes;
+    final index = siblings.indexOf(anchor);
+    final next =
+        index >= 0 && index + 1 < siblings.length ? siblings[index + 1] : null;
+    if (next != null) {
+      grandparent.insertBefore(node, next);
+    } else {
+      grandparent.append(node);
+    }
+  }
+
+  /// True when [anchor] only contains [kept] plus whitespace / `<br>`.
+  static bool _anchorWrapsOnly(Element anchor, Element kept) {
+    for (final node in anchor.nodes) {
+      if (node is Text && node.text.trim().isNotEmpty) return false;
+      if (node is Element) {
+        if (identical(node, kept) || node.localName == 'br') continue;
+        return false;
+      }
+    }
+    return true;
   }
 
   static String _replaceImgTags(

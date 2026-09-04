@@ -1,6 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:qr_flutter/qr_flutter.dart';
 
+import '../config/api_config.dart';
+import '../config/app_icon_catalog.dart';
 import '../config/constants.dart';
 import '../models/poll.dart';
 import '../models/post.dart';
@@ -40,6 +43,8 @@ class ShareCard extends StatelessWidget {
     required this.floors,
     this.threadSubject,
     this.poll,
+    this.tid,
+    this.showQr = true,
     this.captureKeys,
     GlobalKey? captureKey,
   })  : assert(floors.isNotEmpty, 'ShareCard requires at least one floor'),
@@ -52,6 +57,8 @@ class ShareCard extends StatelessWidget {
     int? displayFloor,
     this.threadSubject,
     this.poll,
+    this.tid,
+    this.showQr = true,
     this.captureKeys,
     GlobalKey? captureKey,
   })  : floors = [
@@ -65,14 +72,31 @@ class ShareCard extends StatelessWidget {
   final List<ShareFloorData> floors;
   final String? threadSubject;
   final ThreadPoll? poll;
+  final String? tid;
+  final bool showQr;
   final ShareCaptureKeys? captureKeys;
   final GlobalKey _fallbackFullKey;
 
   /// Logical layout width for the share card.
   static const double cardWidth = 600;
 
+  /// Header launcher-icon size (logical px).
+  static const double logoSize = 32;
+
+  /// Footer QR outer size including quiet zone (logical px).
+  static const double qrSize = 96;
+
+  /// Quiet-zone inset inside [qrSize].
+  static const double qrQuietZone = 8;
+
   /// Share-card body size (logical px).
   static const double shareBodySize = 18;
+
+  /// Theme page-1 URL encoded into the footer QR, or null when [tid] is empty.
+  static String? threadUrlFor(String? tid) {
+    if (tid == null || tid.isEmpty) return null;
+    return ApiConfig.threadBrowserUrl(tid: tid, page: 1);
+  }
 
   GlobalKey get _fullKey => captureKeys?.full ?? _fallbackFullKey;
 
@@ -119,7 +143,11 @@ class ShareCard extends StatelessWidget {
                           poll: _pollForFloor(floors[i]),
                           showLeadingDivider: i > 0,
                         ),
-                      ShareCardFooter(captureKey: captureKeys?.footer),
+                      ShareCardFooter(
+                        captureKey: captureKeys?.footer,
+                        tid: tid,
+                        showQr: showQr,
+                      ),
                     ],
                   ),
                 ),
@@ -173,7 +201,7 @@ class ShareCard extends StatelessWidget {
 }
 
 /// Brand + optional thread title (once per card).
-class ShareCardHeader extends StatelessWidget {
+class ShareCardHeader extends ConsumerWidget {
   const ShareCardHeader({
     super.key,
     this.captureKey,
@@ -184,9 +212,12 @@ class ShareCardHeader extends StatelessWidget {
   final String? threadSubject;
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
     final scheme = Theme.of(context).colorScheme;
     final textTheme = Theme.of(context).textTheme;
+    final iconId = ref.watch(settingsProvider.select((s) => s.appIcon));
+    final logoAsset = AppIconCatalog.find(iconId)?.previewAsset ??
+        AppIconCatalog.defaultVariant.previewAsset;
 
     Widget content = Padding(
       padding: const EdgeInsets.fromLTRB(24, 24, 24, 0),
@@ -195,12 +226,30 @@ class ShareCardHeader extends StatelessWidget {
         children: [
           Row(
             children: [
-              Icon(
-                Icons.forum_outlined,
-                size: 16,
-                color: scheme.primary,
+              SizedBox(
+                width: ShareCard.logoSize,
+                height: ShareCard.logoSize,
+                child: DecoratedBox(
+                  decoration: BoxDecoration(
+                    borderRadius: S1Shape.extraSmall,
+                    border: Border.all(color: scheme.outlineVariant),
+                  ),
+                  child: ClipRRect(
+                    borderRadius: S1Shape.extraSmall,
+                    child: Image.asset(
+                      logoAsset,
+                      width: ShareCard.logoSize,
+                      height: ShareCard.logoSize,
+                      fit: BoxFit.cover,
+                      filterQuality: FilterQuality.medium,
+                      errorBuilder: (context, error, stackTrace) => ColoredBox(
+                        color: scheme.surfaceContainerHighest,
+                      ),
+                    ),
+                  ),
+                ),
               ),
-              const SizedBox(width: 6),
+              const SizedBox(width: 8),
               Text(
                 'Stage1st',
                 style: textTheme.labelMedium?.copyWith(
@@ -351,14 +400,34 @@ class ShareFloorBlock extends ConsumerWidget {
 
 /// Client attribution footer.
 class ShareCardFooter extends StatelessWidget {
-  const ShareCardFooter({super.key, this.captureKey});
+  const ShareCardFooter({
+    super.key,
+    this.captureKey,
+    this.tid,
+    this.showQr = true,
+  });
 
   final GlobalKey? captureKey;
+  final String? tid;
+  final bool showQr;
 
   @override
   Widget build(BuildContext context) {
     final scheme = Theme.of(context).colorScheme;
     final textTheme = Theme.of(context).textTheme;
+    final threadUrl = showQr ? ShareCard.threadUrlFor(tid) : null;
+
+    final attributionText = Text(
+      '来自 ${S1Constants.appName} 客户端',
+      style: textTheme.labelSmall?.copyWith(
+        color: scheme.onSurfaceVariant,
+      ),
+    );
+    final attributionIcon = Icon(
+      Icons.smartphone_outlined,
+      size: 14,
+      color: scheme.onSurfaceVariant,
+    );
 
     Widget content = Padding(
       padding: const EdgeInsets.fromLTRB(24, 16, 24, 24),
@@ -370,23 +439,32 @@ class ShareCardFooter extends StatelessWidget {
             color: scheme.outlineVariant,
           ),
           const SizedBox(height: 12),
-          Row(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              Icon(
-                Icons.smartphone_outlined,
-                size: 14,
-                color: scheme.onSurfaceVariant,
-              ),
-              const SizedBox(width: 6),
-              Text(
-                '来自 ${S1Constants.appName} 客户端',
-                style: textTheme.labelSmall?.copyWith(
-                  color: scheme.onSurfaceVariant,
+          if (threadUrl == null)
+            Row(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                attributionIcon,
+                const SizedBox(width: 6),
+                attributionText,
+              ],
+            )
+          else
+            Row(
+              crossAxisAlignment: CrossAxisAlignment.center,
+              children: [
+                Expanded(
+                  child: Row(
+                    children: [
+                      attributionIcon,
+                      const SizedBox(width: 6),
+                      Flexible(child: attributionText),
+                    ],
+                  ),
                 ),
-              ),
-            ],
-          ),
+                const SizedBox(width: 12),
+                _ShareThreadQr(data: threadUrl),
+              ],
+            ),
         ],
       ),
     );
@@ -397,6 +475,55 @@ class ShareCardFooter extends StatelessWidget {
       child: ColoredBox(
         color: S1Surface.card(scheme),
         child: SizedBox(width: ShareCard.cardWidth, child: content),
+      ),
+    );
+  }
+}
+
+class _ShareThreadQr extends StatelessWidget {
+  const _ShareThreadQr({required this.data});
+
+  final String data;
+
+  @override
+  Widget build(BuildContext context) {
+    final scheme = Theme.of(context).colorScheme;
+    final isDark = scheme.brightness == Brightness.dark;
+    final background =
+        isDark ? scheme.inverseSurface : scheme.surfaceContainerLowest;
+    final foreground = isDark ? scheme.onInverseSurface : scheme.onSurface;
+
+    return DecoratedBox(
+      key: ValueKey(data),
+      decoration: BoxDecoration(
+        borderRadius: S1Shape.extraSmall,
+        color: background,
+        border: Border.all(color: scheme.outlineVariant),
+      ),
+      child: ClipRRect(
+        borderRadius: S1Shape.extraSmall,
+        child: SizedBox(
+          width: ShareCard.qrSize,
+          height: ShareCard.qrSize,
+          child: QrImageView(
+            data: data,
+            version: QrVersions.auto,
+            size: ShareCard.qrSize,
+            padding: const EdgeInsets.all(ShareCard.qrQuietZone),
+            backgroundColor: background,
+            gapless: true,
+            errorCorrectionLevel: QrErrorCorrectLevel.M,
+            semanticsLabel: '帖子链接二维码',
+            eyeStyle: QrEyeStyle(
+              eyeShape: QrEyeShape.square,
+              color: foreground,
+            ),
+            dataModuleStyle: QrDataModuleStyle(
+              dataModuleShape: QrDataModuleShape.square,
+              color: foreground,
+            ),
+          ),
+        ),
       ),
     );
   }

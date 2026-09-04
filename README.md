@@ -155,6 +155,7 @@ lib/
 | HTML / BBCode 渲染 | `flutter_html` `^3.0.0` + 自研 BBCode 解析与 HTML 优化渲染 |
 | 图片加载与缓存 | `flutter_cache_manager` / `cached_network_image`（原生磁盘缓存；Web 走浏览器缓存） |
 | 分享卡导出 | `ironpress` `^0.2.0`（Native WebP / JPEG / PNG；Web 走 Canvas / Skia PNG） |
+| 分享卡二维码 | `qr_flutter` `^4.1.0`（生成主题链接码） |
 | 桌面窗口 | `window_manager`（Windows / macOS / Linux 自绘标题栏） |
 | WebView | `webview_flutter` `^4.7.0` |
 | 备份（L1 ZIP） | `archive` / `file_selector` / `share_plus` |

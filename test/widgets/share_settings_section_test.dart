@@ -130,22 +130,31 @@ void main() {
 
   testWidgets('advanced export switch shows confirm dialog before enabling',
       (tester) async {
+    tester.view.devicePixelRatio = 1;
+    tester.view.physicalSize = const Size(800, 1200);
+    addTearDown(() {
+      tester.view.resetDevicePixelRatio();
+      tester.view.resetPhysicalSize();
+    });
+
     await tester.pumpWidget(
       _wrapShareSettings(
-        child: const Scaffold(body: ShareSettingsSection()),
+        child: const Scaffold(
+          body: SingleChildScrollView(child: ShareSettingsSection()),
+        ),
       ),
     );
     await tester.pumpAndSettle();
 
     expect(find.text('高级导出'), findsOneWidget);
-    expect(find.byType(SwitchListTile), findsOneWidget);
+    expect(find.text('显示二维码'), findsOneWidget);
 
-    final switchWidget = tester.widget<SwitchListTile>(
-      find.byType(SwitchListTile),
-    );
-    expect(switchWidget.value, isFalse);
+    final qrSwitch = find.widgetWithText(SwitchListTile, '显示二维码');
+    final advancedSwitch = find.widgetWithText(SwitchListTile, '高级导出');
+    expect(tester.widget<SwitchListTile>(qrSwitch).value, isTrue);
+    expect(tester.widget<SwitchListTile>(advancedSwitch).value, isFalse);
 
-    await tester.tap(find.byType(SwitchListTile));
+    await tester.tap(advancedSwitch);
     await tester.pumpAndSettle();
 
     expect(find.text('开启高级导出'), findsOneWidget);
@@ -153,18 +162,68 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(
-      tester.widget<SwitchListTile>(find.byType(SwitchListTile)).value,
+      tester
+          .widget<SwitchListTile>(
+            find.widgetWithText(SwitchListTile, '高级导出'),
+          )
+          .value,
       isFalse,
     );
 
-    await tester.tap(find.byType(SwitchListTile));
+    await tester.tap(find.widgetWithText(SwitchListTile, '高级导出'));
     await tester.pumpAndSettle();
     await tester.tap(find.text('开启'));
     await tester.pumpAndSettle();
 
     expect(
-      tester.widget<SwitchListTile>(find.byType(SwitchListTile)).value,
+      tester
+          .widget<SwitchListTile>(
+            find.widgetWithText(SwitchListTile, '高级导出'),
+          )
+          .value,
       isTrue,
     );
+  });
+
+  testWidgets('QR switch toggles shareShowQr without a confirm dialog',
+      (tester) async {
+    tester.view.devicePixelRatio = 1;
+    tester.view.physicalSize = const Size(800, 1200);
+    addTearDown(() {
+      tester.view.resetDevicePixelRatio();
+      tester.view.resetPhysicalSize();
+    });
+
+    late ProviderContainer container;
+    await tester.pumpWidget(
+      ProviderScope(
+        overrides: [
+          settingsProvider.overrideWith(
+            () => SettingsNotifier(initial: const AppSettings()),
+          ),
+        ],
+        child: wrapWithAppTheme(
+          Builder(
+            builder: (context) {
+              container = ProviderScope.containerOf(context);
+              return const Scaffold(
+                body: SingleChildScrollView(child: ShareSettingsSection()),
+              );
+            },
+          ),
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    final qrSwitch = find.widgetWithText(SwitchListTile, '显示二维码');
+    expect(tester.widget<SwitchListTile>(qrSwitch).value, isTrue);
+
+    await tester.tap(qrSwitch);
+    await tester.pumpAndSettle();
+
+    expect(tester.widget<SwitchListTile>(qrSwitch).value, isFalse);
+    expect(container.read(settingsProvider).shareShowQr, isFalse);
+    expect(find.text('开启高级导出'), findsNothing);
   });
 }

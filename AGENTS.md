@@ -33,6 +33,7 @@
 | 本地结构化存储 | drift / drift_flutter | ^2.34.1 / ^0.3.1 |
 | 图片磁盘缓存 | flutter_cache_manager / cached_network_image | ^3.4.1 / ^3.4.1 |
 | 分享卡导出编码 | ironpress（方案 C：mozjpeg / oxipng / libwebp；默认 WebP，可选 JPEG/PNG）；Web 走 canvas / Skia PNG | ^0.2.0 |
+| 分享卡二维码 | qr_flutter（生成主题链接码；不读图、不扫码） | ^4.1.0 |
 | 测试夹具位图 | image | ^4.2.0 |
 | 网络状态 | connectivity_plus | ^6.1.4 |
 | 设备机型标签 | device_info_plus（小尾巴细机型；失败回退平台名） | ^13.2.0 |

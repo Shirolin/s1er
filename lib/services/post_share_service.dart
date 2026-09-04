@@ -4,7 +4,8 @@ import 'dart:async';
 import 'dart:typed_data';
 import 'dart:ui' as ui;
 
-import 'package:flutter/foundation.dart' show kIsWeb, visibleForTesting;
+import 'package:flutter/foundation.dart'
+    show defaultTargetPlatform, kIsWeb, visibleForTesting;
 import 'package:flutter/material.dart';
 import 'package:flutter/rendering.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -12,6 +13,7 @@ import 'package:path/path.dart' as p;
 import 'package:path_provider/path_provider.dart';
 import 'package:share_plus/share_plus.dart';
 
+import '../config/app_icon_catalog.dart';
 import '../models/poll.dart';
 import '../models/share_floor_data.dart';
 import '../models/share_image_format.dart';
@@ -318,8 +320,15 @@ class _SharePreviewSheetState extends ConsumerState<_SharePreviewSheet> {
   Future<bool> _waitUntilReady() async {
     if (!mounted) return false;
     _setCaptureProgress('正在准备图片…');
+    await _precacheShareLogo();
+    if (!mounted) return false;
+
     final urls = collectShareImageUrls(widget.floors);
-    if (urls.isEmpty) return true;
+    if (urls.isEmpty) {
+      await WidgetsBinding.instance.endOfFrame;
+      await WidgetsBinding.instance.endOfFrame;
+      return true;
+    }
 
     var failedUrls = 0;
     final bytesByUrl = <String, Uint8List>{};
@@ -360,6 +369,66 @@ class _SharePreviewSheetState extends ConsumerState<_SharePreviewSheet> {
     await WidgetsBinding.instance.endOfFrame;
     await WidgetsBinding.instance.endOfFrame;
     return true;
+  }
+
+  Future<void> _precacheShareLogo() async {
+    if (!mounted) return;
+    final iconId = ref.read(settingsProvider).appIcon;
+    final asset = AppIconCatalog.find(iconId)?.previewAsset ??
+        AppIconCatalog.defaultVariant.previewAsset;
+    final image = AssetImage(asset);
+    const logoSize = Size(ShareCard.logoSize, ShareCard.logoSize);
+    final previewDpr = MediaQuery.devicePixelRatioOf(context);
+    try {
+      await _precacheShareLogoAt(
+        image,
+        devicePixelRatio: previewDpr,
+        size: logoSize,
+      );
+      if (!mounted) return;
+      if (_sharePixelRatio != previewDpr) {
+        await _precacheShareLogoAt(
+          image,
+          devicePixelRatio: _sharePixelRatio,
+          size: logoSize,
+        );
+      }
+    } on Object catch (e, st) {
+      talker.handle(e, st, 'Share logo precache failed: $asset');
+    }
+  }
+
+  Future<void> _precacheShareLogoAt(
+    AssetImage image, {
+    required double devicePixelRatio,
+    required Size size,
+  }) {
+    if (!mounted) return Future<void>.value();
+    final config = ImageConfiguration(
+      bundle: DefaultAssetBundle.of(context),
+      devicePixelRatio: devicePixelRatio,
+      locale: Localizations.maybeLocaleOf(context),
+      textDirection: Directionality.maybeOf(context),
+      size: size,
+      platform: defaultTargetPlatform,
+    );
+    final stream = image.resolve(config);
+    final completer = Completer<void>();
+    late final ImageStreamListener listener;
+    listener = ImageStreamListener(
+      (ImageInfo image, bool synchronousCall) {
+        if (!completer.isCompleted) completer.complete();
+      },
+      onError: (Object exception, StackTrace? stackTrace) {
+        if (!completer.isCompleted) {
+          completer.completeError(exception, stackTrace);
+        }
+      },
+    );
+    stream.addListener(listener);
+    return completer.future.whenComplete(() {
+      stream.removeListener(listener);
+    });
   }
 
   Future<Uint8List?> _fetchImageBytes(String url) async {
@@ -854,6 +923,7 @@ class _SharePreviewSheetState extends ConsumerState<_SharePreviewSheet> {
     final maxHeight = MediaQuery.of(context).size.height * 0.7;
     final title =
         widget.floors.length > 1 ? '分享 ${widget.floors.length} 个楼层' : '分享帖子';
+    final showQr = ref.watch(settingsProvider.select((s) => s.shareShowQr));
 
     return Stack(
       clipBehavior: Clip.none,
@@ -887,6 +957,8 @@ class _SharePreviewSheetState extends ConsumerState<_SharePreviewSheet> {
                           floors: widget.floors,
                           threadSubject: widget.threadSubject,
                           poll: widget.poll,
+                          tid: widget.tid,
+                          showQr: showQr,
                         ),
                       ),
                     ),
@@ -894,7 +966,7 @@ class _SharePreviewSheetState extends ConsumerState<_SharePreviewSheet> {
                 ),
                 AnimatedSwitcher(
                   duration: S1Motion.short,
-                  child: _buildFooter(scheme, textTheme),
+                  child: _buildFooter(scheme, textTheme, showQr),
                 ),
               ],
             ),
@@ -934,6 +1006,8 @@ class _SharePreviewSheetState extends ConsumerState<_SharePreviewSheet> {
                             floors: widget.floors,
                             threadSubject: widget.threadSubject,
                             poll: widget.poll,
+                            tid: widget.tid,
+                            showQr: showQr,
                           ),
                         ),
                       ),
@@ -947,7 +1021,7 @@ class _SharePreviewSheetState extends ConsumerState<_SharePreviewSheet> {
     );
   }
 
-  Widget _buildFooter(ColorScheme scheme, TextTheme textTheme) {
+  Widget _buildFooter(ColorScheme scheme, TextTheme textTheme, bool showQr) {
     return Container(
       key: ValueKey(_state),
       padding: const EdgeInsets.fromLTRB(16, 12, 16, 16),
@@ -960,10 +1034,46 @@ class _SharePreviewSheetState extends ConsumerState<_SharePreviewSheet> {
         ),
       ),
       child: switch (_state) {
-        _FooterState.idle => _buildActions(),
+        _FooterState.idle => _buildIdle(scheme, textTheme, showQr),
         _FooterState.capturing => _buildCapturing(scheme, textTheme),
         _FooterState.error => _buildError(scheme, textTheme),
       },
+    );
+  }
+
+  Widget _buildIdle(
+    ColorScheme scheme,
+    TextTheme textTheme,
+    bool showQr,
+  ) {
+    return Column(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        SwitchListTile(
+          contentPadding: EdgeInsets.zero,
+          title: Row(
+            children: [
+              Text('显示二维码', style: textTheme.titleSmall),
+              const SizedBox(width: 6),
+              Tooltip(
+                message: '部分平台会对带码图片限流',
+                child: Icon(
+                  Icons.info_outline,
+                  size: textTheme.titleSmall?.fontSize,
+                  color: scheme.onSurfaceVariant,
+                ),
+              ),
+            ],
+          ),
+          value: showQr,
+          onChanged: (value) {
+            S1Haptics.selection();
+            ref.read(settingsProvider.notifier).setShareShowQr(value);
+          },
+        ),
+        const SizedBox(height: 8),
+        _buildActions(),
+      ],
     );
   }
 

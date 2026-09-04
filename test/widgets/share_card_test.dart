@@ -1,17 +1,28 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:qr_flutter/qr_flutter.dart';
+import 'package:s1er/config/app_icon_catalog.dart';
 import 'package:s1er/config/constants.dart';
 import 'package:s1er/models/poll.dart';
 import 'package:s1er/models/post.dart';
 import 'package:s1er/models/share_floor_data.dart';
+import 'package:s1er/providers/settings_provider.dart';
 import 'package:s1er/widgets/share_card.dart';
 
 import '../helpers/test_theme.dart';
 
 /// Provides Riverpod scope and M3 theme for ShareCard tests.
-Widget wrap(Widget child) {
+Widget wrap(
+  Widget child, {
+  AppSettings settings = const AppSettings(),
+}) {
   return ProviderScope(
+    overrides: [
+      settingsProvider.overrideWith(
+        () => SettingsNotifier(initial: settings),
+      ),
+    ],
     child: wrapWithAppTheme(
       MediaQuery(
         data: const MediaQueryData(size: Size(800, 600)),
@@ -38,6 +49,15 @@ Post _post({
 }
 
 void main() {
+  test('threadUrlFor builds page-1 forum URL', () {
+    expect(
+      ShareCard.threadUrlFor('2254107'),
+      'https://stage1st.com/2b/thread-2254107-1-1.html',
+    );
+    expect(ShareCard.threadUrlFor(null), isNull);
+    expect(ShareCard.threadUrlFor(''), isNull);
+  });
+
   testWidgets('renders author, floor, and branding', (tester) async {
     final post = _post(
       pid: '123',
@@ -55,6 +75,15 @@ void main() {
     expect(find.text('Stage1st'), findsOneWidget);
     expect(find.text('来自 ${S1Constants.appName} 客户端'), findsOneWidget);
     expect(find.textContaining('测试帖子内容'), findsOneWidget);
+    expect(
+      find.image(AssetImage(AppIconCatalog.defaultVariant.previewAsset)),
+      findsOneWidget,
+    );
+    expect(find.byType(QrImageView), findsNothing);
+    expect(
+      find.byKey(ValueKey(ShareCard.threadUrlFor('2254107')!)),
+      findsNothing,
+    );
   });
 
   testWidgets('renders with displayFloor override', (tester) async {
@@ -212,5 +241,77 @@ void main() {
 
     expect(find.text('投票'), findsOneWidget);
     expect(find.text('选项A'), findsOneWidget);
+  });
+
+  testWidgets('header logo follows selected app icon', (tester) async {
+    final post = _post(
+      pid: '1',
+      message: 'logo',
+      author: 'A',
+      number: '1',
+    );
+    final xb2Asset = AppIconCatalog.find('xb2')!.previewAsset;
+
+    await tester.pumpWidget(
+      wrap(
+        ShareCard.single(post: post),
+        settings: const AppSettings(appIcon: 'xb2'),
+      ),
+    );
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 100));
+
+    expect(find.image(AssetImage(xb2Asset)), findsOneWidget);
+    expect(
+      find.image(AssetImage(AppIconCatalog.defaultVariant.previewAsset)),
+      findsNothing,
+    );
+  });
+
+  testWidgets('shows thread QR when tid is set and showQr is true',
+      (tester) async {
+    final post = _post(
+      pid: '1',
+      message: 'qr',
+      author: 'A',
+      number: '1',
+    );
+
+    await tester.pumpWidget(
+      wrap(
+        SingleChildScrollView(
+          child: ShareCard.single(post: post, tid: '2254107'),
+        ),
+      ),
+    );
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 100));
+
+    expect(find.byType(QrImageView), findsOneWidget);
+    expect(
+      find.byKey(ValueKey(ShareCard.threadUrlFor('2254107')!)),
+      findsOneWidget,
+    );
+  });
+
+  testWidgets('hides QR when showQr is false', (tester) async {
+    final post = _post(
+      pid: '1',
+      message: 'no qr',
+      author: 'A',
+      number: '1',
+    );
+
+    await tester.pumpWidget(
+      wrap(ShareCard.single(post: post, tid: '2254107', showQr: false)),
+    );
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 100));
+
+    expect(find.byType(QrImageView), findsNothing);
+    expect(
+      find.byKey(ValueKey(ShareCard.threadUrlFor('2254107')!)),
+      findsNothing,
+    );
   });
 }

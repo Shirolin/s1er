@@ -44,6 +44,6 @@ Provider / Notifier 负责业务编排及 `loading/data/error`、缓存失效和
 
 ## 主要依赖
 
-与 `pubspec.yaml` / `AGENTS.md` 锁定表一致，包括：`flutter_riverpod` 3.2.1、`dio`、`go_router`、`drift`、`flutter_html`、`ironpress` 等。
+与 `pubspec.yaml` / `AGENTS.md` 锁定表一致，包括：`flutter_riverpod` 3.2.1、`dio`、`go_router`、`drift`、`flutter_html`、`ironpress`、`qr_flutter` 等。
 
 Web 开发代理与编译期配置见 [开发指南](development.md)。

@@ -43,6 +43,7 @@ class AppSettings {
     this.shareImageFormat = ShareImageFormat.webp,
     this.sharePixelRatio = SharePixelRatio.defaultValue,
     this.shareAdvancedExport = false,
+    this.shareShowQr = true,
     this.shareSaveMode = ShareSaveMode.autoDir,
     this.customExportPath,
     this.postSignatureEnabled = true,
@@ -78,6 +79,7 @@ class AppSettings {
   final ShareImageFormat shareImageFormat;
   final double sharePixelRatio;
   final bool shareAdvancedExport;
+  final bool shareShowQr;
   final ShareSaveMode shareSaveMode;
   final String? customExportPath;
   final bool postSignatureEnabled;
@@ -123,6 +125,7 @@ class AppSettings {
     ShareImageFormat? shareImageFormat,
     double? sharePixelRatio,
     bool? shareAdvancedExport,
+    bool? shareShowQr,
     ShareSaveMode? shareSaveMode,
     Object? customExportPath = _Sentinel.value,
     bool? postSignatureEnabled,
@@ -157,6 +160,7 @@ class AppSettings {
       shareImageFormat: shareImageFormat ?? this.shareImageFormat,
       sharePixelRatio: sharePixelRatio ?? this.sharePixelRatio,
       shareAdvancedExport: shareAdvancedExport ?? this.shareAdvancedExport,
+      shareShowQr: shareShowQr ?? this.shareShowQr,
       shareSaveMode: shareSaveMode ?? this.shareSaveMode,
       customExportPath: customExportPath == _Sentinel.value
           ? this.customExportPath
@@ -202,6 +206,7 @@ class AppSettings {
         other.shareImageFormat == shareImageFormat &&
         other.sharePixelRatio == sharePixelRatio &&
         other.shareAdvancedExport == shareAdvancedExport &&
+        other.shareShowQr == shareShowQr &&
         other.shareSaveMode == shareSaveMode &&
         other.customExportPath == customExportPath &&
         other.postSignatureEnabled == postSignatureEnabled &&
@@ -244,6 +249,7 @@ class AppSettings {
           compactListFullBleed,
           threadListFiltersExpanded,
           shareAdvancedExport,
+          shareShowQr,
           shareSaveMode,
           customExportPath,
         ),
@@ -434,6 +440,11 @@ class SettingsNotifier extends Notifier<AppSettings> {
             defaultValue: false,
           ) ??
           false,
+      shareShowQr: settingsStore.get<bool>(
+            'shareShowQr',
+            defaultValue: true,
+          ) ??
+          true,
       shareSaveMode: ShareSaveMode.values.firstWhere(
         (e) => e.name == settingsStore.get<String>('shareSaveMode'),
         orElse: () => ShareSaveMode.autoDir,
@@ -650,6 +661,11 @@ class SettingsNotifier extends Notifier<AppSettings> {
     _persist('shareAdvancedExport', value);
   }
 
+  void setShareShowQr(bool value) {
+    _commit(state.copyWith(shareShowQr: value));
+    _persist('shareShowQr', value);
+  }
+
   void setPostSignatureEnabled(bool value) {
     _commit(state.copyWith(postSignatureEnabled: value));
     _persist('postSignatureEnabled', value);
@@ -755,6 +771,7 @@ class SettingsNotifier extends Notifier<AppSettings> {
       shareImageFormat: defaults.shareImageFormat,
       sharePixelRatio: defaults.sharePixelRatio,
       shareAdvancedExport: defaults.shareAdvancedExport,
+      shareShowQr: defaults.shareShowQr,
       shareSaveMode: defaults.shareSaveMode,
       customExportPath: defaults.customExportPath,
       customFontFileName: null,
@@ -783,6 +800,7 @@ class SettingsNotifier extends Notifier<AppSettings> {
     _persist('shareImageFormat', defaults.shareImageFormat.storageKey);
     _persist('sharePixelRatio', defaults.sharePixelRatio);
     _persist('shareAdvancedExport', defaults.shareAdvancedExport);
+    _persist('shareShowQr', defaults.shareShowQr);
     _persist('shareSaveMode', defaults.shareSaveMode.name);
     _persist('customExportPath', defaults.customExportPath);
     _persist('customFontFileName', null);

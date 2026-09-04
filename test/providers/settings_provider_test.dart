@@ -47,6 +47,7 @@ void main() {
               stripSpecialStyles: true,
               hideStickyThreads: true,
               hideStickyForumOverrides: {'9'},
+              shareShowQr: false,
             ),
           ),
         ),
@@ -72,6 +73,7 @@ void main() {
     expect(state.shareImageFormat, ShareImageFormat.webp);
     expect(state.sharePixelRatio, 1.5);
     expect(state.shareAdvancedExport, isFalse);
+    expect(state.shareShowQr, isTrue);
     expect(state.threadListDensity, ListDensity.standard);
     expect(state.postListDensity, ListDensity.standard);
     expect(state.compactListFullBleed, isFalse);
@@ -534,6 +536,24 @@ void main() {
     expect(container.read(settingsProvider).shareAdvancedExport, isTrue);
     await Future<void>.delayed(const Duration(milliseconds: 50));
     expect(store.get<bool>('shareAdvancedExport'), isTrue);
+  });
+
+  test('setShareShowQr persists to settings store', () async {
+    final container = ProviderContainer(
+      overrides: [
+        settingsProvider.overrideWith(
+          () => SettingsNotifier(store: store, initial: const AppSettings()),
+        ),
+      ],
+    );
+    addTearDown(container.dispose);
+
+    expect(container.read(settingsProvider).shareShowQr, isTrue);
+    container.read(settingsProvider.notifier).setShareShowQr(false);
+
+    expect(container.read(settingsProvider).shareShowQr, isFalse);
+    await Future<void>.delayed(const Duration(milliseconds: 50));
+    expect(store.get<bool>('shareShowQr'), isFalse);
   });
 
   test('setPostSignatureCustom persists to settings store', () async {

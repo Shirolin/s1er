@@ -93,6 +93,22 @@ class ShareSettingsSection extends ConsumerWidget {
               const SizedBox(height: 8),
               SwitchListTile(
                 contentPadding: const EdgeInsets.symmetric(horizontal: 8),
+                title: Text('显示二维码', style: textTheme.titleSmall),
+                subtitle: Text(
+                  '部分平台会对带码图片限流',
+                  style: textTheme.bodySmall?.copyWith(
+                    color: scheme.onSurfaceVariant,
+                  ),
+                ),
+                value: settings.shareShowQr,
+                onChanged: (value) {
+                  S1Haptics.selection();
+                  notifier.setShareShowQr(value);
+                },
+              ),
+              const SizedBox(height: 8),
+              SwitchListTile(
+                contentPadding: const EdgeInsets.symmetric(horizontal: 8),
                 title: Text('高级导出', style: textTheme.titleSmall),
                 subtitle: Text(
                   '单楼图片极多时使用楼内切块，放宽高度限制；更慢且可能失败',

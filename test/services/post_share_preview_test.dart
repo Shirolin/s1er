@@ -88,44 +88,44 @@ void main() {
     expect(container.read(settingsProvider).shareShowLogo, isTrue);
     expect(container.read(settingsProvider).shareShowQr, isTrue);
 
-    await tester.tap(find.text('Logo'));
+    final logoChip = find.widgetWithText(FilterChip, 'Logo');
+    final qrChip = find.widgetWithText(FilterChip, '二维码');
+
+    await tester.ensureVisible(logoChip);
+    await tester.tap(logoChip);
     await tester.pumpAndSettle();
     expect(container.read(settingsProvider).shareShowLogo, isFalse);
 
-    await tester.tap(find.text('Logo'));
+    await tester.tap(logoChip);
     await tester.pumpAndSettle();
     expect(container.read(settingsProvider).shareShowLogo, isTrue);
 
-    await tester.tap(find.text('二维码'));
+    await tester.ensureVisible(qrChip);
+    await tester.tap(qrChip);
     await tester.pumpAndSettle();
     expect(container.read(settingsProvider).shareShowQr, isFalse);
 
-    await tester.tap(find.text('二维码'));
+    await tester.tap(qrChip);
     await tester.pumpAndSettle();
     expect(container.read(settingsProvider).shareShowQr, isTrue);
   });
 
-  testWidgets('QR info button shows SnackBar inside the preview sheet',
-      (tester) async {
+  testWidgets('QR limit hint is visible as helper text', (tester) async {
     await _openSharePreview(tester);
 
-    const hint = '部分平台会对带码图片限流';
-    await tester.tap(find.byTooltip(hint));
-    await tester.pump();
+    final hint = find.descendant(
+      of: find.byType(BottomSheet),
+      matching: find.text('部分平台会对带码图片限流'),
+    );
+    expect(hint, findsOneWidget);
+    expect(find.byType(SnackBar), findsNothing);
 
-    expect(
-      find.descendant(
-        of: find.byType(BottomSheet),
-        matching: find.text(hint),
-      ),
-      findsOneWidget,
-    );
-    expect(
-      find.descendant(
-        of: find.byType(BottomSheet),
-        matching: find.byType(SnackBar),
-      ),
-      findsOneWidget,
-    );
+    await tester.tap(find.widgetWithText(FilterChip, '二维码'));
+    await tester.pumpAndSettle();
+    expect(hint, findsNothing);
+
+    await tester.tap(find.widgetWithText(FilterChip, '二维码'));
+    await tester.pumpAndSettle();
+    expect(hint, findsOneWidget);
   });
 }

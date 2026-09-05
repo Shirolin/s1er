@@ -10,12 +10,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Added
 
 - **Windows 应用内覆盖更新**：绿色解压包也可点「立即更新」。下载 ZIP 后自动解压到临时目录，退出进程后脚本把安装目录改名为备份、把新目录移到原路径再启动；失败则回滚并拉起旧程序。登录和设置在 `%APPDATA%`，不会被覆盖。成功或失败都会删除 ZIP、解压目录和脚本；下次更新还会清掉上次残留。安装在 Program Files 等无写权限目录时会提示改放到普通文件夹。
+- **分享卡应用图标与帖子二维码**：卡片顶部使用设置里选中的启动器图标；底栏可选绘制主题页二维码，扫码直达该楼层（Discuz findpost）；Logo 与二维码均可在设置与预览中开关，避免带码图被平台限流。预览底栏改为带图标 Chip 并收紧对齐，限流说明仅在开启二维码时显示。
+- **分享相册图修复**：相册包裹图（album aimg）从相册链接中拆出再渲染，不再漏图。
 
 ### Fixed
 
 - **更新安装包下载卡在 100%**：GitHub 直链常在字节传完后不关闭连接。应用内下载改为收满 Content-Length 即完成，失败后 Android 走系统下载器而不是用浏览器打开 APK 直链（Chrome 会一直转圈不出安装按钮）。
 - **应用内更新健壮性**：Windows 覆盖脚本在 rename 失败时不再误删安装目录；exe 仍被锁定时中止对换；安装中隐藏「取消」；重复点击「立即更新」不会并发下载；Android 系统下载 Receiver 改为非导出并校验主机白名单；Windows `.zip` 判定忽略 URL query。
 - **应用内更新状态机**：不支持平台抛异常前不再占位 `downloading`；Provider dispose 早退时中止后续状态写入（Dialog 关闭仍由 `reset()` 清状态）；Windows 覆盖脚本 `Start-S1erExe` 避免遮蔽 PowerShell `$args`。
+- **应用内更新下载主机校验**：拒绝携带凭据（userInfo）的下载 URL，仅允许白名单 HTTPS 主机。
 
 ## [0.6.0] - 2026-08-26
 

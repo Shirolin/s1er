@@ -147,11 +147,14 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(find.text('高级导出'), findsOneWidget);
+    expect(find.text('显示 Logo'), findsOneWidget);
     expect(find.text('显示二维码'), findsOneWidget);
 
+    final logoSwitch = find.widgetWithText(SwitchListTile, '显示 Logo');
     final qrSwitch = find.widgetWithText(SwitchListTile, '显示二维码');
     final advancedSwitch = find.widgetWithText(SwitchListTile, '高级导出');
     expect(tester.widget<SwitchListTile>(qrSwitch).value, isTrue);
+    expect(tester.widget<SwitchListTile>(logoSwitch).value, isTrue);
     expect(tester.widget<SwitchListTile>(advancedSwitch).value, isFalse);
 
     await tester.tap(advancedSwitch);
@@ -225,5 +228,46 @@ void main() {
     expect(tester.widget<SwitchListTile>(qrSwitch).value, isFalse);
     expect(container.read(settingsProvider).shareShowQr, isFalse);
     expect(find.text('开启高级导出'), findsNothing);
+  });
+
+  testWidgets('logo switch toggles shareShowLogo without a confirm dialog',
+      (tester) async {
+    tester.view.devicePixelRatio = 1;
+    tester.view.physicalSize = const Size(800, 1200);
+    addTearDown(() {
+      tester.view.resetDevicePixelRatio();
+      tester.view.resetPhysicalSize();
+    });
+
+    late ProviderContainer container;
+    await tester.pumpWidget(
+      ProviderScope(
+        overrides: [
+          settingsProvider.overrideWith(
+            () => SettingsNotifier(initial: const AppSettings()),
+          ),
+        ],
+        child: wrapWithAppTheme(
+          Builder(
+            builder: (context) {
+              container = ProviderScope.containerOf(context);
+              return const Scaffold(
+                body: SingleChildScrollView(child: ShareSettingsSection()),
+              );
+            },
+          ),
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    final logoSwitch = find.widgetWithText(SwitchListTile, '显示 Logo');
+    expect(tester.widget<SwitchListTile>(logoSwitch).value, isTrue);
+
+    await tester.tap(logoSwitch);
+    await tester.pumpAndSettle();
+
+    expect(tester.widget<SwitchListTile>(logoSwitch).value, isFalse);
+    expect(container.read(settingsProvider).shareShowLogo, isFalse);
   });
 }

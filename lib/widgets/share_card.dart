@@ -44,6 +44,7 @@ class ShareCard extends StatelessWidget {
     this.threadSubject,
     this.poll,
     this.tid,
+    this.showLogo = true,
     this.showQr = true,
     this.captureKeys,
     GlobalKey? captureKey,
@@ -58,6 +59,7 @@ class ShareCard extends StatelessWidget {
     this.threadSubject,
     this.poll,
     this.tid,
+    this.showLogo = true,
     this.showQr = true,
     this.captureKeys,
     GlobalKey? captureKey,
@@ -73,6 +75,7 @@ class ShareCard extends StatelessWidget {
   final String? threadSubject;
   final ThreadPoll? poll;
   final String? tid;
+  final bool showLogo;
   final bool showQr;
   final ShareCaptureKeys? captureKeys;
   final GlobalKey _fallbackFullKey;
@@ -138,6 +141,7 @@ class ShareCard extends StatelessWidget {
                       ShareCardHeader(
                         captureKey: captureKeys?.header,
                         threadSubject: threadSubject,
+                        showLogo: showLogo,
                       ),
                       for (var i = 0; i < floors.length; i++)
                         ShareFloorBlock(
@@ -208,23 +212,22 @@ class ShareCard extends StatelessWidget {
 }
 
 /// Brand + optional thread title (once per card).
-class ShareCardHeader extends ConsumerWidget {
+class ShareCardHeader extends StatelessWidget {
   const ShareCardHeader({
     super.key,
     this.captureKey,
     this.threadSubject,
+    this.showLogo = true,
   });
 
   final GlobalKey? captureKey;
   final String? threadSubject;
+  final bool showLogo;
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  Widget build(BuildContext context) {
     final scheme = Theme.of(context).colorScheme;
     final textTheme = Theme.of(context).textTheme;
-    final iconId = ref.watch(settingsProvider.select((s) => s.appIcon));
-    final logoAsset = AppIconCatalog.find(iconId)?.previewAsset ??
-        AppIconCatalog.defaultVariant.previewAsset;
 
     Widget content = Padding(
       padding: const EdgeInsets.fromLTRB(24, 24, 24, 0),
@@ -233,30 +236,10 @@ class ShareCardHeader extends ConsumerWidget {
         children: [
           Row(
             children: [
-              SizedBox(
-                width: ShareCard.logoSize,
-                height: ShareCard.logoSize,
-                child: DecoratedBox(
-                  decoration: BoxDecoration(
-                    borderRadius: S1Shape.extraSmall,
-                    border: Border.all(color: scheme.outlineVariant),
-                  ),
-                  child: ClipRRect(
-                    borderRadius: S1Shape.extraSmall,
-                    child: Image.asset(
-                      logoAsset,
-                      width: ShareCard.logoSize,
-                      height: ShareCard.logoSize,
-                      fit: BoxFit.cover,
-                      filterQuality: FilterQuality.medium,
-                      errorBuilder: (context, error, stackTrace) => ColoredBox(
-                        color: scheme.surfaceContainerHighest,
-                      ),
-                    ),
-                  ),
-                ),
-              ),
-              const SizedBox(width: 8),
+              if (showLogo) ...[
+                const _ShareCardHeaderLogo(),
+                const SizedBox(width: 8),
+              ],
               Text(
                 'Stage1st',
                 style: textTheme.labelMedium?.copyWith(
@@ -295,6 +278,42 @@ class ShareCardHeader extends ConsumerWidget {
       child: ColoredBox(
         color: S1Surface.card(scheme),
         child: SizedBox(width: ShareCard.cardWidth, child: content),
+      ),
+    );
+  }
+}
+
+class _ShareCardHeaderLogo extends ConsumerWidget {
+  const _ShareCardHeaderLogo();
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final scheme = Theme.of(context).colorScheme;
+    final iconId = ref.watch(settingsProvider.select((s) => s.appIcon));
+    final logoAsset = AppIconCatalog.find(iconId)?.previewAsset ??
+        AppIconCatalog.defaultVariant.previewAsset;
+
+    return SizedBox(
+      width: ShareCard.logoSize,
+      height: ShareCard.logoSize,
+      child: DecoratedBox(
+        decoration: BoxDecoration(
+          borderRadius: S1Shape.extraSmall,
+          border: Border.all(color: scheme.outlineVariant),
+        ),
+        child: ClipRRect(
+          borderRadius: S1Shape.extraSmall,
+          child: Image.asset(
+            logoAsset,
+            width: ShareCard.logoSize,
+            height: ShareCard.logoSize,
+            fit: BoxFit.cover,
+            filterQuality: FilterQuality.medium,
+            errorBuilder: (context, error, stackTrace) => ColoredBox(
+              color: scheme.surfaceContainerHighest,
+            ),
+          ),
+        ),
       ),
     );
   }

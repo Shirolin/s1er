@@ -263,7 +263,7 @@ void main() {
 
     await tester.pumpWidget(
       wrap(
-        ShareCard.single(post: post),
+        ShareCard.single(post: post, showLogo: true),
         settings: const AppSettings(appIcon: 'xb2'),
       ),
     );
@@ -275,6 +275,25 @@ void main() {
       find.image(AssetImage(AppIconCatalog.defaultVariant.previewAsset)),
       findsNothing,
     );
+  });
+
+  testWidgets('hides header logo when showLogo is false', (tester) async {
+    final post = _post(
+      pid: '1',
+      message: 'no logo',
+      author: 'A',
+      number: '1',
+    );
+    final defaultAsset = AppIconCatalog.defaultVariant.previewAsset;
+
+    await tester.pumpWidget(
+      wrap(ShareCard.single(post: post, showLogo: false)),
+    );
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 100));
+
+    expect(find.text('Stage1st'), findsOneWidget);
+    expect(find.image(AssetImage(defaultAsset)), findsNothing);
   });
 
   testWidgets('shows thread QR when tid is set and showQr is true',

@@ -76,6 +76,7 @@ class S1BackupService {
     appSettings.putIfAbsent('shareImageFormat', () => 'webp');
     appSettings.putIfAbsent('sharePixelRatio', () => 1.5);
     appSettings.putIfAbsent('shareAdvancedExport', () => false);
+    appSettings.putIfAbsent('shareShowLogo', () => true);
     appSettings.putIfAbsent('shareShowQr', () => true);
     appSettings.putIfAbsent('postSignatureEnabled', () => true);
     appSettings.putIfAbsent('postSignatureShowDevice', () => true);

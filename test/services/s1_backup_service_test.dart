@@ -112,6 +112,7 @@ void main() {
         'shareImageFormat': 'webp',
         'sharePixelRatio': 2,
         'shareAdvancedExport': true,
+        'shareShowLogo': false,
         'shareShowQr': false,
         'threadListDensity': 'compact',
         'postListDensity': 'standard',
@@ -131,6 +132,7 @@ void main() {
       expect(backup['share_image_format'], 'webp');
       expect(backup['share_pixel_ratio'], 2);
       expect(backup['share_advanced_export'], isTrue);
+      expect(backup['share_show_logo'], isFalse);
       expect(backup['share_show_qr'], isFalse);
       expect(backup['thread_list_density'], 'compact');
       expect(backup['post_list_density'], 'standard');
@@ -159,6 +161,7 @@ void main() {
       expect(app['shareImageFormat'], 'webp');
       expect(app['sharePixelRatio'], 2);
       expect(app['shareAdvancedExport'], isTrue);
+      expect(app['shareShowLogo'], isFalse);
       expect(app['shareShowQr'], isFalse);
       expect(app['compactListFullBleed'], isTrue);
       expect(app['hiddenForums'], ['75', '6']);

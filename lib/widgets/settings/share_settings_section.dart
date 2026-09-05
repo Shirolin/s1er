@@ -93,6 +93,22 @@ class ShareSettingsSection extends ConsumerWidget {
               const SizedBox(height: 8),
               SwitchListTile(
                 contentPadding: const EdgeInsets.symmetric(horizontal: 8),
+                title: Text('显示 Logo', style: textTheme.titleSmall),
+                subtitle: Text(
+                  '页眉使用当前应用图标',
+                  style: textTheme.bodySmall?.copyWith(
+                    color: scheme.onSurfaceVariant,
+                  ),
+                ),
+                value: settings.shareShowLogo,
+                onChanged: (value) {
+                  S1Haptics.selection();
+                  notifier.setShareShowLogo(value);
+                },
+              ),
+              const SizedBox(height: 8),
+              SwitchListTile(
+                contentPadding: const EdgeInsets.symmetric(horizontal: 8),
                 title: Text('显示二维码', style: textTheme.titleSmall),
                 subtitle: Text(
                   '部分平台会对带码图片限流',

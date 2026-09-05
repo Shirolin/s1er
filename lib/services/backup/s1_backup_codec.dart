@@ -213,6 +213,7 @@ class S1BackupSettingsMapper {
     'shareImageFormat': 'share_image_format',
     'sharePixelRatio': 'share_pixel_ratio',
     'shareAdvancedExport': 'share_advanced_export',
+    'shareShowLogo': 'share_show_logo',
     'shareShowQr': 'share_show_qr',
     'postSignatureEnabled': 'post_signature_enabled',
     'postSignatureShowDevice': 'post_signature_show_device',

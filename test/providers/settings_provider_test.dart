@@ -73,6 +73,7 @@ void main() {
     expect(state.shareImageFormat, ShareImageFormat.webp);
     expect(state.sharePixelRatio, 1.5);
     expect(state.shareAdvancedExport, isFalse);
+    expect(state.shareShowLogo, isTrue);
     expect(state.shareShowQr, isTrue);
     expect(state.threadListDensity, ListDensity.standard);
     expect(state.postListDensity, ListDensity.standard);
@@ -554,6 +555,24 @@ void main() {
     expect(container.read(settingsProvider).shareShowQr, isFalse);
     await Future<void>.delayed(const Duration(milliseconds: 50));
     expect(store.get<bool>('shareShowQr'), isFalse);
+  });
+
+  test('setShareShowLogo persists to settings store', () async {
+    final container = ProviderContainer(
+      overrides: [
+        settingsProvider.overrideWith(
+          () => SettingsNotifier(store: store, initial: const AppSettings()),
+        ),
+      ],
+    );
+    addTearDown(container.dispose);
+
+    expect(container.read(settingsProvider).shareShowLogo, isTrue);
+    container.read(settingsProvider.notifier).setShareShowLogo(false);
+
+    expect(container.read(settingsProvider).shareShowLogo, isFalse);
+    await Future<void>.delayed(const Duration(milliseconds: 50));
+    expect(store.get<bool>('shareShowLogo'), isFalse);
   });
 
   test('setPostSignatureCustom persists to settings store', () async {

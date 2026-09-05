@@ -373,6 +373,7 @@ class _SharePreviewSheetState extends ConsumerState<_SharePreviewSheet> {
 
   Future<void> _precacheShareLogo() async {
     if (!mounted) return;
+    if (!ref.read(settingsProvider).shareShowLogo) return;
     final iconId = ref.read(settingsProvider).appIcon;
     final asset = AppIconCatalog.find(iconId)?.previewAsset ??
         AppIconCatalog.defaultVariant.previewAsset;
@@ -923,6 +924,7 @@ class _SharePreviewSheetState extends ConsumerState<_SharePreviewSheet> {
     final maxHeight = MediaQuery.of(context).size.height * 0.7;
     final title =
         widget.floors.length > 1 ? '分享 ${widget.floors.length} 个楼层' : '分享帖子';
+    final showLogo = ref.watch(settingsProvider.select((s) => s.shareShowLogo));
     final showQr = ref.watch(settingsProvider.select((s) => s.shareShowQr));
 
     return Stack(
@@ -931,44 +933,58 @@ class _SharePreviewSheetState extends ConsumerState<_SharePreviewSheet> {
         SafeArea(
           child: ConstrainedBox(
             constraints: BoxConstraints(maxHeight: maxHeight),
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Padding(
-                  padding: const EdgeInsets.fromLTRB(16, 8, 16, 8),
-                  child: Text(
-                    title,
-                    textAlign: TextAlign.center,
-                    style: textTheme.titleMedium?.copyWith(
-                      fontWeight: FontWeight.bold,
-                    ),
-                  ),
-                ),
-                Flexible(
-                  child: SingleChildScrollView(
-                    padding: const EdgeInsets.symmetric(horizontal: 12),
-                    child: Padding(
-                      padding: const EdgeInsets.only(bottom: 12),
-                      child: FittedBox(
-                        fit: BoxFit.fitWidth,
-                        clipBehavior: Clip.hardEdge,
-                        child: ShareCard(
-                          captureKeys: _captureKeys,
-                          floors: widget.floors,
-                          threadSubject: widget.threadSubject,
-                          poll: widget.poll,
-                          tid: widget.tid,
-                          showQr: showQr,
+            child: Scaffold(
+              backgroundColor: Colors.transparent,
+              resizeToAvoidBottomInset: false,
+              body: Builder(
+                builder: (scaffoldContext) {
+                  return Column(
+                    children: [
+                      Padding(
+                        padding: const EdgeInsets.fromLTRB(16, 8, 16, 8),
+                        child: Text(
+                          title,
+                          textAlign: TextAlign.center,
+                          style: textTheme.titleMedium?.copyWith(
+                            fontWeight: FontWeight.bold,
+                          ),
                         ),
                       ),
-                    ),
-                  ),
-                ),
-                AnimatedSwitcher(
-                  duration: S1Motion.short,
-                  child: _buildFooter(scheme, textTheme, showQr),
-                ),
-              ],
+                      Flexible(
+                        child: SingleChildScrollView(
+                          padding: const EdgeInsets.symmetric(horizontal: 12),
+                          child: Padding(
+                            padding: const EdgeInsets.only(bottom: 12),
+                            child: FittedBox(
+                              fit: BoxFit.fitWidth,
+                              clipBehavior: Clip.hardEdge,
+                              child: ShareCard(
+                                captureKeys: _captureKeys,
+                                floors: widget.floors,
+                                threadSubject: widget.threadSubject,
+                                poll: widget.poll,
+                                tid: widget.tid,
+                                showLogo: showLogo,
+                                showQr: showQr,
+                              ),
+                            ),
+                          ),
+                        ),
+                      ),
+                      AnimatedSwitcher(
+                        duration: S1Motion.short,
+                        child: _buildFooter(
+                          scheme,
+                          textTheme,
+                          showLogo,
+                          showQr,
+                          snackBarContext: scaffoldContext,
+                        ),
+                      ),
+                    ],
+                  );
+                },
+              ),
             ),
           ),
         ),
@@ -1007,6 +1023,7 @@ class _SharePreviewSheetState extends ConsumerState<_SharePreviewSheet> {
                             threadSubject: widget.threadSubject,
                             poll: widget.poll,
                             tid: widget.tid,
+                            showLogo: showLogo,
                             showQr: showQr,
                           ),
                         ),
@@ -1021,7 +1038,13 @@ class _SharePreviewSheetState extends ConsumerState<_SharePreviewSheet> {
     );
   }
 
-  Widget _buildFooter(ColorScheme scheme, TextTheme textTheme, bool showQr) {
+  Widget _buildFooter(
+    ColorScheme scheme,
+    TextTheme textTheme,
+    bool showLogo,
+    bool showQr, {
+    required BuildContext snackBarContext,
+  }) {
     return Container(
       key: ValueKey(_state),
       padding: const EdgeInsets.fromLTRB(16, 12, 16, 16),
@@ -1034,7 +1057,8 @@ class _SharePreviewSheetState extends ConsumerState<_SharePreviewSheet> {
         ),
       ),
       child: switch (_state) {
-        _FooterState.idle => _buildIdle(scheme, textTheme, showQr),
+        _FooterState.idle =>
+          _buildIdle(scheme, textTheme, showLogo, showQr, snackBarContext),
         _FooterState.capturing => _buildCapturing(scheme, textTheme),
         _FooterState.error => _buildError(scheme, textTheme),
       },
@@ -1044,34 +1068,59 @@ class _SharePreviewSheetState extends ConsumerState<_SharePreviewSheet> {
   Widget _buildIdle(
     ColorScheme scheme,
     TextTheme textTheme,
+    bool showLogo,
     bool showQr,
+    BuildContext snackBarContext,
   ) {
+    const qrLimitHint = '部分平台会对带码图片限流';
+
     return Column(
       mainAxisSize: MainAxisSize.min,
       children: [
-        SwitchListTile(
-          contentPadding: EdgeInsets.zero,
-          title: Row(
+        Center(
+          child: Wrap(
+            spacing: 8,
+            runSpacing: 4,
+            crossAxisAlignment: WrapCrossAlignment.center,
             children: [
-              Text('显示二维码', style: textTheme.titleSmall),
-              const SizedBox(width: 6),
-              Tooltip(
-                message: '部分平台会对带码图片限流',
-                child: Icon(
+              FilterChip(
+                label: const Text('Logo'),
+                selected: showLogo,
+                showCheckmark: false,
+                visualDensity: VisualDensity.compact,
+                onSelected: (value) {
+                  S1Haptics.selection();
+                  ref.read(settingsProvider.notifier).setShareShowLogo(value);
+                },
+              ),
+              FilterChip(
+                label: const Text('二维码'),
+                selected: showQr,
+                showCheckmark: false,
+                visualDensity: VisualDensity.compact,
+                onSelected: (value) {
+                  S1Haptics.selection();
+                  ref.read(settingsProvider.notifier).setShareShowQr(value);
+                },
+              ),
+              IconButton(
+                icon: Icon(
                   Icons.info_outline,
                   size: textTheme.titleSmall?.fontSize,
                   color: scheme.onSurfaceVariant,
                 ),
+                tooltip: qrLimitHint,
+                visualDensity: VisualDensity.compact,
+                onPressed: () => S1SnackBar.showIfMounted(
+                  snackBarContext,
+                  message: qrLimitHint,
+                  bottomClearance: 16,
+                ),
               ),
             ],
           ),
-          value: showQr,
-          onChanged: (value) {
-            S1Haptics.selection();
-            ref.read(settingsProvider.notifier).setShareShowQr(value);
-          },
         ),
-        const SizedBox(height: 8),
+        const SizedBox(height: 12),
         _buildActions(),
       ],
     );

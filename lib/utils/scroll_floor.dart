@@ -63,19 +63,10 @@ abstract class ScrollFloorNavigator {
     final anchorContentY =
         position.pixels + viewportDimension * revealAlignment;
 
-    var currentIndex = -1;
-    for (var i = 0; i < postKeys.length; i++) {
-      final ctx = postKeys[i].currentContext;
-      if (ctx == null) continue;
-      final renderObject = ctx.findRenderObject();
-      if (renderObject == null) continue;
-      final itemTop = _offsetToReveal(renderObject, 0);
-      if (itemTop == null) continue;
-      if (itemTop <= anchorContentY + 0.5) {
-        currentIndex = i;
-      }
-    }
-
+    var currentIndex = _leadingVisiblePostIndex(
+      postKeys: postKeys,
+      anchorContentY: anchorContentY,
+    );
     if (currentIndex < 0) {
       currentIndex = 0;
     }
@@ -253,6 +244,19 @@ abstract class ScrollFloorNavigator {
     final anchorContentY =
         position.pixels + viewportDimension * revealAlignment;
 
+    final leading = _leadingVisiblePostIndex(
+      postKeys: postKeys,
+      anchorContentY: anchorContentY,
+    );
+    if (leading < 0) return 0;
+    return leading;
+  }
+
+  /// 最后一个顶边不高于 [anchorContentY] 的楼层索引；列表自上而下递增，越过后即可停止。
+  static int _leadingVisiblePostIndex({
+    required List<GlobalKey> postKeys,
+    required double anchorContentY,
+  }) {
     var currentIndex = -1;
     for (var i = 0; i < postKeys.length; i++) {
       final ctx = postKeys[i].currentContext;
@@ -263,9 +267,12 @@ abstract class ScrollFloorNavigator {
       if (itemTop == null) continue;
       if (itemTop <= anchorContentY + 0.5) {
         currentIndex = i;
+        continue;
+      }
+      if (currentIndex >= 0) {
+        break;
       }
     }
-    if (currentIndex < 0) return 0;
     return currentIndex;
   }
 }

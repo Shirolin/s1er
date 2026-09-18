@@ -41,6 +41,41 @@ Future<void> _pumpFrames(WidgetTester tester, int frames) async {
   }
 }
 
+/// Post list under [ThreadDetailScreen] (vertical [ListView]).
+///
+/// [ThreadDetailScreen] also embeds [PageView]'s horizontal [Scrollable]; tests
+/// that need list scroll metrics must scope to this finder, not bare
+/// [find.byType]\([Scrollable]\).
+Finder _threadPostListFinder() {
+  return find.descendant(
+    of: find.byType(ThreadDetailScreen),
+    matching: find.byType(ListView),
+  );
+}
+
+/// [ScrollController.jumpTo] does not emit [ScrollEndNotification]; mirror finger
+/// scroll completion so progress writeback follows the ScrollEnd contract.
+Future<void> _dispatchThreadListScrollEnd(WidgetTester tester) async {
+  final scrollableFinder = find.descendant(
+    of: _threadPostListFinder(),
+    matching: find.byType(Scrollable),
+  );
+  final scrollableElements = scrollableFinder.evaluate();
+  expect(
+    scrollableElements,
+    isNotEmpty,
+    reason: 'post list Scrollable not built',
+  );
+  final scrollable = tester.state<ScrollableState>(
+    find.byElementPredicate((element) => element == scrollableElements.first),
+  );
+  ScrollEndNotification(
+    metrics: scrollable.position,
+    context: scrollable.context,
+  ).dispatch(scrollable.context);
+  await _pumpFrames(tester, 2);
+}
+
 /// Integration coverage for thread open contract + URL sync + floor resume.
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
@@ -187,21 +222,20 @@ void main() {
       location: '/thread/100?page=1',
     );
 
-    final listFinder = find.descendant(
-      of: find.byType(ThreadDetailScreen),
-      matching: find.byType(ListView),
-    );
+    final listFinder = _threadPostListFinder();
     final controller = tester.widget<ListView>(listFinder).controller!;
     await tester.runAsync(
       () => Future<void>.delayed(const Duration(milliseconds: 450)),
     );
     controller.jumpTo(controller.position.maxScrollExtent);
     await _pumpFrames(tester, 15);
+    await _dispatchThreadListScrollEnd(tester);
     await tester.runAsync(
       () => Future<void>.delayed(const Duration(milliseconds: 450)),
     );
     controller.jumpTo(controller.position.maxScrollExtent);
     await _pumpFrames(tester, 15);
+    await _dispatchThreadListScrollEnd(tester);
 
     final beforePageTurn =
         rootContainer!.read(readingHistoryServiceProvider).getRecord('100')!;
@@ -269,28 +303,22 @@ void main() {
     // (not the old page-end fake progress).
     expect(before.lastReadFloor, inInclusiveRange(4, 6));
 
-    // Drive the detail ListView controller so scroll metrics fire.
-    final listFinder = find.descendant(
-      of: find.byType(ThreadDetailScreen),
-      matching: find.byType(ListView),
-    );
+    // Drive the detail ListView controller so scroll-end writeback runs.
+    final listFinder = _threadPostListFinder();
     final listView = tester.widget<ListView>(listFinder);
     final controller = listView.controller!;
     expect(controller.position.maxScrollExtent, greaterThan(500));
 
-    // Throttle uses wall-clock DateTime.now(); advance real time via runAsync.
-    await tester.runAsync(
-      () => Future<void>.delayed(const Duration(milliseconds: 450)),
-    );
-
     controller.jumpTo(controller.position.maxScrollExtent);
     await _pumpFrames(tester, 15);
+    await _dispatchThreadListScrollEnd(tester);
     await tester.runAsync(
       () => Future<void>.delayed(const Duration(milliseconds: 450)),
     );
     // Nudge once more after lazy children build (extent may grow).
     controller.jumpTo(controller.position.maxScrollExtent);
     await _pumpFrames(tester, 15);
+    await _dispatchThreadListScrollEnd(tester);
 
     final after =
         rootContainer!.read(readingHistoryServiceProvider).getRecord('100')!;
@@ -314,10 +342,7 @@ void main() {
 
     expect(find.textContaining('MARK-FLOOR-1'), findsOneWidget);
 
-    final listFinder = find.descendant(
-      of: find.byType(ThreadDetailScreen),
-      matching: find.byType(ListView),
-    );
+    final listFinder = _threadPostListFinder();
     final controller = tester.widget<ListView>(listFinder).controller!;
     expect(controller.position.maxScrollExtent, greaterThan(0));
 
@@ -326,11 +351,13 @@ void main() {
     );
     controller.jumpTo(controller.position.maxScrollExtent);
     await _pumpFrames(tester, 15);
+    await _dispatchThreadListScrollEnd(tester);
     await tester.runAsync(
       () => Future<void>.delayed(const Duration(milliseconds: 450)),
     );
     controller.jumpTo(controller.position.maxScrollExtent);
     await _pumpFrames(tester, 15);
+    await _dispatchThreadListScrollEnd(tester);
 
     final record =
         rootContainer!.read(readingHistoryServiceProvider).getRecord('100')!;

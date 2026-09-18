@@ -25,10 +25,14 @@ class ScrollPointerGateHost extends StatefulWidget {
     super.key,
     required this.child,
     this.idleDelay = const Duration(milliseconds: 80),
+    this.onScrollEnd,
   });
 
   final Widget child;
   final Duration idleDelay;
+
+  /// 列表滚动结束时回调（如写阅读进度），避免在 [ScrollUpdateNotification] 热路径做布局探测。
+  final VoidCallback? onScrollEnd;
 
   @override
   State<ScrollPointerGateHost> createState() => _ScrollPointerGateHostState();
@@ -67,6 +71,7 @@ class _ScrollPointerGateHostState extends State<ScrollPointerGateHost> {
     } else if (notification is ScrollEndNotification) {
       _idleTimer?.cancel();
       _idleTimer = Timer(widget.idleDelay, () => _setScrolling(false));
+      widget.onScrollEnd?.call();
     }
     return false;
   }

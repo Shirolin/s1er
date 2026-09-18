@@ -41,14 +41,34 @@ Future<void> _pumpFrames(WidgetTester tester, int frames) async {
   }
 }
 
+/// Post list under [ThreadDetailScreen] (vertical [ListView]).
+///
+/// [ThreadDetailScreen] also embeds [PageView]'s horizontal [Scrollable]; tests
+/// that need list scroll metrics must scope to this finder, not bare
+/// [find.byType]\([Scrollable]\).
+Finder _threadPostListFinder() {
+  return find.descendant(
+    of: find.byType(ThreadDetailScreen),
+    matching: find.byType(ListView),
+  );
+}
+
 /// [ScrollController.jumpTo] does not emit [ScrollEndNotification]; mirror finger
 /// scroll completion so progress writeback follows the ScrollEnd contract.
 Future<void> _dispatchThreadListScrollEnd(WidgetTester tester) async {
   final scrollableFinder = find.descendant(
-    of: find.byType(ThreadDetailScreen),
+    of: _threadPostListFinder(),
     matching: find.byType(Scrollable),
   );
-  final scrollable = tester.state<ScrollableState>(scrollableFinder);
+  final scrollableElements = scrollableFinder.evaluate();
+  expect(
+    scrollableElements,
+    isNotEmpty,
+    reason: 'post list Scrollable not built',
+  );
+  final scrollable = tester.state<ScrollableState>(
+    find.byElementPredicate((element) => element == scrollableElements.first),
+  );
   ScrollEndNotification(
     metrics: scrollable.position,
     context: scrollable.context,
@@ -202,10 +222,7 @@ void main() {
       location: '/thread/100?page=1',
     );
 
-    final listFinder = find.descendant(
-      of: find.byType(ThreadDetailScreen),
-      matching: find.byType(ListView),
-    );
+    final listFinder = _threadPostListFinder();
     final controller = tester.widget<ListView>(listFinder).controller!;
     await tester.runAsync(
       () => Future<void>.delayed(const Duration(milliseconds: 450)),
@@ -287,10 +304,7 @@ void main() {
     expect(before.lastReadFloor, inInclusiveRange(4, 6));
 
     // Drive the detail ListView controller so scroll-end writeback runs.
-    final listFinder = find.descendant(
-      of: find.byType(ThreadDetailScreen),
-      matching: find.byType(ListView),
-    );
+    final listFinder = _threadPostListFinder();
     final listView = tester.widget<ListView>(listFinder);
     final controller = listView.controller!;
     expect(controller.position.maxScrollExtent, greaterThan(500));
@@ -328,10 +342,7 @@ void main() {
 
     expect(find.textContaining('MARK-FLOOR-1'), findsOneWidget);
 
-    final listFinder = find.descendant(
-      of: find.byType(ThreadDetailScreen),
-      matching: find.byType(ListView),
-    );
+    final listFinder = _threadPostListFinder();
     final controller = tester.widget<ListView>(listFinder).controller!;
     expect(controller.position.maxScrollExtent, greaterThan(0));
 

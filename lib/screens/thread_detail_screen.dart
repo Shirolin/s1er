@@ -291,10 +291,7 @@ class _ThreadDetailScreenState extends ConsumerState<ThreadDetailScreen> {
       _openScrollRetryCount = 0;
     });
     ref.read(postProvider(widget.tid).notifier).clearOpenScrollTarget();
-    final state = ref.read(postProvider(widget.tid)).asData?.value;
-    if (state != null) {
-      _maybeRecordVisibleFloor(state);
-    }
+    unawaited(_flushProgressAfterProgrammaticScroll());
   }
 
   bool _showLocateOverlay(PostListState state) {
@@ -349,6 +346,10 @@ class _ThreadDetailScreenState extends ConsumerState<ThreadDetailScreen> {
     }
   }
 
+  /// 阅读进度 / 翻页楼层记忆写回契约：
+  /// - 手指滑动列表：仅在 [ScrollEndNotification] 时写回（[_onScrollEndRecordProgress]）。
+  /// - 代码 [jumpTo] / 定位 / FAB 滚动：不保证触发 ScrollEnd，定位完成后须显式
+  ///   调用 [_flushProgressAfterProgrammaticScroll]。
   void _maybeRecordVisibleFloor(PostListState state) {
     final atBottom = _scrollFabVisibility.value.atPageBottom;
     final leading = ScrollFloorNavigator.findLeadingVisiblePostIndex(
@@ -376,6 +377,14 @@ class _ThreadDetailScreenState extends ConsumerState<ThreadDetailScreen> {
     final state = ref.read(postProvider(widget.tid)).asData?.value;
     if (state == null) return;
     _maybeRecordVisibleFloor(state);
+  }
+
+  Future<void> _flushProgressAfterProgrammaticScroll() async {
+    await WidgetsBinding.instance.endOfFrame;
+    if (!mounted) return;
+    final data = ref.read(postProvider(widget.tid)).asData?.value;
+    if (data == null) return;
+    _maybeRecordVisibleFloor(data);
   }
 
   /// 当前视口页内楼层（1-based），不含进度高水位抬升；供翻页记忆用。
@@ -459,7 +468,7 @@ class _ThreadDetailScreenState extends ConsumerState<ThreadDetailScreen> {
       _clearLocateOverlayTimer();
       if (mounted) setState(() {});
       ref.read(postProvider(widget.tid).notifier).clearOpenScrollTarget();
-      _maybeRecordVisibleFloor(state);
+      await _flushProgressAfterProgrammaticScroll();
     } else {
       _openScrollRetryCount++;
       if (_openScrollRetryCount >= _maxOpenScrollRetries) {
@@ -549,6 +558,8 @@ class _ThreadDetailScreenState extends ConsumerState<ThreadDetailScreen> {
   }
 
   void _onScrollEndRecordProgress() {
+    // Finger-driven list scroll; programmatic jumps use
+    // [_flushProgressAfterProgrammaticScroll] instead.
     final data = ref.read(postProvider(widget.tid)).asData?.value;
     if (data == null) return;
     _maybeRecordVisibleFloor(data);
@@ -564,10 +575,12 @@ class _ThreadDetailScreenState extends ConsumerState<ThreadDetailScreen> {
 
   Future<void> _scrollToTopImpl() async {
     await _swipeKey.currentState?.scrollToTop();
+    await _flushProgressAfterProgrammaticScroll();
   }
 
   Future<void> _scrollToBottomImpl() async {
     await _swipeKey.currentState?.scrollToBottom();
+    await _flushProgressAfterProgrammaticScroll();
   }
 
   Future<void> _runScrollAction(Future<void> Function() action) async {
@@ -601,6 +614,7 @@ class _ThreadDetailScreenState extends ConsumerState<ThreadDetailScreen> {
             postKeys: _postKeys,
             onAtLastFloor: () => unawaited(_scrollToBottomImpl()),
           );
+          await _flushProgressAfterProgrammaticScroll();
         },
       ),
     );
@@ -1258,8 +1272,6 @@ class _ThreadDetailScreenState extends ConsumerState<ThreadDetailScreen> {
         _maybeShowLocateError(state);
         if (!_openScrollConsumed && state.openScrollTarget != null) {
           unawaited(_consumeOpenScrollTarget(state));
-        } else if (!_pendingInitialNavigation) {
-          _maybeRecordVisibleFloor(state);
         }
       });
     });

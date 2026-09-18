@@ -192,9 +192,6 @@ class _ThreadDetailScreenState extends ConsumerState<ThreadDetailScreen> {
   /// 防止连点叠加滚动动画。
   bool _scrollAnimating = false;
 
-  /// 楼级进度回写节流。
-  DateTime? _lastFloorProgressAt;
-
   /// 正在从跳转栈恢复，避免 intent 监听再次入栈或重复定位。
   bool _restoringJump = false;
 
@@ -352,33 +349,33 @@ class _ThreadDetailScreenState extends ConsumerState<ThreadDetailScreen> {
     }
   }
 
-  void _maybeRecordVisibleFloor(PostListState state, {bool force = false}) {
+  void _maybeRecordVisibleFloor(PostListState state) {
     final atBottom = _scrollFabVisibility.value.atPageBottom;
-    if (!force && !atBottom) {
-      final now = DateTime.now();
-      if (_lastFloorProgressAt != null &&
-          now.difference(_lastFloorProgressAt!) <
-              const Duration(milliseconds: 400)) {
-        return;
-      }
-      _lastFloorProgressAt = now;
-    }
-    final viewportFloor = _resolveViewportFloorInPage(state);
-    if (viewportFloor != null) {
-      _pageFloorMemory[state.currentPage] = viewportFloor;
-    }
-    final floorInPage = _resolveVisibleFloorInPage(state);
+    final leading = ScrollFloorNavigator.findLeadingVisiblePostIndex(
+      postKeys: _postKeys,
+    );
+    if (leading == null && !atBottom) return;
+
+    final viewportFloor = resolveFloorInPageForProgress(
+      leadingIndex: leading ?? 0,
+      postCount: state.posts.length,
+      atPageBottom: atBottom,
+    );
+    _pageFloorMemory[state.currentPage] = viewportFloor;
+
+    final floorInPage = _resolveVisibleFloorInPage(
+      state,
+      leading: leading,
+      atBottom: atBottom,
+    );
     if (floorInPage == null) return;
-    if (!force) {
-      _lastFloorProgressAt = DateTime.now();
-    }
     _recordProgress(state, floorInPage: floorInPage);
   }
 
   void _flushProgressBeforeLeave() {
     final state = ref.read(postProvider(widget.tid)).asData?.value;
     if (state == null) return;
-    _maybeRecordVisibleFloor(state, force: true);
+    _maybeRecordVisibleFloor(state);
   }
 
   /// 当前视口页内楼层（1-based），不含进度高水位抬升；供翻页记忆用。
@@ -396,13 +393,16 @@ class _ThreadDetailScreenState extends ConsumerState<ThreadDetailScreen> {
     );
   }
 
-  int? _resolveVisibleFloorInPage(PostListState state) {
+  int? _resolveVisibleFloorInPage(
+    PostListState state, {
+    int? leading,
+    bool? atBottom,
+  }) {
     if (state.posts.isEmpty) return null;
-    final leading = ScrollFloorNavigator.findLeadingVisiblePostIndex(
-      postKeys: _postKeys,
-    );
-    final atBottom = _scrollFabVisibility.value.atPageBottom;
-    if (leading == null && !atBottom) return null;
+    final resolvedLeading = leading ??
+        ScrollFloorNavigator.findLeadingVisiblePostIndex(postKeys: _postKeys);
+    final resolvedAtBottom = atBottom ?? _scrollFabVisibility.value.atPageBottom;
+    if (resolvedLeading == null && !resolvedAtBottom) return null;
 
     var minFloor = 1;
     if (_lastRecordedPage == state.currentPage &&
@@ -425,9 +425,9 @@ class _ThreadDetailScreenState extends ConsumerState<ThreadDetailScreen> {
     }
 
     return resolveFloorInPageForProgress(
-      leadingIndex: leading ?? 0,
+      leadingIndex: resolvedLeading ?? 0,
       postCount: state.posts.length,
-      atPageBottom: atBottom,
+      atPageBottom: resolvedAtBottom,
       minFloorInPage: minFloor,
     );
   }
@@ -546,11 +546,12 @@ class _ThreadDetailScreenState extends ConsumerState<ThreadDetailScreen> {
         atPageBottom: atBottom,
       );
     }
+  }
 
+  void _onScrollEndRecordProgress() {
     final data = ref.read(postProvider(widget.tid)).asData?.value;
-    if (data != null) {
-      _maybeRecordVisibleFloor(data);
-    }
+    if (data == null) return;
+    _maybeRecordVisibleFloor(data);
   }
 
   void _scrollToTop() {
@@ -1462,6 +1463,7 @@ class _ThreadDetailScreenState extends ConsumerState<ThreadDetailScreen> {
                       hasPageQuery,
                     );
                     return ScrollPointerGateHost(
+                      onScrollEnd: _onScrollEndRecordProgress,
                       child: Scrollbar(
                         controller: scrollController,
                         child: _shareSelectMode

@@ -40,4 +40,28 @@ void main() {
     await tester.tap(find.text('tap-target'));
     expect(taps, 2);
   });
+
+  testWidgets('ScrollPointerGateHost invokes onScrollEnd', (tester) async {
+    var scrollEnds = 0;
+
+    await tester.pumpWidget(
+      wrapWithAppTheme(
+        ScrollPointerGateHost(
+          onScrollEnd: () => scrollEnds++,
+          child: ListView(
+            children: const [
+              SizedBox(height: 1200),
+              SizedBox(height: 1200),
+            ],
+          ),
+        ),
+      ),
+    );
+
+    expect(scrollEnds, 0);
+    await tester.drag(find.byType(ListView), const Offset(0, -200));
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 50));
+    expect(scrollEnds, 1);
+  });
 }

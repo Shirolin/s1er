@@ -117,4 +117,28 @@ void main() {
       lessThanOrEqualTo(controller.position.maxScrollExtent),
     );
   });
+
+  testWidgets('findLeadingVisiblePostIndex matches anchor after deep scroll',
+      (tester) async {
+    final postKeys = List.generate(40, (_) => GlobalKey());
+    final controller = ScrollController();
+
+    await tester.pumpWidget(
+      buildScrollHarness(
+        postKeys: postKeys,
+        controller: controller,
+        postHeight: 120,
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    controller.jumpTo(2400);
+    await tester.pumpAndSettle();
+
+    final leading = ScrollFloorNavigator.findLeadingVisiblePostIndex(
+      postKeys: postKeys,
+    );
+    expect(leading, isNotNull);
+    expect(leading!, greaterThan(15));
+  });
 }

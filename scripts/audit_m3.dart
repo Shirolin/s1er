@@ -268,8 +268,12 @@ void _checkBottomInsetCompliance(
 
 /// 仓库级校验：自绘底部 chrome 色的应用必须声明系统底栏图标亮度。
 ///
-/// Flutter 的 AppBar 自动注解按设计不含导航栏字段，缺少全局声明时引擎会跳过
-/// `setAppearanceLightNavigationBars`，三键导航下出现白底白图标。
+/// Flutter 的 AppBar 自动注解按设计不含导航栏字段（`systemNavigationBarIconBrightness`），
+/// 缺少全局声明时引擎会跳过 `setAppearanceLightNavigationBars`，三键导航下出现白底白图标。
+///
+/// 已知局限：``hasBottomChrome`` 依赖 [_bottomChromeMarkers] 的字面匹配。若新增了不在这份
+/// 列表里的底部 chrome 方式，本规则不会触发（fail-open）。新增底部 chrome 组件时须同步
+/// 扩充该列表。
 void _checkGlobalNavBarOverlayStyle(
   List<String> libFiles,
   List<AuditFinding> findings,

@@ -153,7 +153,8 @@ void main() {
       ),
       isTrue,
     );
-    // 泛型换行的写法仍能命中 region 标记（审计只匹配类型名片段）
+    // 已知局限：泛型换行的写法命中不了 region 标记（审计只匹配单行整串），
+    // 会在审计里被漏掉；正常格式化下不会出现这种换行。
     expect(
       'AnnotatedRegion<\n  SystemUiOverlayStyle\n>'.contains(regionMarker),
       isFalse,
@@ -174,7 +175,9 @@ void main() {
 
     expect(app, contains('S1BottomOverlayStyle('));
     expect(widget, contains('systemNavigationBarIconBrightness'));
-    expect(widget, contains('systemNavigationBarContrastEnforced: false'));
+    expect(widget, contains('systemNavigationBarContrastEnforced'));
+    // 收紧后的契约：仅在应用拥有导航栏区域（bottom > 0）时才下发样式。
+    expect(widget, contains('MediaQuery.paddingOf(context).bottom > 0'));
   });
 
   test('dark immersive screen overrides nav bar overlay style', () {

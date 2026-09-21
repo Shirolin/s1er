@@ -224,6 +224,35 @@ void main() {
       expect(find.text('加载失败，点击重试'), findsOneWidget);
     });
 
+    testWidgets('declares light system overlays for the dark scrim surface', (
+      tester,
+    ) async {
+      await tester.pumpWidget(
+        ProviderScope(
+          overrides: [
+            imageBytesProvider.overrideWith((ref, url) async => null),
+          ],
+          child: MaterialApp(
+            theme: AppTheme.lightTheme('purple'),
+            home: const ImageViewerScreen(
+              imageUrl: 'https://img.stage1st.com/forum/missing.png',
+            ),
+          ),
+        ),
+      );
+
+      await tester.pump();
+
+      final region = tester.widget<AnnotatedRegion<SystemUiOverlayStyle>>(
+        find.byType(AnnotatedRegion<SystemUiOverlayStyle>),
+      );
+      // 深底沉浸页必须覆盖全局 S1BottomOverlayStyle 的浅色底假设。
+      expect(
+        region.value.systemNavigationBarIconBrightness,
+        Brightness.light,
+      );
+    });
+
     testWidgets('fit / 1:1 / zoom step match scale semantics', (tester) async {
       tester.view.physicalSize = const Size(800, 1200);
       tester.view.devicePixelRatio = 1.0;

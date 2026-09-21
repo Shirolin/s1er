@@ -33,6 +33,7 @@ import 'services/font_import_service.dart';
 import 'services/talker.dart';
 import 'theme/app_theme.dart';
 import 'utils/thread_navigation.dart';
+import 'widgets/s1_bottom_overlay_style.dart';
 import 'widgets/s1_desktop_window_frame.dart';
 import 'widgets/thread_open_intent_scope.dart';
 import 'widgets/update_prompt_host.dart';
@@ -295,10 +296,12 @@ class _S1AppState extends ConsumerState<S1App> with WidgetsBindingObserver {
             data: MediaQuery.of(
               context,
             ).copyWith(textScaler: TextScaler.linear(textScaleFactor)),
-            child: S1DesktopWindowFrame(
-              child: UpdatePromptHost(
-                child: WhatsNewPromptHost(
-                  child: child!,
+            child: S1BottomOverlayStyle(
+              child: S1DesktopWindowFrame(
+                child: UpdatePromptHost(
+                  child: WhatsNewPromptHost(
+                    child: child!,
+                  ),
                 ),
               ),
             ),

@@ -75,7 +75,7 @@
 - **排版常量**：`S1Typography.defaultBodySize` 为字号设置标准档，HTML 渲染通过 `S1Typography.bodySize(textTheme)` 桥接
 - **Modal sheet 关闭**：标准高度抽屉 / `showS1AdaptiveSheet` **不放**顶栏关闭按钮；靠 drag handle（紧凑屏已由 API 提供）、点 scrim、系统返回 / Escape。禁止内容区再画一套自定义 drag handle。例外：`AlertDialog` 的取消/关闭 **actions**；全屏 modal 的顶栏关闭；内容错误/空态且无其它主操作时的内容区 CTA（如「关闭」）
 
-**审计**：`dart run scripts/audit_m3.dart --fail-on-error`（CI / 本地均需通过；含 M3 与系统底栏合规）
+**审计**：`dart run scripts/audit_m3.dart --fail-on-error`（CI / 本地均需通过；含 M3、系统底栏占位与导航栏图标亮度合规）
 
 ---
 
@@ -276,6 +276,14 @@ flutter run -d chrome --dart-define=TALKER_LOG_LEVEL=all --dart-define=TALKER_MA
 **首页 Tab**（`home_screen` 子页面）禁止 `S1PageBody`，底部由 `S1HomeNavChrome` + `NavigationBar` 处理。`search_screen` / `messages_screen` 单页可无 `PaginationBar`。
 
 **私信** `PaginationBar` 须 `reserveSystemBottomInset: false` + `applyBottomSafeArea: false`（底栏输入区自带 `SafeArea`）。
+
+**图标亮度（P0）**：凡自绘底部 chrome 色的页面必须声明系统导航栏图标亮度，否则传统三键导航下出现「白底白图标」（手势导航只有一条细 handle，肉眼难以发现）。
+
+- 全屏路由统一由 `MaterialApp.builder` 内的全局 `AnnotatedRegion<SystemUiOverlayStyle>`（`lib/widgets/s1_bottom_overlay_style.dart`）跟随 `ColorScheme.brightness` 下发。**不可依赖 AppBar 的自动注解**：Flutter 的 `_systemOverlayStyleForBrightness` 按设计剔除导航栏字段（backward-compat），引擎 `setSystemChromeSystemUIOverlayStyle` 的 `!= null` 守卫会因此从不调用 `setAppearanceLightNavigationBars`。
+- 底部为深底的沉浸页（`image_viewer_screen`）须自带 `AnnotatedRegion<SystemUiOverlayStyle>(value: SystemUiOverlayStyle.light)` 覆盖全局默认。
+- **禁止**只改 `android/app/src/main/res/values*/styles.xml`：XML 主题无法跟随应用内 `themeMode`（用户可强选），且 API 36 起部分属性已被系统忽略。
+- `systemNavigationBarColor` 在 API 35+ 对颜色无效（引擎仅在 `SDK_INT < API_35` 时调用 `setNavigationBarColor`），底色一律由自绘色带（`S1SystemBottomInset` / `S1HomeNavChrome` / `PaginationBar`）承担，故全局注解须设 `systemNavigationBarContrastEnforced: false` 以关闭系统 80% scrim。
+- 审计规则：`missing-bottom-overlay-style`（全局声明缺失）、`dark-immersive-missing-overlay`（沉浸页未覆盖）。
 
 ### M3 技术债
 

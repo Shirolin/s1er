@@ -135,4 +135,54 @@ void main() {
       isTrue,
     );
   });
+
+  test('nav bar overlay markers detect declared icon brightness', () {
+    const regionMarker = 'AnnotatedRegion<SystemUiOverlayStyle>';
+    const brightnessMarker = 'systemNavigationBarIconBrightness';
+
+    expect(
+      'AnnotatedRegion<SystemUiOverlayStyle>(\n'
+              'value: SystemUiOverlayStyle(\n'
+              'systemNavigationBarIconBrightness: Brightness.dark,'
+          .contains(regionMarker),
+      isTrue,
+    );
+    expect(
+      'systemNavigationBarIconBrightness: Brightness.dark,'.contains(
+        brightnessMarker,
+      ),
+      isTrue,
+    );
+    // 泛型换行的写法仍能命中 region 标记（审计只匹配类型名片段）
+    expect(
+      'AnnotatedRegion<\n  SystemUiOverlayStyle\n>'.contains(regionMarker),
+      isFalse,
+    );
+    expect(
+      'systemNavigationBarColor: Colors.transparent,'.contains(
+        brightnessMarker,
+      ),
+      isFalse,
+    );
+  });
+
+  test('project declares global nav bar overlay style in app.dart', () {
+    final app = File('lib/app.dart').readAsLinesSync().join('\n');
+    final widget = File(
+      'lib/widgets/s1_bottom_overlay_style.dart',
+    ).readAsLinesSync().join('\n');
+
+    expect(app, contains('S1BottomOverlayStyle('));
+    expect(widget, contains('systemNavigationBarIconBrightness'));
+    expect(widget, contains('systemNavigationBarContrastEnforced: false'));
+  });
+
+  test('dark immersive screen overrides nav bar overlay style', () {
+    final viewer = File(
+      'lib/screens/image_viewer_screen.dart',
+    ).readAsLinesSync().join('\n');
+
+    expect(viewer, contains('AnnotatedRegion<SystemUiOverlayStyle>'));
+    expect(viewer, contains('SystemUiOverlayStyle.light'));
+  });
 }

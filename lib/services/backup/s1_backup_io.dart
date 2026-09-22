@@ -6,6 +6,7 @@ import 'package:path_provider/path_provider.dart';
 import 'package:share_plus/share_plus.dart';
 import 'package:file_selector/file_selector.dart';
 
+import '../../utils/system_share_anchor.dart';
 import 'backup_download_stub.dart'
     if (dart.library.html) 'backup_download_web.dart';
 
@@ -28,10 +29,13 @@ class S1BackupIo {
       name: fileName,
     );
     await staged.saveTo(path);
+    // iPad 上分享面板必须有 popover 锚点，否则直接失败；无 context 时
+    // 回退主视图中心。
     await SharePlus.instance.share(
       ShareParams(
         files: [XFile(path, mimeType: 'application/zip', name: fileName)],
         subject: fileName,
+        sharePositionOrigin: systemShareAnchor(),
       ),
     );
   }

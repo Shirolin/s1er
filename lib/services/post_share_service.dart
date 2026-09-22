@@ -32,6 +32,7 @@ import '../utils/share_rgba_flatten.dart';
 import '../theme/app_theme.dart';
 import '../theme/s1_haptics.dart';
 import '../utils/s1_snack_bar.dart';
+import '../utils/system_share_anchor.dart';
 import '../widgets/image_viewer.dart';
 import '../widgets/share_card.dart';
 import '../widgets/s1_click_region.dart';
@@ -909,10 +910,13 @@ class _SharePreviewSheetState extends ConsumerState<_SharePreviewSheet> {
       name: fileName,
     );
     await staged.saveTo(path);
+    // iPad 上分享面板必须有 popover 锚点，否则直接失败。
+    final origin = systemShareAnchor(context: mounted ? context : null);
     return SharePlus.instance.share(
       ShareParams(
         files: [XFile(path, mimeType: encoded.mimeType, name: fileName)],
         subject: fileName,
+        sharePositionOrigin: origin,
       ),
     );
   }

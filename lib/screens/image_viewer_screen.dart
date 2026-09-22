@@ -5,7 +5,6 @@ import 'dart:ui' as ui;
 
 import 'package:flutter/foundation.dart' show debugPrint, kIsWeb;
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart' show SystemUiOverlayStyle;
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
@@ -460,19 +459,14 @@ class _ImageViewerScreenState extends ConsumerState<ImageViewerScreen> {
     final colorScheme = Theme.of(context).colorScheme;
     final textTheme = Theme.of(context).textTheme;
 
-    // 沉浸页底色为 scrim（深底），须覆盖全局 S1BottomOverlayStyle 的浅色底假设，
-    // 否则浅色主题下会拿到深色导航栏图标、画在深底上看不见。
-    return AnnotatedRegion<SystemUiOverlayStyle>(
-      value: SystemUiOverlayStyle.light,
-      child: Scaffold(
-        backgroundColor: colorScheme.scrim,
-        body: Column(
-          children: [
-            _buildTopBar(colorScheme),
-            Expanded(child: _buildViewerBody(colorScheme)),
-            _buildControlBar(colorScheme, textTheme),
-          ],
-        ),
+    return Scaffold(
+      backgroundColor: colorScheme.scrim,
+      body: Column(
+        children: [
+          _buildTopBar(colorScheme),
+          Expanded(child: _buildViewerBody(colorScheme)),
+          _buildControlBar(colorScheme, textTheme),
+        ],
       ),
     );
   }

@@ -179,13 +179,4 @@ void main() {
     // 收紧后的契约：仅在应用拥有导航栏区域（bottom > 0）时才下发样式。
     expect(widget, contains('MediaQuery.paddingOf(context).bottom > 0'));
   });
-
-  test('dark immersive screen overrides nav bar overlay style', () {
-    final viewer = File(
-      'lib/screens/image_viewer_screen.dart',
-    ).readAsLinesSync().join('\n');
-
-    expect(viewer, contains('AnnotatedRegion<SystemUiOverlayStyle>'));
-    expect(viewer, contains('SystemUiOverlayStyle.light'));
-  });
 }

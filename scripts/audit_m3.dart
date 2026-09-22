@@ -3,7 +3,7 @@
 // Material Design 3 compliance audit.
 // Scans lib/ (P0/P1/WARN) and test/ (WARN for missing AppTheme).
 // Includes system bottom bar checks: inset占位 (screen-missing-bottom-chrome),
-// 导航栏图标亮度 (missing-bottom-overlay-style / dark-immersive-missing-overlay).
+// 导航栏图标亮度 (missing-bottom-overlay-style).
 // Allowed patterns: see AGENTS.md「M3 允许模式」and「系统底栏允许模式」
 //
 // Usage: dart run scripts/audit_m3.dart [--fail-on-error] [--output=path]
@@ -166,11 +166,6 @@ const _bottomChromeMarkers = [
   'MediaQuery.paddingOf(context).bottom',
 ];
 
-/// 深底沉浸页：底部底色为深色，须自带导航栏图标亮度覆盖（全局默认假设浅色底）。
-const _darkImmersiveScreens = {
-  'lib/screens/image_viewer_screen.dart',
-};
-
 /// 标记 `SystemUiOverlayStyle.systemNavigationBarIconBrightness` 已声明。
 const _navBarOverlayMarker = 'systemNavigationBarIconBrightness';
 
@@ -244,23 +239,6 @@ void _checkBottomInsetCompliance(
         message:
             'Home bottomNavigationBar must wrap NavigationBar in S1HomeNavChrome',
         snippet: lines[lineNo > 0 ? lineNo - 1 : 0].trim(),
-      ),
-    );
-  }
-
-  if (_darkImmersiveScreens.contains(path) &&
-      !content.contains(_overlayRegionMarker)) {
-    final scaffoldLine = lines.indexWhere((l) => l.contains('Scaffold(')) + 1;
-    findings.add(
-      AuditFinding(
-        ruleId: 'dark-immersive-missing-overlay',
-        severity: AuditSeverity.p0,
-        file: path,
-        line: scaffoldLine > 0 ? scaffoldLine : 1,
-        message:
-            'Dark immersive screen must override navigation bar icon brightness '
-            '(AnnotatedRegion<SystemUiOverlayStyle> with SystemUiOverlayStyle.light)',
-        snippet: lines[scaffoldLine > 0 ? scaffoldLine - 1 : 0].trim(),
       ),
     );
   }
@@ -526,7 +504,7 @@ String _formatReport(
   buffer.writeln(
     'See AGENTS.md「M3 允许模式」and「系统底栏允许模式」for documented allowed patterns.\n'
     'Bottom bar checks: inset占位 (screen-missing-bottom-chrome) and '
-    '导航栏图标亮度 (missing-bottom-overlay-style / dark-immersive-missing-overlay).',
+    '导航栏图标亮度 (missing-bottom-overlay-style).',
   );
   return buffer.toString();
 }

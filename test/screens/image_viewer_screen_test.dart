@@ -224,7 +224,7 @@ void main() {
       expect(find.text('加载失败，点击重试'), findsOneWidget);
     });
 
-    testWidgets('declares light system overlays for the dark scrim surface', (
+    testWidgets('relies on global overlay style instead of local override', (
       tester,
     ) async {
       await tester.pumpWidget(
@@ -243,13 +243,11 @@ void main() {
 
       await tester.pump();
 
-      final region = tester.widget<AnnotatedRegion<SystemUiOverlayStyle>>(
-        find.byType(AnnotatedRegion<SystemUiOverlayStyle>),
-      );
-      // 深底沉浸页必须覆盖全局 S1BottomOverlayStyle 的浅色底假设。
+      // 顶栏与底栏使用 surfaceContainerHigh（浅色主题下为浅色表面），
+      // 不应有局部的 SystemUiOverlayStyle.light 覆盖，交由全局 S1BottomOverlayStyle 驱动。
       expect(
-        region.value.systemNavigationBarIconBrightness,
-        Brightness.light,
+        find.byType(AnnotatedRegion<SystemUiOverlayStyle>),
+        findsNothing,
       );
     });
 

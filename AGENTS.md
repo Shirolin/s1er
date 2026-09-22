@@ -281,10 +281,9 @@ flutter run -d chrome --dart-define=TALKER_LOG_LEVEL=all --dart-define=TALKER_MA
 
 - 全屏路由统一由 `MaterialApp.builder` 内的全局 `AnnotatedRegion<SystemUiOverlayStyle>`（`lib/widgets/s1_bottom_overlay_style.dart`）跟随 `ColorScheme.brightness` 下发。**不可依赖 AppBar 的自动注解**：Flutter 的 `_systemOverlayStyleForBrightness` 按设计剔除导航栏字段（backward-compat），引擎 `setSystemChromeSystemUIOverlayStyle` 的 `!= null` 守卫会因此从不调用 `setAppearanceLightNavigationBars`。
 - **仅在 `MediaQuery.paddingOf(context).bottom > 0` 时下发样式**。该条件等价于「内容画到了系统导航栏之后」（Android 15+ 强制 edge-to-edge），此时导航栏区由自绘色带承担。`bottom == 0` 时（如 Android 10-14）导航栏由系统以不透明底绘制、底色随系统深色模式与 OEM 主题变化，字段须保持 `null` 以维持系统默认，否则会出现「图标随应用主题、底色随系统主题」的错配。
-- 底部为深底的沉浸页（`image_viewer_screen`）须自带 `AnnotatedRegion<SystemUiOverlayStyle>(value: SystemUiOverlayStyle.light)` 覆盖全局默认。
 - **禁止**只改 `android/app/src/main/res/values*/styles.xml`：XML 主题无法跟随应用内 `themeMode`（用户可强选），且 API 36 起部分属性已被系统忽略。
 - 不设 `systemNavigationBarColor`：API 35+ 引擎会忽略它（仅在 `SDK_INT < API_35` 时调用 `setNavigationBarColor`），旧版本保持 `null` 才能精确保留系统不透明默认色；自绘色带已负责底色，故在 `ownsNavBar` 时设 `systemNavigationBarContrastEnforced: false` 关闭系统 80% scrim（否则会叠加成更亮的白底）。
-- 审计规则：`missing-bottom-overlay-style`（全局声明缺失）、`dark-immersive-missing-overlay`（沉浸页未覆盖）。前者依赖 `_bottomChromeMarkers` 字面匹配，**新增底部 chrome 组件时须同步扩充该列表**。
+- 审计规则：`missing-bottom-overlay-style`（全局声明缺失）。依赖 `_bottomChromeMarkers` 字面匹配，**新增底部 chrome 组件时须同步扩充该列表**。
 
 ### M3 技术债
 

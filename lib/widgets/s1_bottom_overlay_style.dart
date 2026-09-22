@@ -33,9 +33,6 @@ import 'package:flutter/services.dart' show SystemUiOverlayStyle;
 /// 不设 [SystemUiOverlayStyle.systemNavigationBarColor]：API 35+ 引擎会忽略它
 /// （仅在 `SDK_INT < API_35` 时调用 `setNavigationBarColor`），旧版本保持 `null`
 /// 可精确保留系统不透明默认色。
-///
-/// 底部为深底的沉浸页（`image_viewer_screen`）须自带
-/// `AnnotatedRegion<SystemUiOverlayStyle>(value: SystemUiOverlayStyle.light)` 覆盖本默认。
 class S1BottomOverlayStyle extends StatelessWidget {
   const S1BottomOverlayStyle({super.key, required this.child});
 

@@ -19,6 +19,7 @@ import '../utils/internal_navigation.dart';
 import '../utils/page_search.dart';
 import '../utils/post_link_resolver.dart';
 import '../utils/quote_jump.dart';
+import '../utils/bbcode_profile_log.dart';
 import 'emoticon_widget.dart';
 import 'force_show_images.dart';
 import 'html_clickable_anchor_extension.dart';
@@ -40,7 +41,7 @@ T _profiledBbcode<T>(
   sw.stop();
   final ms = sw.elapsedMicroseconds / 1000;
   final extra = detail?.call(value);
-  debugPrint(
+  logBbcodeProfile(
     '[bbcode-profile] $tag ${ms.toStringAsFixed(1)}ms'
     '${extra == null || extra.isEmpty ? '' : ' $extra'}',
   );
@@ -793,7 +794,7 @@ class _HtmlSubtreeProbeState extends State<_HtmlSubtreeProbe> {
         if (!_sw.isRunning) return;
         _sw.stop();
         final ms = _sw.elapsedMicroseconds / 1000;
-        debugPrint(
+        logBbcodeProfile(
           '[bbcode-profile] html-subtree ${ms.toStringAsFixed(1)}ms '
           '${widget.detail}',
         );

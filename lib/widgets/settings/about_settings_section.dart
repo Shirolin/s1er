@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:talker_flutter/talker_flutter.dart';
@@ -10,6 +11,14 @@ import '../../theme/app_theme.dart';
 import '../../utils/s1_snack_bar.dart';
 import '../app_update_dialog.dart';
 import 'settings_section_header.dart';
+
+/// 构建模式标签：回帖反馈「卡不卡」时，先看这里是不是 debug 包。
+/// `flutter run` / Xcode Debug 均为 debug 包（JIT + 未优化），滚动卡顿属预期。
+String get buildModeLabel {
+  if (kReleaseMode) return 'Release';
+  if (kProfileMode) return 'Profile';
+  return 'Debug';
+}
 
 class AboutSettingsSection extends StatelessWidget {
   const AboutSettingsSection({super.key});
@@ -72,7 +81,8 @@ class _VersionTileState extends ConsumerState<_VersionTile> {
       data: (info) => ListTile(
         leading: Icon(Icons.info_outline, color: scheme.onSurfaceVariant),
         title: const Text('版本'),
-        subtitle: Text('${info.version} (${info.buildNumber})'),
+        subtitle:
+            Text('${info.version} (${info.buildNumber}) · $buildModeLabel'),
         onTap: _onTap,
         contentPadding: const EdgeInsets.symmetric(horizontal: 8),
         shape: itemShape,

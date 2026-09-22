@@ -13,6 +13,7 @@ import 'models/emoticon_catalog.dart';
 import 'providers/settings_provider.dart';
 import 'services/app_database.dart';
 import 'services/app_local_data.dart';
+import 'services/frame_timing_service.dart';
 import 'utils/desktop_window.dart';
 import 'services/http_client.dart';
 import 'services/sentry_bootstrap.dart';
@@ -160,6 +161,9 @@ void main() async {
     );
 
     _setupErrorHub();
+
+    // 掉帧统计进 Talker（仅掉帧秒打点）；App 内版本行点 5 下可查看。
+    FrameTimingService.instance.register();
 
     runApp(
       UncontrolledProviderScope(

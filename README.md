@@ -23,7 +23,7 @@ S1er 是使用 Flutter 开发的第三方 Stage1st（S1）论坛客户端。基�
 | **Android** | 有 | **已验证** | 提供 Universal 通用包与针对性 ABI 精简包（`arm64-v8a` / `armeabi-v7a` / `x86_64`） |
 | **Windows** | 有 | **已验证** | 提供 `x64` 免安装绿色包，支持窗口自绘标题栏与原生阴影 |
 | **Web** | 有 | **已验证** | 浏览器直接访问；开发调试需启动本地 CORS 代理 |
-| **iOS** | 有 | 未验证 | 已配置工程，可使用 Xcode 编译自构建 |
+| **iOS** | 有 | 未验证 | 已配置工程（最低 iOS 13.0）；构建与性能排查见 [iOS 构建与运行](docs/development.md#ios-构建与运行) |
 | **macOS** | 有 | 未验证 | 已配置工程，支持 macOS 原生构建 |
 | **Linux** | 有 | 未验证 | 已配置工程，支持 Linux 原生桌面构建 |
 
@@ -173,7 +173,7 @@ lib/
 - [Flutter SDK](https://docs.flutter.dev/get-started/install) `>=3.4`
 - [Dart SDK](https://dart.dev/get-started) `>=3.4 <4.0`
 - **Android**: JDK 17
-- **iOS / macOS**: Xcode 15+
+- **iOS / macOS**: Xcode 15+（iOS 最低 13.0）
 
 ### 1. 基础运行
 
@@ -189,6 +189,8 @@ flutter pub get
 flutter devices
 flutter run -d <device-id>
 ```
+
+> ⚠️ `flutter run` 默认是 **debug 包**（JIT + 未优化），真机滚动卡顿属预期。体验 / 测性能请用 `flutter run --release`；iOS 构建、签名与性能排查见 [docs/development.md 的「iOS 构建与运行」](docs/development.md#ios-构建与运行)。
 
 *注意：麻将脸表情等静态资源已完全入库，无需额外下载或配置。*
 

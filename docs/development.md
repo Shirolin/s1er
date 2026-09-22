@@ -28,6 +28,43 @@ flutter run -d <device-id>
 
 原生端登录 Cookie 通过 `PersistCookieJar` 持久化，落盘内容使用 AES-256-GCM 加密，密钥保存在系统安全存储中。
 
+## iOS 构建与运行
+
+> **性能警告（置顶）**：`flutter run` 与 Xcode **Debug** 配置编译出的是 **debug 包**（Dart JIT、未优化、调试断言全开），iPhone 上滚动卡顿是**预期行为**，不代表应用真实性能。体验、回帖反馈与性能排查一律使用 **Release** 或 **Profile** 包。设置页「版本」一行会显示当前构建模式（`Debug` / `Profile` / `Release`），可先看这里确认装的是哪种包。
+
+### 环境与签名
+
+- macOS + Xcode 15+；工程最低支持 **iOS 13.0**（`IPHONEOS_DEPLOYMENT_TARGET`）。
+- 首次构建时 flutter 工具会生成 Podfile / Pods（仓库未入库，属正常）。
+- 真机签名：Xcode → `Runner` → Signing & Capabilities → 勾选 Automatically manage signing 并选择你的 Team。**免费个人 Apple ID 即可**真机安装（工程已是 `CODE_SIGN_STYLE = Automatic`，`DEVELOPMENT_TEAM` 不入库）。
+
+### 构建命令
+
+```bash
+# 真机直接运行（体验用这个，不是 flutter run 默认的 debug）
+flutter run --release -d <device-id>
+
+# 性能排查（可连 DevTools 看 Performance overlay）
+flutter run --profile -d <device-id>
+
+# 产物构建：从 Xcode 打开后选择真机/模拟器 target 直接 Run，
+# 或命令行出未签名包做冒烟（CI 同款）
+flutter build ios --release            # 完整签名产物
+flutter build ios --no-codesign        # 无签名冒烟，验证工程可构建
+```
+
+### 性能排查（回应「卡卡的」类反馈）
+
+1. **先看构建模式**：设置 → 关于 → 版本行末尾的 `Debug` / `Release`。是 `Debug` 就先换 `--release` 重测。
+2. **帧率掉帧统计**：运行中若发生掉帧，App 会自动以 `[frame-timing]` 打一条聚合警告（每秒最多一条，仅掉帧秒出现）。入口：设置 → 关于 → **连点「版本」5 下** 打开 Talker 日志页。
+3. **正文渲染打点**：编译时加 `--dart-define=BBCODE_PROFILE=true`，BBCode 解析 / Html 首帧耗时以 `[bbcode-profile]` 写入 Talker（App 内可见，无需连控制台）。
+4. **系统级分析**：`flutter run --profile` 后打开 DevTools Performance overlay，区分 UI 线程（build）与 Raster 线程瓶颈。
+
+### 已知限制
+
+- `/forum/:fid`、`/thread/:tid` 使用无转场页面，iOS 边缘侧滑返回在这两个页面不生效（与帖子页横滑翻页手势冲突，见 AGENTS.md 已知约束）。
+- 升级弹窗在 iOS 回退 GitHub 发布页（清单 `channels.ios` 为空时）；网盘/Play 入口仅 Android 展示。
+
 ## Web 开发代理
 
 S1 接口不允许浏览器直接跨域访问。请先启动仅监听 `localhost` 的开发代理，再启动 Flutter Web。

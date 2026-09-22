@@ -37,6 +37,7 @@ dart run scripts/audit_m3.dart --fail-on-error  # M3 + 系统底栏 inset 合规
 ```bash
 flutter build web
 flutter build apk --release
+flutter build ios --no-codesign   # macOS：iOS 工程冒烟（plist / pbxproj 变更必跑）
 ```
 
 分享卡导出：Native 依赖 `ironpress`（预编译 mozjpeg / oxipng / libwebp）；默认 WebP，可选 JPEG / PNG。Web 走浏览器 `canvas.toBlob` 或引擎 PNG。

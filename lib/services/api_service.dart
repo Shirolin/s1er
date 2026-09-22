@@ -35,6 +35,7 @@ import '../utils/forum_attachment_submit.dart';
 import '../utils/forum_attachment_upload_info_parser.dart';
 import '../utils/new_thread_form_parser.dart';
 import '../utils/read_perm_options.dart';
+import '../utils/server_notice.dart';
 import '../models/forum_attachment_upload_info.dart';
 import 'formhash_service.dart';
 import 'http_client.dart';
@@ -53,25 +54,40 @@ class ApiService {
     if (data is String) {
       final trimmed = data.trimLeft();
       if (trimmed.startsWith('<!DOCTYPE') || trimmed.startsWith('<html')) {
-        final msg = extractMaintenanceMessage(data);
-        throw ServerMaintenanceException(msg);
+        // 1) Discuz 提示页：把服务器原文搬运给用户。
+        final official = ServerNotice.fromResponseBody(data);
+        if (official != null) throw ServerMaintenanceException(official);
+        // 2) JSON 被包在 HTML 里：救援后按正常 JSON 继续
+        //    （对应 S1-Orange 的 ensureJSON 场景）。
+        final rescued = rescueJsonFromHtml(data);
+        if (rescued != null) return rescued;
+        // 3) 两者都没有：维持既有兜底陈述。
+        throw ServerMaintenanceException(extractMaintenanceMessage(data));
       }
       return jsonDecode(data) as Map<String, dynamic>;
     }
     throw FormatException('Unexpected response type: ${data.runtimeType}');
   }
 
-  static String extractMaintenanceMessage(String html) {
-    final match = RegExp(
-      r'<div\s+id="messagetext"[^>]*>\s*<p>(.*?)</p>',
-      caseSensitive: false,
-      dotAll: true,
-    ).firstMatch(html);
-    if (match != null) {
-      final raw = match.group(1)!.replaceAll(RegExp(r'<[^>]+>'), '').trim();
-      if (raw.isNotEmpty) return raw;
+  /// 从 HTML 中救援被包裹的 API JSON；形状不像 API 响应时返回 `null`。
+  static Map<String, dynamic>? rescueJsonFromHtml(String html) {
+    final start = html.indexOf('{');
+    final end = html.lastIndexOf('}');
+    if (start < 0 || end <= start) return null;
+    try {
+      final decoded = jsonDecode(html.substring(start, end + 1));
+      if (decoded is Map<String, dynamic> &&
+          (decoded.containsKey('Variables') || decoded.containsKey('error'))) {
+        return decoded;
+      }
+    } on FormatException {
+      return null;
     }
-    return '服务器维护中，请稍后再试';
+    return null;
+  }
+
+  static String extractMaintenanceMessage(String html) {
+    return ServerNotice.fromResponseBody(html) ?? '服务器维护中，请稍后再试';
   }
 
   static String buildApiUrl({
@@ -123,10 +139,35 @@ class ApiService {
   }
 
   /// Mobile API 在无业务数据时返回的 `error` 文案（如维护公告）。
+  ///
+  /// 依次读取顶层 `error` 与 `Variables.error`（S1-Orange 亦识别后者）。
   static String? extractApiErrorMessage(Map<String, dynamic> json) {
-    final error = json['error'];
-    if (error == null) return null;
-    final message = error.toString().trim();
+    final top = _cleanServerMessage(json['error']);
+    if (top != null) return top;
+    final variables = json['Variables'];
+    if (variables is Map) return _cleanServerMessage(variables['error']);
+    return null;
+  }
+
+  /// Discuz 标准 `Message.messagestr`：当其 `messageval` 非成功语义时，
+  /// 即服务器对「为什么没有数据」的官方解释（对齐 S1-Next Result.kt
+  /// 的 `_succeed` / `_success` 后缀判定）。
+  static String? extractDiscuzMessageError(Map<String, dynamic> json) {
+    final message = json['Message'];
+    if (message is! Map) return null;
+    final messageval = message['messageval']?.toString() ?? '';
+    final succeeded = messageval.endsWith('_succeed') ||
+        messageval.endsWith('_success') ||
+        messageval.endsWith('_succeed_mobile');
+    if (succeeded) return null;
+    final messagestr = message['messagestr']?.toString().trim() ?? '';
+    if (messagestr.isEmpty || messagestr == 'to_login') return null;
+    return messagestr;
+  }
+
+  static String? _cleanServerMessage(dynamic raw) {
+    if (raw == null) return null;
+    final message = raw.toString().trim();
     if (message.isEmpty || message == 'to_login') return null;
     return message;
   }
@@ -902,6 +943,11 @@ class ApiService {
       forums = parseForumList(json);
     }
     _throwIfNoDataBlocked(json, forums.isNotEmpty);
+    if (forums.isEmpty) {
+      // 服务器明确说明了「为什么没有数据」→ 原文转达，不自行拟制。
+      final reason = extractDiscuzMessageError(json);
+      if (reason != null) throw ServerMaintenanceException(reason);
+    }
     return forums;
   }
 

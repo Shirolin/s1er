@@ -106,5 +106,19 @@ void main() {
       expect(find.text('连接超时，请检查网络后重试'), findsOneWidget);
       expect(find.textContaining('DioException'), findsNothing);
     });
+
+    testWidgets('DioException 包装的维护公告展示官方原文', (tester) async {
+      final wrapped = DioException(
+        requestOptions: RequestOptions(path: '/2b/api/mobile/index.php'),
+        type: DioExceptionType.badResponse,
+        error: ServerMaintenanceException('维护公告 \n \n 又被爬了'),
+      );
+      await tester.pumpWidget(wrap(S1ErrorView(error: wrapped)));
+
+      expect(find.byIcon(Icons.build_circle_outlined), findsOneWidget);
+      expect(find.text('论坛维护中'), findsOneWidget);
+      expect(find.text('维护公告 \n \n 又被爬了'), findsOneWidget);
+      expect(find.text('请稍后再试'), findsOneWidget);
+    });
   });
 }

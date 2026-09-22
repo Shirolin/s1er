@@ -10,7 +10,9 @@ import 'package:s1er/providers/forum_list_provider.dart';
 import 'package:s1er/providers/forum_name_provider.dart';
 import 'package:s1er/providers/messages_segment_provider.dart';
 import 'package:s1er/providers/settings_provider.dart';
+import 'package:s1er/providers/server_notice_provider.dart';
 import 'package:s1er/screens/home_screen.dart';
+import 'package:s1er/widgets/server_notice_banner.dart';
 import 'package:s1er/theme/app_theme.dart';
 import 'package:s1er/utils/home_root_back.dart';
 import 'package:drift/native.dart';
@@ -47,6 +49,42 @@ void main() {
     await tester.tap(find.text('重试'));
     await tester.pumpAndSettle();
     expect(find.text('暂无版块数据'), findsOneWidget);
+  });
+
+  testWidgets('server notice banner shows official announcement and dismisses',
+      (tester) async {
+    await tester.pumpWidget(
+      ProviderScope(
+        overrides: [
+          authStateProvider.overrideWith(_LoggedOutAuthNotifier.new),
+          forumListProvider.overrideWith(_GuestForumListNotifier.new),
+          settingsProvider.overrideWith(
+            () => SettingsNotifier(initial: const AppSettings()),
+          ),
+          ...messagesProviderOverrides(),
+        ],
+        child: MaterialApp(
+          theme: AppTheme.lightTheme('purple'),
+          home: const HomeScreen(),
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+    expect(find.byType(ServerNoticeBanner), findsNothing);
+
+    final container = ProviderScope.containerOf(
+      tester.element(find.byType(HomeScreen)),
+    );
+    container.read(serverNoticeProvider.notifier).offer('维护公告原文');
+    await tester.pumpAndSettle();
+
+    expect(find.byType(ServerNoticeBanner), findsOneWidget);
+    expect(find.text('论坛公告'), findsOneWidget);
+    expect(find.text('维护公告原文'), findsOneWidget);
+
+    await tester.tap(find.byTooltip('关闭公告提示'));
+    await tester.pumpAndSettle();
+    expect(find.byType(ServerNoticeBanner), findsNothing);
   });
 
   testWidgets('guest can view forum list on home forum tab', (tester) async {

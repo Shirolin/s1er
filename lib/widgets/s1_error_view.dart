@@ -32,8 +32,9 @@ class S1ErrorView extends StatelessWidget {
     final scheme = Theme.of(context).colorScheme;
     final textTheme = Theme.of(context).textTheme;
 
-    final isLogin = error is LoginRequiredException;
-    final isMaintenance = error is ServerMaintenanceException;
+    final effective = unwrapServerNotice(error);
+    final isLogin = effective is LoginRequiredException;
+    final isMaintenance = effective is ServerMaintenanceException;
 
     return Center(
       child: Padding(
@@ -65,7 +66,11 @@ class S1ErrorView extends StatelessWidget {
             ),
             const SizedBox(height: 8),
             Text(
-              isLogin ? '当前 Stage1st 需要登录后查看论坛内容' : _message,
+              isLogin
+                  ? '当前 Stage1st 需要登录后查看论坛内容'
+                  : _messageOf(
+                      effective,
+                    ),
               textAlign: TextAlign.center,
               style: textTheme.bodyMedium?.copyWith(
                 color: scheme.onSurfaceVariant,
@@ -129,10 +134,10 @@ class S1ErrorView extends StatelessWidget {
     }
   }
 
-  String get _message {
-    if (error is ServerMaintenanceException) {
-      return (error as ServerMaintenanceException).message;
+  String _messageOf(Object effective) {
+    if (effective is ServerMaintenanceException) {
+      return effective.message;
     }
-    return userFacingError(error);
+    return userFacingError(effective);
   }
 }

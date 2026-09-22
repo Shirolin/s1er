@@ -12,6 +12,7 @@ import '../providers/notice_list_provider.dart';
 import '../providers/messages_segment_provider.dart';
 import '../providers/settings_provider.dart';
 import '../providers/unread_count_provider.dart';
+import '../providers/server_notice_provider.dart';
 import '../models/favorite_item.dart';
 import '../models/forum_category.dart';
 import '../models/notice_item.dart';
@@ -25,6 +26,7 @@ import '../widgets/app_bar_more_menu.dart';
 import '../widgets/favorite_confirm_dialog.dart';
 import '../widgets/hide_forum_confirm_dialog.dart';
 import '../widgets/s1_error_view.dart';
+import '../widgets/server_notice_banner.dart';
 import '../providers/pinned_threads_provider.dart';
 import '../widgets/pinned_threads_section.dart';
 import '../widgets/s1_content_width.dart';
@@ -345,8 +347,9 @@ class _ForumTabState extends ConsumerState<_ForumTab> {
     );
     final pinItems =
         ref.watch(favoriteForumPinsProvider).asData?.value ?? const [];
+    final serverNotice = ref.watch(serverNoticeProvider);
 
-    return forumsAsync.when(
+    final content = forumsAsync.when(
       loading: () => const S1AsyncListLoading(
         child: ForumIndexSkeleton(),
       ),
@@ -451,6 +454,17 @@ class _ForumTabState extends ConsumerState<_ForumTab> {
           ),
         );
       },
+    );
+
+    if (serverNotice == null) return content;
+    return Column(
+      children: [
+        ServerNoticeBanner(
+          message: serverNotice,
+          onDismiss: () => ref.read(serverNoticeProvider.notifier).dismiss(),
+        ),
+        Expanded(child: content),
+      ],
     );
   }
 }

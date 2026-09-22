@@ -14,7 +14,10 @@ import '../config/resource_domains.dart';
 import 'formhash_service.dart';
 import 'encrypted_cookie_storage.dart';
 import 'talker.dart';
+import '../models/app_exceptions.dart';
+import '../providers/server_notice_provider.dart';
 import '../providers/unread_count_provider.dart';
+import '../utils/server_notice.dart';
 
 class S1HttpClient {
   S1HttpClient(this._ref)
@@ -181,9 +184,25 @@ class S1HttpClient {
             _read(formhashProvider.notifier).update(formhash);
           }
           _extractAndUpdateNotice(response.data);
+          _offerServerNotice(ServerNotice.fromResponseBody(response.data));
           handler.next(response);
         },
         onError: (error, handler) {
+          // 错误体里可能携带着官方公告（维护页 / 网关错误页 / 5xx JSON）：
+          // 抽得出原文才升级提示，抽不出则维持原错误与通用文案。
+          final notice = ServerNotice.fromErrorBody(error.response?.data);
+          if (notice != null) {
+            _offerServerNotice(notice);
+            handler.next(
+              DioException(
+                requestOptions: error.requestOptions,
+                response: error.response,
+                type: error.type,
+                error: ServerMaintenanceException(notice),
+              ),
+            );
+            return;
+          }
           handler.next(error);
         },
       ),
@@ -398,6 +417,12 @@ class S1HttpClient {
         }
       }
     } catch (_) {}
+  }
+
+  /// 喂入服务器官方公告原文（会话级提示，见 [serverNoticeProvider]）。
+  void _offerServerNotice(String? notice) {
+    if (notice == null) return;
+    _read(serverNoticeProvider.notifier).offer(notice);
   }
 
   T _read<T>(ProviderListenable<T> provider) {

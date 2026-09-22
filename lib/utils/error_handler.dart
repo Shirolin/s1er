@@ -1,5 +1,6 @@
 import 'dart:async';
 import 'package:dio/dio.dart';
+import '../models/app_exceptions.dart';
 import '../services/talker.dart';
 
 /// 将技术异常转换为用户友好消息，同时通过 Talker 记录完整错误细节。
@@ -14,17 +15,31 @@ String friendlyError(Object error, [String? context, StackTrace? stackTrace]) {
   return userFacingError(error);
 }
 
+/// [S1HttpClient] 会把错误体内可提取的服务器公告包成
+/// `DioException(error: ServerMaintenanceException)`；展示层统一先解包。
+Object unwrapServerNotice(Object error) {
+  if (error is DioException && error.error is ServerMaintenanceException) {
+    return error.error!;
+  }
+  return error;
+}
+
 /// 将异常转换为可直接展示给用户的文案，不记录日志。
 String userFacingError(Object error) {
-  if (error is DioException) {
-    return _mapDioError(error);
+  final effective = unwrapServerNotice(error);
+  if (effective is ServerMaintenanceException) {
+    return effective.message;
   }
 
-  if (error is FormatException) {
+  if (effective is DioException) {
+    return _mapDioError(effective);
+  }
+
+  if (effective is FormatException) {
     return '数据解析失败，请重试';
   }
 
-  if (error is TimeoutException) {
+  if (effective is TimeoutException) {
     return '请求超时，请检查网络后重试';
   }
 

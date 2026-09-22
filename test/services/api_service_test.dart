@@ -936,6 +936,84 @@ window.location.href = 'forum.php?mod=viewthread&tid=2253488&pid=69963296&page=1
           ),
         );
       });
+
+      test('ensureJson extracts standalone alert_error div', () {
+        const html =
+            '<html><body><div class="alert_error">服务器开小差了</div></body></html>';
+        expect(
+          () => ApiService.ensureJson(html),
+          throwsA(
+            isA<ServerMaintenanceException>().having(
+              (e) => e.message,
+              'message',
+              '服务器开小差了',
+            ),
+          ),
+        );
+      });
+
+      test('ensureJson rescues JSON wrapped in HTML', () {
+        const html = '<!DOCTYPE html><html><body>noise '
+            '{"Variables":{"forumlist":[{"fid":"2"}]}}'
+            '</body></html>';
+        final json = ApiService.ensureJson(html);
+        expect(json['Variables'], isA<Map<String, dynamic>>());
+      });
+
+      test('extractApiErrorMessage reads Variables.error when top absent', () {
+        expect(
+          ApiService.extractApiErrorMessage({
+            'Variables': {'error': '维护公告 B'},
+          }),
+          '维护公告 B',
+        );
+      });
+
+      test('extractDiscuzMessageError reads non-success messagestr only', () {
+        expect(
+          ApiService.extractDiscuzMessageError({
+            'Message': {
+              'messageval': 'forum_index_denied',
+              'messagestr': '官方解释原文',
+            },
+          }),
+          '官方解释原文',
+        );
+        expect(
+          ApiService.extractDiscuzMessageError({
+            'Message': {
+              'messageval': 'forum_index_succeed',
+              'messagestr': '成功文案',
+            },
+          }),
+          isNull,
+        );
+        expect(
+          ApiService.extractDiscuzMessageError(<String, dynamic>{}),
+          isNull,
+        );
+      });
+
+      test('getForumList relays official Message.messagestr when empty',
+          () async {
+        final container = ProviderContainer();
+        addTearDown(container.dispose);
+        final adapter = _ForumIndexMessageAdapter();
+        final dio = Dio()..httpClientAdapter = adapter;
+        final client = S1HttpClient.test(container, dio);
+        final api = ApiService(client);
+
+        expect(
+          () => api.getForumList(),
+          throwsA(
+            isA<ServerMaintenanceException>().having(
+              (e) => e.message,
+              'message',
+              '官方解释原文',
+            ),
+          ),
+        );
+      });
     });
 
     group('pageFromFindpostLocation', () {
@@ -1097,6 +1175,31 @@ class _ForumIndexMaintenanceAdapter implements HttpClientAdapter {
   ) async {
     return ResponseBody.fromString(
       jsonEncode({'error': '维护公告 \n \n 又被爬了，休息会'}),
+      200,
+      headers: {
+        Headers.contentTypeHeader: [Headers.jsonContentType],
+      },
+    );
+  }
+}
+
+class _ForumIndexMessageAdapter implements HttpClientAdapter {
+  @override
+  void close({bool force = false}) {}
+
+  @override
+  Future<ResponseBody> fetch(
+    RequestOptions options,
+    Stream<Uint8List>? requestStream,
+    Future<void>? cancelFuture,
+  ) async {
+    return ResponseBody.fromString(
+      jsonEncode({
+        'Message': {
+          'messageval': 'forum_index_denied',
+          'messagestr': '官方解释原文',
+        },
+      }),
       200,
       headers: {
         Headers.contentTypeHeader: [Headers.jsonContentType],

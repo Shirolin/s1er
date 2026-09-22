@@ -219,7 +219,11 @@ void main() {
         },
       });
       expect(
-        UpdateCheckService.resolveNetdiskUrl(ok),
+        UpdateCheckService.resolveNetdiskUrl(
+          ok,
+          isWeb: false,
+          platform: TargetPlatform.android,
+        ),
         'https://pan.baidu.com/s/xxxx',
       );
 
@@ -229,10 +233,95 @@ void main() {
           'androidNetdisk': 'https://evil.example/share',
         },
       });
-      expect(UpdateCheckService.resolveNetdiskUrl(bad), '');
+      expect(
+        UpdateCheckService.resolveNetdiskUrl(
+          bad,
+          isWeb: false,
+          platform: TargetPlatform.android,
+        ),
+        '',
+      );
       expect(
         UpdateCheckService.isAllowedNetdiskUrl('https://evil.example/x'),
         isFalse,
+      );
+    });
+
+    test('resolveNetdiskUrl hides Android netdisk on iOS/Web', () {
+      final m = AppUpdateManifest.fromJson({
+        'latest': '1.0.0',
+        'channels': {
+          'github': 'https://github.com/example/releases/latest',
+          'androidNetdisk': 'https://pan.baidu.com/s/xxxx',
+        },
+      });
+      expect(
+        UpdateCheckService.resolveNetdiskUrl(
+          m,
+          isWeb: false,
+          platform: TargetPlatform.iOS,
+        ),
+        '',
+        reason: 'iOS 不应露出安卓网盘下载入口',
+      );
+      expect(UpdateCheckService.resolveNetdiskUrl(m, isWeb: true), '');
+    });
+
+    test('resolveDownloadUrl prefers ios channel then github on iOS', () {
+      final m = AppUpdateManifest.fromJson({
+        'latest': '1.0.0',
+        'channels': {
+          'github': 'https://github.com/example/releases/latest',
+          'ios': 'https://apps.apple.com/app/id123456',
+          'androidApk':
+              'https://github.com/example/releases/download/v1/app.apk',
+        },
+      });
+      expect(
+        UpdateCheckService.resolveDownloadUrl(
+          m,
+          distribution: 'github',
+          isWeb: false,
+          platform: TargetPlatform.iOS,
+        ),
+        'https://apps.apple.com/app/id123456',
+      );
+
+      final noIos = AppUpdateManifest.fromJson({
+        'latest': '1.0.0',
+        'channels': {
+          'github': 'https://github.com/example/releases/latest',
+        },
+      });
+      expect(
+        UpdateCheckService.resolveDownloadUrl(
+          noIos,
+          distribution: 'github',
+          isWeb: false,
+          platform: TargetPlatform.iOS,
+        ),
+        'https://github.com/example/releases/latest',
+        reason: '未上架时回退 GitHub 发布页',
+      );
+    });
+
+    test('resolveDownloadUrl play channel never applies to iOS', () {
+      final m = AppUpdateManifest.fromJson({
+        'latest': '1.0.0',
+        'channels': {
+          'github': 'https://github.com/example/releases/latest',
+          'play': 'https://play.google.com/store/apps/details?id=x',
+        },
+      });
+      expect(
+        UpdateCheckService.resolveDownloadUrl(
+          m,
+          distribution: 'play',
+          isWeb: false,
+          platform: TargetPlatform.iOS,
+        ),
+        'https://github.com/example/releases/latest',
+        reason: 'iOS 不应拿到 Play 商店链接',
       );
     });
 

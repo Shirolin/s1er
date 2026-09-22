@@ -292,6 +292,8 @@ class _AppUpdateDialogBodyState extends ConsumerState<_AppUpdateDialogBody> {
         buffer.write(
           '\n可用浏览器打开 ZIP 手动解压覆盖；若已尝试应用内覆盖，请查看 %TEMP%\\s1er-update.log。',
         );
+      } else if (!kIsWeb && defaultTargetPlatform == TargetPlatform.iOS) {
+        buffer.write('\niOS 请前往发布页获取新版本，用 Xcode 或爱思助手安装。');
       } else if (evaluation.hasNetdisk) {
         buffer.write('可用网盘获取安装包。');
       } else {

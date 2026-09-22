@@ -58,6 +58,7 @@ version: 0.1.0+1
      | `androidApk` | `-android-universal.apk` | 无法识别 ABI 或分架构字段缺失时的**回退** |
 
    - Android 国内备选：`androidNetdisk`（分享链接）+ `netdiskHint`（提取码等说明，可空）
+   - iOS：`ios`（TestFlight / App Store 链接）；未上架填 `null`，客户端回退 `github` 发布页。**网盘与 Play 链接仅对 Android 展示**，iOS/Web 升级弹窗不会露出安卓包入口
 4. 需要踢掉过旧安装包时，抬高 `minSupported`（低于该版本每次冷启动强提醒，可关但下次仍弹）。仅抬 build、name 不变时一般不用动。
 5. 打 GitHub Release（附各平台安装包，如有）；tag 建议与 name 对齐（如 `v0.1.0`）。
    - **Android 文件名规范**（`s1er-<name>+<build>-android-<variant>.apk`）：

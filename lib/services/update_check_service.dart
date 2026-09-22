@@ -190,6 +190,16 @@ class UpdateCheckService {
     'play.google.com',
   };
 
+  /// iOS 商店 / TestFlight 外链白名单（`channels.ios` 用）。
+  ///
+  /// 与 [allowedDownloadHosts] 分开：后者须与 Android `MainActivity.kt`
+  /// 同步且用于 Dio 下载，苹果域名不进 APK 下载链路。
+  static const Set<String> allowedIosStoreHosts = {
+    'apps.apple.com',
+    'itunes.apple.com',
+    'testflight.apple.com',
+  };
+
   /// 允许用 [url_launcher] 打开的网盘主机（不用于 APK Dio 下载）。
   static const Set<String> allowedNetdiskHosts = {
     'pan.baidu.com',
@@ -242,7 +252,9 @@ class UpdateCheckService {
     String? abiOverride,
   }) {
     final dist = distribution.trim().toLowerCase();
-    if (dist == 'play') {
+    final target = platform ?? defaultTargetPlatform;
+    // Play 渠道只对 Android 有意义，避免 iOS/Web 拿到 Play 商店链接。
+    if (dist == 'play' && target == TargetPlatform.android) {
       final play = _sanitizeUrl(
         manifest.channels.play,
         allowedDownloadHosts,
@@ -253,13 +265,23 @@ class UpdateCheckService {
       return _sanitizeUrl(manifest.channels.github, allowedDownloadHosts) ?? '';
     }
 
-    final target = platform ?? defaultTargetPlatform;
     if (target == TargetPlatform.android) {
       final androidUrl = resolveAndroidApkUrl(
         manifest.channels,
         abiOverride: abiOverride,
       );
       if (androidUrl != null) return androidUrl;
+    }
+
+    if (target == TargetPlatform.iOS) {
+      // 苹果商店 / TestFlight 外链；主机单独白名单，不进 Android
+      // DownloadManager 的 allowedDownloadHosts。
+      final iosUrl = _sanitizeUrl(
+        manifest.channels.ios,
+        allowedIosStoreHosts,
+      );
+      if (iosUrl != null) return iosUrl;
+      return _sanitizeUrl(manifest.channels.github, allowedDownloadHosts) ?? '';
     }
 
     final platformUrl = switch (target) {
@@ -274,7 +296,17 @@ class UpdateCheckService {
   }
 
   /// 解析网盘外链；非法主机返回空字符串（UI 不展示网盘按钮）。
-  static String resolveNetdiskUrl(AppUpdateManifest manifest) {
+  ///
+  /// 网盘分享的是 Android APK，非 Android 平台一律不返回，
+  /// 避免 iOS 弹窗露出「网盘下载」却拿到安卓包链接。
+  static String resolveNetdiskUrl(
+    AppUpdateManifest manifest, {
+    bool isWeb = kIsWeb,
+    TargetPlatform? platform,
+  }) {
+    if (isWeb) return '';
+    final target = platform ?? defaultTargetPlatform;
+    if (target != TargetPlatform.android) return '';
     return _sanitizeUrl(
           manifest.channels.androidNetdisk,
           allowedNetdiskHosts,

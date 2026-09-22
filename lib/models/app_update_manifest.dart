@@ -47,6 +47,7 @@ class AppUpdateChannels {
     this.windows,
     this.linux,
     this.macos,
+    this.ios,
     this.play,
   });
 
@@ -77,6 +78,7 @@ class AppUpdateChannels {
       windows: optionalUrl('windows'),
       linux: optionalUrl('linux'),
       macos: optionalUrl('macos'),
+      ios: optionalUrl('ios'),
       play: optionalUrl('play'),
     );
   }
@@ -103,5 +105,10 @@ class AppUpdateChannels {
   final String? windows;
   final String? linux;
   final String? macos;
+
+  /// iOS 分发链接（TestFlight / App Store 等）；null 表示未上架，
+  /// 升级弹窗回退 GitHub 发布页。
+  final String? ios;
+
   final String? play;
 }

@@ -285,7 +285,11 @@ class UpdateCheckNotifier extends Notifier<UpdateCheckState> {
       isWeb: kIsWeb,
       platform: defaultTargetPlatform,
     );
-    final netdiskUrl = UpdateCheckService.resolveNetdiskUrl(manifest);
+    final netdiskUrl = UpdateCheckService.resolveNetdiskUrl(
+      manifest,
+      isWeb: kIsWeb,
+      platform: defaultTargetPlatform,
+    );
     final canInApp = UpdateCheckService.canInAppDownload(
       manifest: manifest,
       distribution: EnvConfig.distribution,

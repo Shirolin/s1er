@@ -29,14 +29,11 @@ import 'package:image/image.dart' as img;
 import 'package:path/path.dart' as p;
 import 'package:s1er/config/app_icon_catalog.dart';
 
+import 'ios_info_plist_patch.dart';
+
 const _androidManifestMarkers = (
   begin: '<!-- APP_ICON_ALIASES_BEGIN -->',
   end: '<!-- APP_ICON_ALIASES_END -->',
-);
-
-const _iosPlistMarkers = (
-  begin: '<!-- APP_ICON_ALTERNATE_BEGIN -->',
-  end: '<!-- APP_ICON_ALTERNATE_END -->',
 );
 
 const _pbxBuildFileMarkers = (
@@ -389,59 +386,15 @@ Future<void> _writeIosAlternateIcons(String root) async {
 
 Future<void> _patchIosInfoPlist(String root) async {
   final file = File(p.join(root, 'ios', 'Runner', 'Info.plist'));
-  var content = await file.readAsString();
-  content = content.replaceAll('\r\n', '\n');
+  final content = await file.readAsString();
 
-  final alternateEntries = StringBuffer();
-  for (final variant in AppIconCatalog.alternateVariants) {
-    alternateEntries.writeln('''
-			<key>${variant.id}</key>
-			<dict>
-				<key>CFBundleIconFiles</key>
-				<array>
-					<string>AppIcon-${variant.id}</string>
-				</array>
-				<key>UIPrerenderedIcon</key>
-				<false/>
-			</dict>''');
-  }
+  // Marker-region replacement only — never rebuild the file. The previous
+  // anchor-based rewrite discarded everything before the iPad orientations
+  // array and truncated Info.plist into an invalid file.
+  final patched = patchIosInfoPlistContent(content);
 
-  final block = '''
-	<key>CFBundleIcons</key>
-	<dict>
-		<key>CFBundlePrimaryIcon</key>
-		<dict>
-			<key>CFBundleIconFiles</key>
-			<array>
-				<string>AppIcon</string>
-			</array>
-			<key>UIPrerenderedIcon</key>
-			<false/>
-		</dict>
-		<key>CFBundleAlternateIcons</key>
-		<dict>
-			${_iosPlistMarkers.begin}
-${alternateEntries.toString().trimRight()}
-			${_iosPlistMarkers.end}
-		</dict>
-	</dict>
-	<key>UIApplicationSupportsAlternateIcons</key>
-	<true/>''';
-
-  // Keep everything up to the end of iPad orientations, then append icon block.
-  final anchor = RegExp(
-    r'(<key>UISupportedInterfaceOrientations~ipad</key>\s*<array>[\s\S]*?</array>)'
-    r'[\s\S]*</dict>\s*</plist>\s*$',
-  );
-  final match = anchor.firstMatch(content);
-  if (match == null) {
-    stderr.writeln('Warning: could not locate iPad orientations anchor');
-    return;
-  }
-  content = '${match.group(1)}\n$block\n</dict>\n</plist>\n';
-
-  await file.writeAsString(content);
-  stdout.writeln('  Info.plist CFBundleAlternateIcons updated');
+  await file.writeAsString(patched);
+  stdout.writeln('  Info.plist icon block updated');
 }
 
 String _pbxId(String seed) {

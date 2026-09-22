@@ -40,7 +40,15 @@ dependencies:
   file_selector: ^1.1.0
   pasteboard: ^0.5.0
   sentry_flutter: ^9.0.0
-  ironpress: ^0.2.0
+  # ironpress 暂走 fork 的 git 依赖：上游 0.2.0 的 xcframework 中 sim slice
+  # 静态库名为 libironpress-sim.a，与 device slice 不一致，CocoaPods 1.16+
+  # validate_xcframeworks 会以 "differing binary names" 拒绝 pod install（iOS
+  # 首建即挂）。fork 已将 sim slice 重命名为 libironpress.a；上游合并修复后
+  # 切回 pub 版本约束。
+  ironpress:
+    git:
+      url: https://github.com/Shirolin/ironpress.git
+      ref: 63a6e85c5dac0a3ed64bf90576f8facbe6b4608b
   qr_flutter: ^4.1.0
   device_info_plus: ^13.2.0
   window_manager: ^0.5.1

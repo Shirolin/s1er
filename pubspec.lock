@@ -659,10 +659,11 @@ packages:
   ironpress:
     dependency: "direct main"
     description:
-      name: ironpress
-      sha256: e672df889c284603856368e5b9f945304b8bd99c4e33ee9047e2fba2dee0991f
-      url: "https://pub.dev"
-    source: hosted
+      path: "."
+      ref: "63a6e85c5dac0a3ed64bf90576f8facbe6b4608b"
+      resolved-ref: "63a6e85c5dac0a3ed64bf90576f8facbe6b4608b"
+      url: "https://github.com/Shirolin/ironpress.git"
+    source: git
     version: "0.2.0"
   jni:
     dependency: transitive

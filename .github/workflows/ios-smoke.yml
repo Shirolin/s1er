@@ -1,0 +1,56 @@
+name: iOS smoke
+
+# Windows 本地无法验证 iOS；此 workflow 是 iOS 工程（Info.plist / pbxproj /
+# pubspec）损坏时的自动拦截网，对应 AGENTS.md「发版与升级清单」的构建验证约定。
+on:
+  pull_request:
+    paths:
+      - "ios/**"
+      - "pubspec.yaml"
+      - "pubspec.lock"
+      - "lib/**"
+      - "scripts/sync_app_icons.dart"
+      - "scripts/ios_info_plist_patch.dart"
+      - ".github/workflows/ios-smoke.yml"
+  push:
+    branches:
+      - main
+    paths:
+      - "ios/**"
+      - "pubspec.yaml"
+      - "lib/**"
+      - ".github/workflows/ios-smoke.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ios-smoke-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  smoke:
+    runs-on: macos-latest
+    timeout-minutes: 45
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          channel: stable
+          cache: true
+
+      - name: Flutter version
+        run: flutter --version
+
+      - name: Install dependencies
+        run: flutter pub get
+
+      - name: Info.plist regression tests
+        run: flutter test test/ios_info_plist_test.dart --reporter expanded
+
+      - name: Build iOS (no codesign)
+        run: flutter build ios --no-codesign --release

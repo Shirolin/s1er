@@ -21,9 +21,15 @@ class _FontSettingsSectionState extends ConsumerState<FontSettingsSection> {
 
   Future<void> _handleImportFont() async {
     S1Haptics.selection();
+    // iOS 的 file_selector 只认 uniformTypeIdentifiers，仅传 extensions 会抛
+    // ArgumentError；extensions 保留给其它平台过滤用。
     const typeGroup = XTypeGroup(
       label: '字体文件 (.ttf, .otf)',
       extensions: ['ttf', 'otf'],
+      uniformTypeIdentifiers: [
+        'public.truetype-typo-font',
+        'com.adobe.opentype',
+      ],
     );
     try {
       final file = await openFile(acceptedTypeGroups: [typeGroup]);

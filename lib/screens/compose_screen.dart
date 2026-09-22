@@ -1421,11 +1421,22 @@ class _ComposeScreenState extends ConsumerState<ComposeScreen> {
   Future<void> _pickAndUploadImage() async {
     if (_isSubmitting) return;
 
+    // iOS 的 file_selector 只认 uniformTypeIdentifiers，仅传 extensions 会抛
+    // ArgumentError；extensions 保留给 Android / 桌面端过滤用。
     const typeGroup = XTypeGroup(
       label: 'images',
       extensions: <String>['jpg', 'jpeg', 'png', 'gif', 'webp'],
+      uniformTypeIdentifiers: <String>['public.image'],
     );
-    final files = await openFiles(acceptedTypeGroups: [typeGroup]);
+    final List<XFile> files;
+    try {
+      files = await openFiles(acceptedTypeGroups: [typeGroup]);
+    } on Object catch (e) {
+      if (mounted) {
+        S1SnackBar.error(context, message: '选择图片失败：$e');
+      }
+      return;
+    }
     if (files.isEmpty) return;
 
     final items = <({Uint8List bytes, String filename})>[];

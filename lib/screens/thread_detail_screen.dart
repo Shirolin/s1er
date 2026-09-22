@@ -347,7 +347,8 @@ class _ThreadDetailScreenState extends ConsumerState<ThreadDetailScreen> {
   }
 
   /// 阅读进度 / 翻页楼层记忆写回契约：
-  /// - 手指滑动列表：仅在 [ScrollEndNotification] 时写回（[_onScrollEndRecordProgress]）。
+  /// - 手指滑动列表：[ScrollEndNotification] 时等一个 [endOfFrame] 后写回
+  ///   （[_onScrollEndRecordProgress]），让 lazy list 末尾条目完成布局。
   /// - 代码 [jumpTo] / 定位 / FAB 滚动：不保证触发 ScrollEnd，定位完成后须显式
   ///   调用 [_flushProgressAfterProgrammaticScroll]。
   void _maybeRecordVisibleFloor(PostListState state) {
@@ -410,7 +411,8 @@ class _ThreadDetailScreenState extends ConsumerState<ThreadDetailScreen> {
     if (state.posts.isEmpty) return null;
     final resolvedLeading = leading ??
         ScrollFloorNavigator.findLeadingVisiblePostIndex(postKeys: _postKeys);
-    final resolvedAtBottom = atBottom ?? _scrollFabVisibility.value.atPageBottom;
+    final resolvedAtBottom =
+        atBottom ?? _scrollFabVisibility.value.atPageBottom;
     if (resolvedLeading == null && !resolvedAtBottom) return null;
 
     var minFloor = 1;
@@ -557,9 +559,13 @@ class _ThreadDetailScreenState extends ConsumerState<ThreadDetailScreen> {
     }
   }
 
-  void _onScrollEndRecordProgress() {
+  Future<void> _onScrollEndRecordProgress() async {
     // Finger-driven list scroll; programmatic jumps use
     // [_flushProgressAfterProgrammaticScroll] instead.
+    // Wait one frame so lazy-list items near the viewport edge finish layout
+    // before we probe their RenderObject positions.
+    await WidgetsBinding.instance.endOfFrame;
+    if (!mounted) return;
     final data = ref.read(postProvider(widget.tid)).asData?.value;
     if (data == null) return;
     _maybeRecordVisibleFloor(data);

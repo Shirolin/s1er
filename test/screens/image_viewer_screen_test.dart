@@ -296,6 +296,11 @@ void main() {
         closeTo(expectedFit, 0.05),
       );
 
+      // 机制锁：必须保持 infinite，禁用框架内置边界钳制（flutter#191482
+      // 长图大坐标下 _exceedsBy 浮点误判 → 平移写 0 跳回图片开头）。
+      // 钳制由 ImageViewerScreen._clampToBounds 自建。
+      expect(viewer.boundaryMargin, const EdgeInsets.all(double.infinity));
+
       await tester.tap(find.byTooltip('原始大小'));
       await tester.pump();
       expect(controller.value.getMaxScaleOnAxis(), closeTo(1.0, 0.01));
@@ -323,6 +328,77 @@ void main() {
         closeTo(beforeZoom, 0.05),
       );
     });
+
+    testWidgets(
+      'long image drag past bottom edge stays clamped, never jumps to start',
+      (tester) async {
+        // 复现场景（flutter#191482）：长图 fit 后放大到横向覆盖视口，
+        // 拖到底边后继续同向拖动——框架钳制在大坐标下会把 ty 误写为 0
+        // （跳回图片开头）。自建钳制必须稳定停在 vh - ih*s。
+        tester.view.physicalSize = const Size(400, 800);
+        tester.view.devicePixelRatio = 1.0;
+        addTearDown(tester.view.resetPhysicalSize);
+        addTearDown(tester.view.resetDevicePixelRatio);
+
+        const imageW = 500;
+        const imageH = 5000;
+        final bytes = _pngBytes(width: imageW, height: imageH);
+
+        await tester.pumpWidget(
+          ProviderScope(
+            child: MaterialApp(
+              theme: AppTheme.lightTheme('purple'),
+              home: ImageViewerScreen(
+                imageUrl: 'https://img.stage1st.com/forum/long.png',
+                imageBytes: bytes,
+              ),
+            ),
+          ),
+        );
+        await tester.runAsync(() async {
+          await Future<void>.delayed(const Duration(milliseconds: 100));
+        });
+        await tester.pumpAndSettle();
+
+        final viewerFinder = find.byType(InteractiveViewer);
+        expect(viewerFinder, findsOneWidget);
+        final viewer = tester.widget<InteractiveViewer>(viewerFinder);
+        final controller = viewer.transformationController!;
+        final viewport = tester.getSize(viewerFinder);
+
+        // 放大到内容宽度超过视口（保证横向有余量 → 只有单轴贴边，
+        // 正是归零分支的触发前提）。
+        while (controller.value.getMaxScaleOnAxis() * imageW <=
+            viewport.width + 50) {
+          await tester.tap(find.byTooltip('放大'));
+          await tester.pump();
+        }
+        final scale = controller.value.getMaxScaleOnAxis();
+        expect(scale * imageW, greaterThan(viewport.width));
+
+        Offset translation() {
+          final t = controller.value.getTranslation();
+          return Offset(t.x, t.y);
+        }
+
+        // 向上拖过底边：按「当前中心 → 下界」的实际距离 + 富余量计算，
+        // 保证必达边界且留出 slop 损耗。
+        final boundY = viewport.height - imageH * scale;
+        final centerY = (viewport.height - imageH * scale) / 2;
+        final dragToEdge = (centerY - boundY).abs() + viewport.height;
+        await tester.drag(viewerFinder, Offset(0, -dragToEdge));
+        await tester.pumpAndSettle();
+
+        expect(translation().dy, closeTo(boundY, 0.5));
+        expect(translation().dy, isNot(0.0));
+
+        // 鬼畜场景：贴边后继续同向大幅拖动，必须仍停在下界，不得跳回 0。
+        await tester.drag(viewerFinder, Offset(0, -dragToEdge));
+        await tester.pumpAndSettle();
+        expect(translation().dy, closeTo(boundY, 0.5));
+        expect(translation().dy, isNot(0.0));
+      },
+    );
 
     testWidgets('fetches imageUrl when opened without bytes', (tester) async {
       final requested = <String>[];

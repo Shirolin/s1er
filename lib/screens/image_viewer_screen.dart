@@ -13,6 +13,7 @@ import '../providers/image_bytes_provider.dart';
 import '../theme/app_theme.dart';
 import '../theme/s1_haptics.dart';
 import '../utils/image_actions.dart';
+import '../utils/image_viewer_bounds.dart';
 import '../widgets/s1_click_region.dart';
 
 enum _ViewerLoadState { loading, ready, error }
@@ -53,6 +54,7 @@ class _ImageViewerScreenState extends ConsumerState<ImageViewerScreen> {
   double _currentScale = 1.0;
   double? _viewportWidth;
   double? _viewportHeight;
+  bool _clamping = false;
 
   bool get _canSaveToGallery => !kIsWeb && !Platform.isLinux;
 
@@ -90,7 +92,50 @@ class _ImageViewerScreenState extends ConsumerState<ImageViewerScreen> {
   @override
   void initState() {
     super.initState();
+    _transformController.addListener(_clampToBounds);
     _loadImage();
+  }
+
+  /// 自建边界钳制：见 [clampImageViewerTranslation] 与 InteractiveViewer 上的
+  /// boundaryMargin 注释（flutter#191482）。
+  ///
+  /// 同步挂在 TransformationController 上，语义等价于框架内置钳制的触发时机：
+  /// 手势 / 惯性动画每次写入矩阵后立即校正，`_referenceFocalPoint` 重算读到的
+  /// 即是钳制后的矩阵。钳制本身幂等（贴界输入原样返回、setter 对相同值短路），
+  /// `_clamping` 守卫仅防御 clone 回写触发的嵌套通知。
+  void _clampToBounds() {
+    if (_clamping) return;
+    final viewportWidth = _viewportWidth;
+    final viewportHeight = _viewportHeight;
+    final imageWidth = _width;
+    final imageHeight = _height;
+    if (viewportWidth == null ||
+        viewportHeight == null ||
+        imageWidth == null ||
+        imageHeight == null) {
+      return;
+    }
+
+    final matrix = _transformController.value;
+    final translation = matrix.getTranslation();
+    final (tx, ty) = clampImageViewerTranslation(
+      scale: matrix.getMaxScaleOnAxis(),
+      viewportWidth: viewportWidth,
+      viewportHeight: viewportHeight,
+      imageWidth: imageWidth.toDouble(),
+      imageHeight: imageHeight.toDouble(),
+      tx: translation.x,
+      ty: translation.y,
+    );
+    if (tx == translation.x && ty == translation.y) return;
+
+    _clamping = true;
+    try {
+      _transformController.value = Matrix4.copy(matrix)
+        ..setTranslationRaw(tx, ty, 0);
+    } finally {
+      _clamping = false;
+    }
   }
 
   @override
@@ -208,7 +253,11 @@ class _ImageViewerScreenState extends ConsumerState<ImageViewerScreen> {
 
     final matrix = Matrix4.identity()
       ..translateByDouble(dx, dy, 0, 1)
-      ..scaleByDouble(clampedScale, clampedScale, 1, 1);
+      // Z 轴必须与 x/y 同缩：getMaxScaleOnAxis() 取三条基向量列长度的最大值，
+      // 若 z 保持 1，任何小于 1 的 scale（长图 fit 常态）都会被读成 1.0，
+      // 使钳制/手势/缩放标签误判（与框架 _matrixScale 的约定对齐）。
+      // painting 投影仅取 x/y（点 z=0），Z 同缩无视觉影响。
+      ..scaleByDouble(clampedScale, clampedScale, clampedScale, 1);
 
     _transformController.value = matrix;
     setState(() {
@@ -314,6 +363,13 @@ class _ImageViewerScreenState extends ConsumerState<ImageViewerScreen> {
               child: InteractiveViewer(
                 transformationController: _transformController,
                 constrained: false,
+                // 必须保持 infinite：禁用框架内置的边界钳制。其 _exceedsBy
+                // 几何检测在长图等大坐标（10^4–10^5 px）下浮点误差会骗过
+                // 9 位小数取整，贴边被误判为越界后平移被写 0，视图跳回图片
+                // 开头（https://github.com/flutter/flutter/issues/191482，
+                // 修复 PR #191525 尚未合入）。改由 _clampToBounds 用精确
+                // 比较自建钳制；禁止“简化”回默认 boundaryMargin。
+                boundaryMargin: const EdgeInsets.all(double.infinity),
                 minScale: _minScale,
                 maxScale: _maxScale,
                 onInteractionUpdate: _onInteractionUpdate,

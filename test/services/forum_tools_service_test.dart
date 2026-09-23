@@ -5,6 +5,7 @@ import 'package:dio/dio.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:s1er/config/api_config.dart';
+import 'package:s1er/models/app_exceptions.dart';
 import 'package:s1er/models/attendance_result.dart';
 import 'package:s1er/services/formhash_service.dart';
 import 'package:s1er/services/forum_tools_service.dart';
@@ -112,14 +113,43 @@ void main() {
       expect(req.path, isNot(contains('formhash=')));
       expect(req.responseType, ResponseType.plain);
     });
+
+    test('dark room rethrows DioException carrying maintenance notice',
+        () async {
+      // 生产链路里 S1HttpClient.onError 会把错误体公告包进
+      // DioException(error: ServerMaintenanceException)；catch 分支须先
+      // unwrapServerNotice 再判型，原样 rethrow 而非包一层 Exception。
+      // （.test 构造器不装配拦截器，故在适配器侧直接构造该形态。）
+      final container = ProviderContainer();
+      addTearDown(container.dispose);
+      final adapter = _CaptureAdapter(
+        throwMaintenanceNotice: '服务器维护中',
+      );
+      final dio = Dio()..httpClientAdapter = adapter;
+      final client = S1HttpClient.test(container, dio);
+      final service = ForumToolsService(client);
+
+      await expectLater(
+        service.getDarkRoom(cursor: '78648'),
+        throwsA(isA<ServerMaintenanceException>()),
+      );
+    });
   });
 }
 
 class _CaptureAdapter implements HttpClientAdapter {
-  _CaptureAdapter({this.responseBody, this.throwOnFetch = false});
+  _CaptureAdapter({
+    this.responseBody,
+    this.throwOnFetch = false,
+    this.throwMaintenanceNotice,
+  });
 
   final String? responseBody;
   final bool throwOnFetch;
+
+  /// 非空时抛出携带 [ServerMaintenanceException] 的 DioException，
+  /// 模拟生产链路 onError 拦截器包装后的错误形态。
+  final String? throwMaintenanceNotice;
   final requests = <RequestOptions>[];
 
   @override
@@ -137,6 +167,14 @@ class _CaptureAdapter implements HttpClientAdapter {
         requestOptions: options,
         type: DioExceptionType.connectionError,
         message: 'network down',
+      );
+    }
+    final notice = throwMaintenanceNotice;
+    if (notice != null) {
+      throw DioException(
+        requestOptions: options,
+        type: DioExceptionType.badResponse,
+        error: ServerMaintenanceException(notice),
       );
     }
     return ResponseBody.fromString(

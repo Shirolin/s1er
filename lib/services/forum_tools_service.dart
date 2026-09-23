@@ -95,8 +95,13 @@ class ForumToolsService {
       final json = ensureJson(response.data);
       return parseDarkRoomJson(json, requestCursor: cursor);
     } catch (e, st) {
-      if (e is LoginRequiredException || e is ServerMaintenanceException) {
-        rethrow;
+      // 公告可能被 S1HttpClient 包进 DioException(error:)，判型前先解包；
+      // 剥掉外壳暴露类型化异常（未包装时 effective 即 e，走 rethrow 保留原栈）。
+      final effective = unwrapServerNotice(e);
+      if (effective is LoginRequiredException ||
+          effective is ServerMaintenanceException) {
+        if (identical(effective, e)) rethrow;
+        throw effective;
       }
       throw Exception(friendlyError(e, '小黑屋', st));
     }

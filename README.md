@@ -154,7 +154,7 @@ lib/
 | 本地结构化存储 | `drift` `^2.34.1` + `drift_flutter`（设置 / 阅读历史 / 投票 / 黑名单） |
 | HTML / BBCode 渲染 | `flutter_html` `^3.0.0` + 自研 BBCode 解析与 HTML 优化渲染 |
 | 图片加载与缓存 | `flutter_cache_manager` / `cached_network_image`（原生磁盘缓存；Web 走浏览器缓存） |
-| 分享卡导出 | `ironpress` `^0.2.0`（Native WebP / JPEG / PNG；Web 走 Canvas / Skia PNG） |
+| 分享卡导出 | `ironpress`（Native WebP / JPEG / PNG；Web 走 Canvas / Skia PNG）；暂走 git fork，见 AGENTS.md 已知约束 |
 | 分享卡二维码 | `qr_flutter` `^4.1.0`（生成主题链接码） |
 | 桌面窗口 | `window_manager`（Windows / macOS / Linux 自绘标题栏） |
 | WebView | `webview_flutter` `^4.7.0` |
@@ -222,7 +222,7 @@ flutter run -d web-server --web-port 8080 --web-hostname 0.0.0.0
 | `TALKER_ENABLED` | `bool` | `true` | 是否启用 Talker 日志框架 |
 | `TALKER_LOG_LEVEL` | `String` | `error` | 日志级别：`error`（仅错误）/ `all`（全部 HTTP & 状态日志） |
 | `TALKER_MAX_HISTORY` | `int` | `500` | Talker 日志历史条数上限 |
-| `BBCODE_PROFILE` | `bool` | `false` | 是否开启 BBCode 解析与 HTML 渲染耗时打点追踪 |
+| `BBCODE_PROFILE` | `bool` | `false` | 是否开启 BBCode 解析与 HTML 渲染耗时打点追踪（输出到控制台与 App 内 Talker） |
 | `PROXY_PORT` | `int` | `19080` | Web 端本地 CORS 代理端口（须与代理进程一致） |
 | `PROXY_AUTH_TOKEN` | `String` | 空 | 非空时启用本地代理 token 校验（代理与客户端须一致） |
 | `CONNECT_TIMEOUT` | `int` | `20` | Dio 连接超时（秒） |

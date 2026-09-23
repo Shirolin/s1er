@@ -40,7 +40,9 @@ flutter build apk --release
 flutter build ios --no-codesign   # macOS：iOS 工程冒烟（plist / pbxproj 变更必跑）
 ```
 
-分享卡导出：Native 依赖 `ironpress`（预编译 mozjpeg / oxipng / libwebp）；默认 WebP，可选 JPEG / PNG。Web 走浏览器 `canvas.toBlob` 或引擎 PNG。
+没有 Mac 不必本地跑 iOS：`.github/workflows/ios-smoke.yml` 会在 macOS runner 上对改动 `ios/**`、`lib/**`、`pubspec.*` 的 PR 自动执行 plist 回归测试与 `flutter build ios --no-codesign`。
+
+分享卡导出：Native 依赖 `ironpress`（预编译 mozjpeg / oxipng / libwebp）；默认 WebP，可选 JPEG / PNG。Web 走浏览器 `canvas.toBlob` 或引擎 PNG。当前指向 git fork（iOS xcframework 兼容性修复，见 AGENTS.md 已知约束）。
 
 ## Pre-commit（推荐）
 

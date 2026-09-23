@@ -57,13 +57,16 @@
 ## 其它平台
 
 - **iOS**：alternate icons（`AppIcon-<id>@2x/3x`）；系统确认弹窗；设置文案另有提示。
+  - Info.plist 中图标块由 `<!-- APP_ICON_ICONS_BEGIN/END -->` 标记包裹；sync **只替换标记区间**，标记缺失直接报错拒绝写入（纯函数 `scripts/ios_info_plist_patch.dart`）。
+  - **禁止**用「锚点重建文件尾」之类的写法整段重写 Info.plist——该做法曾把文件截断成非法 plist（丢 CFBundle/相册权限/Scene 等全部键，iOS 无法构建）；`test/ios_info_plist_test.dart` 守护结构完整性与补丁幂等。
 - **Windows**：仅默认黑底 exe/任务栏图标，`dart run scripts/gen_windows_icon.dart`；无运行时切换。
 - **Web / 桌面其它**：无启动器切换；设置项仅 Android / iOS 显示。
 
 ## 相关文件
 
 - Catalog：`lib/config/app_icon_catalog.dart`
-- Sync：`scripts/sync_app_icons.dart`
+- Sync：`scripts/sync_app_icons.dart`；iOS plist 纯函数：`scripts/ios_info_plist_patch.dart`
+- 回归测试：`test/ios_info_plist_test.dart`
 - UI：`lib/widgets/settings/app_icon_picker.dart`
 - Native：`MainActivity.kt` / `AppDelegate.swift` + activity-alias / `CFBundleAlternateIcons`
 - 备份字段：`app_icon`（见 `docs/backup-format-v1.md`）

@@ -32,7 +32,7 @@
 | 路由 | go_router | ^17.0.0 |
 | 本地结构化存储 | drift / drift_flutter | ^2.34.1 / ^0.3.1 |
 | 图片磁盘缓存 | flutter_cache_manager / cached_network_image | ^3.4.1 / ^3.4.1 |
-| 分享卡导出编码 | ironpress（方案 C：mozjpeg / oxipng / libwebp；默认 WebP，可选 JPEG/PNG）；Web 走 canvas / Skia PNG | ^0.2.0 |
+| 分享卡导出编码 | ironpress（方案 C：mozjpeg / oxipng / libwebp；默认 WebP，可选 JPEG/PNG）；Web 走 canvas / Skia PNG | git fork `Shirolin/ironpress@63a6e85`（临时，见「当前已知约束」；上游 pub ^0.2.0 的 iOS xcframework 不兼容 CocoaPods 1.16+） |
 | 分享卡二维码 | qr_flutter（生成主题链接码；不读图、不扫码） | ^4.1.0 |
 | 测试夹具位图 | image | ^4.2.0 |
 | 网络状态 | connectivity_plus | ^6.1.4 |
@@ -185,7 +185,7 @@ flutter run -d chrome --dart-define=TALKER_LOG_LEVEL=all --dart-define=TALKER_MA
 | `TALKER_ENABLED` | bool | `true` | Talker 日志总开关 |
 | `TALKER_LOG_LEVEL` | String | `error` | `error` 仅错误 / `all` 全部 |
 | `TALKER_MAX_HISTORY` | int | `500` | Talker 历史记录上限 |
-| `BBCODE_PROFILE` | bool | `false` | 正文 BBCode parse / Html build 耗时打点（滑动卡顿排查） |
+| `BBCODE_PROFILE` | bool | `false` | 正文 BBCode parse / Html build 耗时打点（滑动卡顿排查）；输出到控制台与 Talker（设置 → 关于 → 版本行点 5 下可见） |
 | `PROXY_PORT` | int | `19080` | Web CORS 代理端口 |
 | `PROXY_AUTH_TOKEN` | String | 空 | 非空时启用本地代理 token 校验（须与代理进程一致） |
 | `CONNECT_TIMEOUT` | int | `20` | Dio 连接超时（秒） |
@@ -247,6 +247,7 @@ flutter run -d chrome --dart-define=TALKER_LOG_LEVEL=all --dart-define=TALKER_MA
 - 技术栈现代化定案与拆分：`docs/plans/2026-07-12-tech-stack-modernization.md`（P0–P6 已落地后以本文件锁定表为准）
 - flutter_riverpod 临时固定为 `3.2.1`：`3.3.2` 存在上游 [#4765](https://github.com/rrousselGit/riverpod/issues/4765) 的 Provider 订阅恢复期 `markNeedsBuild` 回归；升级前必须先通过路由 Provider 链回归测试。
 - 分享卡导出（方案 C）：Native `ironpress`（mozjpeg / oxipng / libwebp 预编译）；默认 WebP，可选 JPEG / PNG。Web：`canvas.toBlob`（webp/jpeg）或引擎 Skia PNG。原定 `imagekit_ffi`（方案 B）因 `hooks` 与 `drift`/`sqlite3` 冲突未采用。
+- ironpress 暂用 **git fork**（`Shirolin/ironpress@63a6e85`，pubspec 锁定 commit）：上游 0.2.0 的 iOS xcframework 中 sim slice 静态库名为 `libironpress-sim.a`，与 device slice 不一致，CocoaPods 1.16+ `validate_xcframeworks` 以「differing binary names」拒绝 `pod install`（iOS 首建 CI 暴露）。fork 已将 sim slice 重命名对齐；**上游合并修复后切回 pub 版本约束**（同步改 AGENTS 锁定表、README 技术栈表）。
 - 启动器图标：黑/白 = solid-plate + **16%** 前景 inset；成品主题图（如 xb2，`androidMasterAsIcon`）= **同一 16% 前景 + 同图 full-bleed 背景**。禁止 mipmap-only、禁止成品图 0% 单层、禁止成品图再套纯色底板。细则：`docs/app-icons.md`；改完跑 `dart run scripts/sync_app_icons.dart`。
 - iOS 侧滑返回：`/forum/:fid` 与 `/thread/:tid` 使用 `NoTransitionPage`，绕开 `CupertinoPageTransitionsBuilder`，**iOS 边缘侧滑返回在这两个页面不生效**（帖子页另有 `S1SwipePagination` 三槽横滑翻页占用横向手势，恢复侧滑需先解决手势归属，独立评估后再改）。
 - iOS 构建/性能排查：见 `docs/development.md` 的「iOS 构建与运行」；`flutter run` 默认 debug 包滚动卡顿属预期，体验与回帖排查一律用 `--release` / `--profile`。

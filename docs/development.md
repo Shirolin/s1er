@@ -35,8 +35,10 @@ flutter run -d <device-id>
 ### 环境与签名
 
 - macOS + Xcode 15+；工程最低支持 **iOS 13.0**（`IPHONEOS_DEPLOYMENT_TARGET`）。
-- 首次构建时 flutter 工具会生成 Podfile / Pods（仓库未入库，属正常）。
+- `ios/Podfile` **已入库**（锁定 `platform :ios, '13.0'`，与工程 target 一致；勿删，缺省时 CocoaPods 会赋 15.0 产生警告）；`Pods/` 与 `Podfile.lock` 由首次 `pod install`（`flutter build ios` 自动触发）生成，不入库。
+- `ironpress` 依赖暂指向 git fork（xcframework 兼容性修复，见 AGENTS.md 已知约束）；首次 `flutter pub get` 会拉取该仓库。
 - 真机签名：Xcode → `Runner` → Signing & Capabilities → 勾选 Automatically manage signing 并选择你的 Team。**免费个人 Apple ID 即可**真机安装（工程已是 `CODE_SIGN_STYLE = Automatic`，`DEVELOPMENT_TEAM` 不入库）。
+- **CI**：`.github/workflows/ios-smoke.yml` 在 macOS 上跑 plist 回归测试 + `flutter build ios --no-codesign`，改动 `ios/**`、`lib/**`、`pubspec.*` 的 PR 自动触发——本地没有 Mac 也由它把关工程完整性。
 
 ### 构建命令
 
@@ -113,7 +115,7 @@ flutter run -d chrome --dart-define=PROXY_AUTH_TOKEN=replace_with_a_random_value
 | `TALKER_ENABLED` | `true` | 是否启用 Talker |
 | `TALKER_LOG_LEVEL` | `error` | `error` 仅记录错误，`all` 记录全部请求与响应 |
 | `TALKER_MAX_HISTORY` | `500` | 日志历史条数上限 |
-| `BBCODE_PROFILE` | `false` | 正文 BBCode parse / Html build 耗时打点（滑动卡顿排查） |
+| `BBCODE_PROFILE` | `false` | 正文 BBCode parse / Html build 耗时打点（滑动卡顿排查）；输出到控制台与 Talker |
 | `PROXY_PORT` | `19080` | Web 代理端口；代理与 Flutter 端必须一致 |
 | `PROXY_AUTH_TOKEN` | 空 | 非空时启用本地代理 token 校验 |
 | `CONNECT_TIMEOUT` | `20` | 连接超时，单位为秒 |
@@ -152,7 +154,7 @@ flutter run -d chrome --dart-define=PROXY_PORT=19081
 | `scripts/watch_proxy.ps1` | 监听代理文件变更并自动重启 |
 | `scripts/download_emoticons.dart` | 从 s1emoticon GitHub Release 按 `download_list.txt` 导入；见 `ATTRIBUTION.md` |
 | `scripts/audit_m3.dart` | 扫描 Material Design 3 合规问题 |
-| `scripts/sync_app_icons.dart` | 按 `AppIconCatalog` 生成 Android/iOS 交替启动器图标；规则见 [启动器图标](app-icons.md) |
+| `scripts/sync_app_icons.dart` | 按 `AppIconCatalog` 生成 Android/iOS 交替启动器图标；iOS Info.plist 只做 `APP_ICON_ICONS` 标记区间替换（缺标记拒绝写入，纯函数 `scripts/ios_info_plist_patch.dart`，回归测试 `test/ios_info_plist_test.dart`）；规则见 [启动器图标](app-icons.md) |
 | `scripts/gen_windows_icon.dart` | 从黑底成品图生成 Windows `app_icon.ico`（无运行时切换） |
 | `scripts/build.ps1` | Windows 交互式构建菜单；Release 项需要维护者签名配置 |
 | `scripts/release.ps1` | 发版分步：bump / 本机构建 / 建空 Release /（可选）CLI 上传 / 写 `latest.json`；见 [发版说明](release/README.md) |

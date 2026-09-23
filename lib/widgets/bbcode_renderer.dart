@@ -636,10 +636,21 @@ class _MemoizedHtmlBlockState extends State<_MemoizedHtmlBlock> {
                       ? Text(src, maxLines: 1, overflow: TextOverflow.ellipsis)
                       : null,
                   onTap: src.isNotEmpty
-                      ? () => launchUrl(
-                            Uri.parse(src),
-                            mode: LaunchMode.externalApplication,
-                          )
+                      ? () {
+                          // 与 onLinkTap 同口径：仅放行 http/https/mailto，
+                          // javascript: 等伪协议直接忽略。
+                          final uri = Uri.tryParse(src);
+                          if (uri == null ||
+                              !PostLinkResolver.isAllowedExternalUri(uri)) {
+                            return;
+                          }
+                          unawaited(
+                            launchUrl(
+                              uri,
+                              mode: LaunchMode.externalApplication,
+                            ),
+                          );
+                        }
                       : null,
                 ),
               );

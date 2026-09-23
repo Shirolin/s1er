@@ -3,7 +3,7 @@
 # Typical path A (recommended on slow GitHub upload links):
 #   1) .\scripts\release.ps1 bump-build
 #   2) .\scripts\release.ps1 build
-#   3) .\scripts\release.ps1 create          # empty Release + open browser + dist\
+#   3) .\scripts\release.ps1 create          # Release (notes: 更新内容取自 CHANGELOG + 下哪个包) + open browser + dist\
 #   4) Upload dist\* in the browser (often faster than gh CLI here)
 #   5) .\scripts\release.ps1 manifest         # fill latest.json direct links
 #   6) Commit pubspec.yaml + docs/release/latest.json yourself
@@ -45,6 +45,7 @@ $Root = Split-Path -Parent $PSScriptRoot
 Set-Location $Root
 
 $Pubspec = Join-Path $Root 'pubspec.yaml'
+$Changelog = Join-Path $Root 'CHANGELOG.md'
 $Manifest = Join-Path $Root 'docs\release\latest.json'
 $Dist = Join-Path $Root 'dist'
 $RepoSlug = 'Shirolin/s1er'
@@ -109,7 +110,7 @@ S1er release.ps1 - step-by-step (preferred)
   bump-build   Only increase +build (parentheses). Does NOT change latest.json need.
   bump-name    Require -BumpName patch|minor|major (build keeps monotonic +1)
   build        fat APK + per-ABI APKs + windows -> dist\  (NO upload)
-  create       gh release create TAG with notes only; opens browser + dist\
+  create       gh release create TAG; notes = CHANGELOG [X.Y.Z] 段(更新内容) + 下哪个包表; opens browser + dist\
   upload       gh release upload dist artifacts (SLOW on some networks)
   manifest     Rewrite docs/release/latest.json (all APK + Windows direct links)
   open         Open the GitHub Release page for current tag
@@ -242,12 +243,44 @@ function Step-Build {
     Step-Status
 }
 
+function Get-ChangeLogSection([string]$Name) {
+    # 抽取 CHANGELOG 的 "## [X.Y.Z]" 段，作为 Release 正文的「更新内容」
+    # 显式按 UTF-8 读取（同 pubspec，避免 PS 5.1 按系统 ANSI 读坏中文）
+    $content = [System.IO.File]::ReadAllText($Changelog, [System.Text.UTF8Encoding]::new($false))
+    $escaped = [regex]::Escape("[$Name]")
+    $m = [regex]::Match($content, "(?ms)^## ${escaped}[^\r\n]*\r?\n(.*?)(?=^## \[|\z)")
+    # Match 失败时 Group.Value 为空串，与「段落存在但为空」合并为同一条报错
+    $body = ''
+    if ($m.Success) { $body = $m.Groups[1].Value.Trim() }
+    if ([string]::IsNullOrWhiteSpace($body)) {
+        throw "CHANGELOG.md 缺少 [$Name] 段或内容为空 - 先写更新内容（发版清单第 1 步），再执行 create"
+    }
+    # 分类标题转中文粗体小标题（### Added -> **新增**），其余 ### 标题降一级
+    $labels = @{
+        Added      = '新增'
+        Changed    = '变更'
+        Fixed      = '修复'
+        Removed    = '移除'
+        Deprecated = '废弃'
+        Security   = '安全'
+    }
+    foreach ($key in $labels.Keys) {
+        $body = $body -replace "(?m)^### $key[ \t]*\r?$", "**$($labels[$key])**"
+    }
+    return ($body -replace '(?m)^### ', '#### ').Trim()
+}
+
 function Write-NotesFile($v, $path) {
     $arts = Get-ArtifactPaths $v
+    $updates = Get-ChangeLogSection $v.Name
     $body = @"
 ## S1er $($v.Name)
 
 Build ``$($v.Label)``（关于页：``$($v.Name) ($($v.Build))``）
+
+### 更新内容
+
+$updates
 
 ### 下哪个包？（Android）
 

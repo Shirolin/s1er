@@ -72,8 +72,7 @@ version: 0.1.0+1
 
    `release.ps1 manifest` 会把上述四个 APK 直链写入 `latest.json`（`androidApk` + `androidArm64V8aApk` 等）；客户端按设备 ABI 选包，识别失败时回退 universal。**不要只手改 `latest.json` 而跳过 `manifest`**——旧版脚本曾只写 universal，下次发版会把分架构字段冲掉（v0.3.4 即发生过）。
 
-   - Release 正文由 `release.ps1 create` 自动写入「下哪个包」选型表。
-   - **别忘了在 Release 正文里加上「更新内容」section**（`release.ps1 create` 生成的模板只有下载表，需要手动补更新要点）。
+   - Release 正文由 `release.ps1 create` 自动生成：抽取 `CHANGELOG.md` 本版段作为「更新内容」（`### Added/Changed/Fixed` 转 `**新增/变更/修复**`，其余 `###` 降为 `####`），再接「下哪个包」选型表；CHANGELOG 缺该段或为空时 `create` 直接报错，不再出现只有下载表的正文。
    - **Windows**：`s1er-…-windows-x64.zip`。
 6. 将 `pubspec.yaml` + `latest.json` + `whats_new.json` + `CHANGELOG.md` 等改动提交到 `main`，推送后**主动刷新 jsDelivr 缓存**：
 

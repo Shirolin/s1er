@@ -198,6 +198,10 @@ class S1HttpClient {
                 requestOptions: error.requestOptions,
                 response: error.response,
                 type: error.type,
+                // 保留原 message / stackTrace，包装只替换 error 语义，
+                // 不丢可观测性（底层 cause 信息）。
+                message: error.message,
+                stackTrace: error.stackTrace,
                 error: ServerMaintenanceException(notice),
               ),
             );

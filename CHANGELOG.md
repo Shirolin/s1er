@@ -5,7 +5,28 @@ All notable changes to S1er will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [Unreleased]
+## [0.8.0] - 2026-09-23
+
+### Added
+
+- **首页维护公告**：首页展示论坛官方维护公告（仅搬运服务器原文），公告解析异常时不再影响页面其它内容。
+- **诊断信息**：关于页版本行显示构建模式（debug / profile / release）；帧率掉帧统计写入 Talker，便于排查卡顿。
+
+### Changed
+
+- **看帖滚动性能**：楼层滚动进度改为在滚动结束、当前帧布局完成后再写回，减少连续滚动时的高频写入卡顿。
+- **系统导航栏图标亮度**：跟随应用明暗主题下发，且仅在应用拥有底栏区域时生效，传统三键导航下不再出现白底白图标。
+
+### Fixed
+
+- **图片查看器**：捏合缩放就地 clamp 变换，绕过 InteractiveViewer 边界精度问题导致的缩放跳变；移除多余的导航栏 overlay style 覆盖。
+- **分享与备份导出**：iPad 系统分享补 `sharePositionOrigin`，不再因缺少锚点而失败。
+- **更新弹窗**：iOS 分支隐藏安卓网盘 CTA 并预留 `ios` 通道，未上架时回退 GitHub 发布页。
+- **BBCode 媒体卡片**：外链过 scheme 白名单，拦截非白名单协议。
+- **公告与接口救援**：`rescueJsonFromHtml` 收紧 `Variables` 结构校验并记录救援告警；公告包装 `DioException` 保留原始 message 与 stackTrace；小黑屋判型前先解包服务器公告异常。
+- **iOS 构建就绪**：ironpress 暂切 fork 修复 xcframework 命名（兼容 CocoaPods 1.16+）；`Info.plist` 改标记区间替换防截断；选图与字体导入补 UTI；补 `PrivacyInfo.xcprivacy` 隐私清单。
+
+## [0.7.0] - 2026-09-05
 
 ### Added
 

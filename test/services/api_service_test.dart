@@ -960,6 +960,31 @@ window.location.href = 'forum.php?mod=viewthread&tid=2253488&pid=69963296&page=1
         expect(json['Variables'], isA<Map<String, dynamic>>());
       });
 
+      test('ensureJson rejects rescue when Variables is not a Map', () {
+        // 裸键名可被拟制；Variables 非对象时不视为 API 成功响应。
+        const htmlArray = '<!DOCTYPE html><html><body>'
+            '{"Variables":["1","2"]}</body></html>';
+        expect(
+          () => ApiService.ensureJson(htmlArray),
+          throwsA(isA<ServerMaintenanceException>()),
+        );
+        const htmlString = '<!DOCTYPE html><html><body>'
+            '{"Variables":"oops"}</body></html>';
+        expect(
+          () => ApiService.ensureJson(htmlString),
+          throwsA(isA<ServerMaintenanceException>()),
+        );
+      });
+
+      test('ensureJson rescues bare error key without Variables', () {
+        // error 键只走向失败文案，保留宽松判定。
+        const html = '<!DOCTYPE html><html><body>noise '
+            '{"error":"接口维护中"}'
+            '</body></html>';
+        final json = ApiService.ensureJson(html);
+        expect(json['error'], '接口维护中');
+      });
+
       test('extractApiErrorMessage reads Variables.error when top absent', () {
         expect(
           ApiService.extractApiErrorMessage({

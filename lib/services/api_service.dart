@@ -70,6 +70,10 @@ class ApiService {
   }
 
   /// 从 HTML 中救援被包裹的 API JSON；形状不像 API 响应时返回 `null`。
+  ///
+  /// 键名判定收紧为结构化校验：`Variables` 必须是 Map（Discuz 响应的
+  /// Variables 恒为对象；攻击者可拟制的裸键名不足以把任意 JSON 骗成成功
+  /// 数据）。`error` 键只走向失败/报错文案，保留宽松判定是安全的。
   static Map<String, dynamic>? rescueJsonFromHtml(String html) {
     final start = html.indexOf('{');
     final end = html.lastIndexOf('}');
@@ -77,7 +81,13 @@ class ApiService {
     try {
       final decoded = jsonDecode(html.substring(start, end + 1));
       if (decoded is Map<String, dynamic> &&
-          (decoded.containsKey('Variables') || decoded.containsKey('error'))) {
+          (decoded['Variables'] is Map || decoded.containsKey('error'))) {
+        // 救援通道本应低频命中；记录便于观测误判（把非 API HTML 里的
+        // 花括号区间当成了成功响应）。
+        talker.warning(
+          '[api-rescue] HTML 响应中救援出 JSON：'
+          'keys=${decoded.keys.take(8).join(',')}',
+        );
         return decoded;
       }
     } on FormatException {

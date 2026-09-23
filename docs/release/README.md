@@ -75,7 +75,14 @@ version: 0.1.0+1
    - Release 正文由 `release.ps1 create` 自动写入「下哪个包」选型表。
    - **别忘了在 Release 正文里加上「更新内容」section**（`release.ps1 create` 生成的模板只有下载表，需要手动补更新要点）。
    - **Windows**：`s1er-…-windows-x64.zip`。
-6. 将 `pubspec.yaml` + `latest.json` + `whats_new.json` + `CHANGELOG.md` 等改动提交到 `main`（推送到 main 后 CDN / raw 镜像即可拉取）。
+6. 将 `pubspec.yaml` + `latest.json` + `whats_new.json` + `CHANGELOG.md` 等改动提交到 `main`，推送后**主动刷新 jsDelivr 缓存**：
+
+   ```powershell
+   git push origin main
+   Invoke-RestMethod https://purge.jsdelivr.net/gh/Shirolin/s1er@main/docs/release/latest.json
+   ```
+
+   jsDelivr 对 `@main` 分支内容有 CDN 缓存，**只推送不 purge 时可能仍返回上一版清单**（0.8.0 发版实测如此），应用内更新会滞后数小时；purge 返回 `"status": "finished"` 即各边缘节点已回源新内容。GitHub raw 备用源不受此影响。
 
 ## 半自动分步脚本（推荐）
 
@@ -96,6 +103,7 @@ pwsh -File .\scripts\release.ps1 manifest        # 写 latest.json 直链（含�
 git add pubspec.yaml docs/release/latest.json assets/changelog/whats_new.json CHANGELOG.md
 git commit --no-verify -m "chore(release): vX.Y.Z+1"
 git push origin main
+Invoke-RestMethod https://purge.jsdelivr.net/gh/Shirolin/s1er@main/docs/release/latest.json   # 刷新 jsDelivr 缓存
 ```
 
 升产品版本（应用内会提示更新）：
@@ -111,6 +119,7 @@ pwsh -File .\scripts\release.ps1 manifest        # 写 latest.json 直链（含�
 git add pubspec.yaml docs/release/latest.json assets/changelog/whats_new.json CHANGELOG.md
 git commit --no-verify -m "chore(release): vX.Y.Z+1"
 git push origin main
+Invoke-RestMethod https://purge.jsdelivr.net/gh/Shirolin/s1er@main/docs/release/latest.json   # 刷新 jsDelivr 缓存
 ```
 
 可选：`pwsh -File .\scripts\release.ps1 upload` 用 `gh` 传附件（慢）；`-SkipApk` / `-SkipWindows` 只打一端；`-DryRun` 演练。

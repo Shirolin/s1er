@@ -1,5 +1,5 @@
 import 'package:flutter_test/flutter_test.dart';
-import 'package:s1er/screens/thread_detail_screen.dart';
+import 'package:s1er/utils/reading_progress_tracker.dart';
 
 void main() {
   test('first visit always writes progress', () {

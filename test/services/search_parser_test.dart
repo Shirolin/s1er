@@ -2,12 +2,13 @@ import 'dart:io';
 
 import 'package:flutter_test/flutter_test.dart';
 import 'package:s1er/services/api_service.dart';
+import 'package:s1er/services/discuz_parser.dart';
 
 void main() {
   group('parseForumSearchHtml', () {
     test('parses hits, count and pagination', () {
       final html = File('test/fixtures/search_forum.html').readAsStringSync();
-      final page = ApiService.parseForumSearchHtml(html);
+      final page = DiscuzParser.parseForumSearchHtml(html);
 
       expect(page.error, isNull);
       expect(page.count, 128);
@@ -32,7 +33,7 @@ void main() {
     test('parses empty result count', () {
       final html =
           File('test/fixtures/search_forum_empty.html').readAsStringSync();
-      final page = ApiService.parseForumSearchHtml(html);
+      final page = DiscuzParser.parseForumSearchHtml(html);
       expect(page.hits, isEmpty);
       expect(page.count, 0);
       expect(page.error, isNull);
@@ -41,7 +42,7 @@ void main() {
     test('parses live mobile list template', () {
       final html =
           File('test/fixtures/search_forum_mobile.html').readAsStringSync();
-      final page = ApiService.parseForumSearchHtml(html);
+      final page = DiscuzParser.parseForumSearchHtml(html);
 
       expect(page.hits, hasLength(1));
       expect(page.count, 1);
@@ -56,7 +57,7 @@ void main() {
     test('surfaces rate-limit messagetext as error', () {
       final html =
           File('test/fixtures/search_rate_limited.html').readAsStringSync();
-      final page = ApiService.parseForumSearchHtml(html);
+      final page = DiscuzParser.parseForumSearchHtml(html);
       expect(page.hasError, isTrue);
       expect(page.error, contains('30 秒'));
       expect(page.hits, isEmpty);
@@ -65,7 +66,7 @@ void main() {
     test('throws LoginRequiredException for login form HTML', () {
       const html = '<form id="loginform_" name="login"></form>';
       expect(
-        () => ApiService.parseForumSearchHtml(html),
+        () => DiscuzParser.parseForumSearchHtml(html),
         throwsA(isA<LoginRequiredException>()),
       );
     });
@@ -74,7 +75,7 @@ void main() {
   group('parseUserSearchHtml', () {
     test('parses uid and name from bbda list', () {
       final html = File('test/fixtures/search_user.html').readAsStringSync();
-      final page = ApiService.parseUserSearchHtml(html);
+      final page = DiscuzParser.parseUserSearchHtml(html);
 
       expect(page.error, isNull);
       expect(page.hits, hasLength(2));
@@ -87,7 +88,7 @@ void main() {
     test('surfaces messagetext error', () {
       final html =
           File('test/fixtures/search_rate_limited.html').readAsStringSync();
-      final page = ApiService.parseUserSearchHtml(html);
+      final page = DiscuzParser.parseUserSearchHtml(html);
       expect(page.hasError, isTrue);
       expect(page.error, contains('搜索'));
     });
@@ -96,7 +97,7 @@ void main() {
       final html =
           File('test/fixtures/search_user_mobile_jump.html').readAsStringSync();
 
-      final url = ApiService.extractForcedDesktopUrl(html);
+      final url = DiscuzParser.extractForcedDesktopUrl(html);
 
       expect(url, startsWith('https://stage1st.com/2b/home.php'));
       expect(url, contains('username=demo_user'));
@@ -106,7 +107,7 @@ void main() {
 
     test('rejects forced desktop links to another host', () {
       const html = '<a href="https://example.com/?forcemobile=1">continue</a>';
-      expect(ApiService.extractForcedDesktopUrl(html), isNull);
+      expect(DiscuzParser.extractForcedDesktopUrl(html), isNull);
     });
   });
 }

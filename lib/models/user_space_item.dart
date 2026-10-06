@@ -44,3 +44,11 @@ class UserSpaceItem {
         .replaceAll(RegExp(r'<[^>]+>'), '');
   }
 }
+
+/// 用户空间主题 / 回复列表的一页结果。
+class UserSpaceListResult {
+  const UserSpaceListResult({required this.items, this.totalPages = 1});
+  static const empty = UserSpaceListResult(items: []);
+  final List<UserSpaceItem> items;
+  final int totalPages;
+}

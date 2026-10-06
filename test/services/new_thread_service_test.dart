@@ -5,6 +5,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:s1er/config/api_config.dart';
 import 'package:s1er/services/api_service.dart';
+import 'package:s1er/services/discuz_parser.dart';
 import 'package:s1er/services/http_client.dart';
 
 void main() {
@@ -114,7 +115,7 @@ void main() {
   });
 
   test('successful marker without tid is treated as unknown failure', () {
-    final result = ApiService.parseNewThreadSubmitResponse({
+    final result = DiscuzParser.parseNewThreadSubmitResponse({
       'Message': {'messageval': 'post_newthread_succeed'},
       'Variables': {'pid': '1'},
     });

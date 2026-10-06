@@ -1,5 +1,5 @@
 import 'package:flutter_test/flutter_test.dart';
-import 'package:s1er/services/api_service.dart';
+import 'package:s1er/services/discuz_parser.dart';
 
 void main() {
   const form = '''
@@ -12,7 +12,7 @@ void main() {
 ]]></root>''';
 
   test('parses report hidden fields and canonical referer', () {
-    final result = ApiService.parseReportFormResponse(
+    final result = DiscuzParser.parseReportFormResponse(
       form,
       tid: '12',
       page: 3,
@@ -34,14 +34,14 @@ void main() {
 
   test('parses report login and business errors', () {
     expect(
-      ApiService.parseReportFormResponse(
+      DiscuzParser.parseReportFormResponse(
         '<div id="loginform_x"><input name="login" /></div>',
         tid: '1',
       ).error,
       '请先登录',
     );
     expect(
-      ApiService.parseReportFormResponse(
+      DiscuzParser.parseReportFormResponse(
         '<dt id="messagetext"><p>没有权限举报</p></dt>',
         tid: '1',
       ).error,
@@ -50,11 +50,11 @@ void main() {
   });
 
   test('recognizes report submit success and errors', () {
-    expect(ApiService.parseReportSubmitResponse('举报成功'), isNull);
+    expect(DiscuzParser.parseReportSubmitResponse('举报成功'), isNull);
     expect(
-      ApiService.parseReportSubmitResponse("errorhandle_report('已举报', '')"),
+      DiscuzParser.parseReportSubmitResponse("errorhandle_report('已举报', '')"),
       '已举报',
     );
-    expect(ApiService.parseReportSubmitResponse(''), contains('无响应'));
+    expect(DiscuzParser.parseReportSubmitResponse(''), contains('无响应'));
   });
 }

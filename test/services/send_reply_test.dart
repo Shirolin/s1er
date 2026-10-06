@@ -6,6 +6,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:s1er/models/quote_info.dart';
 import 'package:s1er/services/api_service.dart';
+import 'package:s1er/services/discuz_parser.dart';
 import 'package:s1er/services/formhash_service.dart';
 import 'package:s1er/services/http_client.dart';
 
@@ -62,9 +63,9 @@ void main() {
     });
   });
 
-  group('ApiService.parseSendReplyResponse', () {
+  group('DiscuzParser.parseSendReplyResponse', () {
     test('success with Variables pid/tid', () {
-      final result = ApiService.parseSendReplyResponse({
+      final result = DiscuzParser.parseSendReplyResponse({
         'Message': {
           'messageval': 'post_reply_succeed',
           'messagestr': '回复发布成功',
@@ -77,7 +78,7 @@ void main() {
     });
 
     test('maps mobile:post_reply_toofast', () {
-      final result = ApiService.parseSendReplyResponse({
+      final result = DiscuzParser.parseSendReplyResponse({
         'Message': {
           'messageval': 'mobile:post_reply_toofast',
           'messagestr': 'post_reply_toofast',
@@ -90,17 +91,17 @@ void main() {
     test('falls back to XML parser', () {
       const xml =
           "<root><![CDATA[<script>succeedhandle_reply('r', 'ok', {fid:'4',tid:'456',pid:'123'});</script>]]></root>";
-      final result = ApiService.parseSendReplyResponse(xml);
+      final result = DiscuzParser.parseSendReplyResponse(xml);
       expect(result.isSuccess, isTrue);
       expect(result.pid, '123');
     });
   });
 
-  group('ApiService.parseReplyResponse with attach flow', () {
+  group('DiscuzParser.parseReplyResponse with attach flow', () {
     test('parses web succeedhandle after attachnew submit', () {
       const xml =
           "<root><![CDATA[<script>succeedhandle_postform('r', 'ok', {fid:'4',tid:'456',pid:'210'});</script>]]></root>";
-      final result = ApiService.parseReplyResponse(xml);
+      final result = DiscuzParser.parseReplyResponse(xml);
       expect(result.isSuccess, isTrue);
       expect(result.pid, '210');
       expect(result.tid, '456');
@@ -109,7 +110,7 @@ void main() {
     test('parses empty succeedhandle_ after attachnew submit', () {
       const xml =
           "<root><![CDATA[<script>succeedhandle_('forum.php?mod=viewthread&tid=1&pid=2', 'ok', {'fid':'4','tid':'1','pid':'2'});</script>]]></root>";
-      final result = ApiService.parseReplyResponse(xml);
+      final result = DiscuzParser.parseReplyResponse(xml);
       expect(result.isSuccess, isTrue);
       expect(result.pid, '2');
       expect(result.tid, '1');
@@ -118,14 +119,14 @@ void main() {
     test('parses two-arg succeedhandle_ without meta object', () {
       const xml =
           "<root><![CDATA[<script>succeedhandle_('forum.php?mod=viewthread&tid=9&pid=8', '回复发布成功');</script>]]></root>";
-      final result = ApiService.parseReplyResponse(xml);
+      final result = DiscuzParser.parseReplyResponse(xml);
       expect(result.isSuccess, isTrue);
       expect(result.pid, '8');
       expect(result.tid, '9');
     });
 
     test('success when only messagestr contains Chinese success text', () {
-      final result = ApiService.parseSendReplyResponse({
+      final result = DiscuzParser.parseSendReplyResponse({
         'Message': {
           'messageval': '',
           'messagestr': '非常感谢，回复发布成功，现在将转入主题页',

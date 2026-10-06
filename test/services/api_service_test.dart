@@ -345,6 +345,51 @@ void main() {
       });
     });
 
+    group('parsePostListAsync', () {
+      // 锁定 isolate 分派策略：空/少量走同步，≥12 条走 compute（测试环境
+      // 下 compute 在本 isolate 执行，仍能验证结果与分支选择）。
+      test('returns empty when postlist is missing', () async {
+        final posts = await ApiService.parsePostListAsync({
+          'Variables': <String, dynamic>{},
+        });
+        expect(posts, isEmpty);
+      });
+
+      test('parses a short list synchronously', () async {
+        final json = {
+          'Variables': {
+            'postlist': [
+              {'pid': '1', 'message': 'a', 'author': 'x', 'authorid': '1'},
+            ],
+          },
+        };
+        final posts = await ApiService.parsePostListAsync(json);
+        expect(posts, hasLength(1));
+        expect(posts.first.pid, '1');
+      });
+
+      test('parses a long list (>=12) via compute', () async {
+        final json = {
+          'Variables': {
+            'postlist': List.generate(
+              12,
+              (i) => {
+                'pid': '${i + 1}',
+                'message': 'post ${i + 1}',
+                'author': 'u$i',
+                'authorid': '${i + 1}',
+                'floor': '${i + 1}',
+              },
+            ),
+          },
+        };
+        final posts = await ApiService.parsePostListAsync(json);
+        expect(posts, hasLength(12));
+        expect(posts.first.pid, '1');
+        expect(posts.last.pid, '12');
+      });
+    });
+
     group('parseCommentCount', () {
       test('parses comment count map from viewthread JSON', () {
         final json = {

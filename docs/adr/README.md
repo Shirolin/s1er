@@ -36,3 +36,4 @@ docs/adr/
 | [0002](0002-draft-codec.md) | 草稿编解码：三域收敛到 MapDraftCodec，私信独立 | 已接受 |
 | [0003](0003-post-body-cache.md) | 帖子正文解析缓存收敛到 PostBodyCache | 已接受 |
 | [0004](0004-http-event-seam.md) | HTTP 客户端通知依赖反转：事件出、适配器落库 | 已接受 |
+| [0005](0005-share-encoder.md) | 分享卡编码独立为 ShareEncoder | 已接受 |

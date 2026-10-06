@@ -26,3 +26,4 @@
 | **MapDraftCodec** | 草稿 map 的通用编解码（`entryKey → payload map` 的 parse / read / upsert / remove / serialize）。 | 服务回复/新主题/编辑三域；私信形状不同不并入 |
 | **PostBodyCache** | 帖子正文 BBCode→HTML 的解析结果缓存策略：拥有「什么构成等价解析」的键规则与命中/未命中来源。 | 不依赖 Flutter/Riverpod；见 [ADR-0003](adr/0003-post-body-cache.md) |
 | **HTTP 事件（S1HttpEvent）** | `S1HttpClient` 从响应/错误体观测到、需向上通知的事件（未读计数、服务器公告）。 | 客户端只发事件；provider 层适配器落库；见 [ADR-0004](adr/0004-http-event-seam.md) |
+| **ShareEncoder** | 分享卡编码：按格式分派 PNG/JPEG/WebP 并在 native 失败时降级回 PNG；背景色由调用方解析。 | 不依赖 widget/Theme/Riverpod；见 [ADR-0005](adr/0005-share-encoder.md) |

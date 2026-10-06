@@ -35,3 +35,4 @@ docs/adr/
 | [0001](0001-parser-transport-seam.md) | 解析（纯）与传输（I/O）分层：抽出 DiscuzParser | 已接受 |
 | [0002](0002-draft-codec.md) | 草稿编解码：三域收敛到 MapDraftCodec，私信独立 | 已接受 |
 | [0003](0003-post-body-cache.md) | 帖子正文解析缓存收敛到 PostBodyCache | 已接受 |
+| [0004](0004-http-event-seam.md) | HTTP 客户端通知依赖反转：事件出、适配器落库 | 已接受 |

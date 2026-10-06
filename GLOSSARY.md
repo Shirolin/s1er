@@ -28,3 +28,4 @@
 | **HTTP 事件（S1HttpEvent）** | `S1HttpClient` 从响应/错误体观测到、需向上通知的事件（未读计数、服务器公告）。 | 客户端只发事件；provider 层适配器落库；见 [ADR-0004](adr/0004-http-event-seam.md) |
 | **ShareEncoder** | 分享卡编码：按格式分派 PNG/JPEG/WebP 并在 native 失败时降级回 PNG；背景色由调用方解析。 | 不依赖 widget/Theme/Riverpod；见 [ADR-0005](adr/0005-share-encoder.md) |
 | **QuotePatterns** | 引语 BBCode / HTML 结构模式的单一出处（含严格 vs 宽松头等**有意区分**的变体）。 | 见 [ADR-0006](adr/0006-quote-patterns.md) |
+| **ReadingProgressTracker** | 帖子详情页会话内的阅读进度状态（首写/上次页与页内楼/页内记忆）与写回策略（去重、高水位下界）。 | 纯 Dart；render-bound 滚动胶水不入此模块；见 [ADR-0007](adr/0007-reading-progress-tracker.md) |

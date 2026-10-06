@@ -22,3 +22,5 @@
 | **DiscuzParser** | 承载全部纯解析逻辑（JSON 解析与 HTML 抓取）的模块，返回模型/数据。 | 不引入 Flutter 依赖；见 [ADR-0001](adr/0001-parser-transport-seam.md) |
 | **解析（parsing）** | 把服务端响应（JSON / HTML / XML）转换为 `models/*` 中数据模型的过程。 | 纯函数；与传输分离 |
 | **传输（transport）** | HTTP 请求/响应的发送接收、限速、Cookie/formhash、URL 构造与协议判定。 | 归 `ApiService` / `S1HttpClient`；见 [ADR-0001](adr/0001-parser-transport-seam.md) |
+| **草稿（draft）** | 撰写中的回复 / 新主题 / 编辑 / 私信正文，按域存于 `SettingsStore`，永不写服务端。 | 键空间按域互斥；见 [ADR-0002](adr/0002-draft-codec.md) |
+| **MapDraftCodec** | 草稿 map 的通用编解码（`entryKey → payload map` 的 parse / read / upsert / remove / serialize）。 | 服务回复/新主题/编辑三域；私信形状不同不并入 |

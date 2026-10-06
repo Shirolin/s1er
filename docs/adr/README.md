@@ -33,3 +33,4 @@ docs/adr/
 | 编号 | 标题 | 状态 |
 |:---|:---|:---|
 | [0001](0001-parser-transport-seam.md) | 解析（纯）与传输（I/O）分层：抽出 DiscuzParser | 已接受 |
+| [0002](0002-draft-codec.md) | 草稿编解码：三域收敛到 MapDraftCodec，私信独立 | 已接受 |

@@ -2,7 +2,8 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 /// 论坛服务器官方公告（会话级）。
 ///
-/// 由 S1HttpClient 从任意响应 / 错误体喂入服务器原文；只搬运、不拟制。
+/// 由 provider 层的 HTTP 事件桥（`httpEventBridgeProvider`）从
+/// `S1HttpClient.events` 的 `S1ServerNoticeEvent` 分发；只搬运、不拟制。
 /// 同一文案会话内只提示一次（关闭后不复现），服务器下发新文案时更新。
 class ServerNoticeNotifier extends Notifier<String?> {
   String? _lastOffered;

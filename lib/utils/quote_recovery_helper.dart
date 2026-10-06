@@ -1,5 +1,6 @@
 import '../models/post.dart';
 import 'quote_builder.dart';
+import 'quote_patterns.dart';
 
 /// 从单个回复中提取的引用数据
 class QuoteRecoveryItem {
@@ -86,10 +87,7 @@ class QuoteRecoveryHelper {
     required String targetAuthor,
   }) {
     // 匹配 [quote]...[/quote]
-    final bbcodeQuotes = RegExp(
-      r'\[quote\]([\s\S]*?)\[/quote\]',
-      caseSensitive: false,
-    ).allMatches(msg);
+    final bbcodeQuotes = QuotePatterns.bbcodeBody.allMatches(msg);
 
     for (final match in bbcodeQuotes) {
       final inner = match.group(1) ?? '';
@@ -100,10 +98,7 @@ class QuoteRecoveryHelper {
     }
 
     // 匹配 HTML <div class="reply_wrap">...</div> 或 <blockquote...>...</blockquote>
-    final htmlQuotes = RegExp(
-      r'<(?:div\s+class="reply_wrap"|blockquote)[^>]*>([\s\S]*?)</(?:div|blockquote)>',
-      caseSensitive: false,
-    ).allMatches(msg);
+    final htmlQuotes = QuotePatterns.htmlQuoteBlock.allMatches(msg);
 
     for (final match in htmlQuotes) {
       final inner = match.group(1) ?? '';
@@ -138,22 +133,10 @@ class QuoteRecoveryHelper {
     var text = raw;
 
     // 清理 Discuz 引用头 [size=2][url=...]author[/url] 发表于 ...[/size]
-    text = text.replaceFirst(
-      RegExp(
-        r'^\[size=\d+\][\s\S]*?发表于[\s\S]*?\[/size\]\s*',
-        caseSensitive: false,
-      ),
-      '',
-    );
+    text = text.replaceFirst(QuotePatterns.headerLoose, '');
 
     // 清理 HTML 引用头
-    text = text.replaceFirst(
-      RegExp(
-        r'^<div\s+class="quote">[\s\S]*?</div>\s*',
-        caseSensitive: false,
-      ),
-      '',
-    );
+    text = text.replaceFirst(QuotePatterns.htmlQuoteHeader, '');
 
     text = QuoteBuilder.stripNestedQuotes(text);
     text = QuoteBuilder.stripHtmlTags(text);

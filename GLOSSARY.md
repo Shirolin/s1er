@@ -24,3 +24,4 @@
 | **传输（transport）** | HTTP 请求/响应的发送接收、限速、Cookie/formhash、URL 构造与协议判定。 | 归 `ApiService` / `S1HttpClient`；见 [ADR-0001](adr/0001-parser-transport-seam.md) |
 | **草稿（draft）** | 撰写中的回复 / 新主题 / 编辑 / 私信正文，按域存于 `SettingsStore`，永不写服务端。 | 键空间按域互斥；见 [ADR-0002](adr/0002-draft-codec.md) |
 | **MapDraftCodec** | 草稿 map 的通用编解码（`entryKey → payload map` 的 parse / read / upsert / remove / serialize）。 | 服务回复/新主题/编辑三域；私信形状不同不并入 |
+| **PostBodyCache** | 帖子正文 BBCode→HTML 的解析结果缓存策略：拥有「什么构成等价解析」的键规则与命中/未命中来源。 | 不依赖 Flutter/Riverpod；见 [ADR-0003](adr/0003-post-body-cache.md) |

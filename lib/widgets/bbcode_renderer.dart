@@ -221,10 +221,12 @@ class BbcodeRenderer extends ConsumerWidget {
     required int maxImagesPerPost,
   }) {
     final result = PostBodyCache.htmlFor(
-      message: cleanedText,
-      showImages: showImages,
-      maxImagesPerPost: maxImagesPerPost,
-      quoteDepth: quoteDepth,
+      key: PostBodyCache.buildKey(
+        message: cleanedText,
+        showImages: showImages,
+        maxImagesPerPost: maxImagesPerPost,
+        quoteDepth: quoteDepth,
+      ),
       build: () => _profiledBbcode(
         'parse',
         () => BbcodeParser.parse(

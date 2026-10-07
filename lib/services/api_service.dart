@@ -118,18 +118,6 @@ class ApiService {
     return null;
   }
 
-  /// Mobile API 在无业务数据时返回的 `error` 文案（如维护公告）。
-  ///
-  /// 依次读取顶层 `error` 与 `Variables.error`（S1-Orange 亦识别后者）。
-  static String? extractApiErrorMessage(Map<String, dynamic> json) =>
-      DiscuzParser.extractApiErrorMessage(json);
-
-  /// Discuz 标准 `Message.messagestr`：当其 `messageval` 非成功语义时，
-  /// 即服务器对「为什么没有数据」的官方解释（对齐 S1-Next Result.kt
-  /// 的 `_succeed` / `_success` 后缀判定）。
-  static String? extractDiscuzMessageError(Map<String, dynamic> json) =>
-      DiscuzParser.extractDiscuzMessageError(json);
-
   static void _throwIfNoDataBlocked(
     Map<String, dynamic> json,
     bool hasData,
@@ -138,7 +126,7 @@ class ApiService {
     if (isLoginRequiredResponse(json)) {
       throw LoginRequiredException();
     }
-    final apiError = extractApiErrorMessage(json);
+    final apiError = DiscuzParser.extractApiErrorMessage(json);
     if (apiError != null) {
       throw ServerMaintenanceException(apiError);
     }
@@ -292,51 +280,12 @@ class ApiService {
         ),
       );
       final body = DiscuzSubmitResponse.coerceBody(response.data);
-      final web = _parseWebNewThreadSubmitResponse(body);
+      final web = DiscuzParser.parseWebNewThreadSubmitResponse(body);
       if (web != null) return web;
       return DiscuzParser.parseNewThreadSubmitResponse(response.data);
     } catch (e, st) {
       return NewThreadSubmitResult(error: friendlyError(e, '发帖', st));
     }
-  }
-
-  /// 网页发帖成功：`succeedhandle_*` 里带 tid。
-  static NewThreadSubmitResult? _parseWebNewThreadSubmitResponse(String xml) {
-    final body = _unwrapAjaxHtml(_responseBodyText(xml)).trim();
-    if (body.isEmpty) return null;
-
-    if (RegExp(r'succeedhandle_', caseSensitive: false).hasMatch(body)) {
-      final detailed = RegExp(
-        r"succeedhandle_[^(]*\('([^']*)',\s*'([^']*)'(?:,\s*\{([^}]*)\})?\)",
-      ).firstMatch(body);
-      if (detailed != null) {
-        final meta = detailed.group(3) ?? '';
-        final tid = _extractReplyField(meta, 'tid') ??
-            DiscuzSubmitResponse.extractPostId(body, 'tid');
-        final pid = _extractReplyField(meta, 'pid') ??
-            DiscuzSubmitResponse.extractPostId(body, 'pid');
-        if (tid != null && tid.isNotEmpty) {
-          return NewThreadSubmitResult(tid: tid, pid: pid);
-        }
-      }
-      final tid = DiscuzSubmitResponse.extractPostId(body, 'tid');
-      if (tid != null && tid.isNotEmpty) {
-        return NewThreadSubmitResult(
-          tid: tid,
-          pid: DiscuzSubmitResponse.extractPostId(body, 'pid'),
-        );
-      }
-    }
-    final errorMatch = RegExp(
-      r"errorhandle_[^(]*\('([^']*)'",
-    ).firstMatch(body);
-    if (errorMatch != null) {
-      final msg = errorMatch.group(1)?.trim();
-      if (msg != null && msg.isNotEmpty) {
-        return NewThreadSubmitResult(error: msg);
-      }
-    }
-    return null;
   }
 
   /// 只读获取 Discuz Web 编辑页；不触发任何写入。
@@ -360,12 +309,6 @@ class ApiService {
       return EditPostFormInfo(error: friendlyError(e, '获取编辑表单', st));
     }
   }
-
-  static EditPostFormInfo parseEditPostFormResponse(
-    String body, {
-    required bool isFirst,
-  }) =>
-      DiscuzParser.parseEditPostFormResponse(body, isFirst: isFirst);
 
   /// 提交编辑前重新读取表单，避免覆盖服务器已经发生的修改。
   Future<EditPostSubmitResult> submitEditPost({
@@ -429,7 +372,7 @@ class ApiService {
           extra: const {'s1DesktopUa': true},
         ),
       );
-      final body = _responseBodyText(response.data);
+      final body = DiscuzSubmitResponse.coerceBody(response.data);
       final parsed = DiscuzParser.parseEditPostSubmitResponse(body);
       if (!parsed.isUncertain) return parsed;
       talker.warning(
@@ -511,10 +454,6 @@ class ApiService {
       return false;
     }
   }
-
-  /// Dio 在未设 [ResponseType.plain] 时偶发给出 `List<int>`；`.toString()` 会丢掉正文。
-  static String _responseBodyText(dynamic data) =>
-      DiscuzSubmitResponse.coerceBody(data);
 
   /// 楼层较多时在后台 isolate 解析，避免阻塞首帧。
   static Future<List<Post>> parsePostListAsync(Map<String, dynamic> json) {
@@ -746,18 +685,6 @@ class ApiService {
       return friendlyError(e, '登录');
     }
   }
-
-  static String _unwrapAjaxHtml(String body) =>
-      DiscuzSubmitResponse.unwrapAjaxHtml(body);
-
-  static ReplySubmitResult parseReplyResponse(dynamic body) =>
-      DiscuzSubmitResponse.parseReplyAjaxBody(body);
-
-  static ReplySubmitResult parseSendReplyResponse(dynamic data) =>
-      DiscuzSubmitResponse.parseSendReplyMobileBody(data);
-
-  static String? _extractReplyField(String meta, String key) =>
-      DiscuzParser.extractReplyField(meta, key);
 
   /// 官方引用助手：拉取 `noticeauthor` / `noticetrimstr`。
   Future<QuoteInfo?> fetchQuoteInfo({
@@ -1269,7 +1196,7 @@ class ApiService {
     final response = await _httpClient.get(url);
     final json = ensureJson(response.data);
     checkAuthError(json);
-    return _parseSpaceList(json, type: type, page: page);
+    return DiscuzParser.parseSpaceList(json, type: type, page: page);
   }
 
   /// 获取任意用户的空间列表（通过 HTML 解析）。
@@ -1289,22 +1216,8 @@ class ApiService {
     if (html.contains('id="loginform_') || html.contains('name="login"')) {
       throw LoginRequiredException();
     }
-    return _parseSpaceHtml(html, type: type, page: page);
+    return DiscuzParser.parseSpaceHtml(html, type: type, page: page);
   }
-
-  static UserSpaceListResult _parseSpaceList(
-    Map<String, dynamic> json, {
-    required String type,
-    int page = 1,
-  }) =>
-      DiscuzParser.parseSpaceList(json, type: type, page: page);
-
-  static UserSpaceListResult _parseSpaceHtml(
-    String html, {
-    required String type,
-    required int page,
-  }) =>
-      DiscuzParser.parseSpaceHtml(html, type: type, page: page);
 
   final Map<String, int> _pageCache = {};
 
@@ -1638,7 +1551,7 @@ class ApiService {
     final response = await _httpClient.get(url);
     final json = ensureJson(response.data);
     checkAuthError(json);
-    return _parseFavoriteForumListJson(json, page: page);
+    return DiscuzParser.parseFavoriteForumListJson(json, page: page);
   }
 
   Future<FavoriteListResult> _getFavoriteListHtml({
@@ -1659,12 +1572,6 @@ class ApiService {
     }
     return DiscuzParser.parseFavoriteListHtml(html, page: page);
   }
-
-  static FavoriteListResult _parseFavoriteForumListJson(
-    Map<String, dynamic> json, {
-    int page = 1,
-  }) =>
-      DiscuzParser.parseFavoriteForumListJson(json, page: page);
 
   /// 添加收藏（帖子或版块）。走 `spacecp` 表单 POST，与 S1 手机版一致。
   Future<FavoriteMutationResult> addFavorite({

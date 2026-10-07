@@ -35,6 +35,8 @@
    分层。
 6. **零行为变更**：降级链逐字保留。
 
+7. **预览 sheet 与分享服务共置（有意保留）**：`_SharePreviewSheet` 留在 `lib/services/post_share_service.dart`，不迁往 `lib/widgets/`。搬移任一方向都会踩线：sheet 依赖 `talker` 诊断日志（`widgets/` 禁止 import `services/`，见 `test/architecture/guardrails_test.dart`），而把 `share()` 入口搬到 widgets 则要求 provider→widgets import（全仓无先例）；且捕获 / 预览 / 落盘是同一分享生命周期的 render-bound 部分（见决策 4）。服务其余部分已保持纯净（编码器见本 ADR），sheet 共置视为 documented exception（同 ADR-0008「承重透传」先例）。
+
 ## 结果
 
 正面：
@@ -48,7 +50,7 @@
 
 - 浏览器编码文件位置变更（`lib/services/` → `lib/utils/`），仅 `share_encoder.dart`
   引用。
-- 捕获 / 拼接仍是 sheet 方法（有意保留）。
+- 捕获 / 拼接仍是 sheet 方法（有意保留，见决策 4）；预览 sheet 与服务共置（有意保留，见决策 7）。
 
 ## 备选方案
 

@@ -950,14 +950,14 @@ window.location.href = 'forum.php?mod=viewthread&tid=2253488&pid=69963296&page=1
           'error': '维护公告 \n \n 又被爬了，休息会',
         };
         expect(
-          ApiService.extractApiErrorMessage(json),
+          DiscuzParser.extractApiErrorMessage(json),
           '维护公告 \n \n 又被爬了，休息会',
         );
       });
 
       test('extractApiErrorMessage ignores to_login', () {
         expect(
-          ApiService.extractApiErrorMessage({'error': 'to_login'}),
+          DiscuzParser.extractApiErrorMessage({'error': 'to_login'}),
           isNull,
         );
       });
@@ -1033,7 +1033,7 @@ window.location.href = 'forum.php?mod=viewthread&tid=2253488&pid=69963296&page=1
 
       test('extractApiErrorMessage reads Variables.error when top absent', () {
         expect(
-          ApiService.extractApiErrorMessage({
+          DiscuzParser.extractApiErrorMessage({
             'Variables': {'error': '维护公告 B'},
           }),
           '维护公告 B',
@@ -1042,7 +1042,7 @@ window.location.href = 'forum.php?mod=viewthread&tid=2253488&pid=69963296&page=1
 
       test('extractDiscuzMessageError reads non-success messagestr only', () {
         expect(
-          ApiService.extractDiscuzMessageError({
+          DiscuzParser.extractDiscuzMessageError({
             'Message': {
               'messageval': 'forum_index_denied',
               'messagestr': '官方解释原文',
@@ -1051,7 +1051,7 @@ window.location.href = 'forum.php?mod=viewthread&tid=2253488&pid=69963296&page=1
           '官方解释原文',
         );
         expect(
-          ApiService.extractDiscuzMessageError({
+          DiscuzParser.extractDiscuzMessageError({
             'Message': {
               'messageval': 'forum_index_succeed',
               'messagestr': '成功文案',
@@ -1060,7 +1060,7 @@ window.location.href = 'forum.php?mod=viewthread&tid=2253488&pid=69963296&page=1
           isNull,
         );
         expect(
-          ApiService.extractDiscuzMessageError(<String, dynamic>{}),
+          DiscuzParser.extractDiscuzMessageError(<String, dynamic>{}),
           isNull,
         );
       });

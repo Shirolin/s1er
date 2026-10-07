@@ -77,18 +77,9 @@ abstract final class PostBodyCache {
   /// [PostBodyCacheResult.wasCached] 供调用方决定是否重放解析副作用
   /// （如 [PostImageIndexCounter] 的图片计数）。
   static PostBodyCacheResult htmlFor({
-    required String message,
-    required bool showImages,
-    required int maxImagesPerPost,
-    required int quoteDepth,
+    required PostBodyCacheKey key,
     required String Function() build,
   }) {
-    final key = buildKey(
-      message: message,
-      showImages: showImages,
-      maxImagesPerPost: maxImagesPerPost,
-      quoteDepth: quoteDepth,
-    );
     final cached = _get(key);
     if (cached != null) {
       return PostBodyCacheResult(html: cached, wasCached: true);

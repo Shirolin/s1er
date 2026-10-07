@@ -316,6 +316,20 @@ class _ThreadDetailScreenState extends ConsumerState<ThreadDetailScreen> {
     }
   }
 
+  int _resolveFloorInPage({
+    required int? leading,
+    required int postCount,
+    required bool atBottom,
+    int minFloorInPage = 1,
+  }) {
+    return resolveFloorInPageForProgress(
+      leadingIndex: leading ?? 0,
+      postCount: postCount,
+      atPageBottom: atBottom,
+      minFloorInPage: minFloorInPage,
+    );
+  }
+
   /// 阅读进度 / 翻页楼层记忆写回契约：
   /// - 手指滑动列表：[ScrollEndNotification] 时等一个 [endOfFrame] 后写回
   ///   （[_onScrollEndRecordProgress]），让 lazy list 末尾条目完成布局。
@@ -328,10 +342,10 @@ class _ThreadDetailScreenState extends ConsumerState<ThreadDetailScreen> {
     );
     if (leading == null && !atBottom) return;
 
-    final viewportFloor = resolveFloorInPageForProgress(
-      leadingIndex: leading ?? 0,
+    final viewportFloor = _resolveFloorInPage(
+      leading: leading,
       postCount: state.posts.length,
-      atPageBottom: atBottom,
+      atBottom: atBottom,
     );
     _progress.pageFloorMemory[state.currentPage] = viewportFloor;
 
@@ -366,10 +380,10 @@ class _ThreadDetailScreenState extends ConsumerState<ThreadDetailScreen> {
     );
     final atBottom = _scrollFabVisibility.value.atPageBottom;
     if (leading == null && !atBottom) return null;
-    return resolveFloorInPageForProgress(
-      leadingIndex: leading ?? 0,
+    return _resolveFloorInPage(
+      leading: leading,
       postCount: state.posts.length,
-      atPageBottom: atBottom,
+      atBottom: atBottom,
     );
   }
 
@@ -394,10 +408,10 @@ class _ThreadDetailScreenState extends ConsumerState<ThreadDetailScreen> {
           ?.lastReadFloor,
     );
 
-    return resolveFloorInPageForProgress(
-      leadingIndex: resolvedLeading ?? 0,
+    return _resolveFloorInPage(
+      leading: resolvedLeading,
       postCount: state.posts.length,
-      atPageBottom: resolvedAtBottom,
+      atBottom: resolvedAtBottom,
       minFloorInPage: minFloor,
     );
   }

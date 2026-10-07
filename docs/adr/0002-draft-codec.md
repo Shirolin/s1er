@@ -15,7 +15,7 @@
 
 ## 决策
 
-1. **新增 `MapDraftCodec`**，承载三个 payload-map 域共享的 `parse` / `read` / `upsert` / `remove` / `toStoreValue`。`upsert` 增加 `isEmpty` 参数表达各域「空草稿不留存」策略（新主题：标题正文皆空则删；回复：正文空则删；编辑：始终保存）。
+1. **新增 `MapDraftCodec`**，承载三个 payload-map 域共享的 `parse` / `upsert` / `remove` / `toStoreValue`。初稿列过 `read`，2026-10-07 复查撤销：各域 `read` 含 payload 类型转换与空判断等域特有语义，通用 `read` 只会是 `drafts[key]` 单行透传，故 `read` 保留在各域，codec 不收。`upsert` 增加 `isEmpty` 参数表达各域「空草稿不留存」策略（新主题：标题正文皆空则删；回复：正文空则删；编辑：始终保存）。
 2. **三个 store 保留各自的公开 API 与命名**（`ComposeMessageDraft.parseStore/readMessage/removeEntry`、`NewThreadDraftStore.*`、`EditPostDraftStore.*`），内部委托 codec。调用点零改动。
 3. **私信草稿不并入**：形状不同（裸 String map、无 `read`/`remove` 方法、调用点就地 `drafts.remove`），并入会引入特例污染接口；其重复量小，收益不足。
 4. **域特有逻辑留在各域**：`ComposeMessageDraft.entryKey`（键规则）、`debounce`（防抖）、`readMessage`（message 类型与空判断）不进 codec。

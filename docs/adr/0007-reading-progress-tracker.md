@@ -9,8 +9,9 @@
 一次架构评审提出把帖子详情页的「打开/滚动状态机」抽成 `ThreadOpenCoordinator`。
 核对源码后发现：**可测的纯核心其实已经抽出**——
 
-- 顶层纯函数 `shouldRecordReadingProgress` / `shouldWriteReadingProgressUpdate` /
-  `resolveFloorInPageForProgress` / `resolveThreadEndRefreshOutcome`（已被测试覆盖）；
+- 顶层纯函数 `shouldRecordReadingProgress` / `resolveFloorInPageForProgress` /
+  `resolveThreadEndRefreshOutcome`（已被测试覆盖）；去重判断为 `ReadingProgressTracker.shouldWrite`
+  实例方法（初稿曾名 `shouldWriteReadingProgressUpdate` 顶层函数，2026-10-07 复查定为实例方法，避免与实例状态分离）。
 - `ScrollFloorNavigator`（`lib/utils/scroll_floor.dart`，278 行）；
 - uid 切换副作用已由 `reading_history_coordinator` provider 承载。
 
@@ -29,8 +30,8 @@ widget 的端口包**。结论：**just moves**，外加一层间接。
    （`hasRecordedInitialVisit` / `lastRecordedPage` / `lastRecordedFloorInPage` /
    `pageFloorMemory`），并给出 `shouldWrite`（去重）、`minProgressFloorInPage`
    （同页高水位下界）、`markRecorded`、`clearPageFloorMemory`。
-2. **把两个纯函数迁入同一模块**：`shouldWriteReadingProgressUpdate`、
-   `resolveFloorInPageForProgress`。屏幕改为引用之。
+2. **把纯解析与去重策略迁入同一模块**：`resolveFloorInPageForProgress`（顶层纯函数）迁入，
+   去重判断收为 `ReadingProgressTracker.shouldWrite` 实例方法（初稿名 `shouldWriteReadingProgressUpdate`，复查定名）。屏幕改为引用之。
 3. **render-bound 的 open/scroll 胶水留在屏幕**：`_consumeOpenScrollTarget` /
    `_applyOpenScrollTarget` / `_onScrollMetricsChanged` / `_scrollToTopImpl` 等
    与渲染树强耦合，不动。
@@ -50,8 +51,7 @@ widget 的端口包**。结论：**just moves**，外加一层间接。
 
 负面 / 代价：
 
-- `shouldWriteReadingProgressUpdate` / `resolveFloorInPageForProgress` 的测试
-  import 从屏幕改到新模块。
+- `shouldWrite` / `resolveFloorInPageForProgress` 的测试 import 从屏幕改到新模块。
 - 测试 `thread_detail_progress_dedup_test` 的 import 随之更新（未用 `export`
   遮羞）。
 

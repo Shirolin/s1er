@@ -64,10 +64,12 @@ void main() {
   test('htmlFor builds on miss and returns cached on hit', () {
     var builds = 0;
     final first = PostBodyCache.htmlFor(
-      message: 'hello',
-      showImages: true,
-      maxImagesPerPost: 5,
-      quoteDepth: 0,
+      key: PostBodyCache.buildKey(
+        message: 'hello',
+        showImages: true,
+        maxImagesPerPost: 5,
+        quoteDepth: 0,
+      ),
       build: () {
         builds++;
         return '<p>once</p>';
@@ -78,10 +80,12 @@ void main() {
     expect(builds, 1);
 
     final second = PostBodyCache.htmlFor(
-      message: 'hello',
-      showImages: true,
-      maxImagesPerPost: 5,
-      quoteDepth: 0,
+      key: PostBodyCache.buildKey(
+        message: 'hello',
+        showImages: true,
+        maxImagesPerPost: 5,
+        quoteDepth: 0,
+      ),
       build: () {
         builds++;
         return '<p>should-not-run</p>';
@@ -94,17 +98,21 @@ void main() {
 
   test('htmlFor distinguishes settings in the key', () {
     PostBodyCache.htmlFor(
-      message: 'hello',
-      showImages: true,
-      maxImagesPerPost: 5,
-      quoteDepth: 0,
+      key: PostBodyCache.buildKey(
+        message: 'hello',
+        showImages: true,
+        maxImagesPerPost: 5,
+        quoteDepth: 0,
+      ),
       build: () => 'with-images',
     );
     final other = PostBodyCache.htmlFor(
-      message: 'hello',
-      showImages: false,
-      maxImagesPerPost: 5,
-      quoteDepth: 0,
+      key: PostBodyCache.buildKey(
+        message: 'hello',
+        showImages: false,
+        maxImagesPerPost: 5,
+        quoteDepth: 0,
+      ),
       build: () => 'without-images',
     );
     expect(other.wasCached, isFalse);
@@ -114,19 +122,23 @@ void main() {
   test('evicts oldest entry when over capacity', () {
     for (var i = 0; i < PostBodyCache.maxEntries + 1; i++) {
       PostBodyCache.htmlFor(
-        message: 'key$i',
-        showImages: true,
-        maxImagesPerPost: 0,
-        quoteDepth: 0,
+        key: PostBodyCache.buildKey(
+          message: 'key$i',
+          showImages: true,
+          maxImagesPerPost: 0,
+          quoteDepth: 0,
+        ),
         build: () => 'html$i',
       );
     }
     // key0 被淘汰 → 再次请求会重新 build。
     final revived = PostBodyCache.htmlFor(
-      message: 'key0',
-      showImages: true,
-      maxImagesPerPost: 0,
-      quoteDepth: 0,
+      key: PostBodyCache.buildKey(
+        message: 'key0',
+        showImages: true,
+        maxImagesPerPost: 0,
+        quoteDepth: 0,
+      ),
       build: () => 'rebuilt',
     );
     expect(revived.wasCached, isFalse);
@@ -134,10 +146,12 @@ void main() {
 
     // 最近的 key 仍命中。
     final recent = PostBodyCache.htmlFor(
-      message: 'key${PostBodyCache.maxEntries}',
-      showImages: true,
-      maxImagesPerPost: 0,
-      quoteDepth: 0,
+      key: PostBodyCache.buildKey(
+        message: 'key${PostBodyCache.maxEntries}',
+        showImages: true,
+        maxImagesPerPost: 0,
+        quoteDepth: 0,
+      ),
       build: () => 'should-not-run',
     );
     expect(recent.wasCached, isTrue);

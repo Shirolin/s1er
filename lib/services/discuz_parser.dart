@@ -1,9 +1,11 @@
 /// Discuz 响应解析（纯）：把服务端 JSON / HTML / XML 转换为 `models/` 数据模型。
 ///
-/// 本模块**不依赖 Flutter 或 Dio**，只依赖 `models/*`、纯 utils 与全局日志
-/// `talker`。它可安全地跑在 isolate 中（`compute` 的入口）。
+/// 本模块只依赖 `models/*`、纯 utils、`config/api_config`（URL 拼接常量，无 I/O）
+/// 与全局日志 `talker`（仅 `warning` 诊断；`compute` 入口 `parsePostList` 自身不打日志，
+/// HTML 救援路径的日志落在调用方 isolate 的 talker 历史里，不影响解析结果）。
+/// 它可安全地跑在 isolate 中（`compute` 的入口）。
 ///
-/// 传输、限速、Cookie/formhash、URL 构造与协议判定仍归 `ApiService` /
+/// 传输、限速、Cookie/formhash 与协议判定仍归 `ApiService` /
 /// `S1HttpClient`；见 `docs/adr/0001-parser-transport-seam.md`。
 library;
 
@@ -39,7 +41,7 @@ import '../utils/forum_attachment_upload_info_parser.dart';
 import '../utils/read_perm_options.dart';
 import 'talker.dart';
 
-/// Discuz 响应解析器：纯函数集合，无 I/O、无 Flutter 依赖。
+/// Discuz 响应解析器：纯函数集合，无 I/O；日志经 `talker`（见模块头注释）。
 abstract final class DiscuzParser {
   // ===========================================================================
   // 响应外壳 / 协议工具（纯）
@@ -512,6 +514,45 @@ abstract final class DiscuzParser {
         fallback: '发帖失败，请稍后重试',
       ),
     );
+  }
+
+  /// 网页发帖成功：`succeedhandle_*` 里带 tid。
+  static NewThreadSubmitResult? parseWebNewThreadSubmitResponse(String xml) {
+    final body = _unwrapAjaxHtml(DiscuzSubmitResponse.coerceBody(xml)).trim();
+    if (body.isEmpty) return null;
+
+    if (RegExp(r'succeedhandle_', caseSensitive: false).hasMatch(body)) {
+      final detailed = RegExp(
+        r"succeedhandle_[^(]*\('([^']*)',\s*'([^']*)'(?:,\s*\{([^}]*)\})?\)",
+      ).firstMatch(body);
+      if (detailed != null) {
+        final meta = detailed.group(3) ?? '';
+        final tid = _extractReplyField(meta, 'tid') ??
+            DiscuzSubmitResponse.extractPostId(body, 'tid');
+        final pid = _extractReplyField(meta, 'pid') ??
+            DiscuzSubmitResponse.extractPostId(body, 'pid');
+        if (tid != null && tid.isNotEmpty) {
+          return NewThreadSubmitResult(tid: tid, pid: pid);
+        }
+      }
+      final tid = DiscuzSubmitResponse.extractPostId(body, 'tid');
+      if (tid != null && tid.isNotEmpty) {
+        return NewThreadSubmitResult(
+          tid: tid,
+          pid: DiscuzSubmitResponse.extractPostId(body, 'pid'),
+        );
+      }
+    }
+    final errorMatch = RegExp(
+      r"errorhandle_[^(]*\('([^']*)'",
+    ).firstMatch(body);
+    if (errorMatch != null) {
+      final msg = errorMatch.group(1)?.trim();
+      if (msg != null && msg.isNotEmpty) {
+        return NewThreadSubmitResult(error: msg);
+      }
+    }
+    return null;
   }
 
   // ===========================================================================

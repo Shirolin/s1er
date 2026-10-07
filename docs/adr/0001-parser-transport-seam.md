@@ -14,12 +14,12 @@
 - provider 越过接口直调其静态解析方法（如 `lib/providers/post_provider.dart:216` 的 `ApiService.parsePostListAsync`）。
 - 团队已手工在服务上打洞以让解析可测：`parseSpaceReplyHtmlForTest`（第 2074 行）就是纯为暴露 `_parseReplyHtml` 而开的口子——说明接缝本就存在，只是画错了位置。
 
-解析器的真实依赖是干净的：只依赖 `models/*` 与少数纯 utils（`discuz_message`、`discuz_submit_response`、`new_thread_form_parser`、`forum_attachment_upload_info_parser`、`compose_img_tags`）。唯一杂质是 `rescueJsonFromHtml` 中的一处 `talker.warning`。
+解析器的真实依赖是干净的：只依赖 `models/*`、少数纯 utils（`discuz_message`、`discuz_submit_response`、`new_thread_form_parser`、`forum_attachment_upload_info_parser`、`compose_img_tags`）与 `config/api_config` 的 URL 拼接常量（无 I/O）。唯一杂质是 `rescueJsonFromHtml` 等处的 `talker.warning`（`talker_flutter` 经 `flutter/foundation` 传递依赖 Flutter，但只用 `warning`/`handle` 诊断；`compute` 入口 `parsePostList` 自身不打日志）。
 
 ## 决策
 
 1. **抽出独立的 `DiscuzParser` 模块**，承载全部返回模型/数据的纯解析方法（JSON 解析与 HTML 抓取）。调用点与测试统一从 `DiscuzParser.parseX(...)` 进入。
-2. **`DiscuzParser` 保持纯 Dart，不引入 Flutter 依赖。** 它可依赖 `models/*`、纯 utils 与 `talker`（全局日志单例，非 UI 依赖）。
+2. **`DiscuzParser` 不引入 Dio / UI 依赖。** 它可依赖 `models/*`、纯 utils、`config/api_config`（URL 常量）与 `talker`（全局日志单例，仅诊断；isolate 说明见模块头注释）。
 3. **`parsePostListAsync`（`compute`）留在 `ApiService`。** `compute` 是平台能力（Web 同步 / native isolate），属于传输层；它只是转调 `DiscuzParser.parsePostList`，调用点 `post_provider.dart:216` 几乎不动。
 4. **协议策略留在 `ApiService`**：`buildApiUrl`、`extractMaintenanceMessage`、`isLoginRequiredResponse`、`checkAuthError` 不搬。它们是"协议判定/编排"，不是"数据解析"。
 5. **`rescueJsonFromHtml` 连同其 `talker.warning` 一并搬入 `DiscuzParser`。** 保持日志行为不变，不为其改签名。
@@ -30,12 +30,12 @@
 
 **已完成（2026-10-06）：**
 
-- `ApiService`：**4,002 → 1,806 行**（仅剩传输 + 协议策略）。
-- 新建 `lib/services/discuz_parser.dart`（约 1,960 行，纯 Dart，零 Flutter/Dio 依赖，isolate 安全）。
-- 9 个测试文件 + 2 个 provider 改为直接调用 `DiscuzParser`；`ApiService` 的纯委托 stub 与 `parseSpaceReplyHtmlForTest` 手工桩已删除。
+- `ApiService`：**4,002 → 1,867 行**（仅剩传输 + 协议策略；2026-10-07 复查补删残留委托）。
+- `lib/services/discuz_parser.dart`（2,215 行；解析主体 + 网页发帖 `succeedhandle_*` 解析；`talker` 仅诊断日志，`compute` 入口本身不打日志，isolate 安全）。
+- 调用点与测试统一从 `DiscuzParser.parseX(...)` 进入；`ApiService` 的纯委托（`extractApiErrorMessage` / `extractDiscuzMessageError` / `parseReplyResponse` / `parseSendReplyResponse` / `parseEditPostFormResponse` / `_parseSpaceList` / `_parseSpaceHtml` / `_parseFavoriteForumListJson` / `_unwrapAjaxHtml` / `_responseBodyText` / `_extractReplyField`）与 `parseSpaceReplyHtmlForTest` 手工桩已删除；`_parseWebNewThreadSubmitResponse` 已迁入 `DiscuzParser.parseWebNewThreadSubmitResponse`。
 - `UserSpaceListResult` 值类型从 `api_service.dart` 迁至 `lib/models/user_space_item.dart`。
 - 校验：`flutter analyze`（lib + test）无 issue；`flutter test` 全绿。
-- 保留在 `ApiService`：`ensureJson`（协议策略）、`extractMaintenanceMessage`、`checkAuthError`、`isLoginRequiredResponse`、`_unwrapAjaxHtml`、`parsePostListAsync` 的 `compute` 外壳。
+- 保留在 `ApiService`：`ensureJson`（协议策略）、`extractMaintenanceMessage`、`checkAuthError`、`isLoginRequiredResponse`、`parsePostListAsync` 的 `compute` 外壳。
 
 正面：
 

@@ -1,19 +1,6 @@
 import '../config/constants.dart';
 import '../models/reading_record.dart';
 
-/// 仅在首访、翻页或页内可见楼变化时写库。
-bool shouldWriteReadingProgressUpdate({
-  required bool hasRecordedInitialVisit,
-  required int? lastRecordedPage,
-  required int? lastRecordedFloorInPage,
-  required int currentPage,
-  required int currentFloorInPage,
-}) {
-  if (!hasRecordedInitialVisit) return true;
-  if (lastRecordedPage != currentPage) return true;
-  return lastRecordedFloorInPage != currentFloorInPage;
-}
-
 /// 阅读进度写回用的页内楼层（1-based）。
 ///
 /// 平常取视口锚线上方最后一楼；已滚到页底时取本页末楼，避免短帖读完后仍停在较早楼层。
@@ -51,13 +38,9 @@ class ReadingProgressTracker {
     required int currentPage,
     required int currentFloorInPage,
   }) {
-    return shouldWriteReadingProgressUpdate(
-      hasRecordedInitialVisit: hasRecordedInitialVisit,
-      lastRecordedPage: lastRecordedPage,
-      lastRecordedFloorInPage: lastRecordedFloorInPage,
-      currentPage: currentPage,
-      currentFloorInPage: currentFloorInPage,
-    );
+    if (!hasRecordedInitialVisit) return true;
+    if (lastRecordedPage != currentPage) return true;
+    return lastRecordedFloorInPage != currentFloorInPage;
   }
 
   /// 同页写回的下界：不低于本会话已写回的页内楼，也不低于服务器已持久化的

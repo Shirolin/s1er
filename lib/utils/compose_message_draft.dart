@@ -24,7 +24,7 @@ abstract final class ComposeMessageDraft {
     Map<String, Map<String, Object?>> drafts,
     String key,
   ) {
-    final payload = MapDraftCodec.read(drafts, key);
+    final payload = drafts[key];
     if (payload == null) return null;
     final message = payload['message'];
     if (message is! String) return null;

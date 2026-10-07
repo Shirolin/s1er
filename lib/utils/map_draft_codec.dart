@@ -24,14 +24,6 @@ abstract final class MapDraftCodec {
     return out;
   }
 
-  /// 读取某 entry 的 payload；不存在返回 `null`。
-  static Map<String, Object?>? read(
-    Map<String, Map<String, Object?>> drafts,
-    String key,
-  ) {
-    return drafts[key];
-  }
-
   /// 写入 / 更新一条草稿。
   ///
   /// [isEmpty] 为真时删除条目而非写入，供各域表达「空草稿不留存」。

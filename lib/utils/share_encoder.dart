@@ -1,5 +1,3 @@
-// ignore_for_file: unawaited_futures
-
 import 'dart:typed_data';
 import 'dart:ui' as ui;
 
@@ -40,28 +38,24 @@ class ShareEncoder {
   /// 已被压平用的不透明背景色（调用方从 `Theme` 解析）。
   final ui.Color background;
 
+  // 有意保留两处按 format 的分派：image 与 strip 的输入形状不同，
+  // 强行合表只会把重复从 switch 搬到 map。
   /// 编码由 `RenderRepaintBoundary.toImage` 得到的整图。
   Future<EncodedShareImage> encodeImage(ui.Image image) {
-    switch (format) {
-      case ShareImageFormat.png:
-        return _encodePng(image);
-      case ShareImageFormat.jpeg:
-        return _encodeJpeg(image);
-      case ShareImageFormat.webp:
-        return _encodeWebp(image);
-    }
+    return switch (format) {
+      ShareImageFormat.png => _encodePng(image),
+      ShareImageFormat.jpeg => _encodeJpeg(image),
+      ShareImageFormat.webp => _encodeWebp(image),
+    };
   }
 
   /// 编码拼接后的 RGBA 长图。
   Future<EncodedShareImage> encodeStrip(ShareRgbaStrip strip) {
-    switch (format) {
-      case ShareImageFormat.png:
-        return _encodePngFromRgba(strip);
-      case ShareImageFormat.jpeg:
-        return _encodeJpegFromRgba(strip);
-      case ShareImageFormat.webp:
-        return _encodeWebpFromRgba(strip);
-    }
+    return switch (format) {
+      ShareImageFormat.png => _encodePngFromRgba(strip),
+      ShareImageFormat.jpeg => _encodeJpegFromRgba(strip),
+      ShareImageFormat.webp => _encodeWebpFromRgba(strip),
+    };
   }
 
   Future<EncodedShareImage> _encodePngFromRgba(ShareRgbaStrip strip) async {
@@ -75,53 +69,54 @@ class ShareEncoder {
   }
 
   Future<EncodedShareImage> _encodeJpegFromRgba(ShareRgbaStrip strip) async {
-    if (kIsWeb) {
-      final opaque = await _opaqueRgbaFromStrip(strip);
-      final browserBytes = await browser_encode.encodeRgbaWithBrowser(
-        rgbaBytes: opaque.bytes,
-        width: opaque.width,
-        height: opaque.height,
-        mimeType: 'image/jpeg',
-        quality: 0.85,
-      );
-      if (browserBytes != null) {
-        return EncodedShareImage(browserBytes, ShareImageFormat.jpeg);
-      }
-      final png = await encodePngFromRgbaStrip(strip);
-      return EncodedShareImage(png, ShareImageFormat.png);
-    }
-
+    final opaque = await _opaqueRgbaFromStrip(strip);
     final png = await encodePngFromRgbaStrip(strip);
-    final jpeg = await encodeShareJpegFromPng(png);
-    if (jpeg != null) {
-      return EncodedShareImage(jpeg, ShareImageFormat.jpeg);
-    }
-
-    final optimized = await encodeSharePngOptimized(png);
-    return EncodedShareImage(optimized ?? png, ShareImageFormat.png);
+    return _encodeWithCodec(
+      opaque: opaque,
+      png: png,
+      mimeType: 'image/jpeg',
+      format: ShareImageFormat.jpeg,
+      encodeNative: encodeShareJpegFromPng,
+    );
   }
 
   Future<EncodedShareImage> _encodeWebpFromRgba(ShareRgbaStrip strip) async {
+    final opaque = await _opaqueRgbaFromStrip(strip);
+    final png = await encodePngFromRgbaStrip(strip);
+    return _encodeWithCodec(
+      opaque: opaque,
+      png: png,
+      mimeType: 'image/webp',
+      format: ShareImageFormat.webp,
+      encodeNative: encodeShareWebpFromPng,
+    );
+  }
+
+  /// Web 先试浏览器编码，native 先把 PNG 转目标格式；失败都回退到 PNG。
+  Future<EncodedShareImage> _encodeWithCodec({
+    required ({Uint8List bytes, int width, int height}) opaque,
+    required Uint8List png,
+    required String mimeType,
+    required ShareImageFormat format,
+    required Future<Uint8List?> Function(Uint8List png) encodeNative,
+  }) async {
     if (kIsWeb) {
-      final opaque = await _opaqueRgbaFromStrip(strip);
       final browserBytes = await browser_encode.encodeRgbaWithBrowser(
         rgbaBytes: opaque.bytes,
         width: opaque.width,
         height: opaque.height,
-        mimeType: 'image/webp',
+        mimeType: mimeType,
         quality: 0.85,
       );
       if (browserBytes != null) {
-        return EncodedShareImage(browserBytes, ShareImageFormat.webp);
+        return EncodedShareImage(browserBytes, format);
       }
-      final png = await encodePngFromRgbaStrip(strip);
       return EncodedShareImage(png, ShareImageFormat.png);
     }
 
-    final png = await encodePngFromRgbaStrip(strip);
-    final webp = await encodeShareWebpFromPng(png);
-    if (webp != null) {
-      return EncodedShareImage(webp, ShareImageFormat.webp);
+    final encoded = await encodeNative(png);
+    if (encoded != null) {
+      return EncodedShareImage(encoded, format);
     }
 
     final optimized = await encodeSharePngOptimized(png);
@@ -144,108 +139,71 @@ class ShareEncoder {
   }
 
   Future<EncodedShareImage> _encodeJpeg(ui.Image image) async {
-    if (kIsWeb) {
-      final opaque = await _opaqueRgbaFromImage(image);
-      final browserBytes = await browser_encode.encodeRgbaWithBrowser(
-        rgbaBytes: opaque.bytes,
-        width: opaque.width,
-        height: opaque.height,
-        mimeType: 'image/jpeg',
-        quality: 0.85,
-      );
-      if (browserBytes != null) {
-        return EncodedShareImage(browserBytes, ShareImageFormat.jpeg);
-      }
-      return EncodedShareImage(
-        await _encodePngSkia(image),
-        ShareImageFormat.png,
-      );
-    }
-
+    final opaque = await _opaqueRgbaFromImage(image);
     final skiaPng = await _encodePngSkia(image);
-    final jpeg = await encodeShareJpegFromPng(skiaPng);
-    if (jpeg != null) {
-      return EncodedShareImage(jpeg, ShareImageFormat.jpeg);
-    }
-
-    final optimized = await encodeSharePngOptimized(skiaPng);
-    return EncodedShareImage(optimized ?? skiaPng, ShareImageFormat.png);
+    return _encodeWithCodec(
+      opaque: opaque,
+      png: skiaPng,
+      mimeType: 'image/jpeg',
+      format: ShareImageFormat.jpeg,
+      encodeNative: encodeShareJpegFromPng,
+    );
   }
 
   Future<EncodedShareImage> _encodeWebp(ui.Image image) async {
-    if (kIsWeb) {
-      final opaque = await _opaqueRgbaFromImage(image);
-      final browserBytes = await browser_encode.encodeRgbaWithBrowser(
-        rgbaBytes: opaque.bytes,
-        width: opaque.width,
-        height: opaque.height,
-        mimeType: 'image/webp',
-        quality: 0.85,
-      );
-      if (browserBytes != null) {
-        return EncodedShareImage(browserBytes, ShareImageFormat.webp);
-      }
-      return EncodedShareImage(
-        await _encodePngSkia(image),
-        ShareImageFormat.png,
-      );
-    }
-
+    final opaque = await _opaqueRgbaFromImage(image);
     final skiaPng = await _encodePngSkia(image);
-    final webp = await encodeShareWebpFromPng(skiaPng);
-    if (webp != null) {
-      return EncodedShareImage(webp, ShareImageFormat.webp);
-    }
-
-    final optimized = await encodeSharePngOptimized(skiaPng);
-    return EncodedShareImage(optimized ?? skiaPng, ShareImageFormat.png);
+    return _encodeWithCodec(
+      opaque: opaque,
+      png: skiaPng,
+      mimeType: 'image/webp',
+      format: ShareImageFormat.webp,
+      encodeNative: encodeShareWebpFromPng,
+    );
   }
 
   Future<({Uint8List bytes, int width, int height})> _opaqueRgbaFromStrip(
     ShareRgbaStrip strip,
   ) async {
-    final bgR = (background.r * 255).round();
-    final bgG = (background.g * 255).round();
-    final bgB = (background.b * 255).round();
     final expected = strip.width * strip.height * 4;
     final rgbaBytes = strip.bytes.length == expected
         ? strip.bytes
         : Uint8List.sublistView(strip.bytes, 0, expected);
-
-    final opaque = await flattenRgbaOntoOpaqueRgbaAsync(
-      rgba: rgbaBytes,
+    return _flattenRgba(
+      rgbaBytes: rgbaBytes,
       width: strip.width,
       height: strip.height,
-      bgR: bgR,
-      bgG: bgG,
-      bgB: bgB,
     );
-    return (bytes: opaque, width: strip.width, height: strip.height);
   }
 
   Future<({Uint8List bytes, int width, int height})> _opaqueRgbaFromImage(
     ui.Image image,
   ) async {
-    final width = image.width;
-    final height = image.height;
-    final bgR = (background.r * 255).round();
-    final bgG = (background.g * 255).round();
-    final bgB = (background.b * 255).round();
-
     final byteData = await image.toByteData(format: ui.ImageByteFormat.rawRgba);
     final raw = byteData!;
     final rgbaBytes = raw.buffer.asUint8List(
       raw.offsetInBytes,
       raw.lengthInBytes,
     );
+    return _flattenRgba(
+      rgbaBytes: rgbaBytes,
+      width: image.width,
+      height: image.height,
+    );
+  }
 
+  Future<({Uint8List bytes, int width, int height})> _flattenRgba({
+    required Uint8List rgbaBytes,
+    required int width,
+    required int height,
+  }) async {
     final opaque = await flattenRgbaOntoOpaqueRgbaAsync(
       rgba: rgbaBytes,
       width: width,
       height: height,
-      bgR: bgR,
-      bgG: bgG,
-      bgB: bgB,
+      bgR: (background.r * 255).round(),
+      bgG: (background.g * 255).round(),
+      bgB: (background.b * 255).round(),
     );
     return (bytes: opaque, width: width, height: height);
   }

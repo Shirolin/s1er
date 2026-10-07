@@ -431,7 +431,9 @@ class S1HttpClient {
           }
         }
       }
-    } catch (_) {}
+    } catch (e, st) {
+      talker.handle(e, st, 'unreadNoticeFromResponse: ignore malformed body');
+    }
     return null;
   }
 
@@ -539,7 +541,7 @@ class S1HttpClient {
     return Uri.parse('https://${ResourceDomains.apiHost}$path');
   }
 
-  /// 关闭事件流。仅用于测试与容器销毁。
+  /// 关闭事件流。仅用于测试。
   @visibleForTesting
   Future<void> dispose() => _events.close();
 

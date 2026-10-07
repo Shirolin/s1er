@@ -14,7 +14,7 @@ abstract final class NewThreadDraftStore {
     Map<String, Map<String, Object?>> drafts,
     String fid,
   ) =>
-      MapDraftCodec.read(drafts, fid);
+      drafts[fid];
 
   /// 标题与正文皆空时删除条目，避免留下空草稿。
   static Map<String, Map<String, Object?>> upsert(

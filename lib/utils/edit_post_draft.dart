@@ -14,7 +14,7 @@ abstract final class EditPostDraftStore {
     Map<String, Map<String, Object?>> drafts,
     String pid,
   ) =>
-      MapDraftCodec.read(drafts, pid);
+      drafts[pid];
 
   static Map<String, Map<String, Object?>> upsert(
     Map<String, Map<String, Object?>> drafts,

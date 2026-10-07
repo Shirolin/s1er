@@ -144,9 +144,6 @@ class ApiService {
     }
   }
 
-  static bool _hasThreadDetailData(Map<String, dynamic> json) =>
-      DiscuzParser.hasThreadDetailData(json);
-
   /// 只读预检新主题权限，并缓存响应中的 formhash。
   ///
   /// 主题分类优先从网页发帖助手 (`forum.php?mod=post&action=newthread`) 解析，
@@ -631,7 +628,7 @@ class ApiService {
     );
     final response = await _httpClient.get(url);
     final json = ensureJson(response.data);
-    _throwIfNoDataBlocked(json, _hasThreadDetailData(json));
+    _throwIfNoDataBlocked(json, DiscuzParser.hasThreadDetailData(json));
     return json;
   }
 

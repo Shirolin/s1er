@@ -39,3 +39,4 @@ docs/adr/
 | [0005](0005-share-encoder.md) | 分享卡编码独立为 ShareEncoder | 已接受 |
 | [0006](0006-quote-patterns.md) | 引语语法集中到 QuotePatterns；完整 QuoteBlock 合并暂缓 | 已接受 |
 | [0007](0007-reading-progress-tracker.md) | 阅读进度状态抽出为 ReadingProgressTracker；完整 ThreadOpenCoordinator 暂缓 | 已接受 |
+| [0008](0008-keep-thin-notifiers.md) | forumListProvider 与 postShareProvider 保留（不删） | 已接受 |

@@ -1732,7 +1732,7 @@ class ApiService {
     try {
       final String body;
       if (page > 1) {
-        final url = _resolveSearchPageUrl(pageHref!, page);
+        final url = DiscuzParser.resolveSearchPageUrl(pageHref!, page);
         final response = await _httpClient.get(
           url,
           options: _searchHtmlGetOptions(),
@@ -1829,7 +1829,7 @@ class ApiService {
     if (response.statusCode != null &&
         response.statusCode! >= 300 &&
         response.statusCode! < 400) {
-      final redirectUrl = _resolveSearchRedirectUrl(
+      final redirectUrl = DiscuzParser.resolveSearchRedirectUrl(
         response.headers.value('location'),
       );
       if (redirectUrl == null) {
@@ -1853,12 +1853,6 @@ class ApiService {
     );
     return forcedResponse.data?.toString() ?? body;
   }
-
-  static String _resolveSearchPageUrl(String pageHref, int page) =>
-      DiscuzParser.resolveSearchPageUrl(pageHref, page);
-
-  static String? _resolveSearchRedirectUrl(String? location) =>
-      DiscuzParser.resolveSearchRedirectUrl(location);
 }
 
 class _SearchRequestException implements Exception {

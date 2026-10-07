@@ -72,6 +72,10 @@ class ReadingProgressTracker {
     lastRecordedFloorInPage = floorInPage;
   }
 
+  /// 记录本页的页内阅读位（翻回该页时恢复）。
+  void rememberFloor({required int page, required int floorInPage}) =>
+      pageFloorMemory[page] = floorInPage;
+
   /// 清空翻页记忆（过滤作者等改变楼层布局时调用）。
   void clearPageFloorMemory() => pageFloorMemory.clear();
 }

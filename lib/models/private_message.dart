@@ -1,3 +1,5 @@
+import '../utils/html_entities.dart';
+
 class PrivateMessage {
   const PrivateMessage({
     required this.id,
@@ -44,18 +46,15 @@ class PrivateMessage {
   }
 
   static String _decodeMessage(String value) {
-    return value
-        .replaceAll(RegExp(r'<br\s*/?>', caseSensitive: false), '\n')
-        .replaceAll(RegExp(r'</p\s*>', caseSensitive: false), '\n')
-        .replaceAll(RegExp(r'<[^>]+>'), '')
-        .replaceAll('&amp;', '&')
-        .replaceAll('&lt;', '<')
-        .replaceAll('&gt;', '>')
-        .replaceAll('&quot;', '"')
-        .replaceAll('&#039;', "'")
-        .replaceAll('&#39;', "'")
-        .replaceAll('&nbsp;', ' ')
-        .trim();
+    return decodeHtmlEntities(
+      value
+          .replaceAll(RegExp(r'<br\s*/?>', caseSensitive: false), '\n')
+          .replaceAll(RegExp(r'</p\s*>', caseSensitive: false), '\n')
+          .replaceAll(RegExp(r'<[^>]+>'), '')
+          .replaceAll('&amp;', '&')
+          .replaceAll('&lt;', '<')
+          .replaceAll('&gt;', '>'),
+    ).trim();
   }
 
   static int _parseDateline(Map<String, dynamic> json) {

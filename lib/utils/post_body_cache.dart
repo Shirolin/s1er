@@ -58,20 +58,6 @@ abstract final class PostBodyCache {
   static final _cache = <PostBodyCacheKey, String>{};
   static final _order = <PostBodyCacheKey>[];
 
-  static PostBodyCacheKey buildKey({
-    required String message,
-    required bool showImages,
-    required int maxImagesPerPost,
-    required int quoteDepth,
-  }) {
-    return PostBodyCacheKey(
-      message: message,
-      showImages: showImages,
-      maxImagesPerPost: maxImagesPerPost,
-      quoteDepth: quoteDepth,
-    );
-  }
-
   /// 返回该正文的 HTML 与来源：命中则直接返回；未命中则调用 [build] 生成并写入。
   ///
   /// [PostBodyCacheResult.wasCached] 供调用方决定是否重放解析副作用

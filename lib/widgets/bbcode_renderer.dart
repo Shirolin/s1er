@@ -221,7 +221,7 @@ class BbcodeRenderer extends ConsumerWidget {
     required int maxImagesPerPost,
   }) {
     final result = PostBodyCache.htmlFor(
-      key: PostBodyCache.buildKey(
+      key: PostBodyCacheKey(
         message: cleanedText,
         showImages: showImages,
         maxImagesPerPost: maxImagesPerPost,

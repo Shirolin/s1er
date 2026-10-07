@@ -60,20 +60,13 @@ class ShareEncoder {
 
   Future<EncodedShareImage> _encodePngFromRgba(ShareRgbaStrip strip) async {
     final png = await encodePngFromRgbaStrip(strip);
-    if (kIsWeb) {
-      return EncodedShareImage(png, ShareImageFormat.png);
-    }
-
-    final optimized = await encodeSharePngOptimized(png);
-    return EncodedShareImage(optimized ?? png, ShareImageFormat.png);
+    return _finalizePng(png);
   }
 
   Future<EncodedShareImage> _encodeJpegFromRgba(ShareRgbaStrip strip) async {
-    final opaque = await _opaqueRgbaFromStrip(strip);
-    final png = await encodePngFromRgbaStrip(strip);
     return _encodeWithCodec(
-      opaque: opaque,
-      png: png,
+      opaqueOf: () => _opaqueRgbaFromStrip(strip),
+      pngOf: () => encodePngFromRgbaStrip(strip),
       mimeType: 'image/jpeg',
       format: ShareImageFormat.jpeg,
       encodeNative: encodeShareJpegFromPng,
@@ -81,11 +74,9 @@ class ShareEncoder {
   }
 
   Future<EncodedShareImage> _encodeWebpFromRgba(ShareRgbaStrip strip) async {
-    final opaque = await _opaqueRgbaFromStrip(strip);
-    final png = await encodePngFromRgbaStrip(strip);
     return _encodeWithCodec(
-      opaque: opaque,
-      png: png,
+      opaqueOf: () => _opaqueRgbaFromStrip(strip),
+      pngOf: () => encodePngFromRgbaStrip(strip),
       mimeType: 'image/webp',
       format: ShareImageFormat.webp,
       encodeNative: encodeShareWebpFromPng,
@@ -93,14 +84,19 @@ class ShareEncoder {
   }
 
   /// Web 先试浏览器编码，native 先把 PNG 转目标格式；失败都回退到 PNG。
+  ///
+  /// [opaqueOf] / [pngOf] 惰性求值：Web 命中浏览器编码时不算 PNG，native
+  /// 不算 opaque（与迁移前 `post_share_service` 的求值顺序一致）。
   Future<EncodedShareImage> _encodeWithCodec({
-    required ({Uint8List bytes, int width, int height}) opaque,
-    required Uint8List png,
+    required Future<({Uint8List bytes, int width, int height})> Function()
+        opaqueOf,
+    required Future<Uint8List> Function() pngOf,
     required String mimeType,
     required ShareImageFormat format,
     required Future<Uint8List?> Function(Uint8List png) encodeNative,
   }) async {
     if (kIsWeb) {
+      final opaque = await opaqueOf();
       final browserBytes = await browser_encode.encodeRgbaWithBrowser(
         rgbaBytes: opaque.bytes,
         width: opaque.width,
@@ -111,26 +107,29 @@ class ShareEncoder {
       if (browserBytes != null) {
         return EncodedShareImage(browserBytes, format);
       }
-      return EncodedShareImage(png, ShareImageFormat.png);
+      return EncodedShareImage(await pngOf(), ShareImageFormat.png);
     }
 
+    final png = await pngOf();
     final encoded = await encodeNative(png);
     if (encoded != null) {
       return EncodedShareImage(encoded, format);
     }
+    return _finalizePng(png);
+  }
 
+  /// PNG 落盘收尾：Web 直接返回（浏览器侧无需优化），native 试 oxipng 优化。
+  Future<EncodedShareImage> _finalizePng(Uint8List png) async {
+    if (kIsWeb) {
+      return EncodedShareImage(png, ShareImageFormat.png);
+    }
     final optimized = await encodeSharePngOptimized(png);
     return EncodedShareImage(optimized ?? png, ShareImageFormat.png);
   }
 
   Future<EncodedShareImage> _encodePng(ui.Image image) async {
     final skiaPng = await _encodePngSkia(image);
-    if (kIsWeb) {
-      return EncodedShareImage(skiaPng, ShareImageFormat.png);
-    }
-
-    final optimized = await encodeSharePngOptimized(skiaPng);
-    return EncodedShareImage(optimized ?? skiaPng, ShareImageFormat.png);
+    return _finalizePng(skiaPng);
   }
 
   Future<Uint8List> _encodePngSkia(ui.Image image) async {
@@ -139,11 +138,9 @@ class ShareEncoder {
   }
 
   Future<EncodedShareImage> _encodeJpeg(ui.Image image) async {
-    final opaque = await _opaqueRgbaFromImage(image);
-    final skiaPng = await _encodePngSkia(image);
     return _encodeWithCodec(
-      opaque: opaque,
-      png: skiaPng,
+      opaqueOf: () => _opaqueRgbaFromImage(image),
+      pngOf: () => _encodePngSkia(image),
       mimeType: 'image/jpeg',
       format: ShareImageFormat.jpeg,
       encodeNative: encodeShareJpegFromPng,
@@ -151,11 +148,9 @@ class ShareEncoder {
   }
 
   Future<EncodedShareImage> _encodeWebp(ui.Image image) async {
-    final opaque = await _opaqueRgbaFromImage(image);
-    final skiaPng = await _encodePngSkia(image);
     return _encodeWithCodec(
-      opaque: opaque,
-      png: skiaPng,
+      opaqueOf: () => _opaqueRgbaFromImage(image),
+      pngOf: () => _encodePngSkia(image),
       mimeType: 'image/webp',
       format: ShareImageFormat.webp,
       encodeNative: encodeShareWebpFromPng,

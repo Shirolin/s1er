@@ -1,3 +1,5 @@
+import '../utils/html_entities.dart';
+
 class UserSpaceItem {
   UserSpaceItem({
     required this.tid,
@@ -33,15 +35,12 @@ class UserSpaceItem {
   final bool isReply;
 
   static String _decodeHtml(String text) {
-    return text
-        .replaceAll('&amp;', '&')
-        .replaceAll('&lt;', '<')
-        .replaceAll('&gt;', '>')
-        .replaceAll('&quot;', '"')
-        .replaceAll('&#039;', "'")
-        .replaceAll('&#39;', "'")
-        .replaceAll('&nbsp;', ' ')
-        .replaceAll(RegExp(r'<[^>]+>'), '');
+    return decodeHtmlEntities(
+      text
+          .replaceAll('&amp;', '&')
+          .replaceAll('&lt;', '<')
+          .replaceAll('&gt;', '>'),
+    ).replaceAll(RegExp(r'<[^>]+>'), '');
   }
 }
 

@@ -12,7 +12,7 @@
 
 ## 决策
 
-1. **以 `PostBodyCache` 取代 `BbcodeCache`**：把键类型（`PostBodyCacheKey`）、LRU 存储、以及命中/未命中的编排收敛到一个模块。对外接口为 `htmlFor({message, showImages, maxImagesPerPost, quoteDepth, build})`，其中 `build` 是惰性解析回调（携带调用方的 `PostImageIndexCounter`）。
+1. **以 `PostBodyCache` 取代 `BbcodeCache`**：把键类型（`PostBodyCacheKey`）、LRU 存储、以及命中/未命中的编排收敛到一个模块。对外接口为 `htmlFor({required PostBodyCacheKey key, required build})`，调用方以 `PostBodyCacheKey` 构造函数组装键（正文 + `showImages` + `maxImagesPerPost` + `quoteDepth`）；其中 `build` 是惰性解析回调（携带调用方的 `PostImageIndexCounter`）。
 2. **模块不依赖 Flutter / Riverpod**：`showImages` / `maxImagesPerPost` 由调用方读设置后传入，模块不碰 provider。
 3. **`htmlFor` 返回 `PostBodyCacheResult { html, wasCached }`**：保留「命中时需重放解析副作用」的既有语义——`BbcodeRenderer` 仅在 `wasCached` 为真时调用 `_advanceImageIndexFromHtml`（命中时解析未执行，图片 index 分配需重放；未命中时 parse 已就地赋值，不可重复推进）。行为与改前一致。
 4. **不扩大范围**：`AuthorStyleStripper` / `PageSearch` / `PostImageUrls` 属渲染期（主题 / 高亮 / 图片来源），不进本模块。
@@ -22,7 +22,7 @@
 
 正面：
 
-- 局部性：缓存键与命中/未命中语义集中一处，widget 不再自拼键。
+- 局部性：缓存键与命中/未命中语义集中一处；键规则收敛于 PostBodyCacheKey，渲染层只传值不拼规则。
 - 接口收窄：`BbcodeRenderer` 通过 `htmlFor` 一个入口拿解析结果。
 - 删除 `BbcodeCache` 与 `_parseSegmentHtml` 里散落的 `get`/`put`。
 

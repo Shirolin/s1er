@@ -4,14 +4,14 @@ import 'package:s1er/utils/post_body_cache.dart';
 void main() {
   setUp(PostBodyCache.clear);
 
-  test('buildKey changes when showImages changes', () {
-    final a = PostBodyCache.buildKey(
+  test('PostBodyCacheKey changes when showImages changes', () {
+    const a = PostBodyCacheKey(
       message: 'hello',
       showImages: true,
       maxImagesPerPost: 5,
       quoteDepth: 0,
     );
-    final b = PostBodyCache.buildKey(
+    const b = PostBodyCacheKey(
       message: 'hello',
       showImages: false,
       maxImagesPerPost: 5,
@@ -20,14 +20,14 @@ void main() {
     expect(a, isNot(equals(b)));
   });
 
-  test('buildKey changes when maxImagesPerPost changes', () {
-    final a = PostBodyCache.buildKey(
+  test('PostBodyCacheKey changes when maxImagesPerPost changes', () {
+    const a = PostBodyCacheKey(
       message: 'hello',
       showImages: true,
       maxImagesPerPost: 5,
       quoteDepth: 0,
     );
-    final b = PostBodyCache.buildKey(
+    const b = PostBodyCacheKey(
       message: 'hello',
       showImages: true,
       maxImagesPerPost: 10,
@@ -37,19 +37,19 @@ void main() {
   });
 
   test('PostBodyCacheKey equal and hashCode works correctly', () {
-    final a = PostBodyCache.buildKey(
+    const a = PostBodyCacheKey(
       message: 'msg',
       showImages: true,
       maxImagesPerPost: 5,
       quoteDepth: 1,
     );
-    final b = PostBodyCache.buildKey(
+    const b = PostBodyCacheKey(
       message: 'msg',
       showImages: true,
       maxImagesPerPost: 5,
       quoteDepth: 1,
     );
-    final c = PostBodyCache.buildKey(
+    const c = PostBodyCacheKey(
       message: 'msg_diff',
       showImages: true,
       maxImagesPerPost: 5,
@@ -64,7 +64,7 @@ void main() {
   test('htmlFor builds on miss and returns cached on hit', () {
     var builds = 0;
     final first = PostBodyCache.htmlFor(
-      key: PostBodyCache.buildKey(
+      key: const PostBodyCacheKey(
         message: 'hello',
         showImages: true,
         maxImagesPerPost: 5,
@@ -80,7 +80,7 @@ void main() {
     expect(builds, 1);
 
     final second = PostBodyCache.htmlFor(
-      key: PostBodyCache.buildKey(
+      key: const PostBodyCacheKey(
         message: 'hello',
         showImages: true,
         maxImagesPerPost: 5,
@@ -98,7 +98,7 @@ void main() {
 
   test('htmlFor distinguishes settings in the key', () {
     PostBodyCache.htmlFor(
-      key: PostBodyCache.buildKey(
+      key: const PostBodyCacheKey(
         message: 'hello',
         showImages: true,
         maxImagesPerPost: 5,
@@ -107,7 +107,7 @@ void main() {
       build: () => 'with-images',
     );
     final other = PostBodyCache.htmlFor(
-      key: PostBodyCache.buildKey(
+      key: const PostBodyCacheKey(
         message: 'hello',
         showImages: false,
         maxImagesPerPost: 5,
@@ -122,7 +122,7 @@ void main() {
   test('evicts oldest entry when over capacity', () {
     for (var i = 0; i < PostBodyCache.maxEntries + 1; i++) {
       PostBodyCache.htmlFor(
-        key: PostBodyCache.buildKey(
+        key: PostBodyCacheKey(
           message: 'key$i',
           showImages: true,
           maxImagesPerPost: 0,
@@ -133,7 +133,7 @@ void main() {
     }
     // key0 被淘汰 → 再次请求会重新 build。
     final revived = PostBodyCache.htmlFor(
-      key: PostBodyCache.buildKey(
+      key: const PostBodyCacheKey(
         message: 'key0',
         showImages: true,
         maxImagesPerPost: 0,
@@ -146,7 +146,7 @@ void main() {
 
     // 最近的 key 仍命中。
     final recent = PostBodyCache.htmlFor(
-      key: PostBodyCache.buildKey(
+      key: const PostBodyCacheKey(
         message: 'key${PostBodyCache.maxEntries}',
         showImages: true,
         maxImagesPerPost: 0,

@@ -1,6 +1,7 @@
 import '../models/post.dart';
 import 'format_utils.dart';
 import 'quote_patterns.dart';
+import 'html_entities.dart';
 
 /// 构建 Discuz 标准引用 BBCode，供回复预填使用。
 class QuoteBuilder {
@@ -16,26 +17,6 @@ class QuoteBuilder {
         '${post.author}[/url] 发表于 $timeStr[/size]\n'
         '$body\n'
         '[/quote]\n';
-  }
-
-  /// 将引用块与用户正文合并为预览串。
-  ///
-  /// **勿用于 `sendReply` 的 message**：提交通道为用户正文 + `noticetrimstr`
-  ///（有快照时 trim 用 [buildQuoteBbcode]）。
-  @Deprecated(
-    'Submit via QuoteInfo + sendReply; message must not embed client quotes',
-  )
-  static String buildMessageWithQuote({
-    required Post post,
-    required String tid,
-    required String userText,
-    bool includeQuote = true,
-  }) {
-    if (!includeQuote) return userText.trim();
-    final quote = buildQuoteBbcode(post: post, tid: tid);
-    final trimmed = userText.trim();
-    if (trimmed.isEmpty) return quote.trim();
-    return '$quote$trimmed';
   }
 
   /// 引用预览摘要（纯文本，最多保留合理长度）。
@@ -93,16 +74,13 @@ class QuoteBuilder {
   }
 
   static String stripHtmlTags(String text) {
-    return text
-        .replaceAll(RegExp(r'<[^>]+>'), '')
-        .replaceAll('&amp;', '&')
-        .replaceAll('&lt;', '<')
-        .replaceAll('&gt;', '>')
-        .replaceAll('&quot;', '"')
-        .replaceAll('&#039;', "'")
-        .replaceAll('&#39;', "'")
-        .replaceAll('&nbsp;', ' ')
-        .trim();
+    return decodeHtmlEntities(
+      text
+          .replaceAll(RegExp(r'<[^>]+>'), '')
+          .replaceAll('&amp;', '&')
+          .replaceAll('&lt;', '<')
+          .replaceAll('&gt;', '>'),
+    ).trim();
   }
 
   static String _prepareQuoteBody(String message) {

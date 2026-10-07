@@ -38,6 +38,7 @@ import '../utils/compose_img_tags.dart';
 import '../utils/discuz_message.dart';
 import '../utils/discuz_submit_response.dart';
 import '../utils/forum_attachment_upload_info_parser.dart';
+import '../utils/html_entities.dart';
 import '../utils/read_perm_options.dart';
 import 'talker.dart';
 
@@ -866,16 +867,13 @@ abstract final class DiscuzParser {
   // ===========================================================================
 
   static String stripHtml(String text) {
-    return text
-        .replaceAll(RegExp(r'<[^>]+>'), '')
-        .replaceAll('&amp;', '&')
-        .replaceAll('&lt;', '<')
-        .replaceAll('&gt;', '>')
-        .replaceAll('&quot;', '"')
-        .replaceAll('&#039;', "'")
-        .replaceAll('&#39;', "'")
-        .replaceAll('&nbsp;', ' ')
-        .trim();
+    return decodeHtmlEntities(
+      text
+          .replaceAll(RegExp(r'<[^>]+>'), '')
+          .replaceAll('&amp;', '&')
+          .replaceAll('&lt;', '<')
+          .replaceAll('&gt;', '>'),
+    ).trim();
   }
 
   static int parseDateString(String s) {

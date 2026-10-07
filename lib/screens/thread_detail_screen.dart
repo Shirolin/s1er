@@ -174,9 +174,6 @@ class _ThreadDetailScreenState extends ConsumerState<ThreadDetailScreen> {
   bool _pageSearchOpen = false;
   String _pageSearchQuery = '';
 
-  /// 本次进入详情后的页内阅读位（页码 → 页内 1-based 楼层），翻回该页时恢复。
-  /// 存于 [_progress] 的 `pageFloorMemory`。
-
   /// 末页触底刷新进行中，避免同一手势重复打接口。
   bool _endRefreshing = false;
 
@@ -347,7 +344,10 @@ class _ThreadDetailScreenState extends ConsumerState<ThreadDetailScreen> {
       postCount: state.posts.length,
       atBottom: atBottom,
     );
-    _progress.pageFloorMemory[state.currentPage] = viewportFloor;
+    _progress.rememberFloor(
+      page: state.currentPage,
+      floorInPage: viewportFloor,
+    );
 
     final floorInPage = _resolveVisibleFloorInPage(
       state,
@@ -610,7 +610,7 @@ class _ThreadDetailScreenState extends ConsumerState<ThreadDetailScreen> {
               ? _progress.lastRecordedFloorInPage
               : null) ??
           1;
-      _progress.pageFloorMemory[before.currentPage] = floor;
+      _progress.rememberFloor(page: before.currentPage, floorInPage: floor);
     }
 
     final hasPageQuery = PageSearch.normalizeQuery(_pageSearchQuery).isNotEmpty;
@@ -663,9 +663,9 @@ class _ThreadDetailScreenState extends ConsumerState<ThreadDetailScreen> {
       final floorInPage =
           scrollToBottom ? maxFloor : (rememberedFloor ?? 1).clamp(1, maxFloor);
       if (scrollToBottom && loaded.posts.isNotEmpty) {
-        _progress.pageFloorMemory[page] = maxFloor;
+        _progress.rememberFloor(page: page, floorInPage: maxFloor);
       } else if (rememberedFloor != null) {
-        _progress.pageFloorMemory[page] = floorInPage;
+        _progress.rememberFloor(page: page, floorInPage: floorInPage);
       }
       _recordProgress(loaded, floorInPage: floorInPage);
     }

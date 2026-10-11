@@ -194,6 +194,7 @@ flutter run -d chrome --dart-define=TALKER_LOG_LEVEL=all --dart-define=TALKER_MA
 | `IMAGE_UPLOAD_TIMEOUT` | int | `120` | 插图上传 send/receive 超时（秒；外链 `/ext-upload` 与论坛 `misc.php` swfupload 同上限） |
 | `UPDATE_MANIFEST_URL` | String | jsDelivr CDN `docs/release/latest.json` | 应用升级清单主 URL（并发备用 GitHub raw） |
 | `DISTRIBUTION` | String | `github` | 分发渠道：`github` / `play`（影响升级 CTA 链接） |
+| `UPDATE_ALLOW_LOCAL_HOST` | bool | `false` | **仅 debug/profile 构建**：允许升级下载走本地 http 环回主机（`127.0.0.1`/`localhost`），用于本地端到端测试覆盖更新；release 恒不生效 |
 | `SENTRY_DSN` | String | 空 | 非空时启用 Sentry；详见 `docs/sentry-setup.md` |
 | `SENTRY_TRACES_SAMPLE_RATE` | String | `0` | 性能采样 0–1；默认仅错误 |
 | `SENTRY_DEBUG_UPLOAD` | bool | `false` | debug 构建是否实际上传 |

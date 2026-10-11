@@ -186,3 +186,24 @@ Android（非 Play）升级 Dialog：
 下次点更新时会先清掉上次留下的 `*.s1erold` 与 `.s1er-staging*`。失败时仍可「浏览器打开」ZIP 手动解压覆盖。调试/`build\windows\runner` 开发目录、以及没有写入权限的目录（如 Program Files）会拒绝覆盖。
 
 「已启动」标记经环境变量 `S1ER_STARTED_MARKER` 传给新进程，由 `lib/utils/update_startup_marker.dart` 在 `main()` 首行写入。
+
+### 本地端到端测试覆盖更新（不触碰线上）
+
+要在**不影响线上发布**的前提下点完整「立即更新」流程，用本地逃生阀 + 本地服务器：
+
+```powershell
+# ① 构建 profile/debug 包（注入本地清单地址与逃生阀）+ 打包 zip + 拷到普通目录
+pwsh -File scripts/test_update_local.ps1 -Mode profile
+# ② 起本地升级服务器（提供 latest.json 与 zip）
+dart run scripts/serve_update_local.dart --zip dist\local-update-test\s1er-0.9.0-windows-x64.zip --version 0.9.0 --port 8099
+# ③ 直接运行安装目录里的 exe（不是 flutter run——debug 包在 build\ 下会被拒）
+& dist\local-update-test\install\s1er.exe
+```
+
+然后 关于 → 检查更新 → 立即更新，观察是否闪一下即重启到新版。
+
+安全边界：
+
+- 逃生阀 `UPDATE_ALLOW_LOCAL_HOST` **仅 debug/profile 生效**（`kReleaseMode` 为真时恒关闭），且只放行环回主机 `127.0.0.1`/`localhost`/`::1` 的 `http`；release 发布包即使被传入该 define 也不会放行本地主机。
+- 主清单指向环回地址时，客户端**不再并发线上备用源**，避免真实网络干扰本地验证。
+- 全程只连本机，不请求 GitHub / jsDelivr / 论坛。

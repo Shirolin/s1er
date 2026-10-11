@@ -607,6 +607,65 @@ void main() {
       );
     });
 
+    test('local host escape hatch stays closed by default (release-safe)', () {
+      // 默认（无开关）时环回 http 一律拒绝，线上安全不受影响。
+      expect(
+        UpdateCheckService.isAllowedDownloadUrl(
+          'http://127.0.0.1:8099/s1er.zip',
+        ),
+        isFalse,
+      );
+      expect(
+        UpdateCheckService.isAllowedDownloadUrl('http://localhost:8099/x.zip'),
+        isFalse,
+      );
+      // 公网 http 也拒绝。
+      expect(
+        UpdateCheckService.isAllowedDownloadUrl('http://example.com/x.zip'),
+        isFalse,
+      );
+    });
+
+    test('local host escape hatch opens loopback only when enabled', () {
+      expect(
+        UpdateCheckService.isAllowedDownloadUrlWithLocal(
+          'http://127.0.0.1:8099/s1er.zip',
+          allowLocalHost: true,
+        ),
+        isTrue,
+      );
+      expect(
+        UpdateCheckService.isAllowedDownloadUrlWithLocal(
+          'http://localhost:8099/x.zip',
+          allowLocalHost: true,
+        ),
+        isTrue,
+      );
+      // 开启后仍拒绝非环回 http 主机。
+      expect(
+        UpdateCheckService.isAllowedDownloadUrlWithLocal(
+          'http://example.com/x.zip',
+          allowLocalHost: true,
+        ),
+        isFalse,
+      );
+      // https 白名单不受影响。
+      expect(
+        UpdateCheckService.isAllowedDownloadUrlWithLocal(
+          'https://github.com/Shirolin/s1er/releases/download/v1/a.zip',
+          allowLocalHost: true,
+        ),
+        isTrue,
+      );
+    });
+
+    test('local manifest URL does not pull in public fallback sources', () {
+      final service = UpdateCheckService(
+        manifestUrl: 'http://127.0.0.1:8099/latest.json',
+      );
+      expect(service.manifestUrls, ['http://127.0.0.1:8099/latest.json']);
+    });
+
     test(
         'fetchManifest picks newest version even from slower source '
         '(Newest-Wins)', () async {

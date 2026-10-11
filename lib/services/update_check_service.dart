@@ -65,6 +65,11 @@ class UpdateCheckService {
     final urls = <String>[];
     final trimmed = primary.trim();
     if (trimmed.isNotEmpty) urls.add(trimmed);
+    // 本地端到端测试：主源指向环回地址时，不再并发线上备用源，
+    // 避免真实清单/网络干扰本地验证。
+    if (_isLoopbackUrl(trimmed)) {
+      return urls;
+    }
     if (trimmed != rawGithubManifestUrl) {
       urls.add(rawGithubManifestUrl);
     }
@@ -72,6 +77,13 @@ class UpdateCheckService {
       urls.add(jsDelivrManifestUrl);
     }
     return urls;
+  }
+
+  static bool _isLoopbackUrl(String url) {
+    final uri = Uri.tryParse(url.trim());
+    if (uri == null) return false;
+    final h = uri.host.toLowerCase();
+    return h == '127.0.0.1' || h == 'localhost' || h == '::1';
   }
 
   Future<AppUpdateManifest> fetchManifest() async {
@@ -390,6 +402,15 @@ class UpdateCheckService {
   static bool isAllowedDownloadUrl(String url) =>
       _sanitizeUrl(url, allowedDownloadHosts) != null;
 
+  /// 逃生阀的可测入口：显式给定 [allowLocalHost] 判断 URL 是否放行。
+  @visibleForTesting
+  static bool isAllowedDownloadUrlWithLocal(
+    String url, {
+    bool allowLocalHost = false,
+  }) =>
+      _sanitizeUrl(url, allowedDownloadHosts, allowLocalHost: allowLocalHost) !=
+      null;
+
   static bool isAllowedNetdiskUrl(String url) =>
       _sanitizeUrl(url, allowedNetdiskHosts) != null;
 
@@ -426,17 +447,40 @@ class UpdateCheckService {
     return safe.isEmpty ? fallback : safe;
   }
 
-  static String? _sanitizeUrl(String? url, Set<String> allowedHosts) {
+  static String? _sanitizeUrl(
+    String? url,
+    Set<String> allowedHosts, {
+    bool? allowLocalHost,
+  }) {
     if (url == null) return null;
     final trimmed = url.trim();
     if (trimmed.isEmpty) return null;
     final uri = Uri.tryParse(trimmed);
-    if (uri == null || uri.scheme.toLowerCase() != 'https') return null;
+    if (uri == null) return null;
+    final scheme = uri.scheme.toLowerCase();
     if (uri.userInfo.isNotEmpty) return null;
+
+    // 本地端到端测试逃生阀：仅 debug 构建 + 显式开关，且仅限环回主机。
+    // release 构建恒不生效（kReleaseMode 为 true），线上安全不受影响。
+    final local = allowLocalHost ?? _allowLocalHostEscape;
+    if (local && scheme == 'http' && _isLoopbackHost(uri.host)) {
+      return trimmed;
+    }
+
+    if (scheme != 'https') return null;
     final host = uri.host.toLowerCase();
     if (!allowedHosts.contains(host)) return null;
     if (uri.hasPort && uri.port != 443) return null;
     return trimmed;
+  }
+
+  /// 是否启用本地主机逃生阀（debug 构建 + `UPDATE_ALLOW_LOCAL_HOST=true`）。
+  static bool get _allowLocalHostEscape =>
+      !kReleaseMode && EnvConfig.updateAllowLocalHostDefine;
+
+  static bool _isLoopbackHost(String host) {
+    final h = host.toLowerCase();
+    return h == '127.0.0.1' || h == 'localhost' || h == '::1';
   }
 
   static String _messageForDio(DioException e) {

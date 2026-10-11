@@ -80,6 +80,16 @@ class EnvConfig {
     defaultValue: 'github',
   );
 
+  /// 本地覆盖更新端到端测试开关（默认 false）。
+  ///
+  /// 仅当**同时**处于 debug 构建时才允许升级下载走本地 http 主机
+  /// （`127.0.0.1` / `localhost`）；判定见 `UpdateCheckService`。
+  /// release 构建恒不生效，不影响线上安全。
+  static const bool updateAllowLocalHostDefine = bool.fromEnvironment(
+    'UPDATE_ALLOW_LOCAL_HOST',
+    defaultValue: false,
+  );
+
   // ── 监控 ──────────────────────────────────────────────
 
   /// Sentry DSN（通过 --dart-define 注入，为空则禁用 Sentry）

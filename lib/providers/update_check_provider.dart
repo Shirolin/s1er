@@ -27,6 +27,7 @@ class UpdateEvaluation {
     this.userMessage,
     this.netdiskUrl = '',
     this.canInAppDownload = false,
+    this.blockedReason,
   });
 
   final UpdateAvailability availability;
@@ -39,6 +40,9 @@ class UpdateEvaluation {
 
   /// Android APK 或 Windows ZIP 的应用内更新。
   final bool canInAppDownload;
+
+  /// 上次自动应用该版本失败的原因（若有）；手动检查时提示、自动检查时退避。
+  final String? blockedReason;
 
   /// 是否应展示升级 Dialog（启动自动 / 手动均适用）。
   final bool shouldShowDialog;
@@ -84,6 +88,8 @@ UpdateEvaluation evaluateUpdate({
   Duration cooldown = UpdatePromptStore.cooldown,
   String netdiskUrl = '',
   bool canInAppDownload = false,
+  String? blockedVersion,
+  String? blockedReason,
 }) {
   final local = localVersion.trim();
 
@@ -126,6 +132,24 @@ UpdateEvaluation evaluateUpdate({
       canInAppDownload: canInAppDownload,
       shouldShowDialog: false,
       userMessage: manual ? '已忽略此版本的更新提示' : null,
+    );
+  }
+
+  // 上次应用该版本失败（已回滚）→ 自动检查退避，手动检查仍展示并带原因。
+  final blocked = blockedVersion?.trim();
+  if (blocked != null &&
+      blocked.isNotEmpty &&
+      Semver.compare(blocked, manifest.latest) == 0) {
+    final reason = blockedReason?.trim();
+    return UpdateEvaluation(
+      availability: UpdateAvailability.optional,
+      localVersion: local,
+      manifest: manifest,
+      downloadUrl: downloadUrl,
+      netdiskUrl: netdiskUrl,
+      canInAppDownload: canInAppDownload,
+      blockedReason: (reason == null || reason.isEmpty) ? null : reason,
+      shouldShowDialog: manual,
     );
   }
 
@@ -305,6 +329,8 @@ class UpdateCheckNotifier extends Notifier<UpdateCheckState> {
       ignoredVersion: UpdatePromptStore.ignoredVersion(store),
       lastPromptVersion: UpdatePromptStore.lastPromptVersion(store),
       lastPromptMs: UpdatePromptStore.lastPromptMs(store),
+      blockedVersion: UpdatePromptStore.blockedVersion(store),
+      blockedReason: UpdatePromptStore.blockedReason(store),
       now: now,
       manual: manual,
     );

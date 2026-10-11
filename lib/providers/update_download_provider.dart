@@ -5,9 +5,12 @@ import '../config/env_config.dart';
 import '../models/app_exceptions.dart';
 import '../services/app_update_downloader.dart';
 import '../services/app_update_installer.dart';
+import '../services/settings_store.dart';
 import '../services/talker.dart';
 import '../services/update_check_service.dart';
 import '../services/windows_portable_updater.dart';
+import '../utils/update_prompt_store.dart';
+import 'settings_provider.dart';
 import 'update_check_provider.dart';
 
 enum UpdateDownloadPhase {
@@ -68,6 +71,14 @@ class UpdateDownloadNotifier extends Notifier<UpdateDownloadState> {
   AppUpdateInstaller get _installer => ref.read(appUpdateInstallerProvider);
   WindowsPortableUpdater get _windowsUpdater =>
       ref.read(windowsPortableUpdaterProvider);
+
+  SettingsStore? _tryStore() {
+    try {
+      return ref.read(settingsStoreProvider);
+    } on Object {
+      return null;
+    }
+  }
 
   void reset() {
     _downloader.cancel();
@@ -239,10 +250,12 @@ class UpdateDownloadNotifier extends Notifier<UpdateDownloadState> {
       state = state.copyWith(
         phase: UpdateDownloadPhase.installing,
         progress: 1,
-        message: '正在覆盖安装并重启…',
+        message: '正在更新并重启…',
       );
       await _windowsUpdater.applyDownloadedZip(result.filePath);
       if (_abortIfDisposed()) return;
+      // 生产路径在覆盖成功后即 exit(0)；走到这里视为已交接成功。
+      UpdatePromptStore.clearBlocked(_tryStore());
       state = state.copyWith(phase: UpdateDownloadPhase.idle, progress: 1);
     } on UpdateCheckException catch (e) {
       if (_abortIfDisposed()) return;
@@ -253,6 +266,11 @@ class UpdateDownloadNotifier extends Notifier<UpdateDownloadState> {
         );
         return;
       }
+      UpdatePromptStore.setBlocked(
+        _tryStore(),
+        version: evaluation.manifest.latest,
+        reason: e.message,
+      );
       talker.warning('Windows in-app update failed: ${e.message}');
       state = state.copyWith(
         phase: UpdateDownloadPhase.failed,

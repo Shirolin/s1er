@@ -237,7 +237,7 @@ void main() {
       await tester.pumpAndSettle();
 
       expect(find.text('下载失败'), findsOneWidget);
-      expect(find.textContaining('s1er-update.log'), findsOneWidget);
+      expect(find.textContaining('手动解压覆盖'), findsOneWidget);
       expect(find.textContaining('卡在 100%'), findsNothing);
     } finally {
       debugDefaultTargetPlatformOverride = null;

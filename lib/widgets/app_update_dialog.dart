@@ -289,9 +289,7 @@ class _AppUpdateDialogBodyState extends ConsumerState<_AppUpdateDialogBody> {
           buffer.write('可尝试系统下载或打开发布页。');
         }
       } else if (!kIsWeb && defaultTargetPlatform == TargetPlatform.windows) {
-        buffer.write(
-          '\n可用浏览器打开 ZIP 手动解压覆盖；若已尝试应用内覆盖，请查看 %TEMP%\\s1er-update.log。',
-        );
+        buffer.write('\n可用浏览器打开 ZIP 手动解压覆盖。');
       } else if (!kIsWeb && defaultTargetPlatform == TargetPlatform.iOS) {
         buffer.write('\niOS 请前往发布页获取新版本，用 Xcode 或爱思助手安装。');
       } else if (evaluation.hasNetdisk) {
@@ -318,6 +316,10 @@ class _AppUpdateDialogBodyState extends ConsumerState<_AppUpdateDialogBody> {
     if (evaluation.hasNetdisk && hint != null) {
       buffer.write('\n\n');
       buffer.write(hint);
+    }
+    final blocked = evaluation.blockedReason;
+    if (blocked != null && blocked.isNotEmpty) {
+      buffer.write('\n\n上次自动更新未成功：$blocked');
     }
     return Text(buffer.toString(), style: textTheme.bodyMedium);
   }

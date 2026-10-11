@@ -21,7 +21,7 @@ void main() {
     }
   });
 
-  group('WindowsPortableUpdater path helpers', () {
+  group('WindowsPortableUpdateLayout path helpers', () {
     test('resolveSafeExtractPath rejects zip-slip', () {
       final root = tempRoot.path;
       expect(
@@ -62,9 +62,31 @@ void main() {
         p.normalize(nested.path),
       );
     });
+
+    test('planFileSwap maps every payload file onto install dir', () async {
+      final payload = Directory('${tempRoot.path}/payload');
+      await Directory('${payload.path}/data').create(recursive: true);
+      await File('${payload.path}/s1er.exe').writeAsBytes([0x4D, 0x5A]);
+      await File('${payload.path}/flutter_windows.dll').writeAsBytes([1, 2]);
+      await File('${payload.path}/data/a.txt').writeAsString('x');
+
+      final install = Directory('${tempRoot.path}/install');
+      await install.create();
+
+      final moves = WindowsPortableUpdateLayout.planFileSwap(
+        payloadRoot: payload,
+        installDir: install,
+      );
+      final targets =
+          moves.map((m) => p.relative(m.target, from: install.path)).toSet();
+      expect(
+        targets,
+        {'s1er.exe', 'flutter_windows.dll', p.join('data', 'a.txt')},
+      );
+    });
   });
 
-  group('WindowsPortableUpdater extractPortableZip', () {
+  group('WindowsPortableUpdateLayout extractPortableZip', () {
     test('extracts s1er.exe from a portable zip', () async {
       final zip = File('${tempRoot.path}/app.zip');
       await zip.writeAsBytes(_portableZipBytes());
@@ -114,73 +136,147 @@ void main() {
   });
 
   group('WindowsPortableUpdater applyDownloadedZip', () {
-    test('spawns overlay script then exits', () async {
+    test('swaps files in place, relaunches new exe, then exits', () async {
       debugDefaultTargetPlatformOverride = TargetPlatform.windows;
       addTearDown(() => debugDefaultTargetPlatformOverride = null);
 
-      final installDir = Directory('${tempRoot.path}/install');
-      await installDir.create();
-      await File('${installDir.path}/s1er.exe').writeAsBytes([0x4D, 0x5A]);
-
+      final installDir = await _seedInstallDir(tempRoot);
       final zip = File('${tempRoot.path}/app.zip');
       await zip.writeAsBytes(_portableZipBytes());
 
-      final spawned = <List<String>>[];
       var exitCode = -1;
+      final relaunched = <String>[];
       final updater = WindowsPortableUpdater(
         resolvedExecutable: () => p.join(installDir.path, 's1er.exe'),
-        currentPid: () => 4242,
         temporaryDirectory: () async => tempRoot,
-        spawnDetached: (exe, args) async {
-          spawned.add([exe, ...args]);
-        },
+        relaunch: (exe, wd) async => relaunched.add('$exe|$wd'),
+        setCurrentDirectory: (_) {},
         exitApp: (code) => exitCode = code,
-        spawnSettle: Duration.zero,
       );
 
       await updater.applyDownloadedZip(zip.path);
 
+      final installPath = p.normalize(installDir.path);
       expect(exitCode, 0);
-      expect(spawned, isNotEmpty);
-      expect(spawned.single.first, 'powershell.exe');
-      expect(spawned.single, contains('4242'));
       expect(
-        spawned.single.map(p.normalize),
-        contains(p.normalize(installDir.path)),
+        relaunched.single,
+        '${p.join(installPath, 's1er.exe')}|$installPath',
+      );
+      // New files are in place.
+      expect(
+        await File('${installDir.path}/data/a.txt').readAsString(),
+        'new',
+      );
+      expect(File('${installDir.path}/data/new.txt').existsSync(), isTrue);
+      // Old files were moved aside, not erased.
+      expect(
+        File('${installDir.path}/s1er.exe${WindowsPortableUpdateLayout.oldSuffix}')
+            .existsSync(),
+        isTrue,
+      );
+      // Staging is cleaned up.
+      expect(
+        Directory(
+          '${installDir.path}/${WindowsPortableUpdateLayout.stagingDirName}',
+        ).existsSync(),
+        isFalse,
+      );
+    });
+
+    test('rolls back and keeps the old version when relaunch fails', () async {
+      debugDefaultTargetPlatformOverride = TargetPlatform.windows;
+      addTearDown(() => debugDefaultTargetPlatformOverride = null);
+
+      final installDir = await _seedInstallDir(tempRoot);
+      final zip = File('${tempRoot.path}/app.zip');
+      await zip.writeAsBytes(_portableZipBytes());
+
+      var exitCode = -1;
+      final updater = WindowsPortableUpdater(
+        resolvedExecutable: () => p.join(installDir.path, 's1er.exe'),
+        temporaryDirectory: () async => tempRoot,
+        relaunch: (_, __) async => throw StateError('blocked by policy'),
+        setCurrentDirectory: (_) {},
+        exitApp: (code) => exitCode = code,
+      );
+
+      await expectLater(
+        () => updater.applyDownloadedZip(zip.path),
+        throwsA(isA<UpdateCheckException>()),
+      );
+
+      expect(exitCode, -1);
+      // Old files are back, new payload removed, no leftovers.
+      expect(
+        await File('${installDir.path}/data/a.txt').readAsString(),
+        'old',
       );
       expect(
-        spawned.single.map(p.normalize),
-        contains(p.normalize(zip.path)),
+        await File('${installDir.path}/s1er.exe').readAsBytes(),
+        [0x4D, 0x5A, 0x01],
+      );
+      expect(File('${installDir.path}/data/new.txt').existsSync(), isFalse);
+      expect(
+        File('${installDir.path}/s1er.exe${WindowsPortableUpdateLayout.oldSuffix}')
+            .existsSync(),
+        isFalse,
+      );
+      expect(
+        Directory(
+          '${installDir.path}/${WindowsPortableUpdateLayout.stagingDirName}',
+        ).existsSync(),
+        isFalse,
       );
     });
   });
 
   group('WindowsPortableUpdateLayout cleanup helpers', () {
-    test('purgeStaleUpdateTemp removes leftover extract dirs and scripts',
+    test('purgeStaleArtifacts removes .s1erold files and staging dirs',
         () async {
-      await Directory('${tempRoot.path}/s1er-update-extract-1').create();
-      await File('${tempRoot.path}/s1er-apply-update-1.ps1').writeAsString('x');
-      final keep = File('${tempRoot.path}/updates/s1er-1.0.0.zip');
-      await keep.parent.create(recursive: true);
-      await keep.writeAsBytes([1, 2, 3, 4]);
-      final staleZip = File('${tempRoot.path}/updates/s1er-0.9.0.zip');
-      await staleZip.writeAsBytes([5, 6]);
+      final install = Directory('${tempRoot.path}/install');
+      await install.create();
+      await File(
+        '${install.path}/s1er.exe${WindowsPortableUpdateLayout.oldSuffix}',
+      ).writeAsString('x');
+      final staging = Directory(
+        '${install.path}/${WindowsPortableUpdateLayout.stagingDirName}',
+      );
+      await staging.create();
+      await File('${staging.path}/s1er.exe').writeAsString('y');
+      await File('${install.path}/keep.txt').writeAsString('z');
 
-      final removed = await WindowsPortableUpdateLayout.purgeStaleUpdateTemp(
-        tempRoot,
+      final removed =
+          await WindowsPortableUpdateLayout.purgeStaleArtifacts(install);
+
+      expect(removed, greaterThanOrEqualTo(2));
+      expect(
+        File('${install.path}/s1er.exe${WindowsPortableUpdateLayout.oldSuffix}')
+            .existsSync(),
+        isFalse,
+      );
+      expect(staging.existsSync(), isFalse);
+      expect(File('${install.path}/keep.txt').existsSync(), isTrue);
+    });
+
+    test('purgeStaleDownloads keeps the current zip only', () async {
+      final dir = Directory('${tempRoot.path}/updates');
+      await dir.create();
+      final keep = File('${dir.path}/s1er-2.0.0.zip');
+      await keep.writeAsBytes([1]);
+      final stale = File('${dir.path}/s1er-1.0.0.zip');
+      await stale.writeAsBytes([2]);
+      final other = File('${dir.path}/notes.txt');
+      await other.writeAsString('x');
+
+      final removed = await WindowsPortableUpdateLayout.purgeStaleDownloads(
+        dir,
         keepZipPath: keep.path,
       );
-      expect(removed, greaterThanOrEqualTo(3));
-      expect(
-        Directory('${tempRoot.path}/s1er-update-extract-1').existsSync(),
-        isFalse,
-      );
-      expect(
-        File('${tempRoot.path}/s1er-apply-update-1.ps1').existsSync(),
-        isFalse,
-      );
+
+      expect(removed, 1);
       expect(keep.existsSync(), isTrue);
-      expect(staleZip.existsSync(), isFalse);
+      expect(stale.existsSync(), isFalse);
+      expect(other.existsSync(), isTrue);
     });
 
     test('assertPeExecutable accepts MZ and rejects others', () async {
@@ -195,34 +291,27 @@ void main() {
         throwsA(isA<UpdateCheckException>()),
       );
     });
-
-    test('apply script swaps directories and always cleans temps', () {
-      const script = WindowsPortableUpdateLayout.applyScript;
-      expect(script, contains('s1er-bak'));
-      expect(script, contains(r'$backupReady'));
-      expect(script, contains('exe still locked'));
-      expect(script, contains('Restore-S1erBackup'));
-      expect(script, contains('Remove-S1erTemp'));
-      expect(script, contains('relaunching old exe'));
-      expect(script, contains(r'-WorkingDirectory $dst'));
-      expect(script, contains(r'$procArgs'));
-      expect(script, contains(r'WorkingDirectory = $WorkDir'));
-      // rename 失败时不得无条件删安装目录
-      expect(
-        script.contains(
-          r'if ($backupReady -and (Test-Path -LiteralPath $dst))',
-        ),
-        isTrue,
-      );
-    });
   });
+}
+
+Future<Directory> _seedInstallDir(Directory tempRoot) async {
+  final installDir = Directory('${tempRoot.path}/install');
+  await Directory('${installDir.path}/data').create(recursive: true);
+  await File('${installDir.path}/s1er.exe').writeAsBytes([0x4D, 0x5A, 0x01]);
+  await File('${installDir.path}/flutter_windows.dll').writeAsBytes([1, 1]);
+  await File('${installDir.path}/data/a.txt').writeAsString('old');
+  return installDir;
 }
 
 Uint8List _portableZipBytes() {
   final exe = Uint8List.fromList([0x4D, 0x5A, 0x90, 0x00]);
-  final dll = Uint8List.fromList([1, 2, 3]);
+  final dll = Uint8List.fromList([2, 2, 2]);
+  final aTxt = Uint8List.fromList('new'.codeUnits);
+  final newTxt = Uint8List.fromList('added'.codeUnits);
   final archive = Archive()
     ..addFile(ArchiveFile('s1er.exe', exe.length, exe))
-    ..addFile(ArchiveFile('flutter_windows.dll', dll.length, dll));
+    ..addFile(ArchiveFile('flutter_windows.dll', dll.length, dll))
+    ..addFile(ArchiveFile('data/a.txt', aTxt.length, aTxt))
+    ..addFile(ArchiveFile('data/new.txt', newTxt.length, newTxt));
   return ZipEncoder().encodeBytes(archive);
 }

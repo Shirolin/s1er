@@ -1,4 +1,3 @@
-import 'dart:convert';
 import 'dart:io';
 
 import 'package:flutter/foundation.dart';
@@ -9,45 +8,60 @@ import '../models/app_exceptions.dart';
 import 'talker.dart';
 import 'windows_portable_update_layout.dart';
 
-/// Windows 绿色包：解压到临时目录，退出后用脚本整目录对换并重启。
+/// Windows 绿色包：把新包逐文件覆盖到安装目录（旧文件先改名让位），
+/// 就地拉起新 `s1er.exe` 后退出当前进程。
 ///
-/// 用户数据在 `%APPDATA%`，不会随安装目录一起被覆盖。
+/// 之所以是「文件级」而非「整目录对换」：Windows 上运行中的 exe / DLL
+/// **文件**可以改名，但它们所在的**目录**不能被改名。逐文件让位不依赖
+/// 外部脚本或辅助进程，也不需要在退出前等待。
+///
+/// 用户数据在 `%APPDATA%`，不随安装目录一起被替换。
 class WindowsPortableUpdater {
   WindowsPortableUpdater({
     String Function()? resolvedExecutable,
-    int Function()? currentPid,
     Future<Directory> Function()? temporaryDirectory,
-    Future<void> Function(String executable, List<String> arguments)?
-        spawnDetached,
+    Future<void> Function(String from, String to)? renameFile,
+    Future<void> Function(String executable, String workingDirectory)? relaunch,
+    void Function(String directory)? setCurrentDirectory,
     void Function(int code)? exitApp,
-    this.spawnSettle = const Duration(milliseconds: 400),
   })  : _resolvedExecutable =
             resolvedExecutable ?? (() => Platform.resolvedExecutable),
-        _currentPid = currentPid ?? (() => pid),
         _temporaryDirectory = temporaryDirectory ?? getTemporaryDirectory,
-        _spawnDetached = spawnDetached ?? _defaultSpawnDetached,
+        _renameFile = renameFile ?? _defaultRenameFile,
+        _relaunch = relaunch ?? _defaultRelaunch,
+        _setCurrentDirectory =
+            setCurrentDirectory ?? _defaultSetCurrentDirectory,
         _exitApp = exitApp ?? exit;
 
   final String Function() _resolvedExecutable;
-  final int Function() _currentPid;
   final Future<Directory> Function() _temporaryDirectory;
-  final Future<void> Function(String executable, List<String> arguments)
-      _spawnDetached;
+  final Future<void> Function(String from, String to) _renameFile;
+  final Future<void> Function(String executable, String workingDirectory)
+      _relaunch;
+  final void Function(String directory) _setCurrentDirectory;
   final void Function(int code) _exitApp;
-  final Duration spawnSettle;
 
-  static Future<void> _defaultSpawnDetached(
+  static Future<void> _defaultRenameFile(String from, String to) async {
+    await File(from).rename(to);
+  }
+
+  static Future<void> _defaultRelaunch(
     String executable,
-    List<String> arguments,
+    String workingDirectory,
   ) async {
     await Process.start(
       executable,
-      arguments,
+      const <String>[],
+      workingDirectory: workingDirectory,
       mode: ProcessStartMode.detached,
     );
   }
 
-  /// 解压 [zipPath]，拉起覆盖脚本后退出当前进程（成功路径通常不返回）。
+  static void _defaultSetCurrentDirectory(String directory) {
+    Directory.current = directory;
+  }
+
+  /// 解压 [zipPath]，逐文件覆盖安装目录后拉起新版本并退出（成功路径不返回）。
   Future<void> applyDownloadedZip(String zipPath) async {
     if (kIsWeb || defaultTargetPlatform != TargetPlatform.windows) {
       throw const UpdateCheckException('当前平台不支持覆盖更新');
@@ -71,83 +85,125 @@ class WindowsPortableUpdater {
     }
 
     final tempRoot = await _temporaryDirectory();
-    await WindowsPortableUpdateLayout.purgeStaleUpdateTemp(
-      tempRoot,
+    await WindowsPortableUpdateLayout.purgeStaleArtifacts(installDir);
+    await WindowsPortableUpdateLayout.purgeStaleDownloads(
+      Directory(p.join(tempRoot.path, 'updates')),
       keepZipPath: zip.path,
     );
 
-    final extractDir = Directory(
-      p.join(tempRoot.path, 's1er-update-extract-${_currentPid()}'),
+    final staging = Directory(
+      p.join(installDir.path, WindowsPortableUpdateLayout.stagingDirName),
     );
-    if (await extractDir.exists()) {
-      await extractDir.delete(recursive: true);
-    }
-    await extractDir.create(recursive: true);
+    await _deleteQuietly(staging);
+    await staging.create(recursive: true);
 
+    List<FileMove> moves;
     try {
-      await WindowsPortableUpdateLayout.extractPortableZip(zip, extractDir);
-      final payload = WindowsPortableUpdateLayout.findPayloadDir(extractDir);
+      await WindowsPortableUpdateLayout.extractPortableZip(zip, staging);
+      final payload = WindowsPortableUpdateLayout.findPayloadDir(staging);
       if (payload == null) {
         throw const UpdateCheckException('更新包里找不到 s1er.exe');
       }
       await WindowsPortableUpdateLayout.assertPeExecutable(
         File(p.join(payload.path, WindowsPortableUpdateLayout.exeName)),
       );
-
-      final script = File(
-        p.join(tempRoot.path, 's1er-apply-update-${_currentPid()}.ps1'),
+      moves = WindowsPortableUpdateLayout.planFileSwap(
+        payloadRoot: payload,
+        installDir: installDir,
       );
-      await script.writeAsBytes(
-        _utf8BomScript(WindowsPortableUpdateLayout.applyScript),
-        flush: true,
-      );
-
-      await _spawnDetached(
-        'powershell.exe',
-        [
-          '-NoProfile',
-          '-ExecutionPolicy',
-          'Bypass',
-          '-WindowStyle',
-          'Hidden',
-          '-File',
-          script.path,
-          '${_currentPid()}',
-          payload.path,
-          installDir.path,
-          p.join(installDir.path, WindowsPortableUpdateLayout.exeName),
-          zip.path,
-        ],
-      );
+      if (moves.isEmpty) {
+        throw const UpdateCheckException('更新包里没有可安装的文件');
+      }
     } on UpdateCheckException {
-      await _deleteQuietly(extractDir);
-      await _deleteFileQuietly(
-        File(p.join(tempRoot.path, 's1er-apply-update-${_currentPid()}.ps1')),
-      );
+      await _deleteQuietly(staging);
       rethrow;
     } on Object catch (e, st) {
-      await _deleteQuietly(extractDir);
-      await _deleteFileQuietly(
-        File(p.join(tempRoot.path, 's1er-apply-update-${_currentPid()}.ps1')),
-      );
-      talker.handle(e, st, 'Windows portable overlay failed');
-      throw const UpdateCheckException('无法开始覆盖安装');
+      await _deleteQuietly(staging);
+      talker.handle(e, st, 'Windows portable extract failed');
+      throw const UpdateCheckException('无法解析更新包');
     }
 
-    // 给脱离进程的 PowerShell 一点启动时间，再退出以免脚本还没挂上 PID。
-    await Future<void>.delayed(spawnSettle);
+    final newExe = p.join(installDir.path, WindowsPortableUpdateLayout.exeName);
+    try {
+      await _performSwap(
+        moves,
+        installDir: installDir,
+        newExe: newExe,
+        tempRoot: tempRoot,
+      );
+    } on Object {
+      await _deleteQuietly(staging);
+      rethrow;
+    }
+
+    await _deleteQuietly(staging);
     _exitApp(0);
   }
 
-  static Uint8List _utf8BomScript(String source) {
-    final encoded = utf8.encode(source);
-    return Uint8List.fromList(<int>[0xEF, 0xBB, 0xBF, ...encoded]);
+  /// 旧文件让位 → 新文件就位 → 拉起新版本；任一步失败则整体回滚。
+  Future<void> _performSwap(
+    List<FileMove> moves, {
+    required Directory installDir,
+    required String newExe,
+    required Directory tempRoot,
+  }) async {
+    // 把当前工作目录移出安装目录，避免它被自己占用。
+    try {
+      _setCurrentDirectory(tempRoot.path);
+    } on Object {
+      // 无法改工作目录不致命，继续。
+    }
+
+    const suffix = WindowsPortableUpdateLayout.oldSuffix;
+    final takenAside = <String>[];
+    final placed = <String>[];
+
+    Future<void> rollback() async {
+      for (final target in placed.reversed) {
+        try {
+          final file = File(target);
+          if (await file.exists()) await file.delete();
+        } on Object {
+          // best-effort
+        }
+      }
+      for (final target in takenAside.reversed) {
+        try {
+          final old = File('$target$suffix');
+          if (await old.exists()) await old.rename(target);
+        } on Object {
+          // best-effort
+        }
+      }
+    }
+
+    try {
+      for (final move in moves) {
+        await Directory(p.dirname(move.target)).create(recursive: true);
+        final targetFile = File(move.target);
+        if (await targetFile.exists()) {
+          final aside = '${move.target}$suffix';
+          final asideFile = File(aside);
+          if (await asideFile.exists()) await asideFile.delete();
+          await _renameFile(move.target, aside);
+          takenAside.add(move.target);
+        }
+        await _renameFile(move.source, move.target);
+        placed.add(move.target);
+      }
+      await _relaunch(newExe, installDir.path);
+    } on Object catch (e, st) {
+      await rollback();
+      talker.handle(e, st, 'Windows portable overlay failed');
+      throw const UpdateCheckException(
+        '覆盖安装失败：程序文件可能被占用，或新版本无法启动。'
+        '请关闭其它 s1er 窗口后重试，或改用浏览器打开 ZIP 手动覆盖',
+      );
+    }
   }
 
   static Future<void> _assertWritable(Directory dir) async {
-    final probe = File(
-      p.join(dir.path, '.s1er-update-write-test'),
-    );
+    final probe = File(p.join(dir.path, '.s1er-update-write-test'));
     await probe.writeAsString('ok', flush: true);
     await probe.delete();
   }
@@ -155,14 +211,6 @@ class WindowsPortableUpdater {
   static Future<void> _deleteQuietly(Directory dir) async {
     try {
       if (await dir.exists()) await dir.delete(recursive: true);
-    } on Object {
-      // best-effort
-    }
-  }
-
-  static Future<void> _deleteFileQuietly(File file) async {
-    try {
-      if (await file.exists()) await file.delete();
     } on Object {
       // best-effort
     }

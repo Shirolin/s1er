@@ -5,9 +5,27 @@ import 'package:path/path.dart' as p;
 
 import '../models/app_exceptions.dart';
 
-/// 绿色包 ZIP 的解压与目录识别（不含进程退出 / 覆盖脚本）。
+/// 覆盖更新时旧文件让位用的后缀（`s1er.exe` → `s1er.exe.s1erold`）。
+class FileMove {
+  const FileMove({required this.source, required this.target});
+
+  final String source;
+  final String target;
+}
+
+/// Windows 绿色包 ZIP 的解压、目录识别，以及「逐文件热替换」的路径规划。
+///
+/// Windows 上运行中的 exe / DLL **文件**可以改名（所在**目录**不行），
+/// 因此覆盖更新走文件级对换：把旧文件改名让位、把新文件就位，无需外部
+/// 脚本或辅助进程。见 `docs/release/README.md` 的「Windows 绿色包」。
 abstract final class WindowsPortableUpdateLayout {
   static const exeName = 's1er.exe';
+
+  /// 解压暂存目录名（位于安装目录内，随安装目录一起被清理）。
+  static const stagingDirName = '.s1er-staging';
+
+  /// 被让位旧文件的后缀。
+  static const oldSuffix = '.s1erold';
 
   /// 解压绿色包；拒绝 zip-slip（`../`）条目。
   static Future<void> extractPortableZip(File zip, Directory dest) async {
@@ -108,170 +126,83 @@ abstract final class WindowsPortableUpdateLayout {
     }
   }
 
-  /// 清掉上次失败/杀进程留下的解压目录和覆盖脚本，避免临时目录堆积。
-  static Future<int> purgeStaleUpdateTemp(
-    Directory tempRoot, {
-    String? keepZipPath,
-  }) async {
-    var removed = 0;
-    if (!await tempRoot.exists()) return 0;
+  /// 规划把 [payloadRoot] 下每个文件搬到 [installDir] 的对应位置。
+  ///
+  /// 只做纯路径计算（不落盘），便于单测；实际对换时目标已存在则先让位。
+  static List<FileMove> planFileSwap({
+    required Directory payloadRoot,
+    required Directory installDir,
+  }) {
+    final root = p.normalize(payloadRoot.path);
+    final install = p.normalize(installDir.path);
+    final moves = <FileMove>[];
+    for (final entity
+        in payloadRoot.listSync(recursive: true, followLinks: false)) {
+      if (entity is! File) continue;
+      final rel = p.relative(p.normalize(entity.path), from: root);
+      if (rel.isEmpty || rel.startsWith('..')) continue;
+      final target = p.normalize(p.join(install, rel));
+      if (!p.isWithin(install, target)) continue;
+      moves.add(FileMove(source: entity.path, target: target));
+    }
+    return moves;
+  }
 
-    await for (final entity in tempRoot.list(followLinks: false)) {
-      final name = p.basename(entity.path);
+  /// 清掉上次更新残留：安装目录内 `*.s1erold` 文件与 `.s1er-staging*` 目录。
+  ///
+  /// 正在运行的旧版 exe / 被占用的文件删不掉，属预期，直接跳过。
+  static Future<int> purgeStaleArtifacts(Directory installDir) async {
+    if (!await installDir.exists()) return 0;
+    var removed = 0;
+    final entities =
+        await installDir.list(recursive: true, followLinks: false).toList();
+    // 先删文件（避免目录删除被内含文件拖累），再删目录。
+    for (final entity in entities) {
+      if (entity is! File) continue;
+      if (!entity.path.toLowerCase().endsWith(oldSuffix)) continue;
       try {
-        if (entity is Directory && name.startsWith('s1er-update-extract-')) {
-          await entity.delete(recursive: true);
-          removed++;
-          continue;
-        }
-        if (entity is File &&
-            name.startsWith('s1er-apply-update-') &&
-            name.toLowerCase().endsWith('.ps1')) {
-          await entity.delete();
-          removed++;
-        }
+        await entity.delete();
+        removed++;
       } on Object {
-        // 正在跑的覆盖脚本可能锁着文件，跳过。
+        // 可能仍被占用，跳过。
       }
     }
-
-    if (keepZipPath != null) {
-      final keep = p.normalize(keepZipPath);
-      final zipDir = Directory(p.dirname(keep));
-      if (await zipDir.exists()) {
-        await for (final entity in zipDir.list(followLinks: false)) {
-          if (entity is! File) continue;
-          final name = p.basename(entity.path).toLowerCase();
-          if (!name.startsWith('s1er-') || !name.endsWith('.zip')) continue;
-          if (p.normalize(entity.path) == keep) continue;
-          try {
-            await entity.delete();
-            removed++;
-          } on Object {
-            // skip locked
-          }
-        }
+    for (final entity in entities) {
+      if (entity is! Directory) continue;
+      final name = p.basename(entity.path);
+      if (name != stagingDirName && !name.startsWith('$stagingDirName-')) {
+        continue;
+      }
+      try {
+        await entity.delete(recursive: true);
+        removed++;
+      } on Object {
+        // 跳过。
       }
     }
     return removed;
   }
 
-  /// 等进程退出后整目录对换；失败则回滚并拉起旧程序，最后清临时文件。
-  static const applyScript = r'''
-$ErrorActionPreference = 'Stop'
-$log = Join-Path $env:TEMP 's1er-update.log'
-function Write-S1erLog([string]$Message) {
-  Add-Content -LiteralPath $log -Value (("[{0}] {1}" -f (Get-Date -Format s), $Message))
-}
-$appPid = [int]$args[0]
-$src = $args[1]
-$dst = $args[2]
-$oldExe = $args[3]
-$zip = $args[4]
-$self = $MyInvocation.MyCommand.Path
-$dstName = Split-Path -Leaf $dst
-$backup = $dst + '.s1er-bak'
-$backupReady = $false
-
-function Start-S1erExe([string]$Path, [string]$WorkDir) {
-  if (Test-Path -LiteralPath $Path) {
-    $procArgs = @{ FilePath = $Path }
-    if ($WorkDir -and (Test-Path -LiteralPath $WorkDir)) {
-      $procArgs.WorkingDirectory = $WorkDir
+  /// 清掉下载目录里除 [keepZipPath] 外的旧 `s1er-*.zip`，避免临时目录堆积。
+  static Future<int> purgeStaleDownloads(
+    Directory dir, {
+    String? keepZipPath,
+  }) async {
+    if (!await dir.exists()) return 0;
+    final keep = keepZipPath == null ? null : p.normalize(keepZipPath);
+    var removed = 0;
+    await for (final entity in dir.list(followLinks: false)) {
+      if (entity is! File) continue;
+      final name = p.basename(entity.path).toLowerCase();
+      if (!name.startsWith('s1er-') || !name.endsWith('.zip')) continue;
+      if (keep != null && p.normalize(entity.path) == keep) continue;
+      try {
+        await entity.delete();
+        removed++;
+      } on Object {
+        // skip locked
+      }
     }
-    Start-Process @procArgs
+    return removed;
   }
-}
-function Remove-S1erTemp {
-  if ($src -and (Test-Path -LiteralPath $src)) {
-    Remove-Item -LiteralPath $src -Recurse -Force -ErrorAction SilentlyContinue
-    $parent = Split-Path -Parent $src
-    $leaf = Split-Path -Leaf $parent
-    if ($leaf -like 's1er-update-extract-*') {
-      Remove-Item -LiteralPath $parent -Recurse -Force -ErrorAction SilentlyContinue
-    }
-  }
-  if ($zip -and (Test-Path -LiteralPath $zip)) {
-    Remove-Item -LiteralPath $zip -Force -ErrorAction SilentlyContinue
-  }
-  if ($self -and (Test-Path -LiteralPath $self)) {
-    Remove-Item -LiteralPath $self -Force -ErrorAction SilentlyContinue
-  }
-}
-function Restore-S1erBackup {
-  if (-not (Test-Path -LiteralPath $dst) -and (Test-Path -LiteralPath $backup)) {
-    Rename-Item -LiteralPath $backup -NewName $dstName
-  }
-}
-
-Write-S1erLog 'waiting for process to exit'
-for ($i = 0; $i -lt 90; $i++) {
-  if (-not (Get-Process -Id $appPid -ErrorAction SilentlyContinue)) { break }
-  Start-Sleep -Seconds 1
-}
-if (Get-Process -Id $appPid -ErrorAction SilentlyContinue) {
-  Write-S1erLog 'timeout waiting for process; relaunching old exe'
-  Start-S1erExe $oldExe $dst
-  Remove-S1erTemp
-  exit 1
-}
-
-$exeUnlocked = $false
-for ($i = 0; $i -lt 30; $i++) {
-  try {
-    $fs = [System.IO.File]::Open($oldExe, 'Open', 'ReadWrite', 'None')
-    $fs.Close()
-    $exeUnlocked = $true
-    break
-  } catch {
-    Start-Sleep -Seconds 1
-  }
-}
-if (-not $exeUnlocked) {
-  Write-S1erLog 'exe still locked; relaunching old exe'
-  Start-S1erExe $oldExe $dst
-  Remove-S1erTemp
-  exit 1
-}
-
-try {
-  if (Test-Path -LiteralPath $backup) {
-    Remove-Item -LiteralPath $backup -Recurse -Force
-  }
-  Rename-Item -LiteralPath $dst -NewName (Split-Path -Leaf $backup)
-  $backupReady = $true
-  Move-Item -LiteralPath $src -Destination $dst
-} catch {
-  Write-S1erLog ("swap failed: " + $_)
-  if ($backupReady -and (Test-Path -LiteralPath $dst)) {
-    Remove-Item -LiteralPath $dst -Recurse -Force -ErrorAction SilentlyContinue
-    Restore-S1erBackup
-    Start-S1erExe (Join-Path $dst 's1er.exe') $dst
-  } else {
-    Start-S1erExe $oldExe $dst
-  }
-  Remove-S1erTemp
-  exit 1
-}
-
-$newExe = Join-Path $dst 's1er.exe'
-if (-not (Test-Path -LiteralPath $newExe)) {
-  Write-S1erLog 'new exe missing; restoring backup'
-  if ($backupReady -and (Test-Path -LiteralPath $dst)) {
-    Remove-Item -LiteralPath $dst -Recurse -Force -ErrorAction SilentlyContinue
-  }
-  Restore-S1erBackup
-  Start-S1erExe (Join-Path $dst 's1er.exe') $dst
-  Remove-S1erTemp
-  exit 1
-}
-
-Start-Process -FilePath $newExe -WorkingDirectory $dst
-if (Test-Path -LiteralPath $backup) {
-  Remove-Item -LiteralPath $backup -Recurse -Force -ErrorAction SilentlyContinue
-}
-Write-S1erLog 'update applied'
-Remove-S1erTemp
-exit 0
-''';
 }

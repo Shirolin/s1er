@@ -149,9 +149,14 @@ void main() {
       final updater = WindowsPortableUpdater(
         resolvedExecutable: () => p.join(installDir.path, 's1er.exe'),
         temporaryDirectory: () async => tempRoot,
-        relaunch: (exe, wd) async => relaunched.add('$exe|$wd'),
+        relaunch: (exe, wd, marker) async {
+          relaunched.add('$exe|$wd');
+          // 模拟新进程启动早期写入「已启动」标记。
+          await File(marker).writeAsString('99');
+        },
         setCurrentDirectory: (_) {},
         exitApp: (code) => exitCode = code,
+        startTimeout: const Duration(seconds: 2),
       );
 
       await updater.applyDownloadedZip(zip.path);
@@ -195,9 +200,10 @@ void main() {
       final updater = WindowsPortableUpdater(
         resolvedExecutable: () => p.join(installDir.path, 's1er.exe'),
         temporaryDirectory: () async => tempRoot,
-        relaunch: (_, __) async => throw StateError('blocked by policy'),
+        relaunch: (_, __, ___) async => throw StateError('blocked by policy'),
         setCurrentDirectory: (_) {},
         exitApp: (code) => exitCode = code,
+        startTimeout: const Duration(seconds: 1),
       );
 
       await expectLater(
@@ -226,6 +232,37 @@ void main() {
           '${installDir.path}/${WindowsPortableUpdateLayout.stagingDirName}',
         ).existsSync(),
         isFalse,
+      );
+    });
+
+    test('rolls back when the new version never reports started', () async {
+      debugDefaultTargetPlatformOverride = TargetPlatform.windows;
+      addTearDown(() => debugDefaultTargetPlatformOverride = null);
+
+      final installDir = await _seedInstallDir(tempRoot);
+      final zip = File('${tempRoot.path}/app.zip');
+      await zip.writeAsBytes(_portableZipBytes());
+
+      var exitCode = -1;
+      final updater = WindowsPortableUpdater(
+        resolvedExecutable: () => p.join(installDir.path, 's1er.exe'),
+        temporaryDirectory: () async => tempRoot,
+        // 进程能拉起，但不写标记（起不来 / 秒退）。
+        relaunch: (_, __, ___) async {},
+        setCurrentDirectory: (_) {},
+        exitApp: (code) => exitCode = code,
+        startTimeout: const Duration(milliseconds: 300),
+      );
+
+      await expectLater(
+        () => updater.applyDownloadedZip(zip.path),
+        throwsA(isA<UpdateCheckException>()),
+      );
+
+      expect(exitCode, -1);
+      expect(
+        await File('${installDir.path}/data/a.txt').readAsString(),
+        'old',
       );
     });
   });

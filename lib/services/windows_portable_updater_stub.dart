@@ -6,9 +6,14 @@ class WindowsPortableUpdater {
     String Function()? resolvedExecutable,
     Future<dynamic> Function()? temporaryDirectory,
     Future<void> Function(String from, String to)? renameFile,
-    Future<void> Function(String executable, String workingDirectory)? relaunch,
+    Future<void> Function(
+      String executable,
+      String workingDirectory,
+      String markerPath,
+    )? relaunch,
     void Function(String directory)? setCurrentDirectory,
     void Function(int code)? exitApp,
+    Duration? startTimeout,
   });
 
   Future<void> applyDownloadedZip(String zipPath) async {

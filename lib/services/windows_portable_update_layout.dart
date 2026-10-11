@@ -5,9 +5,9 @@ import 'package:path/path.dart' as p;
 
 import '../models/app_exceptions.dart';
 
-/// 覆盖更新时旧文件让位用的后缀（`s1er.exe` → `s1er.exe.s1erold`）。
-class FileMove {
-  const FileMove({required this.source, required this.target});
+/// 覆盖更新时一个文件从 `source`（暂存）搬到 `target`（安装目录）的路径规划。
+class PathMove {
+  const PathMove({required this.source, required this.target});
 
   final String source;
   final String target;
@@ -129,13 +129,13 @@ abstract final class WindowsPortableUpdateLayout {
   /// 规划把 [payloadRoot] 下每个文件搬到 [installDir] 的对应位置。
   ///
   /// 只做纯路径计算（不落盘），便于单测；实际对换时目标已存在则先让位。
-  static List<FileMove> planFileSwap({
+  static List<PathMove> planFileSwap({
     required Directory payloadRoot,
     required Directory installDir,
   }) {
     final root = p.normalize(payloadRoot.path);
     final install = p.normalize(installDir.path);
-    final moves = <FileMove>[];
+    final moves = <PathMove>[];
     for (final entity
         in payloadRoot.listSync(recursive: true, followLinks: false)) {
       if (entity is! File) continue;
@@ -143,7 +143,7 @@ abstract final class WindowsPortableUpdateLayout {
       if (rel.isEmpty || rel.startsWith('..')) continue;
       final target = p.normalize(p.join(install, rel));
       if (!p.isWithin(install, target)) continue;
-      moves.add(FileMove(source: entity.path, target: target));
+      moves.add(PathMove(source: entity.path, target: target));
     }
     return moves;
   }

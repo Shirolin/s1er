@@ -1,5 +1,15 @@
 import '../services/settings_store.dart';
 
+/// 一次「自动应用更新失败（已回滚）」的记录：失败版本 + 原因。
+///
+/// 冷启动自动检查据此对该版本退避；手动检查仍展示 [reason]。
+class BlockedUpdate {
+  const BlockedUpdate({required this.version, this.reason});
+
+  final String version;
+  final String? reason;
+}
+
 /// 升级提醒本地状态（SettingsStore 辅助 key，不进 AppSettings / L1 备份）。
 abstract class UpdatePromptStore {
   static const ignoredVersionKey = 'update_ignored_version';
@@ -32,37 +42,25 @@ abstract class UpdatePromptStore {
   static const blockedVersionKey = 'update_blocked_version';
   static const blockedReasonKey = 'update_blocked_reason';
 
-  static String? blockedVersion(SettingsStore? store) {
+  /// 读取上次应用失败的记录；无记录返回 null。
+  static BlockedUpdate? blocked(SettingsStore? store) {
     final raw = store?.get<String>(blockedVersionKey);
-    final value = raw?.trim();
-    if (value == null || value.isEmpty) return null;
-    return value;
+    final version = raw?.trim();
+    if (version == null || version.isEmpty) return null;
+    final reasonRaw = store?.get<String>(blockedReasonKey);
+    final reason = reasonRaw?.trim();
+    return BlockedUpdate(
+      version: version,
+      reason: (reason == null || reason.isEmpty) ? null : reason,
+    );
   }
 
-  static String? blockedReason(SettingsStore? store) {
-    final raw = store?.get<String>(blockedReasonKey);
-    final value = raw?.trim();
-    if (value == null || value.isEmpty) return null;
-    return value;
-  }
-
-  /// [targetVersion] 是否正是上次应用失败、需要退避的版本。
-  static bool isBlocked(SettingsStore? store, String targetVersion) {
-    final blocked = blockedVersion(store);
-    final target = targetVersion.trim();
-    if (blocked == null || target.isEmpty) return false;
-    return blocked == target;
-  }
-
-  static void setBlocked(
-    SettingsStore? store, {
-    required String version,
-    required String reason,
-  }) {
-    final trimmed = version.trim();
-    if (trimmed.isEmpty) return;
-    store?.put(blockedVersionKey, trimmed);
-    store?.put(blockedReasonKey, reason.trim());
+  /// 记录一次应用失败（版本 + 原因），供自动检查退避。
+  static void setBlocked(SettingsStore? store, BlockedUpdate blocked) {
+    final version = blocked.version.trim();
+    if (version.isEmpty) return;
+    store?.put(blockedVersionKey, version);
+    store?.put(blockedReasonKey, blocked.reason?.trim() ?? '');
   }
 
   static void clearBlocked(SettingsStore? store) {

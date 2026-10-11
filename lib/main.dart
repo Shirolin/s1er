@@ -15,6 +15,7 @@ import 'services/app_database.dart';
 import 'services/app_local_data.dart';
 import 'services/frame_timing_service.dart';
 import 'utils/desktop_window.dart';
+import 'utils/update_startup_marker.dart';
 import 'services/http_client.dart';
 import 'services/sentry_bootstrap.dart';
 import 'services/sentry_event_filter.dart';
@@ -104,6 +105,9 @@ void _setupErrorHub() {
 }
 
 void main() async {
+  // 覆盖更新交接：新进程启动早期先向旧进程报「已启动」，越早越好。
+  reportUpdateStartedIfRequested();
+
   WidgetsFlutterBinding.ensureInitialized();
 
   // Desktop: hide native title bar before first frame (Windows / macOS / Linux).

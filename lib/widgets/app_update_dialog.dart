@@ -301,6 +301,10 @@ class _AppUpdateDialogBodyState extends ConsumerState<_AppUpdateDialogBody> {
         buffer.write('\n\n');
         buffer.write(hint);
       }
+      final blocked = evaluation.blockedReason;
+      if (blocked != null && blocked.isNotEmpty) {
+        buffer.write('\n\n上次自动更新未成功：$blocked');
+      }
       return Text(buffer.toString(), style: textTheme.bodyMedium);
     }
 

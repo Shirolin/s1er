@@ -244,6 +244,54 @@ void main() {
     }
   });
 
+  testWidgets('shows previous apply failure reason in normal state',
+      (tester) async {
+    final manifest = manifestWith();
+    final evaluation = UpdateEvaluation(
+      availability: UpdateAvailability.optional,
+      localVersion: '1.0.0',
+      manifest: manifest,
+      downloadUrl: 'https://github.com/Shirolin/s1er/releases/latest',
+      canInAppDownload: false,
+      blockedReason: '新版本无法启动',
+      shouldShowDialog: true,
+    );
+
+    await tester.pumpWidget(
+      ProviderScope(
+        child: wrapWithAppTheme(
+          Builder(
+            builder: (context) {
+              return Scaffold(
+                body: FilledButton(
+                  onPressed: () {
+                    showAppUpdateDialog(
+                      context,
+                      evaluation: evaluation,
+                      onPromptInteracted: ({targetVersion}) {},
+                      onIgnoreVersion: (_) {},
+                      launchUrlFn: (
+                        uri, {
+                        mode = LaunchMode.platformDefault,
+                      }) async =>
+                          true,
+                    );
+                  },
+                  child: const Text('open'),
+                ),
+              );
+            },
+          ),
+        ),
+      ),
+    );
+
+    await tester.tap(find.text('open'));
+    await tester.pumpAndSettle();
+
+    expect(find.textContaining('上次自动更新未成功：新版本无法启动'), findsOneWidget);
+  });
+
   testWidgets('installing phase hides cancel button', (tester) async {
     final manifest = manifestWith();
     final evaluation = evaluationFor(manifest, canInApp: true);

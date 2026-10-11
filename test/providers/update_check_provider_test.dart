@@ -144,6 +144,52 @@ void main() {
       expect(result.availability, UpdateAvailability.force);
       expect(result.shouldShowDialog, isTrue);
     });
+
+    test('startup backs off a previously blocked version', () {
+      final result = evaluateUpdate(
+        localVersion: '1.5.0',
+        manifest: manifest,
+        downloadUrl: 'https://example.com',
+        blocked: const BlockedUpdate(
+          version: '2.0.0',
+          reason: '新版本无法启动',
+        ),
+        now: DateTime(2026, 7, 17),
+        manual: false,
+      );
+      expect(result.availability, UpdateAvailability.optional);
+      expect(result.shouldShowDialog, isFalse);
+      expect(result.blockedReason, '新版本无法启动');
+    });
+
+    test('manual check still surfaces a blocked version with reason', () {
+      final result = evaluateUpdate(
+        localVersion: '1.5.0',
+        manifest: manifest,
+        downloadUrl: 'https://example.com',
+        blocked: const BlockedUpdate(
+          version: '2.0.0',
+          reason: '新版本无法启动',
+        ),
+        now: DateTime(2026, 7, 17),
+        manual: true,
+      );
+      expect(result.shouldShowDialog, isTrue);
+      expect(result.blockedReason, '新版本无法启动');
+    });
+
+    test('blocked version older than latest does not suppress', () {
+      final result = evaluateUpdate(
+        localVersion: '1.5.0',
+        manifest: manifest,
+        downloadUrl: 'https://example.com',
+        blocked: const BlockedUpdate(version: '1.9.0'),
+        now: DateTime(2026, 7, 17),
+        manual: false,
+      );
+      expect(result.shouldShowDialog, isTrue);
+      expect(result.blockedReason, isNull);
+    });
   });
 
   group('UpdateCheckNotifier', () {
@@ -286,6 +332,87 @@ void main() {
       final evaluation = await notifier.checkManual();
       expect(evaluation.shouldShowDialog, isFalse);
       expect(evaluation.userMessage, '已忽略此版本的更新提示');
+    });
+
+    test('startup backs off a blocked version, manual still shows it',
+        () async {
+      final (db, local) = await openTestLocalData();
+      addTearDown(db.close);
+
+      // 本地仍低于 2.0.0，且记录该版本上次应用失败。
+      UpdatePromptStore.setBlocked(
+        local.settings,
+        const BlockedUpdate(version: '2.0.0', reason: '新版本无法启动'),
+      );
+
+      final dio = Dio()..httpClientAdapter = _JsonAdapter(manifestJson);
+      final container = ProviderContainer(
+        overrides: [
+          localDataProvider.overrideWithValue(local),
+          packageInfoProvider.overrideWith(
+            (_) async => PackageInfo(
+              appName: 'S1er',
+              packageName: 'dev.s1er',
+              version: '1.5.0',
+              buildNumber: '1',
+            ),
+          ),
+          updateCheckServiceProvider.overrideWithValue(
+            UpdateCheckService(
+              dio: dio,
+              manifestUrl: 'https://example.com/latest.json',
+            ),
+          ),
+        ],
+      );
+      addTearDown(container.dispose);
+
+      await container.read(updateCheckProvider.notifier).runStartupCheck(
+            delay: Duration.zero,
+          );
+      expect(container.read(updateCheckProvider).pendingPrompt, isNull);
+
+      final manual =
+          await container.read(updateCheckProvider.notifier).checkManual();
+      expect(manual.shouldShowDialog, isTrue);
+      expect(manual.blockedReason, '新版本无法启动');
+      // 手动检查不消费记录。
+      expect(UpdatePromptStore.blocked(local.settings)?.version, '2.0.0');
+    });
+
+    test('clears a stale blocked record once local catches up', () async {
+      final (db, local) = await openTestLocalData();
+      addTearDown(db.close);
+
+      UpdatePromptStore.setBlocked(
+        local.settings,
+        const BlockedUpdate(version: '1.5.0', reason: '新版本无法启动'),
+      );
+
+      final dio = Dio()..httpClientAdapter = _JsonAdapter(manifestJson);
+      final container = ProviderContainer(
+        overrides: [
+          localDataProvider.overrideWithValue(local),
+          packageInfoProvider.overrideWith(
+            (_) async => PackageInfo(
+              appName: 'S1er',
+              packageName: 'dev.s1er',
+              version: '1.5.0',
+              buildNumber: '1',
+            ),
+          ),
+          updateCheckServiceProvider.overrideWithValue(
+            UpdateCheckService(
+              dio: dio,
+              manifestUrl: 'https://example.com/latest.json',
+            ),
+          ),
+        ],
+      );
+      addTearDown(container.dispose);
+
+      await container.read(updateCheckProvider.notifier).checkManual();
+      expect(UpdatePromptStore.blocked(local.settings), isNull);
     });
 
     test(

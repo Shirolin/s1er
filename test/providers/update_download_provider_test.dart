@@ -5,10 +5,15 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:s1er/models/app_exceptions.dart';
 import 'package:s1er/models/app_update_manifest.dart';
+import 'package:s1er/providers/settings_provider.dart';
 import 'package:s1er/providers/update_check_provider.dart';
 import 'package:s1er/providers/update_download_provider.dart';
 import 'package:s1er/services/app_update_downloader.dart';
 import 'package:s1er/services/app_update_installer.dart';
+import 'package:s1er/services/windows_portable_updater.dart';
+import 'package:s1er/utils/update_prompt_store.dart';
+
+import '../helpers/test_local_data.dart';
 
 void main() {
   final manifest = AppUpdateManifest.fromJson({
@@ -163,6 +168,99 @@ void main() {
       '没有可用的下载地址',
     );
   });
+
+  test('windows download failure does not record a blocked version', () async {
+    debugDefaultTargetPlatformOverride = TargetPlatform.windows;
+    addTearDown(() => debugDefaultTargetPlatformOverride = null);
+
+    final (db, local) = await openTestLocalData();
+    addTearDown(db.close);
+
+    final container = ProviderContainer(
+      overrides: [
+        localDataProvider.overrideWithValue(local),
+        appUpdateDownloaderProvider.overrideWithValue(_FailingDownloader()),
+      ],
+    );
+    addTearDown(container.dispose);
+
+    await container
+        .read(updateDownloadProvider.notifier)
+        .startInAppUpdate(_windowsEvaluation());
+
+    expect(
+      container.read(updateDownloadProvider).phase,
+      UpdateDownloadPhase.failed,
+    );
+    expect(UpdatePromptStore.blocked(local.settings), isNull);
+  });
+
+  test('windows apply failure records a blocked version', () async {
+    debugDefaultTargetPlatformOverride = TargetPlatform.windows;
+    addTearDown(() => debugDefaultTargetPlatformOverride = null);
+
+    final (db, local) = await openTestLocalData();
+    addTearDown(db.close);
+
+    final container = ProviderContainer(
+      overrides: [
+        localDataProvider.overrideWithValue(local),
+        appUpdateDownloaderProvider.overrideWithValue(_SlowDownloader()),
+        windowsPortableUpdaterProvider.overrideWithValue(
+          _FailingUpdater(),
+        ),
+      ],
+    );
+    addTearDown(container.dispose);
+
+    await container
+        .read(updateDownloadProvider.notifier)
+        .startInAppUpdate(_windowsEvaluation());
+
+    final blocked = UpdatePromptStore.blocked(local.settings);
+    expect(blocked?.version, '2.0.0');
+    expect(blocked?.reason, isNotNull);
+  });
+}
+
+UpdateEvaluation _windowsEvaluation() {
+  return UpdateEvaluation(
+    availability: UpdateAvailability.optional,
+    localVersion: '1.0.0',
+    manifest: AppUpdateManifest.fromJson({
+      'latest': '2.0.0',
+      'minSupported': '1.0.0',
+      'notes': '',
+      'publishedAt': '2026-07-17',
+      'channels': {
+        'windows':
+            'https://github.com/Shirolin/s1er/releases/download/v2/app.zip',
+      },
+    }),
+    downloadUrl:
+        'https://github.com/Shirolin/s1er/releases/download/v2/app.zip',
+    canInAppDownload: true,
+    shouldShowDialog: true,
+  );
+}
+
+class _FailingDownloader extends AppUpdateDownloader {
+  @override
+  Future<AppUpdateDownloadResult> downloadApk({
+    required List<String> urls,
+    required String versionLabel,
+    void Function(double progress)? onProgress,
+    String extension = 'apk',
+  }) async {
+    throw const UpdateCheckException('下载超时');
+  }
+}
+
+class _FailingUpdater extends WindowsPortableUpdater {
+  @override
+  Future<void> applyDownloadedZip(String zipPath) async {
+    throw const UpdateCheckException('新版本无法启动');
+  }
 }
 
 class _SlowDownloader extends AppUpdateDownloader {

@@ -12,17 +12,13 @@
   --ink: #f2f4f8;
   --ink-soft: #c4cad8;
   --ink-muted: #8b93a7;
-  --ink-faint: #5c6478;
+  --ink-faint: #737c94;
   --cyan: #3db8ff;
   --cyan-bright: #6dcbff;
   --cyan-deep: #1a7fd4;
-  --violet: #a78bfa;
-  --amber: #f0b429;
-  --mint: #5eead4;
   --border: rgba(255, 255, 255, 0.08);
   --border-strong: rgba(255, 255, 255, 0.14);
   --glow-cyan: rgba(61, 184, 255, 0.28);
-  --glow-violet: rgba(167, 139, 250, 0.18);
   --radius-sm: 0.5rem;
   --radius-md: 0.75rem;
   --radius-lg: 1.125rem;
@@ -30,12 +26,12 @@
   --radius-phone: 1.65rem;
   --nav-h: 4rem;
   --max: 72rem;
-  --font: "Inter", "Noto Sans SC", system-ui, -apple-system, "Segoe UI", sans-serif;
+  --font: "Space Grotesk", "Noto Sans SC", system-ui, -apple-system, "Segoe UI", sans-serif;
   --ease: cubic-bezier(0.22, 1, 0.36, 1);
-  --shadow-card: 0 1px 0 rgba(255, 255, 255, 0.04) inset, 0 12px 40px rgba(0, 0, 0, 0.35);
+  --shadow-card: 0 1px 0 rgba(255, 255, 255, 0.04) inset, 0 12px 40px rgba(4, 8, 20, 0.5);
   --shadow-device:
     0 0 0 1px rgba(255, 255, 255, 0.08),
-    0 24px 64px rgba(0, 0, 0, 0.55),
+    0 24px 64px rgba(4, 8, 20, 0.62),
     0 0 80px rgba(61, 184, 255, 0.08);
 }
 
@@ -66,10 +62,11 @@ html {
 
 body {
   margin: 0;
-  min-height: 100vh;
+  min-height: 100dvh;
   font-family: var(--font);
   font-size: 1.0625rem;
   line-height: 1.65;
+  text-wrap: pretty;
   color: var(--ink);
   background: var(--bg);
   -webkit-font-smoothing: antialiased;
@@ -147,7 +144,7 @@ a:hover {
   height: min(36rem, 80vw);
   bottom: 8%;
   left: -14%;
-  background: radial-gradient(circle, rgba(167, 139, 250, 0.16), transparent 70%);
+  background: radial-gradient(circle, rgba(61, 184, 255, 0.09), transparent 70%);
   animation: blob-drift 28s var(--ease) infinite alternate-reverse;
 }
 
@@ -294,8 +291,12 @@ a:hover {
   border-color: rgba(61, 184, 255, 0.28);
 }
 
+.pill[hidden] {
+  display: none;
+}
+
 .text-gradient {
-  background: linear-gradient(135deg, var(--cyan-bright) 0%, var(--cyan) 50%, #bca5ff 100%);
+  background: linear-gradient(135deg, var(--cyan-bright) 0%, var(--cyan) 55%, var(--cyan-deep) 100%);
   -webkit-background-clip: text;
   background-clip: text;
   color: transparent;
@@ -507,10 +508,11 @@ a:hover {
 
 .hero h1 {
   margin: 0 0 1.1rem;
-  font-size: clamp(2.15rem, 5.2vw, 3.35rem);
-  font-weight: 800;
-  letter-spacing: -0.04em;
-  line-height: 1.12;
+  font-size: clamp(2.4rem, 5.6vw, 3.9rem);
+  font-weight: 700;
+  letter-spacing: -0.02em;
+  line-height: 1.08;
+  text-wrap: balance;
 }
 
 .hero__br {
@@ -529,6 +531,7 @@ a:hover {
   font-size: clamp(1rem, 1.5vw, 1.125rem);
   line-height: 1.75;
   max-width: 32rem;
+  text-wrap: balance;
 }
 
 .hero__actions {
@@ -577,7 +580,7 @@ a:hover {
   inset: 10% 5% 5% 10%;
   background:
     radial-gradient(ellipse 60% 50% at 55% 45%, var(--glow-cyan), transparent 70%),
-    radial-gradient(ellipse 40% 40% at 70% 70%, var(--glow-violet), transparent 70%);
+    radial-gradient(ellipse 40% 40% at 70% 70%, rgba(61, 184, 255, 0.14), transparent 70%);
   filter: blur(20px);
   pointer-events: none;
 }
@@ -826,7 +829,7 @@ a:hover {
 /* —— Sections —— */
 
 .section {
-  padding: 5rem 0;
+  padding: 5.5rem 0 6rem;
 }
 
 .section--flush {
@@ -847,7 +850,7 @@ a:hover {
   margin: 0 0 0.65rem;
   font-size: 0.75rem;
   font-weight: 700;
-  letter-spacing: 0.12em;
+  letter-spacing: 0.06em;
   text-transform: uppercase;
   color: var(--cyan);
 }
@@ -858,8 +861,9 @@ a:hover {
   margin: 0 0 0.75rem;
   font-size: clamp(1.65rem, 3.2vw, 2.15rem);
   font-weight: 700;
-  letter-spacing: -0.03em;
+  letter-spacing: -0.02em;
   line-height: 1.2;
+  text-wrap: balance;
 }
 
 .section__lead {
@@ -867,6 +871,7 @@ a:hover {
   color: var(--ink-muted);
   font-size: 1.05rem;
   line-height: 1.7;
+  text-wrap: balance;
 }
 
 /* —— Highlight strip —— */
@@ -1002,7 +1007,7 @@ a:hover {
 
 .bento__card--accent {
   background:
-    linear-gradient(145deg, rgba(61, 184, 255, 0.1), rgba(167, 139, 250, 0.06) 50%, rgba(255, 255, 255, 0.02));
+    linear-gradient(145deg, rgba(61, 184, 255, 0.1), rgba(26, 127, 212, 0.07) 50%, rgba(255, 255, 255, 0.02));
   border-color: rgba(61, 184, 255, 0.18);
 }
 
@@ -1024,24 +1029,6 @@ a:hover {
   color: var(--cyan-bright);
   background: rgba(61, 184, 255, 0.12);
   border: 1px solid rgba(61, 184, 255, 0.22);
-}
-
-.bento__icon--violet {
-  color: var(--violet);
-  background: rgba(167, 139, 250, 0.12);
-  border: 1px solid rgba(167, 139, 250, 0.22);
-}
-
-.bento__icon--amber {
-  color: var(--amber);
-  background: rgba(240, 180, 41, 0.12);
-  border: 1px solid rgba(240, 180, 41, 0.22);
-}
-
-.bento__icon--mint {
-  color: var(--mint);
-  background: rgba(94, 234, 212, 0.1);
-  border: 1px solid rgba(94, 234, 212, 0.2);
 }
 
 .bento__card h3 {
@@ -1252,7 +1239,8 @@ a:hover {
 }
 
 .platform-card--pending {
-  opacity: 0.78;
+  border-style: dashed;
+  background: rgba(255, 255, 255, 0.015);
 }
 
 .platform-card--pending .platform-card__icon {
@@ -1270,7 +1258,7 @@ a:hover {
   border-radius: var(--radius-xl);
   border: 1px solid rgba(61, 184, 255, 0.18);
   background:
-    linear-gradient(135deg, rgba(61, 184, 255, 0.08), rgba(167, 139, 250, 0.04) 50%, transparent),
+    linear-gradient(135deg, rgba(61, 184, 255, 0.08), rgba(61, 184, 255, 0.03) 50%, transparent),
     rgba(255, 255, 255, 0.02);
   box-shadow: var(--shadow-card);
 }
@@ -1348,6 +1336,7 @@ a:hover {
   max-width: 28rem;
   color: var(--ink-muted);
   position: relative;
+  text-wrap: balance;
 }
 
 .cta .cta__version {
@@ -1430,7 +1419,7 @@ a:hover {
 
 .privacy-page {
   background: transparent;
-  min-height: 100vh;
+  min-height: 100dvh;
 }
 
 .privacy-main {

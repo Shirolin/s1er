@@ -20,10 +20,10 @@
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link
-      href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Noto+Sans+SC:wght@400;500;600;700&display=swap"
+      href="https://fonts.googleapis.com/css2?family=Noto+Sans+SC:wght@400;500;600;700&family=Space+Grotesk:wght@400;500;600;700&display=swap"
       rel="stylesheet"
     />
-    <link rel="stylesheet" href="css/styles.css?v=20260811" />
+    <link rel="stylesheet" href="css/styles.css?v=20261015" />
     <meta property="og:title" content="S1er — Stage1st 第三方客户端" />
     <meta
       property="og:description"
@@ -144,7 +144,7 @@
             <div class="hero__badges reveal-hero">
               <span class="pill pill--cyan">非官方客户端</span>
               <span class="pill">Flutter · Material 3</span>
-              <span class="pill" data-version-pill>当前版本</span>
+              <span class="pill" data-version-pill hidden></span>
             </div>
 
             <h1 class="reveal-hero">
@@ -284,7 +284,7 @@
             <p class="section__eyebrow">功能</p>
             <h2>为长时间读帖而做</h2>
             <p class="section__lead">
-              对接 Discuz! Mobile API，Material Design 3 界面，把论坛常用路径收进一套客户端。
+              对接 Discuz! Mobile API，Material Design&nbsp;3 界面，把论坛常用路径收进一套客户端。
             </p>
           </header>
 
@@ -305,30 +305,6 @@
               </ul>
             </article>
 
-            <article class="bento__card reveal">
-              <div class="bento__icon bento__icon--violet" aria-hidden="true">
-                <svg viewBox="0 0 24 24"><path fill="currentColor" d="M4 4h16a1 1 0 0 1 1 1v11a1 1 0 0 1-1 1h-5.586l-2.707 2.707A1 1 0 0 1 10 19v-2H4a1 1 0 0 1-1-1V5a1 1 0 0 1 1-1zm2 4v2h8V8H6zm0 4v2h5v-2H6z"/></svg>
-              </div>
-              <h3>发帖与互动</h3>
-              <p>回复、引用、新主题与编辑；投票、评分与举报，流程贴合社区习惯。</p>
-            </article>
-
-            <article class="bento__card reveal">
-              <div class="bento__icon bento__icon--amber" aria-hidden="true">
-                <svg viewBox="0 0 24 24"><path fill="currentColor" d="M12 2a5 5 0 0 1 5 5c0 1.5-.66 2.84-1.7 3.76L17 15H7l1.7-4.24A4.99 4.99 0 0 1 7 7a5 5 0 0 1 5-5zm-3 15h6v1a3 3 0 0 1-6 0v-1z"/></svg>
-              </div>
-              <h3>麻将脸表情</h3>
-              <p>原版 png/gif 入库打包；面板 local-first，缺失再走 CDN。</p>
-            </article>
-
-            <article class="bento__card reveal">
-              <div class="bento__icon bento__icon--mint" aria-hidden="true">
-                <svg viewBox="0 0 24 24"><path fill="currentColor" d="M12 3c-4.97 0-9 3.58-9 8 0 2.3 1.1 4.37 2.85 5.82L5 21l3.4-1.36c1.1.36 2.32.56 3.6.56 4.97 0 9-3.58 9-8s-4.03-8-9-8zm-1 5h2v6h-2V8zm0 7h2v2h-2v-2z"/></svg>
-              </div>
-              <h3>消息与关系</h3>
-              <p>私信、系统提醒、好友列表、收藏与每日签到，常用互动不跳出客户端。</p>
-            </article>
-
             <article class="bento__card bento__card--accent reveal">
               <div class="bento__icon bento__icon--cyan" aria-hidden="true">
                 <svg viewBox="0 0 24 24"><path fill="currentColor" d="M12 2a7 7 0 0 1 7 7c0 2.38-1.19 4.47-3 5.74V17a1 1 0 0 1-1 1h-6a1 1 0 0 1-1-1v-2.26C6.19 13.47 5 11.38 5 9a7 7 0 0 1 7-7zm-2 18h4v1a1 1 0 0 1-1 1h-2a1 1 0 0 1-1-1v-1z"/></svg>
@@ -343,6 +319,30 @@
                 <li>L1 备份</li>
                 <li>黑名单</li>
               </ul>
+            </article>
+
+            <article class="bento__card reveal">
+              <div class="bento__icon bento__icon--cyan" aria-hidden="true">
+                <svg viewBox="0 0 24 24"><path fill="currentColor" d="M4 4h16a1 1 0 0 1 1 1v11a1 1 0 0 1-1 1h-5.586l-2.707 2.707A1 1 0 0 1 10 19v-2H4a1 1 0 0 1-1-1V5a1 1 0 0 1 1-1zm2 4v2h8V8H6zm0 4v2h5v-2H6z"/></svg>
+              </div>
+              <h3>发帖与互动</h3>
+              <p>回复、引用、新主题与编辑；投票、评分与举报，流程贴合社区习惯。</p>
+            </article>
+
+            <article class="bento__card reveal">
+              <div class="bento__icon bento__icon--cyan" aria-hidden="true">
+                <svg viewBox="0 0 24 24"><path fill="currentColor" d="M12 2a5 5 0 0 1 5 5c0 1.5-.66 2.84-1.7 3.76L17 15H7l1.7-4.24A4.99 4.99 0 0 1 7 7a5 5 0 0 1 5-5zm-3 15h6v1a3 3 0 0 1-6 0v-1z"/></svg>
+              </div>
+              <h3>麻将脸表情</h3>
+              <p>原版 png/gif 入库打包；面板 local-first，缺失再走 CDN。</p>
+            </article>
+
+            <article class="bento__card reveal">
+              <div class="bento__icon bento__icon--cyan" aria-hidden="true">
+                <svg viewBox="0 0 24 24"><path fill="currentColor" d="M12 3c-4.97 0-9 3.58-9 8 0 2.3 1.1 4.37 2.85 5.82L5 21l3.4-1.36c1.1.36 2.32.56 3.6.56 4.97 0 9-3.58 9-8s-4.03-8-9-8zm-1 5h2v6h-2V8zm0 7h2v2h-2v-2z"/></svg>
+              </div>
+              <h3>消息与关系</h3>
+              <p>私信、系统提醒、好友列表、收藏与每日签到，常用互动不跳出客户端。</p>
             </article>
           </div>
         </div>
@@ -646,6 +646,6 @@
       </div>
     </footer>
 
-    <script src="js/main.js?v=20260811" defer></script>
+    <script src="js/main.js?v=20261015" defer></script>
   </body>
 </html>

@@ -137,6 +137,7 @@
     if (!version) return;
     versionPills.forEach((el) => {
       el.textContent = `v${version}`;
+      el.hidden = false;
     });
     versionTexts.forEach((el) => {
       el.textContent = notes ? `当前 v${version} · ${notes}` : `当前 v${version}`;
@@ -157,13 +158,19 @@
         const data = await res.json();
         if (data?.latest) {
           applyVersion(String(data.latest), data.notes ? String(data.notes) : "");
-          return;
+          return true;
         }
       } catch {
         // try next source
       }
     }
+    return false;
   };
 
-  fetchVersion();
+  fetchVersion().then((resolved) => {
+    if (resolved) return;
+    versionTexts.forEach((el) => {
+      el.textContent = "最新版本与更新说明见 GitHub Releases";
+    });
+  });
 })();

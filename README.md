@@ -6,7 +6,7 @@
 
 [![Flutter](https://badgen.net/badge/Flutter/%3E%3D3.4/02569B)](https://flutter.dev/)
 [![Dart](https://badgen.net/badge/Dart/%3E%3D3.4%20%3C4.0/0175C2)](https://dart.dev/)
-[![Version](https://badgen.net/badge/version/0.5.1/blue)](docs/release/latest.json)
+[![Version](https://badgen.net/github/tag/Shirolin/s1er?label=version&color=blue)](https://github.com/Shirolin/s1er/releases/latest)
 [![License: GPL v3+](https://badgen.net/badge/License/GPL%20v3+/blue)](LICENSE)
 
 S1er 是使用 Flutter 开发的第三方 Stage1st（S1）论坛客户端。基于 Discuz! Mobile API 构建，严格遵循 Material Design 3 (Material You) 设计规范，支持多平台跨端运行。

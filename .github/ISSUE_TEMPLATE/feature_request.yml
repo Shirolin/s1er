@@ -1,0 +1,50 @@
+name: 功能建议
+description: 提出一个新功能或对现有功能的改进建议
+title: "[Feature] "
+labels: ["enhancement"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        提交前请先搜索现有 Issue，并查看 [TODO.md](https://github.com/Shirolin/s1er/blob/main/TODO.md) 中是否已有规划，避免重复。
+        较大的改动建议先在此 Issue 中对齐范围（见 CONTRIBUTING）。
+
+  - type: textarea
+    id: problem
+    attributes:
+      label: 需求描述
+      description: 想解决什么问题，或想要什么功能。
+    validations:
+      required: true
+
+  - type: textarea
+    id: scenario
+    attributes:
+      label: 使用场景
+      description: 什么情况下会用到它，目前是如何将就的。
+    validations:
+      required: false
+
+  - type: textarea
+    id: alternatives
+    attributes:
+      label: 其它想法 / 替代方案
+      description: 可选。你设想的实现方式，或已知的替代做法。
+    validations:
+      required: false
+
+  - type: dropdown
+    id: platform
+    attributes:
+      label: 期望平台
+      description: 可选。不限平台可留空。
+      multiple: true
+      options:
+        - Android
+        - iOS
+        - Web
+        - Windows
+        - macOS
+        - Linux
+    validations:
+      required: false

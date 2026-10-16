@@ -1,0 +1,97 @@
+name: 缺陷报告
+description: 报告一个可复现的问题（崩溃、错误行为、显示异常等）
+title: "[Bug] "
+labels: ["bug"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        提交前请先搜索是否已有相同 Issue。
+        请勿在公开 Issue 中粘贴账号、密码、Cookie 或其他个人信息（见 CONTRIBUTING「报告缺陷」「安全漏洞」）。
+        安全漏洞请走仓库的私密安全报告渠道，不要在此公开披露利用细节。
+
+  - type: textarea
+    id: steps
+    attributes:
+      label: 复现步骤
+      description: 从打开应用开始，逐步写出如何稳定触发该问题。
+      placeholder: |
+        1. 打开某版块 / 帖子
+        2. 点击 / 滑动 ...
+        3. 出现 ...
+    validations:
+      required: true
+
+  - type: textarea
+    id: expected
+    attributes:
+      label: 预期结果
+      description: 你期望发生什么。
+    validations:
+      required: true
+
+  - type: textarea
+    id: actual
+    attributes:
+      label: 实际结果
+      description: 实际发生了什么；若有报错文案或崩溃现象，请一并描述。
+    validations:
+      required: true
+
+  - type: dropdown
+    id: platform
+    attributes:
+      label: 目标平台
+      description: 出现问题的平台。
+      options:
+        - Android
+        - iOS
+        - Web
+        - Windows
+        - macOS
+        - Linux
+    validations:
+      required: true
+
+  - type: input
+    id: version
+    attributes:
+      label: 版本信息
+      description: 客户端版本见「设置 → 关于」；自行构建时另请给出 `flutter --version` 结果。
+      placeholder: 例如 0.8.0（客户端）/ Flutter 3.35.0
+    validations:
+      required: true
+
+  - type: dropdown
+    id: build_mode
+    attributes:
+      label: 构建模式
+      description: |
+        「设置 → 关于」的版本行末尾会显示 Debug / Profile / Release。
+        注意：Debug 包（`flutter run` 默认）未做优化，滚动卡顿属预期，不代表真实性能（见 docs/development.md）。
+      options:
+        - Release
+        - Profile
+        - Debug
+        - 不确定
+    validations:
+      required: true
+
+  - type: textarea
+    id: logs
+    attributes:
+      label: 已脱敏的日志
+      description: Talker 等日志，可选。粘贴前请删除 Cookie、凭据等敏感信息。
+      render: text
+    validations:
+      required: false
+
+  - type: checkboxes
+    id: confirmations
+    attributes:
+      label: 提交前确认
+      options:
+        - label: 我已搜索过现有 Issue，未发现重复。
+          required: true
+        - label: 我确认内容中不含账号、密码、Cookie 等个人信息。
+          required: true

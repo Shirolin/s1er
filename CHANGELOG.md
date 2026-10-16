@@ -5,6 +5,22 @@ All notable changes to S1er will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.9.0] - 2026-10-16
+
+### Added
+
+- **文字大小「特大」档位**：设置中文字大小新增「特大」（20pt）选项，便于大屏设备或需要更大字号的用户阅读。
+- **Windows 覆盖更新热替换与握手**：Windows 应用内覆盖更新改为逐文件热替换，移除外部 PowerShell 脚本依赖，并增加启动确认握手与重试退避。
+
+### Changed
+
+- **末端刷新落点优化**：在页面末端触发刷新发现新回复时，平滑定位到新回复首楼，不再粗暴一跳到底。
+
+### Fixed
+
+- **阅读进度与进帖定位异常**：修复懒列表跳跃估算导致超调滑至页底的问题；按楼层/引用定位后写回进度取消强制贴底抬升；修复从列表进入有新回复的帖子时可能跳至尾楼或首页末楼的缺陷。
+- **评分卡展示**：单条评分正负分颜色独立计算，不再因总体积分为负而全部被标为红色；评分理由移除单行截断，支持完整多行展示。
+
 ## [0.8.0] - 2026-09-23
 
 ### Added

@@ -14,6 +14,7 @@ class FontSizeSection extends ConsumerWidget {
     S1Typography.defaultBodySize: '标准',
     16: '大',
     18: '超大',
+    20: '特大',
   };
 
   @override

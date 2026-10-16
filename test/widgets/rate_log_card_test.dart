@@ -257,5 +257,64 @@ void main() {
 
       expect(find.text('2018-04-14 22:20'), findsOneWidget);
     });
+
+    testWidgets(
+        'colors each entry score by its own sign regardless of totalScore',
+        (tester) async {
+      const rateLog = PostRateLog(
+        pid: '1',
+        entries: [
+          RateLog(username: 'plus_user', score: 2, reason: '加鹅'),
+          RateLog(username: 'minus_user', score: -1, reason: '扣鹅'),
+        ],
+        totalScore: 1,
+        participantCount: 2,
+      );
+
+      final theme = AppTheme.lightTheme('purple');
+      await tester.pumpWidget(
+        wrap(
+          const RateLogCard(tid: '123', pid: '1'),
+          tid: '123',
+          seed: {'1': rateLog},
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      final summaryScoreText = tester.widget<Text>(find.text('评分 +1'));
+      final plusScoreText = tester.widget<Text>(find.text('+2'));
+      final minusScoreText = tester.widget<Text>(find.text('-1'));
+
+      expect(summaryScoreText.style?.color, theme.colorScheme.primary);
+      expect(plusScoreText.style?.color, theme.colorScheme.primary);
+      expect(minusScoreText.style?.color, theme.colorScheme.error);
+    });
+
+    testWidgets('renders long rating reason without single-line truncation',
+        (tester) async {
+      const longReason =
+          '这是一段非常非常长的评分理由，用于验证评分卡不再将理由强制截断为单行省略号，而是能够完整自动换行展示全部内容。';
+      const rateLog = PostRateLog(
+        pid: '1',
+        entries: [
+          RateLog(username: 'user', score: 1, reason: longReason),
+        ],
+        totalScore: 1,
+        participantCount: 1,
+      );
+
+      await tester.pumpWidget(
+        wrap(
+          const RateLogCard(tid: '123', pid: '1'),
+          tid: '123',
+          seed: {'1': rateLog},
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      final reasonText = tester.widget<Text>(find.text(longReason));
+      expect(reasonText.maxLines, isNull);
+      expect(reasonText.overflow, isNull);
+    });
   });
 }

@@ -107,10 +107,7 @@ class _RateLogCardState extends ConsumerState<RateLogCard> {
                     scheme: scheme,
                     children: [
                       ...collapsedEntries.map(
-                        (entry) => _EntryRow(
-                          entry: entry,
-                          accentColor: accentColor,
-                        ),
+                        (entry) => _EntryRow(entry: entry),
                       ),
                     ],
                   ),
@@ -119,10 +116,7 @@ class _RateLogCardState extends ConsumerState<RateLogCard> {
                     scheme: scheme,
                     children: [
                       ...displayEntries.map(
-                        (entry) => _EntryRow(
-                          entry: entry,
-                          accentColor: accentColor,
-                        ),
+                        (entry) => _EntryRow(entry: entry),
                       ),
                       if (needsMoreButton)
                         Padding(
@@ -269,16 +263,17 @@ class _SummaryRow extends StatelessWidget {
 }
 
 class _EntryRow extends ConsumerWidget {
-  const _EntryRow({required this.entry, required this.accentColor});
+  const _EntryRow({required this.entry});
 
   final RateLog entry;
-  final Color accentColor;
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final textTheme = Theme.of(context).textTheme;
     final scheme = Theme.of(context).colorScheme;
-    final sign = entry.score >= 0 ? '+' : '';
+    final isPositive = entry.score >= 0;
+    final entryAccentColor = isPositive ? scheme.primary : scheme.error;
+    final sign = isPositive ? '+' : '';
     final uid = entry.uid;
     final ratedAt = entry.ratedAt;
     final ratedAtText = ratedAt == null
@@ -297,6 +292,7 @@ class _EntryRow extends ConsumerWidget {
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
       child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           const SizedBox(width: 12),
           Expanded(
@@ -336,7 +332,7 @@ class _EntryRow extends ConsumerWidget {
               '$sign${entry.score}',
               textAlign: TextAlign.center,
               style: textTheme.labelMedium?.copyWith(
-                color: accentColor,
+                color: entryAccentColor,
                 fontWeight: FontWeight.bold,
               ),
             ),
@@ -349,8 +345,6 @@ class _EntryRow extends ConsumerWidget {
               style: textTheme.bodySmall?.copyWith(
                 color: scheme.onSurfaceVariant,
               ),
-              maxLines: 1,
-              overflow: TextOverflow.ellipsis,
             ),
           ),
         ],

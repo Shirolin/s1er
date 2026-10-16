@@ -4,6 +4,7 @@ import 'dart:io';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:s1er/models/notice_item.dart';
 import 'package:s1er/services/api_service.dart';
+import 'package:s1er/services/discuz_parser.dart';
 
 void main() {
   group('parsePmListHtml', () {
@@ -14,7 +15,7 @@ void main() {
     });
 
     test('parses conversation list from mobile HTML', () {
-      final result = ApiService.parsePmListHtml(html);
+      final result = DiscuzParser.parsePmListHtml(html);
 
       expect(result.items.length, 2);
 
@@ -41,7 +42,7 @@ void main() {
     });
 
     test('parses notice list with tid/pid and pagination', () {
-      final result = ApiService.parseNoticeListHtml(html);
+      final result = DiscuzParser.parseNoticeListHtml(html);
 
       expect(result.items.length, 2);
       expect(result.totalPages, 20);
@@ -89,7 +90,7 @@ void main() {
         },
       };
 
-      final result = ApiService.parsePmListJson(json);
+      final result = DiscuzParser.parsePmListJson(json);
 
       expect(result.items.length, 2);
       expect(result.items.first.isOutgoing, isFalse);
@@ -116,7 +117,7 @@ void main() {
         },
       };
 
-      final result = ApiService.parsePmListJson(json);
+      final result = DiscuzParser.parsePmListJson(json);
       final item = result.items.single;
 
       expect(item.touid, '194717');
@@ -133,7 +134,7 @@ void main() {
         File('test/fixtures/pm_conversation.json').readAsStringSync(),
       ) as Map<String, dynamic>;
 
-      final result = ApiService.parsePmConversationJson(
+      final result = DiscuzParser.parsePmConversationJson(
         json,
         partnerUid: '200001',
       );
@@ -147,7 +148,7 @@ void main() {
     });
 
     test('parses alternate conversation time fields', () {
-      final result = ApiService.parsePmConversationJson(
+      final result = DiscuzParser.parsePmConversationJson(
         {
           'Variables': {
             'list': [
@@ -182,14 +183,14 @@ void main() {
 
     test('rejects missing list and login responses', () {
       expect(
-        () => ApiService.parsePmConversationJson(
+        () => DiscuzParser.parsePmConversationJson(
           {'Variables': <String, dynamic>{}},
           partnerUid: '200001',
         ),
         throwsFormatException,
       );
       expect(
-        () => ApiService.parsePmConversationJson(
+        () => DiscuzParser.parsePmConversationJson(
           {
             'Message': {'messageval': 'login_before_enter_home'},
           },
@@ -206,7 +207,7 @@ void main() {
         File('test/fixtures/mynotelist_mypost.json').readAsStringSync(),
       ) as Map<String, dynamic>;
 
-      final result = ApiService.parseNoticeListJson(json);
+      final result = DiscuzParser.parseNoticeListJson(json);
       final item = result.items.single;
 
       expect(item.authorName, '提醒用户');
@@ -222,7 +223,7 @@ void main() {
         File('test/fixtures/mynotelist_system.json').readAsStringSync(),
       ) as Map<String, dynamic>;
 
-      final item = ApiService.parseNoticeListJson(json).items.single;
+      final item = DiscuzParser.parseNoticeListJson(json).items.single;
 
       expect(item.authorName, '系统通知');
       expect(item.canNavigate, isFalse);
@@ -230,7 +231,7 @@ void main() {
     });
 
     test('treats a valid empty list as empty data', () {
-      final result = ApiService.parseNoticeListJson({
+      final result = DiscuzParser.parseNoticeListJson({
         'Variables': {
           'list': <dynamic>[],
           'count': '0',

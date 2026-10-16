@@ -1,3 +1,5 @@
+import '../utils/html_entities.dart';
+
 class UserSpaceItem {
   UserSpaceItem({
     required this.tid,
@@ -33,14 +35,19 @@ class UserSpaceItem {
   final bool isReply;
 
   static String _decodeHtml(String text) {
-    return text
-        .replaceAll('&amp;', '&')
-        .replaceAll('&lt;', '<')
-        .replaceAll('&gt;', '>')
-        .replaceAll('&quot;', '"')
-        .replaceAll('&#039;', "'")
-        .replaceAll('&#39;', "'")
-        .replaceAll('&nbsp;', ' ')
-        .replaceAll(RegExp(r'<[^>]+>'), '');
+    return decodeHtmlEntities(
+      text
+          .replaceAll('&amp;', '&')
+          .replaceAll('&lt;', '<')
+          .replaceAll('&gt;', '>'),
+    ).replaceAll(RegExp(r'<[^>]+>'), '');
   }
+}
+
+/// 用户空间主题 / 回复列表的一页结果。
+class UserSpaceListResult {
+  const UserSpaceListResult({required this.items, this.totalPages = 1});
+  static const empty = UserSpaceListResult(items: []);
+  final List<UserSpaceItem> items;
+  final int totalPages;
 }

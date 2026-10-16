@@ -11,7 +11,7 @@ import '../providers/settings_provider.dart';
 import '../theme/app_theme.dart';
 import '../utils/author_color_cache.dart';
 import '../utils/author_style_stripper.dart';
-import '../utils/bbcode_cache.dart';
+import '../utils/post_body_cache.dart';
 import '../utils/bbcode_parser.dart';
 import '../utils/post_image_index_counter.dart';
 import '../utils/post_image_urls.dart';
@@ -220,28 +220,29 @@ class BbcodeRenderer extends ConsumerWidget {
     required bool showImages,
     required int maxImagesPerPost,
   }) {
-    final cacheKey = BbcodeCache.buildKey(
-      message: cleanedText,
-      showImages: showImages,
-      maxImagesPerPost: maxImagesPerPost,
-      quoteDepth: quoteDepth,
-    );
-    final cached = BbcodeCache.get(cacheKey);
-    if (cached != null) {
-      _advanceImageIndexFromHtml(cached);
-      return cached;
-    }
-    final html = _profiledBbcode(
-      'parse',
-      () => BbcodeParser.parse(
-        cleanedText,
-        imageIndexCounter: imageIndexCounter,
+    final result = PostBodyCache.htmlFor(
+      key: PostBodyCacheKey(
+        message: cleanedText,
+        showImages: showImages,
+        maxImagesPerPost: maxImagesPerPost,
+        quoteDepth: quoteDepth,
       ),
-      detail: (value) =>
-          'cache-miss links=${_countAnchors(value)} len=${value.length}',
+      build: () => _profiledBbcode(
+        'parse',
+        () => BbcodeParser.parse(
+          cleanedText,
+          imageIndexCounter: imageIndexCounter,
+        ),
+        detail: (value) =>
+            'cache-miss links=${_countAnchors(value)} len=${value.length}',
+      ),
     );
-    BbcodeCache.put(cacheKey, html);
-    return html;
+    // 缓存命中时解析未执行，图片 index 分配副作用需重放，使嵌套引用段落的
+    // 计数连续；未命中时 parse 已就地赋值，不可重复推进。
+    if (result.wasCached) {
+      _advanceImageIndexFromHtml(result.html);
+    }
+    return result.html;
   }
 
   void _advanceImageIndexFromHtml(String html) {

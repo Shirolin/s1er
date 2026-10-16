@@ -4,6 +4,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:s1er/config/resource_domains.dart';
 import 'package:s1er/services/http_client.dart';
+import 'package:s1er/services/s1_http_event.dart';
 
 void main() {
   test('auth image headers set Referer and Accept', () {
@@ -89,5 +90,35 @@ void main() {
     // 再挤一个媒体请求会进入下一秒窗口。
     await client.debugEnforceRateLimit(isMedia: true);
     expect(waits, [const Duration(seconds: 1)]);
+  });
+
+  group('unreadNoticeFromResponse', () {
+    test('extracts notice map from Map response', () {
+      final event = S1HttpClient.unreadNoticeFromResponse({
+        'Variables': {
+          'notice': {'newpm': '3', 'newprompt': '1'},
+        },
+      });
+      expect(event, isA<S1UnreadNoticeEvent>());
+      expect(event!.noticeMap['newpm'], '3');
+    });
+
+    test('parses JSON string response', () {
+      final event = S1HttpClient.unreadNoticeFromResponse(
+        '{"Variables":{"notice":{"newpm":"2"}}}',
+      );
+      expect(event?.noticeMap['newpm'], '2');
+    });
+
+    test('returns null when notice is absent', () {
+      expect(
+        S1HttpClient.unreadNoticeFromResponse({
+          'Variables': <String, dynamic>{},
+        }),
+        isNull,
+      );
+      expect(S1HttpClient.unreadNoticeFromResponse('not json'), isNull);
+      expect(S1HttpClient.unreadNoticeFromResponse(null), isNull);
+    });
   });
 }

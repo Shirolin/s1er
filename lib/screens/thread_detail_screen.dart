@@ -40,11 +40,11 @@ import '../widgets/s1_content_width.dart';
 import '../widgets/s1_reading_column.dart';
 import '../widgets/thread_detail_chrome_bridge.dart';
 import '../widgets/forum_split_breadcrumb_title.dart';
-import '../models/reading_record.dart';
 import '../models/open_scroll_target.dart';
 import '../models/thread_destination.dart';
 import '../models/thread_open_intent.dart';
 import '../utils/page_search.dart';
+import '../utils/reading_progress_tracker.dart';
 import '../utils/post_plain_text.dart';
 import '../utils/scroll_floor.dart';
 import '../widgets/s1_click_region.dart';
@@ -69,35 +69,6 @@ bool shouldRecordReadingProgress(AppSettings settings, AuthState auth) {
     return false;
   }
   return true;
-}
-
-/// 仅在首访、翻页或页内可见楼变化时写库。
-bool shouldWriteReadingProgressUpdate({
-  required bool hasRecordedInitialVisit,
-  required int? lastRecordedPage,
-  required int? lastRecordedFloorInPage,
-  required int currentPage,
-  required int currentFloorInPage,
-}) {
-  if (!hasRecordedInitialVisit) return true;
-  if (lastRecordedPage != currentPage) return true;
-  return lastRecordedFloorInPage != currentFloorInPage;
-}
-
-/// 阅读进度写回用的页内楼层（1-based）。
-///
-/// 平常取视口锚线上方最后一楼；已滚到页底时取本页末楼，避免短帖读完后仍停在较早楼层。
-/// [minFloorInPage] 用于同页内单调递增，防止从页底回滑时进度回退。
-int resolveFloorInPageForProgress({
-  required int leadingIndex,
-  required int postCount,
-  required bool atPageBottom,
-  int minFloorInPage = 1,
-}) {
-  if (postCount <= 0) return 1;
-  final raw =
-      atPageBottom ? postCount : leadingIndex.clamp(0, postCount - 1) + 1;
-  return raw < minFloorInPage ? minFloorInPage : raw;
 }
 
 /// 末页触底刷新后的去向：页数增加则跳新末页，同页有新楼则滚到底，否则提示无新回复。
@@ -170,9 +141,9 @@ class _ThreadDetailScreenState extends ConsumerState<ThreadDetailScreen> {
 
   final _swipeKey = GlobalKey<S1SwipePaginationState>();
   final _scrollFabVisibility = ValueNotifier(const _ScrollFabVisibility());
-  bool _hasRecordedInitialVisit = false;
-  int? _lastRecordedPage;
-  int? _lastRecordedFloorInPage;
+
+  /// 本屏会话的阅读进度状态与写回策略。
+  final _progress = ReadingProgressTracker();
   bool _pendingInitialNavigation = false;
   bool _openScrollConsumed = false;
   int _openScrollRetryCount = 0;
@@ -202,9 +173,6 @@ class _ThreadDetailScreenState extends ConsumerState<ThreadDetailScreen> {
   /// 本页本地搜索（过滤 + 正文高亮）。
   bool _pageSearchOpen = false;
   String _pageSearchQuery = '';
-
-  /// 本次进入详情后的页内阅读位（页码 → 页内 1-based 楼层），翻回该页时恢复。
-  final Map<int, int> _pageFloorMemory = {};
 
   /// 末页触底刷新进行中，避免同一手势重复打接口。
   bool _endRefreshing = false;
@@ -300,7 +268,8 @@ class _ThreadDetailScreenState extends ConsumerState<ThreadDetailScreen> {
   }
 
   /// 记录阅读进度：写库 + 刷新历史列表（使列表卡片/历史页/资料计数实时更新）。
-  /// readCount 只在本次进入详情页首帧 +1（isNewVisit 由 _hasRecordedInitialVisit 守卫）。
+  /// readCount 只在本次进入详情页首帧 +1（isNewVisit 由 [_progress] 的
+  /// `hasRecordedInitialVisit` 守卫）。
   ///
   /// 写回当前视口页内楼层；绝对进度高水位由 [ReadingHistoryService.updateProgress] 保证只增不减。
   void _recordProgress(PostListState state, {int? floorInPage}) {
@@ -314,11 +283,8 @@ class _ThreadDetailScreenState extends ConsumerState<ThreadDetailScreen> {
     }
     // Prefer the caller-provided / last visible floor. Never fall back to
     // `posts.length` (that permanently wrote "page end" as fake progress).
-    final resolvedFloor = floorInPage ?? _lastRecordedFloorInPage ?? 1;
-    if (!shouldWriteReadingProgressUpdate(
-      hasRecordedInitialVisit: _hasRecordedInitialVisit,
-      lastRecordedPage: _lastRecordedPage,
-      lastRecordedFloorInPage: _lastRecordedFloorInPage,
+    final resolvedFloor = floorInPage ?? _progress.lastRecordedFloorInPage ?? 1;
+    if (!_progress.shouldWrite(
       currentPage: state.currentPage,
       currentFloorInPage: resolvedFloor,
     )) {
@@ -334,16 +300,31 @@ class _ThreadDetailScreenState extends ConsumerState<ThreadDetailScreen> {
           totalPages: state.totalPages,
           totalReplies: state.totalReplies,
           perPage: state.perPage,
-          isNewVisit: !_hasRecordedInitialVisit,
+          isNewVisit: !_progress.hasRecordedInitialVisit,
         );
-    _hasRecordedInitialVisit = true;
-    _lastRecordedPage = state.currentPage;
-    _lastRecordedFloorInPage = resolvedFloor;
+    _progress.markRecorded(
+      page: state.currentPage,
+      floorInPage: resolvedFloor,
+    );
     final record =
         ref.read(readingHistoryServiceProvider).getRecord(widget.tid);
     if (record != null) {
       ref.read(readingHistoryProvider.notifier).upsert(record);
     }
+  }
+
+  int _resolveFloorInPage({
+    required int? leading,
+    required int postCount,
+    required bool atBottom,
+    int minFloorInPage = 1,
+  }) {
+    return resolveFloorInPageForProgress(
+      leadingIndex: leading ?? 0,
+      postCount: postCount,
+      atPageBottom: atBottom,
+      minFloorInPage: minFloorInPage,
+    );
   }
 
   /// 阅读进度 / 翻页楼层记忆写回契约：
@@ -358,12 +339,15 @@ class _ThreadDetailScreenState extends ConsumerState<ThreadDetailScreen> {
     );
     if (leading == null && !atBottom) return;
 
-    final viewportFloor = resolveFloorInPageForProgress(
-      leadingIndex: leading ?? 0,
+    final viewportFloor = _resolveFloorInPage(
+      leading: leading,
       postCount: state.posts.length,
-      atPageBottom: atBottom,
+      atBottom: atBottom,
     );
-    _pageFloorMemory[state.currentPage] = viewportFloor;
+    _progress.rememberFloor(
+      page: state.currentPage,
+      floorInPage: viewportFloor,
+    );
 
     final floorInPage = _resolveVisibleFloorInPage(
       state,
@@ -396,10 +380,10 @@ class _ThreadDetailScreenState extends ConsumerState<ThreadDetailScreen> {
     );
     final atBottom = _scrollFabVisibility.value.atPageBottom;
     if (leading == null && !atBottom) return null;
-    return resolveFloorInPageForProgress(
-      leadingIndex: leading ?? 0,
+    return _resolveFloorInPage(
+      leading: leading,
       postCount: state.posts.length,
-      atPageBottom: atBottom,
+      atBottom: atBottom,
     );
   }
 
@@ -415,30 +399,19 @@ class _ThreadDetailScreenState extends ConsumerState<ThreadDetailScreen> {
         atBottom ?? _scrollFabVisibility.value.atPageBottom;
     if (resolvedLeading == null && !resolvedAtBottom) return null;
 
-    var minFloor = 1;
-    if (_lastRecordedPage == state.currentPage &&
-        _lastRecordedFloorInPage != null) {
-      minFloor = _lastRecordedFloorInPage!;
-    }
-    final persisted =
-        ref.read(readingHistoryServiceProvider).getRecord(widget.tid);
-    if (persisted != null) {
-      final ppp =
-          state.perPage > 0 ? state.perPage : S1Constants.postsPerPageFallback;
-      final persistedPage = pageForFloor(persisted.lastReadFloor, perPage: ppp);
-      if (persistedPage == state.currentPage) {
-        final persistedInPage =
-            persisted.lastReadFloor - (state.currentPage - 1) * ppp;
-        if (persistedInPage > minFloor) {
-          minFloor = persistedInPage;
-        }
-      }
-    }
+    final minFloor = _progress.minProgressFloorInPage(
+      currentPage: state.currentPage,
+      perPage: state.perPage,
+      persistedLastReadFloor: ref
+          .read(readingHistoryServiceProvider)
+          .getRecord(widget.tid)
+          ?.lastReadFloor,
+    );
 
-    return resolveFloorInPageForProgress(
-      leadingIndex: resolvedLeading ?? 0,
+    return _resolveFloorInPage(
+      leading: resolvedLeading,
       postCount: state.posts.length,
-      atPageBottom: resolvedAtBottom,
+      atBottom: resolvedAtBottom,
       minFloorInPage: minFloor,
     );
   }
@@ -632,17 +605,18 @@ class _ThreadDetailScreenState extends ConsumerState<ThreadDetailScreen> {
         before.posts.isNotEmpty &&
         before.currentPage != page) {
       final floor = _resolveViewportFloorInPage(before) ??
-          _pageFloorMemory[before.currentPage] ??
-          (_lastRecordedPage == before.currentPage
-              ? _lastRecordedFloorInPage
+          _progress.pageFloorMemory[before.currentPage] ??
+          (_progress.lastRecordedPage == before.currentPage
+              ? _progress.lastRecordedFloorInPage
               : null) ??
           1;
-      _pageFloorMemory[before.currentPage] = floor;
+      _progress.rememberFloor(page: before.currentPage, floorInPage: floor);
     }
 
     final hasPageQuery = PageSearch.normalizeQuery(_pageSearchQuery).isNotEmpty;
-    final rememberedFloor =
-        (scrollToBottom || hasPageQuery) ? null : _pageFloorMemory[page];
+    final rememberedFloor = (scrollToBottom || hasPageQuery)
+        ? null
+        : _progress.pageFloorMemory[page];
     final ppp = (before != null && before.perPage > 0)
         ? before.perPage
         : S1Constants.postsPerPageFallback;
@@ -689,9 +663,9 @@ class _ThreadDetailScreenState extends ConsumerState<ThreadDetailScreen> {
       final floorInPage =
           scrollToBottom ? maxFloor : (rememberedFloor ?? 1).clamp(1, maxFloor);
       if (scrollToBottom && loaded.posts.isNotEmpty) {
-        _pageFloorMemory[page] = maxFloor;
+        _progress.rememberFloor(page: page, floorInPage: maxFloor);
       } else if (rememberedFloor != null) {
-        _pageFloorMemory[page] = floorInPage;
+        _progress.rememberFloor(page: page, floorInPage: floorInPage);
       }
       _recordProgress(loaded, floorInPage: floorInPage);
     }
@@ -1009,7 +983,7 @@ class _ThreadDetailScreenState extends ConsumerState<ThreadDetailScreen> {
         setState(() => _expandedBlockedPids.add(post.pid));
       },
       onFilterByAuthor: () {
-        _pageFloorMemory.clear();
+        _progress.clearPageFloorMemory();
         ref.read(postProvider(widget.tid).notifier).filterByAuthor(
               post.authorId,
               post.author,
@@ -1175,15 +1149,16 @@ class _ThreadDetailScreenState extends ConsumerState<ThreadDetailScreen> {
   /// 抓拍当前阅读位并压入跳转栈；无可用页码时跳过（首屏 ?pid= 不入栈）。
   void _captureInThreadJump() {
     final state = ref.read(postProvider(widget.tid)).asData?.value;
-    final page = state?.currentPage ?? _lastRecordedPage;
+    final page = state?.currentPage ?? _progress.lastRecordedPage;
     if (page == null) return;
 
     final perPage = state?.perPage ?? S1Constants.postsPerPageFallback;
     final leading = (state != null && state.posts.isNotEmpty)
         ? ScrollFloorNavigator.findLeadingVisiblePostIndex(postKeys: _postKeys)
         : null;
-    final floorInPage =
-        leading != null ? leading + 1 : (_lastRecordedFloorInPage ?? 1);
+    final floorInPage = leading != null
+        ? leading + 1
+        : (_progress.lastRecordedFloorInPage ?? 1);
     ref.read(inThreadJumpStackProvider(widget.tid).notifier).push(
           InThreadJumpSnapshot(
             page: page,
@@ -1597,7 +1572,7 @@ class _ThreadDetailScreenState extends ConsumerState<ThreadDetailScreen> {
                       ),
                       TextButton.icon(
                         onPressed: () {
-                          _pageFloorMemory.clear();
+                          _progress.clearPageFloorMemory();
                           ref
                               .read(postProvider(widget.tid).notifier)
                               .clearFilter();

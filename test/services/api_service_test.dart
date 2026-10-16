@@ -7,6 +7,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:s1er/models/rate_form.dart';
 import 'package:s1er/models/thread_list_query.dart';
 import 'package:s1er/services/api_service.dart';
+import 'package:s1er/services/discuz_parser.dart';
 import 'package:s1er/services/http_client.dart';
 
 void main() {
@@ -114,7 +115,7 @@ void main() {
     group('parseThreadReplies', () {
       test('reads Variables.thread.replies', () {
         expect(
-          ApiService.parseThreadReplies({
+          DiscuzParser.parseThreadReplies({
             'Variables': {
               'thread': {'replies': '42'},
             },
@@ -124,7 +125,7 @@ void main() {
       });
 
       test('returns null when replies missing', () {
-        expect(ApiService.parseThreadReplies({'Variables': {}}), isNull);
+        expect(DiscuzParser.parseThreadReplies({'Variables': {}}), isNull);
       });
     });
 
@@ -146,7 +147,7 @@ void main() {
             ],
           },
         };
-        final threads = ApiService.parseThreadList(json);
+        final threads = DiscuzParser.parseThreadList(json);
         expect(threads.length, 1);
         expect(threads[0].tid, '123');
         expect(threads[0].subject, 'Test Thread');
@@ -183,7 +184,7 @@ void main() {
             ],
           },
         };
-        final threads = ApiService.parseThreadList(json);
+        final threads = DiscuzParser.parseThreadList(json);
         expect(threads.length, 2);
         expect(threads[0].tid, '1');
         expect(threads[1].tid, '2');
@@ -191,13 +192,13 @@ void main() {
 
       test('returns empty list when Variables is missing', () {
         final json = <String, dynamic>{};
-        final threads = ApiService.parseThreadList(json);
+        final threads = DiscuzParser.parseThreadList(json);
         expect(threads, isEmpty);
       });
 
       test('returns empty list when forum_threadlist is null', () {
         final json = {'Variables': <String, dynamic>{}};
-        final threads = ApiService.parseThreadList(json);
+        final threads = DiscuzParser.parseThreadList(json);
         expect(threads, isEmpty);
       });
 
@@ -218,14 +219,14 @@ void main() {
             ],
           },
         };
-        final threads = ApiService.parseThreadList(json);
+        final threads = DiscuzParser.parseThreadList(json);
         expect(threads.length, 1);
         expect(threads[0].tid, '123');
         expect(threads[0].views, 100);
       });
 
       test('uses filtered threadcount before forum total for pagination', () {
-        final pages = ApiService.parseThreadListTotalPages(
+        final pages = DiscuzParser.parseThreadListTotalPages(
           {
             'Variables': {
               'threadcount': '72',
@@ -242,7 +243,7 @@ void main() {
       });
 
       test('infers a next filtered page when count is absent', () {
-        final pages = ApiService.parseThreadListTotalPages(
+        final pages = DiscuzParser.parseThreadListTotalPages(
           {
             'Variables': {
               'forum': {'threads': '9999'},
@@ -259,7 +260,7 @@ void main() {
 
     group('parseForumDisplayName', () {
       test('returns forum name from Variables.forum', () {
-        final name = ApiService.parseForumDisplayName({
+        final name = DiscuzParser.parseForumDisplayName({
           'Variables': {
             'forum': {'name': '  游戏论坛  '},
           },
@@ -268,9 +269,9 @@ void main() {
       });
 
       test('returns null when forum name is missing', () {
-        expect(ApiService.parseForumDisplayName({}), isNull);
+        expect(DiscuzParser.parseForumDisplayName({}), isNull);
         expect(
-          ApiService.parseForumDisplayName({
+          DiscuzParser.parseForumDisplayName({
             'Variables': {'forum': <String, dynamic>{}},
           }),
           isNull,
@@ -294,7 +295,7 @@ void main() {
             ],
           },
         };
-        final posts = ApiService.parsePostList(json);
+        final posts = DiscuzParser.parsePostList(json);
         expect(posts.length, 1);
         expect(posts[0].pid, '67890');
         expect(posts[0].message, 'Hello world');
@@ -325,7 +326,7 @@ void main() {
             ],
           },
         };
-        final posts = ApiService.parsePostList(json);
+        final posts = DiscuzParser.parsePostList(json);
         expect(posts.length, 2);
         expect(posts[0].pid, '1');
         expect(posts[1].pid, '2');
@@ -333,14 +334,59 @@ void main() {
 
       test('returns empty list when postlist is missing', () {
         final json = {'Variables': <String, dynamic>{}};
-        final posts = ApiService.parsePostList(json);
+        final posts = DiscuzParser.parsePostList(json);
         expect(posts, isEmpty);
       });
 
       test('returns empty list when Variables is missing', () {
         final json = <String, dynamic>{};
-        final posts = ApiService.parsePostList(json);
+        final posts = DiscuzParser.parsePostList(json);
         expect(posts, isEmpty);
+      });
+    });
+
+    group('parsePostListAsync', () {
+      // 锁定 isolate 分派策略：空/少量走同步，≥12 条走 compute（测试环境
+      // 下 compute 在本 isolate 执行，仍能验证结果与分支选择）。
+      test('returns empty when postlist is missing', () async {
+        final posts = await ApiService.parsePostListAsync({
+          'Variables': <String, dynamic>{},
+        });
+        expect(posts, isEmpty);
+      });
+
+      test('parses a short list synchronously', () async {
+        final json = {
+          'Variables': {
+            'postlist': [
+              {'pid': '1', 'message': 'a', 'author': 'x', 'authorid': '1'},
+            ],
+          },
+        };
+        final posts = await ApiService.parsePostListAsync(json);
+        expect(posts, hasLength(1));
+        expect(posts.first.pid, '1');
+      });
+
+      test('parses a long list (>=12) via compute', () async {
+        final json = {
+          'Variables': {
+            'postlist': List.generate(
+              12,
+              (i) => {
+                'pid': '${i + 1}',
+                'message': 'post ${i + 1}',
+                'author': 'u$i',
+                'authorid': '${i + 1}',
+                'floor': '${i + 1}',
+              },
+            ),
+          },
+        };
+        final posts = await ApiService.parsePostListAsync(json);
+        expect(posts, hasLength(12));
+        expect(posts.first.pid, '1');
+        expect(posts.last.pid, '12');
       });
     });
 
@@ -355,12 +401,12 @@ void main() {
           },
         };
 
-        expect(ApiService.parseCommentCount(json), {'100': 2, '200': 0});
+        expect(DiscuzParser.parseCommentCount(json), {'100': 2, '200': 0});
       });
 
       test('returns empty map when commentcount is missing', () {
         final json = {'Variables': <String, dynamic>{}};
-        expect(ApiService.parseCommentCount(json), isEmpty);
+        expect(DiscuzParser.parseCommentCount(json), isEmpty);
       });
     });
 
@@ -389,7 +435,7 @@ void main() {
           },
         };
 
-        final poll = ApiService.parsePoll(json);
+        final poll = DiscuzParser.parsePoll(json);
         expect(poll, isNotNull);
         expect(poll!.options.single.id, '82378');
         expect(poll.votersCount, 640);
@@ -401,7 +447,7 @@ void main() {
             'thread': {'special': '0'},
           },
         };
-        expect(ApiService.parsePoll(json), isNull);
+        expect(DiscuzParser.parsePoll(json), isNull);
       });
 
       test('returns null when special_poll is missing', () {
@@ -410,14 +456,14 @@ void main() {
             'thread': {'special': '1'},
           },
         };
-        expect(ApiService.parsePoll(json), isNull);
+        expect(DiscuzParser.parsePoll(json), isNull);
       });
     });
 
     group('parsePollVoteResponse', () {
       test('returns null on redirect success XML', () {
         expect(
-          ApiService.parsePollVoteResponse(
+          DiscuzParser.parsePollVoteResponse(
             "<?xml version=\"1.0\"?><root><![CDATA[<script>window.location.href='forum.php?mod=viewthread&tid=2285124';</script>]]></root>",
           ),
           isNull,
@@ -426,7 +472,7 @@ void main() {
 
       test('returns null on success handler', () {
         expect(
-          ApiService.parsePollVoteResponse(
+          DiscuzParser.parsePollVoteResponse(
             "succeedhandle_pollvote('tid_1', '投票成功');",
           ),
           isNull,
@@ -435,7 +481,7 @@ void main() {
 
       test('returns error message on error handler', () {
         expect(
-          ApiService.parsePollVoteResponse(
+          DiscuzParser.parsePollVoteResponse(
             "errorhandle_pollvote('已经投过票了', '');",
           ),
           '已经投过票了',
@@ -444,7 +490,7 @@ void main() {
 
       test('returns error message on empty body', () {
         expect(
-          ApiService.parsePollVoteResponse(''),
+          DiscuzParser.parsePollVoteResponse(''),
           contains('无响应'),
         );
       });
@@ -460,7 +506,7 @@ void main() {
 </form>]]></root>''';
 
       test('parses score and reason presets from rate form', () {
-        final options = ApiService.parseRateFormResponse(formHtml);
+        final options = DiscuzParser.parseRateFormResponse(formHtml);
 
         expect(options.hasError, isFalse);
         expect(options.scoreOptions, ['0', '+2', '+1', '-1', '-2']);
@@ -489,7 +535,7 @@ void main() {
 </form>
 ]]></root>''';
 
-        final options = ApiService.parseRateFormResponse(richFormHtml);
+        final options = DiscuzParser.parseRateFormResponse(richFormHtml);
 
         expect(options.formHash, '2867b07a');
         expect(options.tid, '2285380');
@@ -512,14 +558,14 @@ void main() {
 <p>抱歉，您不能给自己发表的帖子评分</p>
 </dt></div>]]></root>''';
 
-        final options = ApiService.parseRateFormResponse(errorHtml);
+        final options = DiscuzParser.parseRateFormResponse(errorHtml);
 
         expect(options.hasError, isTrue);
         expect(options.error, contains('不能给自己'));
       });
 
       test('falls back to defaults on empty body', () {
-        final options = ApiService.parseRateFormResponse('');
+        final options = DiscuzParser.parseRateFormResponse('');
 
         expect(options.hasError, isFalse);
         expect(options.scoreOptions, RateFormOptions.defaultScoreOptions);
@@ -530,7 +576,7 @@ void main() {
     group('parseRateSubmitResponse', () {
       test('returns null on redirect success XML', () {
         expect(
-          ApiService.parseRateSubmitResponse(
+          DiscuzParser.parseRateSubmitResponse(
             "<?xml version=\"1.0\"?><root><![CDATA[<script>window.location.href='forum.php?mod=viewthread&tid=2285380';</script>]]></root>",
           ),
           isNull,
@@ -539,7 +585,7 @@ void main() {
 
       test('returns null on success handler', () {
         expect(
-          ApiService.parseRateSubmitResponse(
+          DiscuzParser.parseRateSubmitResponse(
             "succeedhandle_rate('pid_1', '评分成功');",
           ),
           isNull,
@@ -548,7 +594,7 @@ void main() {
 
       test('returns error message on error handler', () {
         expect(
-          ApiService.parseRateSubmitResponse(
+          DiscuzParser.parseRateSubmitResponse(
             "errorhandle_rate('已经评过分了', '');",
           ),
           '已经评过分了',
@@ -557,7 +603,7 @@ void main() {
 
       test('returns error message on messagetext', () {
         expect(
-          ApiService.parseRateSubmitResponse(
+          DiscuzParser.parseRateSubmitResponse(
             '<dt id="messagetext"><p>抱歉，您不能给自己发表的帖子评分</p></dt>',
           ),
           contains('不能给自己'),
@@ -566,7 +612,7 @@ void main() {
 
       test('returns error message on empty body', () {
         expect(
-          ApiService.parseRateSubmitResponse(''),
+          DiscuzParser.parseRateSubmitResponse(''),
           contains('无响应'),
         );
       });
@@ -599,7 +645,7 @@ void main() {
             },
           };
 
-          final forums = ApiService.parseForumList(json);
+          final forums = DiscuzParser.parseForumList(json);
 
           expect(forums, hasLength(1));
           expect(forums.single.name, '主论坛');
@@ -634,7 +680,7 @@ void main() {
           },
         };
 
-        final forums = ApiService.parseForumList(json);
+        final forums = DiscuzParser.parseForumList(json);
 
         expect(forums, hasLength(1));
         expect(forums.single.name, '主论坛');
@@ -662,7 +708,7 @@ void main() {
             ],
           },
         };
-        final forums = ApiService.parseForumList(json);
+        final forums = DiscuzParser.parseForumList(json);
         expect(forums.length, 1);
         expect(forums[0].fid, '4');
         expect(forums[0].name, '技术讨论');
@@ -698,7 +744,7 @@ void main() {
             ],
           },
         };
-        final forums = ApiService.parseForumList(json);
+        final forums = DiscuzParser.parseForumList(json);
         expect(forums.length, 1);
         expect(forums[0].subforums.length, 2);
         expect(forums[0].subforums[0].fid, '1');
@@ -707,13 +753,13 @@ void main() {
 
       test('returns empty list when forumlist is missing', () {
         final json = {'Variables': <String, dynamic>{}};
-        final forums = ApiService.parseForumList(json);
+        final forums = DiscuzParser.parseForumList(json);
         expect(forums, isEmpty);
       });
 
       test('returns empty list when Variables is missing', () {
         final json = <String, dynamic>{};
-        final forums = ApiService.parseForumList(json);
+        final forums = DiscuzParser.parseForumList(json);
         expect(forums, isEmpty);
       });
     });
@@ -722,7 +768,7 @@ void main() {
       test('returns success result with pid and tid', () {
         const xml =
             "<root><![CDATA[<script>succeedhandle_reply('redirect.php?mod=redirect&goto=findpost&pid=123&ptid=456', '回复发布成功', {fid:'4',tid:'456',pid:'123',from:'1',sechash:'abc'});</script>]]></root>";
-        final result = ApiService.parseReplyResponse(xml);
+        final result = DiscuzParser.parseReplyResponse(xml);
         expect(result.isSuccess, isTrue);
         expect(result.pid, '123');
         expect(result.tid, '456');
@@ -738,7 +784,7 @@ void main() {
 </div>
 ]]></root>''';
 
-        final result = ApiService.parseReplyResponse(xml);
+        final result = DiscuzParser.parseReplyResponse(xml);
 
         expect(result.isSuccess, isTrue);
         expect(result.pid, '69904041');
@@ -761,7 +807,7 @@ window.location.href = 'forum.php?mod=viewthread&tid=2253488&pid=69963296&page=1
 </div>
 ]]></root>''';
 
-        final result = ApiService.parseReplyResponse(xml);
+        final result = DiscuzParser.parseReplyResponse(xml);
 
         expect(result.isSuccess, isTrue);
         expect(result.pid, '69963296');
@@ -772,7 +818,7 @@ window.location.href = 'forum.php?mod=viewthread&tid=2253488&pid=69963296&page=1
       test('returns error message from errorhandle_reply', () {
         const xml =
             "<root><![CDATA[<script>errorhandle_reply('内容过长', 'error');</script>]]></root>";
-        final result = ApiService.parseReplyResponse(xml);
+        final result = DiscuzParser.parseReplyResponse(xml);
         expect(result.isSuccess, isFalse);
         expect(result.error, '内容过长');
       });
@@ -780,21 +826,21 @@ window.location.href = 'forum.php?mod=viewthread&tid=2253488&pid=69963296&page=1
       test('returns second arg when first is empty in errorhandle', () {
         const xml =
             "<root><![CDATA[<script>errorhandle_reply('', '操作失败');</script>]]></root>";
-        final result = ApiService.parseReplyResponse(xml);
+        final result = DiscuzParser.parseReplyResponse(xml);
         expect(result.error, '操作失败');
       });
 
       test('returns message from alert', () {
         const xml =
             "<root><![CDATA[<script>alert('您没有权限回复');</script>]]></root>";
-        final result = ApiService.parseReplyResponse(xml);
+        final result = DiscuzParser.parseReplyResponse(xml);
         expect(result.error, '您没有权限回复');
       });
 
       test('returns message from errorhandle_postform', () {
         const xml =
             "<root><![CDATA[<script>errorhandle_postform('抱歉，您的请求来路不正确或表单验证串不符，无法提交', {});</script>]]></root>";
-        final result = ApiService.parseReplyResponse(xml);
+        final result = DiscuzParser.parseReplyResponse(xml);
         expect(result.error, '抱歉，您的请求来路不正确或表单验证串不符，无法提交');
       });
 
@@ -804,19 +850,19 @@ window.location.href = 'forum.php?mod=viewthread&tid=2253488&pid=69963296&page=1
 <p>抱歉，您的请求来路不正确或表单验证串不符，无法提交</p>
 </dt>
 </div>]]></root>''';
-        final result = ApiService.parseReplyResponse(xml);
+        final result = DiscuzParser.parseReplyResponse(xml);
         expect(result.error, '抱歉，您的请求来路不正确或表单验证串不符，无法提交');
       });
 
       test('returns uncertain on unknown response', () {
         const xml = '<root><![CDATA[<p>unexpected</p>]]></root>';
-        final result = ApiService.parseReplyResponse(xml);
+        final result = DiscuzParser.parseReplyResponse(xml);
         expect(result.isUncertain, isTrue);
         expect(result.isSuccess, isFalse);
       });
 
       test('returns uncertain on empty string', () {
-        final result = ApiService.parseReplyResponse('');
+        final result = DiscuzParser.parseReplyResponse('');
         expect(result.isUncertain, isTrue);
       });
 
@@ -828,7 +874,7 @@ window.location.href = 'forum.php?mod=viewthread&tid=2253488&pid=69963296&page=1
 </div>
 <script>window.location.href='forum.php?mod=viewthread&tid=100&pid=200';</script>
 ]]></root>''';
-        final result = ApiService.parseReplyResponse(xml);
+        final result = DiscuzParser.parseReplyResponse(xml);
         expect(result.isSuccess, isTrue);
         expect(result.tid, '100');
         expect(result.pid, '200');
@@ -904,14 +950,14 @@ window.location.href = 'forum.php?mod=viewthread&tid=2253488&pid=69963296&page=1
           'error': '维护公告 \n \n 又被爬了，休息会',
         };
         expect(
-          ApiService.extractApiErrorMessage(json),
+          DiscuzParser.extractApiErrorMessage(json),
           '维护公告 \n \n 又被爬了，休息会',
         );
       });
 
       test('extractApiErrorMessage ignores to_login', () {
         expect(
-          ApiService.extractApiErrorMessage({'error': 'to_login'}),
+          DiscuzParser.extractApiErrorMessage({'error': 'to_login'}),
           isNull,
         );
       });
@@ -987,7 +1033,7 @@ window.location.href = 'forum.php?mod=viewthread&tid=2253488&pid=69963296&page=1
 
       test('extractApiErrorMessage reads Variables.error when top absent', () {
         expect(
-          ApiService.extractApiErrorMessage({
+          DiscuzParser.extractApiErrorMessage({
             'Variables': {'error': '维护公告 B'},
           }),
           '维护公告 B',
@@ -996,7 +1042,7 @@ window.location.href = 'forum.php?mod=viewthread&tid=2253488&pid=69963296&page=1
 
       test('extractDiscuzMessageError reads non-success messagestr only', () {
         expect(
-          ApiService.extractDiscuzMessageError({
+          DiscuzParser.extractDiscuzMessageError({
             'Message': {
               'messageval': 'forum_index_denied',
               'messagestr': '官方解释原文',
@@ -1005,7 +1051,7 @@ window.location.href = 'forum.php?mod=viewthread&tid=2253488&pid=69963296&page=1
           '官方解释原文',
         );
         expect(
-          ApiService.extractDiscuzMessageError({
+          DiscuzParser.extractDiscuzMessageError({
             'Message': {
               'messageval': 'forum_index_succeed',
               'messagestr': '成功文案',
@@ -1014,7 +1060,7 @@ window.location.href = 'forum.php?mod=viewthread&tid=2253488&pid=69963296&page=1
           isNull,
         );
         expect(
-          ApiService.extractDiscuzMessageError(<String, dynamic>{}),
+          DiscuzParser.extractDiscuzMessageError(<String, dynamic>{}),
           isNull,
         );
       });
@@ -1147,7 +1193,7 @@ window.location.href = 'forum.php?mod=viewthread&tid=2253488&pid=69963296&page=1
 </td></tr>
 </table>
 ''';
-        final result = ApiService.parseSpaceReplyHtmlForTest(html);
+        final result = DiscuzParser.parseSpaceReplyHtml(html, page: 1);
         expect(result.items, hasLength(1));
         expect(result.items.first.tid, '100');
         expect(result.items.first.pid, '55');
@@ -1160,7 +1206,7 @@ window.location.href = 'forum.php?mod=viewthread&tid=2253488&pid=69963296&page=1
 <a href="forum.php?mod=redirect&amp;goto=findpost&amp;ptid=200&amp;pid=">标题B</a>
 <a href="forum.php?mod=redirect&amp;goto=findpost&amp;pid=99&amp;ptid=200">摘要B</a>
 ''';
-        final result = ApiService.parseSpaceReplyHtmlForTest(html);
+        final result = DiscuzParser.parseSpaceReplyHtml(html, page: 1);
         expect(result.items, hasLength(1));
         expect(result.items.first.tid, '200');
         expect(result.items.first.pid, '99');
@@ -1177,7 +1223,7 @@ window.location.href = 'forum.php?mod=viewthread&tid=2253488&pid=69963296&page=1
 </li>
 </div>
 ''';
-        final result = ApiService.parseSpaceReplyHtmlForTest(html);
+        final result = DiscuzParser.parseSpaceReplyHtml(html, page: 1);
         expect(result.items, hasLength(1));
         expect(result.items.first.tid, '300');
         expect(result.items.first.pid, '42');

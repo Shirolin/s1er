@@ -1,3 +1,5 @@
+import '../utils/html_entities.dart';
+
 enum FavoriteType { thread, forum }
 
 class FavoriteItem {
@@ -58,16 +60,12 @@ class FavoriteItem {
   String get membershipKey => '${type.name}:$id';
 
   static String _decodeHtml(String text) {
-    return text
-        .replaceAll('&amp;', '&')
-        .replaceAll('&lt;', '<')
-        .replaceAll('&gt;', '>')
-        .replaceAll('&quot;', '"')
-        .replaceAll('&#039;', "'")
-        .replaceAll('&#39;', "'")
-        .replaceAll('&nbsp;', ' ')
-        .replaceAll(RegExp(r'<[^>]+>'), '')
-        .trim();
+    return decodeHtmlEntities(
+      text
+          .replaceAll('&amp;', '&')
+          .replaceAll('&lt;', '<')
+          .replaceAll('&gt;', '>'),
+    ).replaceAll(RegExp(r'<[^>]+>'), '').trim();
   }
 }
 

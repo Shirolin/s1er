@@ -15,8 +15,7 @@ import 'formhash_service.dart';
 import 'encrypted_cookie_storage.dart';
 import 'talker.dart';
 import '../models/app_exceptions.dart';
-import '../providers/server_notice_provider.dart';
-import '../providers/unread_count_provider.dart';
+import 's1_http_event.dart';
 import '../utils/server_notice.dart';
 
 class S1HttpClient {
@@ -48,6 +47,11 @@ class S1HttpClient {
   final Future<void> Function(Duration) _delay;
   Future<void> _apiRateLimitQueue = Future.value();
   Future<void> _mediaRateLimitQueue = Future.value();
+
+  /// 客户端观测到的事件（未读计数 / 服务器公告）。provider 层适配器订阅；
+  /// 客户端自身不读写这些 provider（formhash 除外，它是请求协作状态）。
+  final _events = StreamController<S1HttpEvent>.broadcast();
+  Stream<S1HttpEvent> get events => _events.stream;
 
   static String get _proxyUrl => 'http://localhost:${EnvConfig.proxyPort}';
   static bool get _isWeb => kIsWeb;
@@ -399,6 +403,14 @@ class S1HttpClient {
   }
 
   void _extractAndUpdateNotice(dynamic data) {
+    final event = unreadNoticeFromResponse(data);
+    if (event != null) _events.add(event);
+  }
+
+  /// 从响应体中派生未读计数事件；形状不符返回 `null`。
+  ///
+  /// 纯函数，供测试直接验证派生逻辑（拦截器只负责调用与转发）。
+  static S1UnreadNoticeEvent? unreadNoticeFromResponse(dynamic data) {
     try {
       Map<String, dynamic>? jsonMap;
       if (data is Map) {
@@ -415,18 +427,20 @@ class S1HttpClient {
         if (variables is Map && variables.containsKey('notice')) {
           final noticeMap = variables['notice'];
           if (noticeMap is Map) {
-            _read(unreadCountProvider.notifier)
-                .updateFromNotice(Map<String, dynamic>.from(noticeMap));
+            return S1UnreadNoticeEvent(Map<String, dynamic>.from(noticeMap));
           }
         }
       }
-    } catch (_) {}
+    } catch (e, st) {
+      talker.handle(e, st, 'unreadNoticeFromResponse: ignore malformed body');
+    }
+    return null;
   }
 
-  /// 喂入服务器官方公告原文（会话级提示，见 [serverNoticeProvider]）。
+  /// 转发服务器官方公告原文（会话级提示）；由适配器落到 [serverNoticeProvider]。
   void _offerServerNotice(String? notice) {
     if (notice == null) return;
-    _read(serverNoticeProvider.notifier).offer(notice);
+    _events.add(S1ServerNoticeEvent(notice));
   }
 
   T _read<T>(ProviderListenable<T> provider) {
@@ -526,6 +540,14 @@ class S1HttpClient {
     }
     return Uri.parse('https://${ResourceDomains.apiHost}$path');
   }
+
+  /// 关闭事件流。仅用于测试。
+  @visibleForTesting
+  Future<void> dispose() => _events.close();
+
+  /// 直接投递一条事件。仅用于测试；生产路径由拦截器在响应/错误时发出。
+  @visibleForTesting
+  void debugEmit(S1HttpEvent event) => _events.add(event);
 }
 
 final httpClientProvider = Provider<S1HttpClient>((ref) {

@@ -1,13 +1,22 @@
 import 'package:flutter_test/flutter_test.dart';
-import 'package:s1er/screens/thread_detail_screen.dart';
+import 'package:s1er/utils/reading_progress_tracker.dart';
+
+ReadingProgressTracker _trackerAt({
+  required bool visited,
+  int? page,
+  int? floorInPage,
+}) {
+  final tracker = ReadingProgressTracker();
+  if (visited) {
+    tracker.markRecorded(page: page ?? 1, floorInPage: floorInPage ?? 1);
+  }
+  return tracker;
+}
 
 void main() {
   test('first visit always writes progress', () {
     expect(
-      shouldWriteReadingProgressUpdate(
-        hasRecordedInitialVisit: false,
-        lastRecordedPage: null,
-        lastRecordedFloorInPage: null,
+      _trackerAt(visited: false).shouldWrite(
         currentPage: 1,
         currentFloorInPage: 1,
       ),
@@ -17,39 +26,33 @@ void main() {
 
   test('same page and floor after initial visit skips write', () {
     expect(
-      shouldWriteReadingProgressUpdate(
-        hasRecordedInitialVisit: true,
-        lastRecordedPage: 2,
-        lastRecordedFloorInPage: 5,
-        currentPage: 2,
-        currentFloorInPage: 5,
-      ),
+      _trackerAt(
+        visited: true,
+        page: 2,
+        floorInPage: 5,
+      ).shouldWrite(currentPage: 2, currentFloorInPage: 5),
       isFalse,
     );
   });
 
   test('page change after initial visit writes progress', () {
     expect(
-      shouldWriteReadingProgressUpdate(
-        hasRecordedInitialVisit: true,
-        lastRecordedPage: 2,
-        lastRecordedFloorInPage: 5,
-        currentPage: 3,
-        currentFloorInPage: 1,
-      ),
+      _trackerAt(
+        visited: true,
+        page: 2,
+        floorInPage: 5,
+      ).shouldWrite(currentPage: 3, currentFloorInPage: 1),
       isTrue,
     );
   });
 
   test('floor change on same page writes progress', () {
     expect(
-      shouldWriteReadingProgressUpdate(
-        hasRecordedInitialVisit: true,
-        lastRecordedPage: 2,
-        lastRecordedFloorInPage: 5,
-        currentPage: 2,
-        currentFloorInPage: 12,
-      ),
+      _trackerAt(
+        visited: true,
+        page: 2,
+        floorInPage: 5,
+      ).shouldWrite(currentPage: 2, currentFloorInPage: 12),
       isTrue,
     );
   });

@@ -1,3 +1,5 @@
+import '../utils/html_entities.dart';
+
 import '../config/api_config.dart';
 import 'user.dart';
 
@@ -140,15 +142,11 @@ class PrivateMessageItem {
   }
 
   static String _decodeHtml(String text) {
-    return text
-        .replaceAll('&amp;', '&')
-        .replaceAll('&lt;', '<')
-        .replaceAll('&gt;', '>')
-        .replaceAll('&quot;', '"')
-        .replaceAll('&#039;', "'")
-        .replaceAll('&#39;', "'")
-        .replaceAll('&nbsp;', ' ')
-        .replaceAll(RegExp(r'<[^>]+>'), '')
-        .trim();
+    return decodeHtmlEntities(
+      text
+          .replaceAll('&amp;', '&')
+          .replaceAll('&lt;', '<')
+          .replaceAll('&gt;', '>'),
+    ).replaceAll(RegExp(r'<[^>]+>'), '').trim();
   }
 }

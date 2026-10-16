@@ -42,33 +42,6 @@ void main() {
       expect(QuoteBuilder.stripHtmlTags(input), 'bold & plain');
     });
 
-    // ignore: deprecated_member_use_from_same_package
-    test('buildMessageWithQuote prepends quote before user text', () {
-      // ignore: deprecated_member_use_from_same_package
-      final message = QuoteBuilder.buildMessageWithQuote(
-        post: samplePost,
-        tid: '456',
-        userText: 'my reply',
-      );
-
-      expect(message, startsWith('[quote]'));
-      expect(message, endsWith('my reply'));
-    });
-
-    // ignore: deprecated_member_use_from_same_package
-    test('buildMessageWithQuote without quote returns trimmed user text', () {
-      // ignore: deprecated_member_use_from_same_package
-      final message = QuoteBuilder.buildMessageWithQuote(
-        post: samplePost,
-        tid: '456',
-        userText: '  only me  ',
-        includeQuote: false,
-      );
-
-      expect(message, 'only me');
-      expect(message, isNot(contains('[quote]')));
-    });
-
     test('previewText strips quotes and html then truncates', () {
       final input = '[quote]old[/quote]<b>visible</b> ${'x' * 200}';
       final preview = QuoteBuilder.previewText(input, maxLength: 20);

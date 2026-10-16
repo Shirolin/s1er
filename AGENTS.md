@@ -314,3 +314,15 @@ flutter run -d chrome --dart-define=TALKER_LOG_LEVEL=all --dart-define=TALKER_MA
   - 确需登录时，一次成功即可；`scripts/proxy_server.dart` 会在内存中保存已登录的 S1 Cookie 并自动附加到后续所有上游请求，因此**登录一次后无需重复登录**，浏览器端刷新页面即可通过 `checkSession()` 复用会话。
   - 切勿写循环/压测脚本调用登录接口；`S1HttpClient` 自带每秒 2 请求限速，不要绕过。
   - 凭据只放本机环境变量或私密 CI secrets，永不提交。
+
+---
+
+## Agent skills
+
+### Issue tracker
+
+Issues live as GitHub issues in `Shirolin/s1er`, via the `gh` CLI. See `docs/agents/issue-tracker.md`.
+
+### Domain docs
+
+Single-context: `GLOSSARY.md` + `docs/adr/` at the repo root. See `docs/agents/domain.md`.

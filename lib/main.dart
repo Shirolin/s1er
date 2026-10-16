@@ -11,6 +11,7 @@ import 'config/env_config.dart';
 import 'theme/app_theme.dart';
 import 'models/emoticon_catalog.dart';
 import 'providers/settings_provider.dart';
+import 'providers/http_event_bridge_provider.dart';
 import 'services/app_database.dart';
 import 'services/app_local_data.dart';
 import 'services/frame_timing_service.dart';
@@ -163,6 +164,9 @@ void main() async {
     unawaited(
       container.read(settingsProvider.notifier).syncAppIconWithNative(),
     );
+
+    // 订阅 HTTP 事件（未读计数 / 服务器公告）；客户端只转发、由适配器落库。
+    container.read(httpEventBridgeProvider);
 
     _setupErrorHub();
 

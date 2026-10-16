@@ -1,3 +1,5 @@
+import '../utils/html_entities.dart';
+
 /// Discuz 引用助手返回的官方字段（`forum.php?mod=post&action=reply&repquote=`）。
 class QuoteInfo {
   const QuoteInfo({
@@ -44,13 +46,8 @@ class QuoteInfo {
   }
 
   static String _unescapeHtml(String text) {
-    return text
-        .replaceAll('&amp;', '&')
-        .replaceAll('&quot;', '"')
-        .replaceAll('&#039;', "'")
-        .replaceAll('&#39;', "'")
+    return decodeHtmlEntities(text.replaceAll('&amp;', '&'))
         .replaceAll('&lt;', '<')
-        .replaceAll('&gt;', '>')
-        .replaceAll('&nbsp;', ' ');
+        .replaceAll('&gt;', '>');
   }
 }

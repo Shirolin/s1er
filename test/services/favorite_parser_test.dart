@@ -2,13 +2,13 @@ import 'dart:io';
 
 import 'package:flutter_test/flutter_test.dart';
 import 'package:s1er/models/favorite_item.dart';
-import 'package:s1er/services/api_service.dart';
+import 'package:s1er/services/discuz_parser.dart';
 
 void main() {
   group('parseFavoriteListHtml', () {
     test('parses mixed favorites from all tab HTML', () {
       final html = File('test/fixtures/favorite_all.html').readAsStringSync();
-      final result = ApiService.parseFavoriteListHtml(html);
+      final result = DiscuzParser.parseFavoriteListHtml(html);
 
       expect(result.items.length, 2);
       expect(result.totalPages, 2);
@@ -29,7 +29,7 @@ void main() {
     test('parses thread favorites with pagination', () {
       final html =
           File('test/fixtures/favorite_thread.html').readAsStringSync();
-      final result = ApiService.parseFavoriteListHtml(html);
+      final result = DiscuzParser.parseFavoriteListHtml(html);
 
       expect(result.items.length, 2);
       expect(result.totalPages, 2);
@@ -42,7 +42,7 @@ void main() {
 
     test('parses forum favorites', () {
       final html = File('test/fixtures/favorite_forum.html').readAsStringSync();
-      final result = ApiService.parseFavoriteListHtml(html);
+      final result = DiscuzParser.parseFavoriteListHtml(html);
 
       expect(result.items.length, 1);
       expect(result.items.every((e) => e.type == FavoriteType.forum), isTrue);
@@ -53,7 +53,7 @@ void main() {
 
     test('returns empty list for empty-state HTML', () {
       const html = '<div class="findbox mt10 cl"><h4>您还没有添加任何收藏</h4></div>';
-      final result = ApiService.parseFavoriteListHtml(html);
+      final result = DiscuzParser.parseFavoriteListHtml(html);
       expect(result.items, isEmpty);
     });
 
@@ -72,7 +72,7 @@ void main() {
 </div>
 </div>
 ''';
-      final result = ApiService.parseFavoriteListHtml(html);
+      final result = DiscuzParser.parseFavoriteListHtml(html);
       expect(result.items.length, 1);
       expect(result.items.first.id, '2253488');
       expect(result.items.first.favid, '1001');
@@ -82,32 +82,32 @@ void main() {
   group('parseFavoriteMutationResponse', () {
     test('detects delete success', () {
       const body = "succeedhandle_favorite('删除成功', '')";
-      final result = ApiService.parseFavoriteMutationResponse(body);
+      final result = DiscuzParser.parseFavoriteMutationResponse(body);
       expect(result.isSuccess, isTrue);
     });
 
     test('detects login required', () {
       const body = 'mobile:login_before_enter_home';
-      final result = ApiService.parseFavoriteMutationResponse(body);
+      final result = DiscuzParser.parseFavoriteMutationResponse(body);
       expect(result.error, '请先登录');
     });
 
     test('detects error message', () {
       const body = "errorhandle_favorite('已经收藏过了')";
-      final result = ApiService.parseFavoriteMutationResponse(body);
+      final result = DiscuzParser.parseFavoriteMutationResponse(body);
       expect(result.error, '已经收藏过了');
     });
 
     test('extracts favid from succeed callback', () {
       const body = "succeedhandle_favorite('收藏成功', '', {'favid':'3093261'})";
-      final result = ApiService.parseFavoriteMutationResponse(body);
+      final result = DiscuzParser.parseFavoriteMutationResponse(body);
       expect(result.isSuccess, isTrue);
       expect(result.favid, '3093261');
     });
 
     test('maps mobile favorite_cannot_favorite', () {
       const body = 'mobile:favorite_cannot_favorite';
-      final result = ApiService.parseFavoriteMutationResponse(body);
+      final result = DiscuzParser.parseFavoriteMutationResponse(body);
       expect(result.error, '无法收藏该内容');
     });
   });
@@ -121,7 +121,7 @@ void main() {
         },
         'Variables': {'favid': '12345'},
       };
-      final result = ApiService.parseFavoriteAddJson(json);
+      final result = DiscuzParser.parseFavoriteAddJson(json);
       expect(result.isSuccess, isTrue);
       expect(result.favid, '12345');
     });
@@ -133,7 +133,7 @@ void main() {
           'messagestr': 'mobile:to_login',
         },
       };
-      final result = ApiService.parseFavoriteAddJson(json);
+      final result = DiscuzParser.parseFavoriteAddJson(json);
       expect(result.error, '请先登录');
     });
 
@@ -144,7 +144,7 @@ void main() {
           'messagestr': 'mobile:favorite_cannot_favorite',
         },
       };
-      final result = ApiService.parseFavoriteAddJson(json);
+      final result = DiscuzParser.parseFavoriteAddJson(json);
       expect(result.error, '无法收藏该内容');
     });
   });
@@ -166,7 +166,7 @@ void main() {
           'count': '1',
         },
       };
-      final result = ApiService.parseFavoriteThreadListJson(json);
+      final result = DiscuzParser.parseFavoriteThreadListJson(json);
       expect(result.items.length, 1);
       expect(result.items.first.id, '123');
       expect(result.items.first.favid, '9');

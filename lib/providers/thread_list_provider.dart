@@ -7,6 +7,7 @@ import 'blacklist_provider.dart';
 import 'pinned_threads_provider.dart';
 import 'settings_provider.dart';
 import '../services/api_service.dart';
+import '../services/discuz_parser.dart';
 
 class ThreadListState {
   ThreadListState({
@@ -90,11 +91,11 @@ class ThreadListNotifier extends AsyncNotifier<ThreadListState> {
       typeId: _selectedTypeId,
       query: _query,
     );
-    final threads = ApiService.parseThreadList(result);
-    final parsedTypes = ApiService.parseThreadTypes(result);
+    final threads = DiscuzParser.parseThreadList(result);
+    final parsedTypes = DiscuzParser.parseThreadTypes(result);
     if (parsedTypes.isNotEmpty) _threadTypes = parsedTypes;
     final filtered = _filterThreads(threads);
-    final totalPages = ApiService.parseThreadListTotalPages(
+    final totalPages = DiscuzParser.parseThreadListTotalPages(
       result,
       currentPage: page,
       itemCount: threads.length,
@@ -106,7 +107,7 @@ class ThreadListNotifier extends AsyncNotifier<ThreadListState> {
       sourceThreads: threads,
       currentPage: page,
       totalPages: totalPages,
-      forumName: ApiService.parseForumDisplayName(result),
+      forumName: DiscuzParser.parseForumDisplayName(result),
       threadTypes: _threadTypes,
       selectedTypeId: _selectedTypeId,
       query: _query,

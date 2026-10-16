@@ -5,6 +5,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:s1er/models/edit_post_submit_result.dart';
 import 'package:s1er/services/api_service.dart';
+import 'package:s1er/services/discuz_parser.dart';
 import 'package:s1er/services/http_client.dart';
 
 void main() {
@@ -26,7 +27,7 @@ void main() {
 ''';
 
   test('parses reply editor without subject controls', () {
-    final form = ApiService.parseEditPostFormResponse(
+    final form = DiscuzParser.parseEditPostFormResponse(
       replyForm,
       isFirst: false,
     );
@@ -37,7 +38,7 @@ void main() {
   });
 
   test('parses first-post title, type and read permission', () {
-    final form = ApiService.parseEditPostFormResponse(
+    final form = DiscuzParser.parseEditPostFormResponse(
       threadForm,
       isFirst: true,
     );
@@ -65,7 +66,7 @@ void main() {
   <textarea id="e_textarea">正文</textarea>
 </form>
 ''';
-    final form = ApiService.parseEditPostFormResponse(html, isFirst: true);
+    final form = DiscuzParser.parseEditPostFormResponse(html, isFirst: true);
     expect(form.readPermissions, {'1': '1', '10': '10', '20': '20'});
     expect(form.selectedReadPermission, '1');
   });
@@ -93,7 +94,7 @@ void main() {
   <textarea id="e_textarea">正文</textarea>
 </form>
 ''';
-    final form = ApiService.parseEditPostFormResponse(html, isFirst: true);
+    final form = DiscuzParser.parseEditPostFormResponse(html, isFirst: true);
 
     expect(form.readPermissions[''], '不限');
     expect(
@@ -128,7 +129,7 @@ void main() {
   <textarea class="pt" id="needmessage" name="message">触屏 [i]正文[/i]</textarea>
 </form>
 ''';
-    final form = ApiService.parseEditPostFormResponse(
+    final form = DiscuzParser.parseEditPostFormResponse(
       mobileForm,
       isFirst: true,
     );
@@ -148,7 +149,7 @@ void main() {
     src="https://img.stage1st.com/forum/a.png.thumb.jpg" /></a>
 </form>
 ''';
-    final form = ApiService.parseEditPostFormResponse(html, isFirst: false);
+    final form = DiscuzParser.parseEditPostFormResponse(html, isFirst: false);
     expect(form.canEdit, isTrue);
     expect(
       form.attachImageUrls['2098060'],
@@ -157,7 +158,7 @@ void main() {
   });
 
   test('permission error never becomes an editable form', () {
-    final form = ApiService.parseEditPostFormResponse(
+    final form = DiscuzParser.parseEditPostFormResponse(
       '<div id="messagetext"><p>没有权限编辑他人发表的帖子</p></div>',
       isFirst: false,
     );
@@ -166,7 +167,7 @@ void main() {
   });
 
   test('surfaces touch jump_c tip instead of missing-field error', () {
-    final form = ApiService.parseEditPostFormResponse(
+    final form = DiscuzParser.parseEditPostFormResponse(
       '<div class="jump_c"><p>抱歉，指定的主题不存在或已被删除或正在被审核</p></div>',
       isFirst: false,
     );
@@ -183,7 +184,7 @@ void main() {
     final api = ApiService(
       S1HttpClient.test(container, Dio()..httpClientAdapter = adapter),
     );
-    final baseline = ApiService.parseEditPostFormResponse(
+    final baseline = DiscuzParser.parseEditPostFormResponse(
       threadForm,
       isFirst: true,
     );
@@ -212,7 +213,7 @@ void main() {
     final api = ApiService(
       S1HttpClient.test(container, Dio()..httpClientAdapter = adapter),
     );
-    final baseline = ApiService.parseEditPostFormResponse(
+    final baseline = DiscuzParser.parseEditPostFormResponse(
       threadForm,
       isFirst: true,
     );
@@ -253,19 +254,19 @@ void main() {
 
   test('parseEditPostSubmitResponse accepts redirect-style success', () {
     expect(
-      ApiService.parseEditPostSubmitResponse(
+      DiscuzParser.parseEditPostSubmitResponse(
         "location.href='forum.php?mod=viewthread&tid=100';",
       ).isSuccess,
       isTrue,
     );
     expect(
-      ApiService.parseEditPostSubmitResponse(
+      DiscuzParser.parseEditPostSubmitResponse(
         '<div class="jump_c"><p>您的帖子编辑成功，现在将转入主题页</p></div>',
       ).isSuccess,
       isTrue,
     );
     expect(
-      ApiService.parseEditPostSubmitResponse(
+      DiscuzParser.parseEditPostSubmitResponse(
         "<root><![CDATA[<script>succeedhandle_edit('ok');</script>]]></root>",
       ).isSuccess,
       isTrue,
@@ -278,7 +279,7 @@ void main() {
 <root><![CDATA[<script type="text/javascript" reload="1">if(typeof succeedhandle_postform=='function') {succeedhandle_postform('forum.php?mod=viewthread&tid=2285884&page=&extra=#pid69955887', '帖子编辑成功，现在将转入主题页，请稍候……[ 点击这里转入主题列表 ]', {'fid':'51','tid':'2285884','pid':'69955887'});}</script>]]></root>
 ''';
     expect(
-      ApiService.parseEditPostSubmitResponse(body).disposition,
+      DiscuzParser.parseEditPostSubmitResponse(body).disposition,
       EditPostDisposition.success,
     );
   });
@@ -304,7 +305,7 @@ void main() {
     final api = ApiService(
       S1HttpClient.test(container, Dio()..httpClientAdapter = adapter),
     );
-    final baseline = ApiService.parseEditPostFormResponse(
+    final baseline = DiscuzParser.parseEditPostFormResponse(
       threadForm,
       isFirst: true,
     );
@@ -335,7 +336,7 @@ void main() {
     final api = ApiService(
       S1HttpClient.test(container, Dio()..httpClientAdapter = adapter),
     );
-    final baseline = ApiService.parseEditPostFormResponse(
+    final baseline = DiscuzParser.parseEditPostFormResponse(
       threadForm,
       isFirst: true,
     );

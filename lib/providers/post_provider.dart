@@ -155,7 +155,7 @@ class PostNotifier extends AsyncNotifier<PostListState> {
         perPage: loaded.perPage,
       );
       final listLive = intent?.liveTotalReplies;
-      final needsCorrection = loaded.currentPage < targetPage &&
+      final needsCorrection = loaded.currentPage != targetPage &&
           (listLive == null || listLive < loaded.totalReplies);
       if (needsCorrection) {
         loaded = await _loadPage(targetPage);

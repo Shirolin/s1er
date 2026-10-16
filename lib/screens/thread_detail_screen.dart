@@ -259,7 +259,7 @@ class _ThreadDetailScreenState extends ConsumerState<ThreadDetailScreen> {
       _openScrollRetryCount = 0;
     });
     ref.read(postProvider(widget.tid).notifier).clearOpenScrollTarget();
-    unawaited(_flushProgressAfterProgrammaticScroll());
+    unawaited(_flushProgressAfterProgrammaticScroll(allowAtBottom: false));
   }
 
   bool _showLocateOverlay(PostListState state) {
@@ -332,8 +332,11 @@ class _ThreadDetailScreenState extends ConsumerState<ThreadDetailScreen> {
   ///   （[_onScrollEndRecordProgress]），让 lazy list 末尾条目完成布局。
   /// - 代码 [jumpTo] / 定位 / FAB 滚动：不保证触发 ScrollEnd，定位完成后须显式
   ///   调用 [_flushProgressAfterProgrammaticScroll]。
-  void _maybeRecordVisibleFloor(PostListState state) {
-    final atBottom = _scrollFabVisibility.value.atPageBottom;
+  void _maybeRecordVisibleFloor(
+    PostListState state, {
+    bool allowAtBottom = true,
+  }) {
+    final atBottom = allowAtBottom && _scrollFabVisibility.value.atPageBottom;
     final leading = ScrollFloorNavigator.findLeadingVisiblePostIndex(
       postKeys: _postKeys,
     );
@@ -364,12 +367,14 @@ class _ThreadDetailScreenState extends ConsumerState<ThreadDetailScreen> {
     _maybeRecordVisibleFloor(state);
   }
 
-  Future<void> _flushProgressAfterProgrammaticScroll() async {
+  Future<void> _flushProgressAfterProgrammaticScroll({
+    bool allowAtBottom = true,
+  }) async {
     await WidgetsBinding.instance.endOfFrame;
     if (!mounted) return;
     final data = ref.read(postProvider(widget.tid)).asData?.value;
     if (data == null) return;
-    _maybeRecordVisibleFloor(data);
+    _maybeRecordVisibleFloor(data, allowAtBottom: allowAtBottom);
   }
 
   /// 当前视口页内楼层（1-based），不含进度高水位抬升；供翻页记忆用。
@@ -443,7 +448,9 @@ class _ThreadDetailScreenState extends ConsumerState<ThreadDetailScreen> {
       _clearLocateOverlayTimer();
       if (mounted) setState(() {});
       ref.read(postProvider(widget.tid).notifier).clearOpenScrollTarget();
-      await _flushProgressAfterProgrammaticScroll();
+      await _flushProgressAfterProgrammaticScroll(
+        allowAtBottom: target is ScrollToPageTop,
+      );
     } else {
       _openScrollRetryCount++;
       if (_openScrollRetryCount >= _maxOpenScrollRetries) {
@@ -691,7 +698,7 @@ class _ThreadDetailScreenState extends ConsumerState<ThreadDetailScreen> {
     }
   }
 
-  /// 末端主动上划 / 左滑：刷新当前页；有新页则跳到新末页，同页有新楼则滚到底。
+  /// 末端主动上划 / 左滑：刷新当前页；有新页则翻至下一页页首，同页有新楼则滚至首个新楼。
   Future<void> _refreshFromEnd() async {
     if (_endRefreshing || _shareSelectMode) return;
     _endRefreshing = true;
@@ -717,11 +724,32 @@ class _ThreadDetailScreenState extends ConsumerState<ThreadDetailScreen> {
       );
       switch (outcome) {
         case ThreadEndRefreshOutcome.jumpedToNewLastPage:
-          await _goToPage(after.totalPages, scrollToBottom: true);
+          if (after.posts.length > before.posts.length) {
+            final firstNewIndex =
+                before.posts.length.clamp(0, after.posts.length - 1);
+            _scheduleEnsurePostKeys(after.posts.length);
+            await WidgetsBinding.instance.endOfFrame;
+            if (!mounted) return;
+            await ScrollFloorNavigator.scrollToIndex(
+              postKeys: _postKeys,
+              index: firstNewIndex,
+            );
+            await _flushProgressAfterProgrammaticScroll(allowAtBottom: false);
+          } else {
+            final nextPage = (after.currentPage + 1).clamp(1, after.totalPages);
+            await _goToPage(nextPage);
+          }
         case ThreadEndRefreshOutcome.scrolledToNewPosts:
+          final firstNewIndex =
+              before.posts.length.clamp(0, after.posts.length - 1);
+          _scheduleEnsurePostKeys(after.posts.length);
           await WidgetsBinding.instance.endOfFrame;
           if (!mounted) return;
-          await _scrollToBottomImpl();
+          await ScrollFloorNavigator.scrollToIndex(
+            postKeys: _postKeys,
+            index: firstNewIndex,
+          );
+          await _flushProgressAfterProgrammaticScroll(allowAtBottom: false);
         case ThreadEndRefreshOutcome.noNewReplies:
           S1SnackBar.show(context, message: '已经到底');
       }

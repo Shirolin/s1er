@@ -209,6 +209,23 @@ void main() {
         1,
       );
     });
+
+    test(
+        'resume page hint (?page=N&resume=1) is honored when liveTotalReplies is null',
+        () {
+      expect(
+        resolveThreadInitialPage(
+          intent: const ThreadOpenIntent.resume(page: 2),
+          record: _record(
+            lastReadPage: 1,
+            lastReadFloor: 40,
+            totalPages: 1,
+            totalReplies: 39,
+          ),
+        ),
+        2,
+      );
+    });
   });
 
   group('floorToPageIndex / resolveResumeScrollTarget', () {

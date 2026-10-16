@@ -326,6 +326,45 @@ void main() {
     expect(after.lastReadPage, 1);
   });
 
+  testWidgets(
+      'B3 resume with new replies near page bottom lands on first unread floor without inflating lastReadFloor to page end',
+      (tester) async {
+    tester.view.physicalSize = const Size(800, 1200);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.resetPhysicalSize);
+
+    // Previously 9 floors (8 replies), now 10 floors (9 replies) on a single page,
+    // or short trailing posts so scrolling to floor 10 hits maxScrollExtent.
+    adapter.postsPerPage = 10;
+    adapter.totalReplies = 9;
+
+    await pumpThread(
+      tester: tester,
+      location: '/thread/100',
+      seedHistory: (service) {
+        service.updateProgress(
+          tid: '100',
+          page: 1,
+          floorInPage: 9,
+          subject: 'Nav Integration',
+          author: 'author',
+          fid: '4',
+          totalPages: 1,
+          totalReplies: 8,
+          perPage: 40,
+          isNewVisit: true,
+        );
+      },
+    );
+
+    expect(find.textContaining('MARK-FLOOR-10'), findsOneWidget);
+    final record =
+        rootContainer!.read(readingHistoryServiceProvider).getRecord('100')!;
+    // Must not inflate immediately to the page's last floor if unreadFloor < postCount,
+    // and must at least preserve 9 or advance to the leading visible floor <= 10.
+    expect(record.lastReadFloor, inInclusiveRange(9, 10));
+  });
+
   testWidgets('short single-page thread records last floor at page bottom',
       (tester) async {
     tester.view.physicalSize = const Size(800, 1200);

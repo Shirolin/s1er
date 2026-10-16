@@ -158,7 +158,9 @@ abstract class ScrollFloorNavigator {
 
     var targetContext = postKeys[index].currentContext;
     // 目标尚未构建时：以最近已构建楼为锚，按实测行高多轮估算滚入视口。
-    for (var attempt = 0; targetContext == null && attempt < 6; attempt++) {
+    // 单步距离限制在视口高度以内，防止遇到超长楼层（如长主楼/多图楼）时
+    // `stepCount * itemHeight` 一步跳过目标楼并直接钳到 `maxScrollExtent`（页底）。
+    for (var attempt = 0; targetContext == null && attempt < 20; attempt++) {
       var refIndex = -1;
       for (var i = index - 1; i >= 0; i--) {
         if (postKeys[i].currentContext != null) {
@@ -191,10 +193,18 @@ abstract class ScrollFloorNavigator {
       final remaining = index - refIndex;
       final stepCount = remaining.abs().clamp(1, 8);
       final direction = remaining >= 0 ? 1 : -1;
-      final estimated = (refTop +
-              direction * stepCount * itemHeight -
-              viewportDimension * alignment)
-          .clamp(position.minScrollExtent, position.maxScrollExtent);
+      final rawAdvance = stepCount * itemHeight;
+      final maxStepAdvance = viewportDimension * 0.85;
+      final advance = direction > 0
+          ? (rawAdvance < itemHeight
+              ? itemHeight
+              : (rawAdvance > maxStepAdvance && itemHeight < maxStepAdvance
+                  ? maxStepAdvance
+                  : (itemHeight >= maxStepAdvance ? itemHeight : rawAdvance)))
+          : (rawAdvance > maxStepAdvance ? maxStepAdvance : rawAdvance);
+      final estimated =
+          (refTop + direction * advance - viewportDimension * alignment)
+              .clamp(position.minScrollExtent, position.maxScrollExtent);
 
       S1ScrollMotion.jumpTo(position, estimated);
       await WidgetsBinding.instance.endOfFrame;

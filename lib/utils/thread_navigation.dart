@@ -44,6 +44,12 @@ int resolveThreadInitialPage({
   }
 
   if (record != null) {
+    if (intent?.liveTotalReplies == null) {
+      final resumePageHint = intent?.page;
+      if (resumePageHint != null && resumePageHint >= 1) {
+        return resumePageHint;
+      }
+    }
     final liveReplies = intent?.liveTotalReplies ?? record.totalReplies;
     final target = record.resolveOpenPage(liveReplies);
     if (target > 1) {

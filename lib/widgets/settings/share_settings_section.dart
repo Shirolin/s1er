@@ -12,6 +12,7 @@ import '../../providers/settings_provider.dart';
 import '../../theme/app_theme.dart';
 import '../../theme/s1_haptics.dart';
 import '../../utils/compact_label.dart';
+import '../../utils/share_capture_policy.dart';
 import '../s1_confirm_dialog.dart';
 import 'settings_section_header.dart';
 
@@ -31,6 +32,7 @@ class ShareSettingsSection extends ConsumerWidget {
 
     final isDesktop =
         !kIsWeb && (Platform.isWindows || Platform.isMacOS || Platform.isLinux);
+    final canCopyShareCard = canCopyShareCardOnPlatform;
 
     return SizedBox(
       width: double.infinity,
@@ -51,7 +53,8 @@ class ShareSettingsSection extends ConsumerWidget {
                     Text('图片格式', style: textTheme.titleSmall),
                     const SizedBox(height: 4),
                     Text(
-                      'WebP 默认体积小；JPEG 兼容性好；PNG 无损。',
+                      'WebP 默认体积小；JPEG 兼容性好；PNG 无损。'
+                      '${canCopyShareCard ? '复制到剪贴板固定为 PNG。' : ''}',
                       style: textTheme.bodySmall?.copyWith(
                         color: scheme.onSurfaceVariant,
                       ),

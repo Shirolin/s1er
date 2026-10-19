@@ -1,14 +1,32 @@
 import 'dart:async';
 
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:s1er/models/post.dart';
 import 'package:s1er/models/share_floor_data.dart';
+import 'package:s1er/models/share_image_format.dart';
 import 'package:s1er/providers/settings_provider.dart';
 import 'package:s1er/services/post_share_service.dart';
+import 'package:s1er/utils/gallery_image_saver.dart';
+import 'package:s1er/utils/share_encoder.dart';
+import 'package:s1er/utils/share_image_stitch.dart';
 
+import '../helpers/ironpress_test_lib.dart';
 import '../helpers/test_theme.dart';
+
+ShareFloorData _floorWithoutImages(String pid) => ShareFloorData(
+      post: Post(
+        pid: pid,
+        message: '分享预览测试',
+        author: 'Tester',
+        authorId: '1',
+        dateline: 1,
+        floor: 1,
+      ),
+      displayFloor: 1,
+    );
 
 ShareFloorData _floor(String pid) => ShareFloorData(
       post: Post.fromJson({
@@ -80,7 +98,23 @@ Future<ProviderContainer> _openSharePreview(WidgetTester tester) async {
   return container;
 }
 
+/// 截图编码（`toByteData` / native）在假异步时钟下不会完成，进度圈又会持续要帧，
+/// `pumpAndSettle` 会因此超时。交替泵帧并让出真实异步，直到 [done]。
+Future<void> _pumpUntil(WidgetTester tester, bool Function() done) async {
+  final deadline = DateTime.now().add(const Duration(seconds: 15));
+  while (!done() && DateTime.now().isBefore(deadline)) {
+    await tester.pump(const Duration(milliseconds: 50));
+    await tester.runAsync(
+      () => Future<void>.delayed(const Duration(milliseconds: 20)),
+    );
+  }
+}
+
 void main() {
+  // 复制「固定 PNG」只有在 native 编码可用时才可证伪：不可用时 WebP 也会
+  // 降级成 PNG，断言会空过。先把 ironpress 动态库放到 flutter test 能加载的位置。
+  setUpAll(ensureIronpressTestNativeLib);
+
   testWidgets('preview footer chips toggle shareShowLogo and shareShowQr',
       (tester) async {
     final container = await _openSharePreview(tester);
@@ -127,5 +161,132 @@ void main() {
     await tester.tap(find.widgetWithText(FilterChip, '二维码'));
     await tester.pumpAndSettle();
     expect(hint, findsOneWidget);
+  });
+
+  testWidgets('copy writes PNG even when the export format is WebP',
+      (tester) async {
+    // 对照：native 不可用时 WebP 会降级成 PNG，下面的断言无法区分
+    // 「复制强制 PNG」与「降级」，此时显式跳过而不是空过。
+    final control = await tester.runAsync(
+      () => const ShareEncoder(
+        format: ShareImageFormat.webp,
+        background: Color(0xFFFFFFFF),
+      ).encodeStrip(
+        ShareRgbaStrip(
+          bytes: Uint8List.fromList(List.filled(2 * 2 * 4, 255)),
+          width: 2,
+          height: 2,
+        ),
+      ),
+    );
+    if (control?.format != ShareImageFormat.webp) {
+      markTestSkipped('ironpress native WebP encoder unavailable');
+      return;
+    }
+
+    debugDefaultTargetPlatformOverride = TargetPlatform.windows;
+    Uint8List? copied;
+    try {
+      await tester.pumpWidget(
+        _wrap(
+          Builder(
+            builder: (context) {
+              return Scaffold(
+                body: Center(
+                  child: FilledButton(
+                    onPressed: () {
+                      unawaited(
+                        PostShareService.share(
+                          context: context,
+                          floors: [_floorWithoutImages('1')],
+                          tid: '99',
+                          imageCopier: (bytes) async {
+                            copied = bytes;
+                          },
+                        ),
+                      );
+                    },
+                    child: const Text('打开分享'),
+                  ),
+                ),
+              );
+            },
+          ),
+          settings: const AppSettings(
+            shareImageFormat: ShareImageFormat.webp,
+            shareShowLogo: false,
+            shareShowQr: false,
+          ),
+        ),
+      );
+
+      await tester.tap(find.text('打开分享'));
+      await tester.pumpAndSettle();
+
+      expect(find.widgetWithText(FilledButton, '复制'), findsOneWidget);
+      expect(find.widgetWithText(OutlinedButton, '分享'), findsOneWidget);
+      expect(find.widgetWithText(OutlinedButton, '下载图片'), findsOneWidget);
+
+      await tester.tap(find.widgetWithText(FilledButton, '复制'));
+      await _pumpUntil(tester, () => copied != null);
+      await tester.pumpAndSettle();
+
+      expect(copied, isNotNull);
+      expect(isPngImageBytes(copied!), isTrue);
+      expect(find.text('已复制图片'), findsOneWidget);
+    } finally {
+      debugDefaultTargetPlatformOverride = null;
+    }
+  });
+
+  testWidgets('copy failure stays on the sheet', (tester) async {
+    debugDefaultTargetPlatformOverride = TargetPlatform.windows;
+    try {
+      await tester.pumpWidget(
+        _wrap(
+          Builder(
+            builder: (context) {
+              return Scaffold(
+                body: Center(
+                  child: FilledButton(
+                    onPressed: () {
+                      unawaited(
+                        PostShareService.share(
+                          context: context,
+                          floors: [_floorWithoutImages('1')],
+                          tid: '99',
+                          imageCopier: (_) async {
+                            throw StateError('clipboard unavailable');
+                          },
+                        ),
+                      );
+                    },
+                    child: const Text('打开分享'),
+                  ),
+                ),
+              );
+            },
+          ),
+          settings: const AppSettings(
+            shareShowLogo: false,
+            shareShowQr: false,
+          ),
+        ),
+      );
+
+      await tester.tap(find.text('打开分享'));
+      await tester.pumpAndSettle();
+      await tester.tap(find.widgetWithText(FilledButton, '复制'));
+      await _pumpUntil(
+        tester,
+        () => find.textContaining('复制失败').evaluate().isNotEmpty,
+      );
+      await tester.pump();
+
+      expect(find.textContaining('复制失败'), findsOneWidget);
+      expect(find.text('分享帖子'), findsOneWidget);
+    } finally {
+      debugDefaultTargetPlatformOverride = null;
+    }
   });
 }

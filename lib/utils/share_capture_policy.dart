@@ -1,9 +1,24 @@
 import 'dart:math' as math;
 
-import 'package:flutter/foundation.dart' show visibleForTesting;
+import 'package:flutter/foundation.dart'
+    show TargetPlatform, defaultTargetPlatform, kIsWeb, visibleForTesting;
 
 import '../config/constants.dart';
 import 'share_capture_limits.dart';
+
+/// 桌面端可把分享卡写入系统剪贴板。
+/// Web 不提供复制；Linux 的 pasteboard 不能写图片。
+bool get canCopyShareCardOnPlatform {
+  if (kIsWeb) return false;
+  return switch (defaultTargetPlatform) {
+    TargetPlatform.windows || TargetPlatform.macOS => true,
+    TargetPlatform.linux ||
+    TargetPlatform.android ||
+    TargetPlatform.iOS ||
+    TargetPlatform.fuchsia =>
+      false,
+  };
+}
 
 /// Whether capture should use full-card scroll slicing + stitch instead of one shot.
 bool shouldUseChunkedShareCapture({

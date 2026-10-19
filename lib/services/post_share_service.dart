@@ -9,6 +9,7 @@ import 'package:flutter/foundation.dart'
 import 'package:flutter/material.dart';
 import 'package:flutter/rendering.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:pasteboard/pasteboard.dart';
 import 'package:path/path.dart' as p;
 import 'package:path_provider/path_provider.dart';
 import 'package:share_plus/share_plus.dart';
@@ -73,6 +74,7 @@ class PostShareService {
     String? threadSubject,
     ThreadPoll? poll,
     String? tid,
+    @visibleForTesting Future<void> Function(Uint8List bytes)? imageCopier,
   }) async {
     if (floors.isEmpty) return;
     final message = await showModalBottomSheet<String>(
@@ -86,6 +88,7 @@ class PostShareService {
           threadSubject: threadSubject,
           poll: poll,
           tid: tid,
+          imageCopier: imageCopier,
         );
       },
     );
@@ -101,12 +104,16 @@ class _SharePreviewSheet extends ConsumerStatefulWidget {
     this.threadSubject,
     this.poll,
     this.tid,
+    this.imageCopier,
   });
 
   final List<ShareFloorData> floors;
   final String? threadSubject;
   final ThreadPoll? poll;
   final String? tid;
+
+  /// 测试注入的剪贴板写入。为空时走 [Pasteboard.writeImage]。
+  final Future<void> Function(Uint8List bytes)? imageCopier;
 
   @override
   ConsumerState<_SharePreviewSheet> createState() => _SharePreviewSheetState();
@@ -148,8 +155,9 @@ class _SharePreviewSheetState extends ConsumerState<_SharePreviewSheet> {
       ShareCaptureLimits.forCurrentPlatform(advanced: _shareAdvancedExport);
 
   /// 编码器：格式与背景色在调用时解析（背景取主题卡片色，用于压平不透明底）。
-  ShareEncoder get _encoder => ShareEncoder(
-        format: _shareImageFormat,
+  /// [forceFormat] 覆盖用户选择的导出格式（复制到剪贴板固定 PNG）。
+  ShareEncoder _encoderFor(ShareImageFormat? forceFormat) => ShareEncoder(
+        format: forceFormat ?? _shareImageFormat,
         background: S1Surface.card(Theme.of(context).colorScheme),
       );
 
@@ -286,6 +294,45 @@ class _SharePreviewSheetState extends ConsumerState<_SharePreviewSheet> {
 
     if (!mounted) return;
     _finishWithMessage(_scaleExportNotice ?? successToast);
+  }
+
+  Future<void> _captureAndCopy() async {
+    if (_state != _FooterState.idle) return;
+    S1Haptics.medium();
+    _scaleExportNotice = null;
+    _captureProgressMessage = '';
+    setState(() => _state = _FooterState.capturing);
+
+    // 剪贴板位图不能可靠承载 WebP：Windows pasteboard 经 GDI+ 读临时文件。
+    // 复制固定 PNG，不跟随导出格式设置。
+    final encoded = await _captureBytes(forceFormat: ShareImageFormat.png);
+    if (!mounted) return;
+
+    if (encoded == null) {
+      if (_state != _FooterState.error) {
+        _showCaptureFailure('生成图片失败，请稍后重试');
+      }
+      return;
+    }
+
+    try {
+      final copier = widget.imageCopier;
+      if (copier != null) {
+        await copier(encoded.bytes);
+      } else {
+        await Pasteboard.writeImage(encoded.bytes);
+      }
+    } on Object catch (e, st) {
+      talker.handle(e, st, 'Share copy to clipboard failed');
+      if (!mounted) return;
+      _showStatus('复制失败，请稍后重试', isError: true);
+      return;
+    }
+
+    if (!mounted) return;
+    final message =
+        _scaleExportNotice == null ? '已复制图片' : '已复制图片；$_scaleExportNotice';
+    _finishWithMessage(message);
   }
 
   void _showStatus(String message, {required bool isError}) {
@@ -483,7 +530,9 @@ class _SharePreviewSheetState extends ConsumerState<_SharePreviewSheet> {
     return false;
   }
 
-  Future<EncodedShareImage?> _captureBytes() async {
+  Future<EncodedShareImage?> _captureBytes({
+    ShareImageFormat? forceFormat,
+  }) async {
     if (!await _waitUntilReady()) return null;
     if (!mounted) return null;
     _setCaptureProgress('正在生成图片…');
@@ -523,14 +572,16 @@ class _SharePreviewSheetState extends ConsumerState<_SharePreviewSheet> {
       estimatedCapturePixels: estimated,
     );
 
+    final encoder = _encoderFor(forceFormat);
     if (!useChunks) {
-      return _captureFromRepaint(fullBoundary, _sharePixelRatio);
+      return _captureFromRepaint(fullBoundary, _sharePixelRatio, encoder);
     }
 
     final physicalWidth = (logicalSize.width * _sharePixelRatio).round();
     return _captureChunkedAndEncode(
       estimatedCapturePixels: estimated,
       physicalWidth: physicalWidth,
+      encoder: encoder,
     );
   }
 
@@ -592,6 +643,7 @@ class _SharePreviewSheetState extends ConsumerState<_SharePreviewSheet> {
   Future<EncodedShareImage?> _captureChunkedAndEncode({
     required int estimatedCapturePixels,
     required int physicalWidth,
+    required ShareEncoder encoder,
   }) async {
     final limits = _shareCaptureLimits;
 
@@ -647,7 +699,7 @@ class _SharePreviewSheetState extends ConsumerState<_SharePreviewSheet> {
         }
       }
 
-      return await _encoder.encodeStrip(stitched);
+      return await encoder.encodeStrip(stitched);
     } on Object catch (e, st) {
       talker.handle(e, st, 'Share chunked capture failed');
       _showCaptureFailure('生成图片失败，请稍后重试');
@@ -658,18 +710,19 @@ class _SharePreviewSheetState extends ConsumerState<_SharePreviewSheet> {
   Future<EncodedShareImage?> _captureFromRepaint(
     RenderRepaintBoundary renderObject,
     double pixelRatio,
+    ShareEncoder encoder,
   ) async {
     ui.Image? image;
     try {
       image = await renderObject.toImage(pixelRatio: pixelRatio);
-      return await _encoder.encodeImage(image);
+      return await encoder.encodeImage(image);
     } on Object {
       await WidgetsBinding.instance.endOfFrame;
       image?.dispose();
       image = null;
       try {
         image = await renderObject.toImage(pixelRatio: pixelRatio);
-        return await _encoder.encodeImage(image);
+        return await encoder.encodeImage(image);
       } on Object {
         return null;
       }
@@ -892,40 +945,89 @@ class _SharePreviewSheetState extends ConsumerState<_SharePreviewSheet> {
       );
     }
 
+    if (canCopyShareCardOnPlatform) {
+      return Row(
+        children: [
+          Expanded(
+            child: _shareActionButton(
+              filled: false,
+              onPressed: _captureAndSave,
+              icon: Icons.download_outlined,
+              label: '下载图片',
+            ),
+          ),
+          const SizedBox(width: 12),
+          Expanded(
+            child: _shareActionButton(
+              filled: false,
+              onPressed: _captureAndShare,
+              icon: Icons.share_outlined,
+              label: '分享',
+            ),
+          ),
+          const SizedBox(width: 12),
+          Expanded(
+            child: _shareActionButton(
+              filled: true,
+              onPressed: _captureAndCopy,
+              icon: Icons.copy_outlined,
+              label: '复制',
+            ),
+          ),
+        ],
+      );
+    }
+
     return Row(
       children: [
         Expanded(
-          child: OutlinedButton.icon(
+          child: _shareActionButton(
+            filled: false,
             onPressed: _captureAndSave,
-            icon: const Icon(Icons.download_outlined),
-            style: OutlinedButton.styleFrom(
-              padding: const EdgeInsets.symmetric(horizontal: 12),
-            ),
-            label: const Text(
-              '下载图片',
-              maxLines: 1,
-              softWrap: false,
-              overflow: TextOverflow.ellipsis,
-            ),
+            icon: Icons.download_outlined,
+            label: '下载图片',
           ),
         ),
         const SizedBox(width: 12),
         Expanded(
-          child: FilledButton.icon(
+          child: _shareActionButton(
+            filled: true,
             onPressed: _captureAndShare,
-            icon: const Icon(Icons.share_outlined),
-            style: FilledButton.styleFrom(
-              padding: const EdgeInsets.symmetric(horizontal: 12),
-            ),
-            label: const Text(
-              '分享',
-              maxLines: 1,
-              softWrap: false,
-              overflow: TextOverflow.ellipsis,
-            ),
+            icon: Icons.share_outlined,
+            label: '分享',
           ),
         ),
       ],
+    );
+  }
+
+  Widget _shareActionButton({
+    required bool filled,
+    required VoidCallback onPressed,
+    required IconData icon,
+    required String label,
+  }) {
+    final iconWidget = Icon(icon);
+    final labelWidget = Text(
+      label,
+      maxLines: 1,
+      softWrap: false,
+      overflow: TextOverflow.ellipsis,
+    );
+    const padding = EdgeInsets.symmetric(horizontal: 12);
+    if (filled) {
+      return FilledButton.icon(
+        onPressed: onPressed,
+        icon: iconWidget,
+        style: FilledButton.styleFrom(padding: padding),
+        label: labelWidget,
+      );
+    }
+    return OutlinedButton.icon(
+      onPressed: onPressed,
+      icon: iconWidget,
+      style: OutlinedButton.styleFrom(padding: padding),
+      label: labelWidget,
     );
   }
 

@@ -50,7 +50,7 @@ void main() {
     expect(find.text('乙'), findsOneWidget);
     expect(find.text('丙'), findsOneWidget);
     expect(find.text('丁'), findsNothing);
-    expect(find.text('外野 · 刚刚'), findsNWidgets(3));
+    expect(find.text('外野 · 刚刚 · 已读'), findsNWidgets(3));
   });
 
   testWidgets('hides the section when the home preview setting is off', (
@@ -120,7 +120,7 @@ void main() {
     );
     await tester.pumpAndSettle();
 
-    expect(find.text('#15/41'), findsOneWidget);
+    expect(find.textContaining('#15/41'), findsOneWidget);
 
     await tester.tap(find.text('续读帖'));
     await tester.pumpAndSettle();

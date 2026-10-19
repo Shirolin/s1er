@@ -47,7 +47,7 @@ class _RecentHistorySectionState extends ConsumerState<RecentHistorySection> {
           ConstrainedBox(
             constraints: const BoxConstraints(minHeight: 48),
             child: Padding(
-              padding: const EdgeInsets.fromLTRB(16, 4, 4, 4),
+              padding: const EdgeInsets.fromLTRB(16, 12, 4, 12),
               child: Row(
                 children: [
                   Icon(Icons.history, size: 18, color: scheme.primary),
@@ -62,6 +62,12 @@ class _RecentHistorySectionState extends ConsumerState<RecentHistorySection> {
                     ),
                   ),
                   TextButton(
+                    style: TextButton.styleFrom(
+                      tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                      minimumSize: const Size(32, 32),
+                      padding: const EdgeInsets.symmetric(horizontal: 8),
+                      visualDensity: VisualDensity.compact,
+                    ),
                     onPressed: () {
                       S1Haptics.selection();
                       context.push('/reading-history');
@@ -71,9 +77,16 @@ class _RecentHistorySectionState extends ConsumerState<RecentHistorySection> {
                   IconButton(
                     icon: Icon(
                       _expanded ? Icons.expand_less : Icons.expand_more,
+                      size: 20,
                       color: scheme.onSurfaceVariant,
                     ),
                     tooltip: _expanded ? '收起' : '展开',
+                    style: IconButton.styleFrom(
+                      tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                      minimumSize: const Size(32, 32),
+                      padding: EdgeInsets.zero,
+                      visualDensity: VisualDensity.compact,
+                    ),
                     onPressed: () {
                       S1Haptics.selection();
                       setState(() => _expanded = !_expanded);
@@ -115,6 +128,11 @@ class _RecentHistoryTile extends StatelessWidget {
       if (forumName != null && forumName!.isNotEmpty) forumName!,
       if (time.isNotEmpty) time,
     ].join(' · ');
+    final progress =
+        finished ? '已读' : '#${record.lastReadFloor}/${record.totalPosts}';
+    final metaStyle = textTheme.labelSmall?.copyWith(
+      color: scheme.onSurfaceVariant,
+    );
     final title = record.subject.isEmpty ? '(无标题)' : record.subject;
 
     return InkWell(
@@ -144,27 +162,31 @@ class _RecentHistoryTile extends StatelessWidget {
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
                     ),
-                    if (meta.isNotEmpty)
-                      Text(
-                        meta,
-                        style: textTheme.labelSmall?.copyWith(
-                          color: scheme.onSurfaceVariant,
-                        ),
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
+                    Text.rich(
+                      TextSpan(
+                        style: metaStyle,
+                        children: [
+                          if (meta.isNotEmpty) TextSpan(text: '$meta · '),
+                          TextSpan(
+                            text: progress,
+                            style: metaStyle?.copyWith(
+                              color: accent,
+                              fontWeight: FontWeight.w500,
+                            ),
+                          ),
+                        ],
                       ),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                    ),
                   ],
                 ),
               ),
               const SizedBox(width: 8),
-              Text(
-                finished
-                    ? '已读'
-                    : '#${record.lastReadFloor}/${record.totalPosts}',
-                style: textTheme.labelSmall?.copyWith(
-                  color: accent,
-                  fontWeight: FontWeight.w500,
-                ),
+              Icon(
+                Icons.chevron_right,
+                size: 16,
+                color: scheme.onSurfaceVariant,
               ),
             ],
           ),

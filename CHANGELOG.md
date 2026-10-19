@@ -5,6 +5,13 @@ All notable changes to S1er will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.9.1] - 2026-10-19
+
+### Added
+
+- **首页最近浏览**：论坛首页在收藏板块下方显示最近 3 条阅读记录，点按从上次楼层继续阅读；可收起，标题行「全部」进入完整阅读历史。没有记录时不显示。
+- **首页最近浏览开关**：设置 → 浏览行为可关闭首页展示，默认开启，并随 L1 备份同步。
+
 ## [0.9.0] - 2026-10-16
 
 ### Added

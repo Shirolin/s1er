@@ -6,9 +6,14 @@ import '../models/reading_record.dart';
 
 import '../services/reading_history_service.dart';
 
+import '../services/talker.dart';
+
 import 'auth_provider.dart';
 
 import 'settings_provider.dart';
+
+/// 首页「最近浏览」展示条数。
+const int kRecentHistoryPreviewCount = 3;
 
 /// Ensures reading history table is loaded before service access.
 final readingHistoryBootstrapProvider = FutureProvider<void>((ref) async {
@@ -97,3 +102,25 @@ final readingHistoryProvider =
     NotifierProvider<ReadingHistoryNotifier, ReadingHistoryState>(
   ReadingHistoryNotifier.new,
 );
+
+/// 首页最近浏览预览。关闭「首页显示最近浏览」或本地库未就绪时为空。
+///
+/// 离开论坛 Tab 后释放订阅，避免和「我的」页的 select 叠在同一次登录重建上。
+/// 不用 select 订阅阅读历史：登录切换 uid 时 select 的暂停订阅会触发 Riverpod 断言。
+final recentReadingPreviewProvider =
+    Provider.autoDispose<List<ReadingRecord>>((ref) {
+  try {
+    final enabled = ref.watch(
+      settingsProvider.select((s) => s.showRecentHistoryOnHome),
+    );
+    if (!enabled) return const [];
+    final records = ref.watch(readingHistoryProvider).records;
+    if (records.length <= kRecentHistoryPreviewCount) return records;
+    return List<ReadingRecord>.unmodifiable(
+      records.take(kRecentHistoryPreviewCount),
+    );
+  } catch (e, st) {
+    talker.handle(e, st, 'recent history preview unavailable');
+    return const [];
+  }
+});

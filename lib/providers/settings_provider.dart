@@ -31,6 +31,7 @@ class AppSettings {
     this.maxImagesPerPost = S1Constants.defaultMaxImagesPerPost,
     this.imageCacheLimitMb = S1Constants.defaultImageCacheLimitMb,
     this.recordReadingHistory = true,
+    this.showRecentHistoryOnHome = true,
     this.hapticsEnabled = true,
     this.threadListDensity = ListDensity.standard,
     this.postListDensity = ListDensity.standard,
@@ -66,6 +67,9 @@ class AppSettings {
   final int maxImagesPerPost;
   final int imageCacheLimitMb;
   final bool recordReadingHistory;
+
+  /// 首页论坛列表是否展示最近浏览。
+  final bool showRecentHistoryOnHome;
   final bool hapticsEnabled;
   final ListDensity threadListDensity;
   final ListDensity postListDensity;
@@ -115,6 +119,7 @@ class AppSettings {
     int? maxImagesPerPost,
     int? imageCacheLimitMb,
     bool? recordReadingHistory,
+    bool? showRecentHistoryOnHome,
     bool? hapticsEnabled,
     ListDensity? threadListDensity,
     ListDensity? postListDensity,
@@ -150,6 +155,8 @@ class AppSettings {
       maxImagesPerPost: maxImagesPerPost ?? this.maxImagesPerPost,
       imageCacheLimitMb: imageCacheLimitMb ?? this.imageCacheLimitMb,
       recordReadingHistory: recordReadingHistory ?? this.recordReadingHistory,
+      showRecentHistoryOnHome:
+          showRecentHistoryOnHome ?? this.showRecentHistoryOnHome,
       hapticsEnabled: hapticsEnabled ?? this.hapticsEnabled,
       threadListDensity: threadListDensity ?? this.threadListDensity,
       postListDensity: postListDensity ?? this.postListDensity,
@@ -198,6 +205,7 @@ class AppSettings {
         other.maxImagesPerPost == maxImagesPerPost &&
         other.imageCacheLimitMb == imageCacheLimitMb &&
         other.recordReadingHistory == recordReadingHistory &&
+        other.showRecentHistoryOnHome == showRecentHistoryOnHome &&
         other.hapticsEnabled == hapticsEnabled &&
         other.threadListDensity == threadListDensity &&
         other.postListDensity == postListDensity &&
@@ -267,6 +275,7 @@ class AppSettings {
           forumSplitListPaneWidth,
           stripSpecialStyles,
           hideStickyThreads,
+          showRecentHistoryOnHome,
           Object.hashAllUnordered(hideStickyForumOverrides),
         ),
       );
@@ -406,6 +415,11 @@ class SettingsNotifier extends Notifier<AppSettings> {
           S1Constants.defaultImageCacheLimitMb,
       recordReadingHistory: settingsStore.get<bool>(
             'recordReadingHistory',
+            defaultValue: true,
+          ) ??
+          true,
+      showRecentHistoryOnHome: settingsStore.get<bool>(
+            'showRecentHistoryOnHome',
             defaultValue: true,
           ) ??
           true,
@@ -621,6 +635,11 @@ class SettingsNotifier extends Notifier<AppSettings> {
     _persist('recordReadingHistory', value);
   }
 
+  void setShowRecentHistoryOnHome(bool value) {
+    _commit(state.copyWith(showRecentHistoryOnHome: value));
+    _persist('showRecentHistoryOnHome', value);
+  }
+
   void setHapticsEnabled(bool value) {
     _commit(state.copyWith(hapticsEnabled: value));
     _persist('hapticsEnabled', value);
@@ -778,6 +797,7 @@ class SettingsNotifier extends Notifier<AppSettings> {
       maxImagesPerPost: defaults.maxImagesPerPost,
       imageCacheLimitMb: defaults.imageCacheLimitMb,
       recordReadingHistory: defaults.recordReadingHistory,
+      showRecentHistoryOnHome: defaults.showRecentHistoryOnHome,
       hapticsEnabled: defaults.hapticsEnabled,
       threadListDensity: defaults.threadListDensity,
       postListDensity: defaults.postListDensity,
@@ -808,6 +828,7 @@ class SettingsNotifier extends Notifier<AppSettings> {
     _persist('imageCacheLimitMb', defaults.imageCacheLimitMb);
     _applyImageCacheLimit(defaults.imageCacheLimitMb);
     _persist('recordReadingHistory', defaults.recordReadingHistory);
+    _persist('showRecentHistoryOnHome', defaults.showRecentHistoryOnHome);
     _persist('hapticsEnabled', defaults.hapticsEnabled);
     _persist('threadListDensity', defaults.threadListDensity.storageKey);
     _persist('postListDensity', defaults.postListDensity.storageKey);

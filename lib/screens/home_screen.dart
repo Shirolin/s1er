@@ -28,7 +28,9 @@ import '../widgets/hide_forum_confirm_dialog.dart';
 import '../widgets/s1_error_view.dart';
 import '../widgets/server_notice_banner.dart';
 import '../providers/pinned_threads_provider.dart';
+import '../providers/reading_history_provider.dart';
 import '../widgets/pinned_threads_section.dart';
+import '../widgets/recent_history_section.dart';
 import '../widgets/s1_content_width.dart';
 import '../widgets/skeleton/s1_async_list_loading.dart';
 import '../widgets/skeleton/forum_index_skeleton.dart';
@@ -447,6 +449,7 @@ class _ForumTabState extends ConsumerState<_ForumTab> {
                         ),
                       if (view.pinned.isNotEmpty)
                         _FavoriteForumsSection(forums: view.pinned),
+                      const RecentHistorySection(),
                       for (final category in view.categories)
                         _ForumCategoryTile(category: category),
                     ],
@@ -615,7 +618,11 @@ class _ForumCategoryGrid extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final categories = view.categories;
     final pinnedThreads = ref.watch(pinnedThreadsProvider);
-    if (categories.isEmpty && view.pinned.isEmpty && pinnedThreads.isEmpty) {
+    final hasRecentHistory = ref.watch(recentReadingPreviewProvider).isNotEmpty;
+    if (categories.isEmpty &&
+        view.pinned.isEmpty &&
+        pinnedThreads.isEmpty &&
+        !hasRecentHistory) {
       return ListView(primary: true, children: const []);
     }
 
@@ -628,6 +635,7 @@ class _ForumCategoryGrid extends ConsumerWidget {
             PinnedThreadsSection(threads: pinnedThreads),
           if (view.pinned.isNotEmpty)
             _FavoriteForumsSection(forums: view.pinned),
+          const RecentHistorySection(),
           if (categories.length == 1)
             _ForumCategoryTile(category: categories.single),
         ],
@@ -654,6 +662,9 @@ class _ForumCategoryGrid extends ConsumerWidget {
             forums: view.pinned,
             margin: const EdgeInsets.only(bottom: 16),
           ),
+        const RecentHistorySection(
+          margin: EdgeInsets.only(bottom: 16),
+        ),
         Row(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [

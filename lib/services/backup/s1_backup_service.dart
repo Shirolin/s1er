@@ -64,6 +64,7 @@ class S1BackupService {
     appSettings.putIfAbsent('maxImagesPerPost', () => 10);
     appSettings.putIfAbsent('imageCacheLimitMb', () => 256);
     appSettings.putIfAbsent('recordReadingHistory', () => true);
+    appSettings.putIfAbsent('showRecentHistoryOnHome', () => true);
     appSettings.putIfAbsent('hapticsEnabled', () => true);
     appSettings.putIfAbsent('threadListDensity', () => 'standard');
     appSettings.putIfAbsent('postListDensity', () => 'standard');

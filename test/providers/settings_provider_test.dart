@@ -41,6 +41,7 @@ void main() {
               appIcon: 'white',
               showImages: false,
               recordReadingHistory: false,
+              showRecentHistoryOnHome: false,
               fontSize: 18,
               collapsedForums: {'42'},
               hiddenForums: {'7'},
@@ -67,6 +68,7 @@ void main() {
     expect(state.maxImagesPerPost, S1Constants.defaultMaxImagesPerPost);
     expect(state.imageCacheLimitMb, S1Constants.defaultImageCacheLimitMb);
     expect(state.recordReadingHistory, isTrue);
+    expect(state.showRecentHistoryOnHome, isTrue);
     expect(state.fontSize, S1Typography.defaultBodySize);
     expect(state.collapsedForums, const {'42'});
     expect(state.hiddenForums, const {'7'});
@@ -98,6 +100,23 @@ void main() {
     expect(container.read(settingsProvider).recordReadingHistory, isFalse);
     await Future<void>.delayed(const Duration(milliseconds: 50));
     expect(store.get<bool>('recordReadingHistory'), isFalse);
+  });
+
+  test('setShowRecentHistoryOnHome persists to settings store', () async {
+    final container = ProviderContainer(
+      overrides: [
+        settingsProvider.overrideWith(
+          () => SettingsNotifier(store: store, initial: const AppSettings()),
+        ),
+      ],
+    );
+    addTearDown(container.dispose);
+
+    container.read(settingsProvider.notifier).setShowRecentHistoryOnHome(false);
+
+    expect(container.read(settingsProvider).showRecentHistoryOnHome, isFalse);
+    await Future<void>.delayed(const Duration(milliseconds: 50));
+    expect(store.get<bool>('showRecentHistoryOnHome'), isFalse);
   });
 
   test('setStripSpecialStyles persists to settings store', () async {

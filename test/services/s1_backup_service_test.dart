@@ -188,6 +188,16 @@ void main() {
       expect(app['postSignatureCustom'], '摸鱼');
     });
 
+    test('show_recent_history_on_home maps to camelCase', () {
+      final backup = S1BackupSettingsMapper.toBackup({
+        'showRecentHistoryOnHome': false,
+      });
+      expect(backup['show_recent_history_on_home'], isFalse);
+
+      final app = S1BackupSettingsMapper.toApp(backup);
+      expect(app['showRecentHistoryOnHome'], isFalse);
+    });
+
     test('haptics_enabled maps to camelCase', () {
       final backup = S1BackupSettingsMapper.toBackup({
         'hapticsEnabled': false,

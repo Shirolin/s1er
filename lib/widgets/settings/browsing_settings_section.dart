@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../models/list_density.dart';
+import '../../providers/reading_history_provider.dart';
 import '../../providers/settings_provider.dart';
 import '../../theme/app_theme.dart';
 import '../../theme/s1_haptics.dart';
@@ -15,6 +16,9 @@ class BrowsingSettingsSection extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final recordReadingHistory = ref.watch(
       settingsProvider.select((settings) => settings.recordReadingHistory),
+    );
+    final showRecentHistoryOnHome = ref.watch(
+      settingsProvider.select((settings) => settings.showRecentHistoryOnHome),
     );
     final hapticsEnabled = ref.watch(
       settingsProvider.select((settings) => settings.hapticsEnabled),
@@ -65,6 +69,24 @@ class BrowsingSettingsSection extends ConsumerWidget {
               onChanged: (value) {
                 S1Haptics.selection();
                 notifier.setRecordReadingHistory(value);
+              },
+              contentPadding: const EdgeInsets.symmetric(horizontal: 8),
+              shape: const RoundedRectangleBorder(
+                borderRadius: S1Shape.small,
+              ),
+            ),
+            SwitchListTile(
+              secondary:
+                  Icon(Icons.home_outlined, color: scheme.onSurfaceVariant),
+              title: const Text('首页显示最近浏览'),
+              subtitle: Text(
+                '在首页显示最近 $kRecentHistoryPreviewCount 条阅读记录。',
+                style: subtitleStyle,
+              ),
+              value: showRecentHistoryOnHome,
+              onChanged: (value) {
+                S1Haptics.selection();
+                notifier.setShowRecentHistoryOnHome(value);
               },
               contentPadding: const EdgeInsets.symmetric(horizontal: 8),
               shape: const RoundedRectangleBorder(

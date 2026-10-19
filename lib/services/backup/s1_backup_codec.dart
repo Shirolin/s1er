@@ -200,6 +200,7 @@ class S1BackupSettingsMapper {
     'maxImagesPerPost': 'max_images_per_post',
     'imageCacheLimitMb': 'image_cache_limit_mb',
     'recordReadingHistory': 'record_reading_history',
+    'showRecentHistoryOnHome': 'show_recent_history_on_home',
     'hapticsEnabled': 'haptics_enabled',
     'threadListDensity': 'thread_list_density',
     'postListDensity': 'post_list_density',

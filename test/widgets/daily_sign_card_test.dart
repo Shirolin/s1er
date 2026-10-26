@@ -85,6 +85,23 @@ void main() {
     expect(find.text('插件不存在或已关闭'), findsNothing);
     expect(tapped, isFalse);
 
+    // 置灰冻结：带提醒浮层，且语义上标记为禁用。
+    expect(
+      find.byWidgetPredicate(
+        (w) => w is Tooltip && w.message == '论坛已暂停签到插件，恢复后会自动可用',
+      ),
+      findsOneWidget,
+    );
+    expect(
+      find.byWidgetPredicate(
+        (w) =>
+            w is Semantics &&
+            w.properties.enabled == false &&
+            w.properties.label == '每日签到不可用：论坛已暂停签到插件',
+      ),
+      findsOneWidget,
+    );
+
     // 无按钮时右侧内边距与已签到态一致，避免文字贴边。
     expect(
       find.byWidgetPredicate(

@@ -554,6 +554,35 @@ class ApiService {
     int page = 1,
     String? authorId,
   }) async {
+    try {
+      return await _requestThreadDetail(tid, page: page, authorId: authorId);
+    } on DioException catch (e) {
+      // 论坛升级后部分页面在 version=4 下稳定返回 Discuz System Error (503)，
+      // 同一页换成 version=1 正常。只对 503 降一级重试；超时、断网等
+      // 传输层错误不重试，避免把瞬时故障放大成重复请求。
+      if (e.response?.statusCode != 503) rethrow;
+      talker.warning(
+        'viewthread v4 returned 503, retrying with version=1 '
+        'tid=$tid page=$page',
+      );
+      return _requestThreadDetail(
+        tid,
+        page: page,
+        authorId: authorId,
+        version: _legacyApiVersion,
+      );
+    }
+  }
+
+  /// v4 不可用时的降级协议版本（鹅球看帖使用同一版本，长期可用）。
+  static const String _legacyApiVersion = '1';
+
+  Future<Map<String, dynamic>> _requestThreadDetail(
+    String tid, {
+    required int page,
+    String? authorId,
+    String version = '4',
+  }) async {
     final params = <String, String>{
       'tid': tid,
       'page': page.toString(),
@@ -563,6 +592,7 @@ class ApiService {
     }
     final url = buildApiUrl(
       module: ApiConfig.moduleViewThread,
+      version: version,
       params: params,
     );
     final response = await _httpClient.get(url);

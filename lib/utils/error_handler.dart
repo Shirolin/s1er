@@ -16,10 +16,14 @@ String friendlyError(Object error, [String? context, StackTrace? stackTrace]) {
 }
 
 /// [S1HttpClient] 会把错误体内可提取的服务器公告包成
-/// `DioException(error: ServerMaintenanceException)`；展示层统一先解包。
+/// `DioException(error: ServerMaintenanceException)`，5xx 无公告时包成
+/// `DioException(error: ServerBusyException)`；展示层统一先解包。
 Object unwrapServerNotice(Object error) {
-  if (error is DioException && error.error is ServerMaintenanceException) {
-    return error.error!;
+  if (error is DioException) {
+    final inner = error.error;
+    if (inner is ServerMaintenanceException || inner is ServerBusyException) {
+      return inner!;
+    }
   }
   return error;
 }
@@ -28,6 +32,9 @@ Object unwrapServerNotice(Object error) {
 String userFacingError(Object error) {
   final effective = unwrapServerNotice(error);
   if (effective is ServerMaintenanceException) {
+    return effective.message;
+  }
+  if (effective is ServerBusyException) {
     return effective.message;
   }
 

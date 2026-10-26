@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:dio/dio.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:s1er/theme/app_theme.dart';
-import 'package:s1er/services/api_service.dart';
+import 'package:s1er/models/app_exceptions.dart';
 import 'package:s1er/widgets/s1_error_view.dart';
 import 'package:url_launcher/url_launcher.dart';
 
@@ -13,6 +13,34 @@ void main() {
       );
 
   group('S1ErrorView', () {
+    testWidgets('5xx 带响应体摘要时显示具体原因', (tester) async {
+      await tester.pumpWidget(
+        wrap(
+          S1ErrorView(
+            error: DioException(
+              requestOptions: RequestOptions(path: '/x'),
+              response: Response(
+                requestOptions: RequestOptions(path: '/x'),
+                statusCode: 503,
+              ),
+              error: const ServerBusyException(
+                statusCode: 503,
+                detail: 'stage1st.com - System Error',
+              ),
+            ),
+          ),
+        ),
+      );
+
+      expect(find.byIcon(Icons.error_outline), findsOneWidget);
+      expect(find.text('加载失败'), findsOneWidget);
+      expect(
+        find.text('S1 返回 503：stage1st.com - System Error'),
+        findsOneWidget,
+      );
+      expect(find.text('服务器暂时不可用，请稍后再试'), findsNothing);
+    });
+
     testWidgets('维护异常显示扳手图标和论坛原文', (tester) async {
       await tester.pumpWidget(
         wrap(

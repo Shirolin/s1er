@@ -17,6 +17,7 @@ import 'talker.dart';
 import '../models/app_exceptions.dart';
 import 's1_http_event.dart';
 import '../utils/server_notice.dart';
+import '../utils/discuz_error_body.dart';
 
 class S1HttpClient {
   S1HttpClient(this._ref)
@@ -208,6 +209,27 @@ class S1HttpClient {
                 message: error.message,
                 stackTrace: error.stackTrace,
                 error: ServerMaintenanceException(notice),
+              ),
+            );
+            return;
+          }
+          // 无公告可提取的 5xx：把响应体压成一句原因带进错误语义，别让
+          // 「服务器暂时不可用」吞掉 Discuz 的 System Error / 安全校验原文。
+          final status = error.response?.statusCode;
+          if (status != null && status >= 500) {
+            final body = _responseBodyText(error.response?.data);
+            handler.next(
+              DioException(
+                requestOptions: error.requestOptions,
+                response: error.response,
+                type: error.type,
+                message: error.message,
+                stackTrace: error.stackTrace,
+                error: ServerBusyException(
+                  statusCode: status,
+                  detail: summarizeErrorBody(body),
+                  securityRejected: looksLikeDiscuzSecurityReject(body),
+                ),
               ),
             );
             return;

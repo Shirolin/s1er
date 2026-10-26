@@ -1,8 +1,8 @@
 {
-  "latest": "0.9.1",
+  "latest": "0.9.2",
   "minSupported": "0.3.2",
-  "notes": "Beta — 0.9.1：首页新增最近浏览，点一下接着读",
-  "publishedAt": "2026-10-19",
+  "notes": "Beta — 0.9.2：论坛升级后打不开的帖子页已修复，附件也能正常显示",
+  "publishedAt": "2026-10-26",
   "channels": {
     "github": "https://github.com/Shirolin/s1er/releases/latest",
     "androidApk": "https://github.com/Shirolin/s1er/releases/download/v0.9.1/s1er-0.9.1%2B15-android-universal.apk",

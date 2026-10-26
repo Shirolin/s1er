@@ -5,6 +5,15 @@ All notable changes to S1er will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.9.2] - 2026-10-26
+
+### Fixed
+
+- **论坛升级后部分帖子打不开**：论坛 Mobile 接口 v4 对个别页面返回 PHP 错误（503），现在自动降级到 v1 重试一次，页面正常显示；服务器错误页新增「查看详情」折叠区，可展开查看服务端原文。
+- **翻页失败时页码与内容不一致**：翻页请求失败不再推进页码与路由，改为提示「第 N 页加载失败，请稍后重试」，避免出现「页码变了、内容还是上一页」。
+- **帖子内附件不显示**：登录状态下按 API 下发的附件信息还原 `[attach]` 图片，非图片附件显示文件名与大小。
+- **签到入口失效**：签到插件已从论坛移除，签到卡片改为置灰冻结并提示「论坛已暂停签到插件」，不再提供可点击的死按钮。
+
 ## [0.9.1] - 2026-10-19
 
 ### Added

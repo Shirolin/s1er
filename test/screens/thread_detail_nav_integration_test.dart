@@ -207,6 +207,29 @@ void main() {
     expect(router.state.uri.queryParameters.containsKey('pid'), isFalse);
   });
 
+  testWidgets('failed page turn keeps current page and reports error',
+      (tester) async {
+    tester.view.physicalSize = const Size(800, 1200);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.resetPhysicalSize);
+
+    final router = await pumpThread(
+      tester: tester,
+      location: '/thread/100?page=1',
+    );
+
+    expect(find.text('第 1 / 3 页'), findsOneWidget);
+    adapter.failPages.add(2);
+
+    await tester.tap(find.byIcon(Icons.chevron_right));
+    await _pumpFrames(tester, 40);
+
+    // 翻页失败：页码与路由都停在原页，并明确告知失败。
+    expect(find.text('第 1 / 3 页'), findsOneWidget);
+    expect(router.state.uri.queryParameters['page'], '1');
+    expect(find.textContaining('第 2 页加载失败'), findsOneWidget);
+  });
+
   testWidgets(
       'going to next page after page bottom does not inflate lastReadFloor to page end',
       (tester) async {

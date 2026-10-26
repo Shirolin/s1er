@@ -606,6 +606,11 @@ class _ThreadDetailScreenState extends ConsumerState<ThreadDetailScreen> {
     );
   }
 
+  /// 翻页失败时明确告知用户：页码与路由都停在原页，避免误以为翻页没生效。
+  void _showPageLoadFailed(int page) {
+    S1SnackBar.show(context, message: '第 $page 页加载失败，请稍后重试');
+  }
+
   Future<void> _goToPage(int page, {bool scrollToBottom = false}) async {
     final before = ref.read(postProvider(widget.tid)).asData?.value;
     if (before != null &&
@@ -651,10 +656,22 @@ class _ThreadDetailScreenState extends ConsumerState<ThreadDetailScreen> {
           _openScrollConsumed = true;
           _pendingInitialNavigation = false;
         });
+        _showPageLoadFailed(page);
         return;
       }
     } else {
-      await ref.read(postProvider(widget.tid).notifier).goToPage(page);
+      final ok =
+          await ref.read(postProvider(widget.tid).notifier).goToPage(page);
+      if (!ok) {
+        if (!mounted) return;
+        setState(() {
+          _manualPageChange = true;
+          _openScrollConsumed = true;
+          _pendingInitialNavigation = false;
+        });
+        _showPageLoadFailed(page);
+        return;
+      }
     }
     if (!mounted) return;
     _swipeKey.currentState?.syncAfterExternalPageChange();

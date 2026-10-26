@@ -421,6 +421,66 @@ void main() {
       expect(container.read(postProvider('100')).hasError, isFalse);
     });
   });
+
+  group('PostNotifier.goToPage', () {
+    late _ThreadDetailAdapter adapter;
+    late ProviderContainer container;
+
+    ProviderContainer buildContainer() {
+      final dio = Dio()..httpClientAdapter = adapter;
+      late ProviderContainer c;
+      c = ProviderContainer(
+        overrides: [
+          httpClientProvider.overrideWith(
+            (ref) => S1HttpClient.test(c, dio),
+          ),
+          readingRecordProvider('100').overrideWithValue(null),
+        ],
+      );
+      return c;
+    }
+
+    setUp(() {
+      adapter = _ThreadDetailAdapter();
+      clearRateLogSessionCacheForTest();
+    });
+
+    tearDown(() {
+      container.dispose();
+    });
+
+    test('success advances to requested page', () async {
+      container = buildContainer();
+      final sub = container.listen(postProvider('100'), (_, __) {});
+      addTearDown(sub.close);
+
+      await container.read(postProvider('100').future);
+      final ok = await container.read(postProvider('100').notifier).goToPage(3);
+
+      expect(ok, isTrue);
+      final state = container.read(postProvider('100')).asData!.value;
+      expect(state.currentPage, 3);
+      expect(state.openScrollTarget, isA<ScrollToPageTop>());
+    });
+
+    test('failure returns false and keeps previous page without error state',
+        () async {
+      container = buildContainer();
+      final sub = container.listen(postProvider('100'), (_, __) {});
+      addTearDown(sub.close);
+
+      await container.read(postProvider('100').future);
+      adapter.failPages.add(2);
+
+      final ok = await container.read(postProvider('100').notifier).goToPage(2);
+
+      // 失败必须显式返回 false：调用方据此停住路由与页码推进。
+      expect(ok, isFalse);
+      final async = container.read(postProvider('100'));
+      expect(async.hasError, isFalse);
+      expect(async.asData!.value.currentPage, 1);
+    });
+  });
 }
 
 class _ThreadDetailAdapter implements HttpClientAdapter {

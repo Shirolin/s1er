@@ -316,7 +316,11 @@ class PostNotifier extends AsyncNotifier<PostListState> {
     return true;
   }
 
-  Future<void> goToPage(int page) async {
+  /// 翻到指定页。
+  ///
+  /// 失败时回退到原页并返回 `false`：调用方必须据此中止后续动作（改路由、
+  /// 写页码），否则会出现「页码变了、内容还是上一页」且没有任何提示。
+  Future<bool> goToPage(int page) async {
     final previous = state.asData?.value;
     state = await AsyncValue.guard(() async {
       final loaded = await _loadPage(page);
@@ -325,9 +329,11 @@ class PostNotifier extends AsyncNotifier<PostListState> {
         clearLocateError: true,
       );
     });
-    if (state.hasError && previous != null) {
+    if (!state.hasError) return true;
+    if (previous != null) {
       state = AsyncValue.data(previous);
     }
+    return false;
   }
 
   void clearOpenScrollTarget() {

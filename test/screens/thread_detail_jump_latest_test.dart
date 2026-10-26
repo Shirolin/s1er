@@ -40,7 +40,7 @@ class _FakePostNotifier extends PostNotifier {
   }
 
   @override
-  Future<void> goToPage(int page) async {
+  Future<bool> goToPage(int page) async {
     goToPageCallCount++;
     _currentPage = page;
     state = AsyncValue.data(
@@ -53,6 +53,7 @@ class _FakePostNotifier extends PostNotifier {
         threadSubject: '测试主题',
       ),
     );
+    return true;
   }
 
   @override

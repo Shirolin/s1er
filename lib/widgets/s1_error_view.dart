@@ -41,10 +41,11 @@ class S1ErrorView extends StatelessWidget {
     final diagnostic = _diagnosticOf(effective);
 
     return Center(
-      child: Padding(
+      // 展开技术细节后内容可能超过一屏（尤其小屏 + 软键盘），必须可滚动。
+      child: SingleChildScrollView(
         padding: const EdgeInsets.all(32),
         child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
+          mainAxisSize: MainAxisSize.min,
           children: [
             Icon(
               isLogin

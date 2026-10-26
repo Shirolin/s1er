@@ -284,6 +284,7 @@ class _PostItemState extends ConsumerState<PostItem>
               BbcodeRenderer(
                 bbcode: widget.post.message,
                 imageIndexCounter: _imageIndexCounter,
+                attachments: widget.post.attachments,
                 currentTid: widget.tid,
                 imagesExpanded: _imagesExpanded,
                 onExpandImages: _expandImages,

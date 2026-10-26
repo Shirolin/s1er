@@ -15,12 +15,16 @@ class PostBodyCacheKey {
     required this.showImages,
     required this.maxImagesPerPost,
     required this.quoteDepth,
+    this.attachmentsSignature = '',
   });
 
   final String message;
   final bool showImages;
   final int maxImagesPerPost;
   final int quoteDepth;
+
+  /// 附件表签名：`[attach]` 会按它展开成图片/占位，影响解析输出。
+  final String attachmentsSignature;
 
   @override
   bool operator ==(Object other) =>
@@ -30,7 +34,8 @@ class PostBodyCacheKey {
           message == other.message &&
           showImages == other.showImages &&
           maxImagesPerPost == other.maxImagesPerPost &&
-          quoteDepth == other.quoteDepth;
+          quoteDepth == other.quoteDepth &&
+          attachmentsSignature == other.attachmentsSignature;
 
   @override
   int get hashCode => Object.hash(
@@ -38,6 +43,7 @@ class PostBodyCacheKey {
         showImages,
         maxImagesPerPost,
         quoteDepth,
+        attachmentsSignature,
       );
 }
 

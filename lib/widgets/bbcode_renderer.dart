@@ -7,6 +7,7 @@ import 'package:url_launcher/url_launcher.dart';
 import '../config/constants.dart';
 import '../config/env_config.dart';
 import '../models/emoticon_catalog.dart';
+import '../models/post_attachment.dart';
 import '../providers/settings_provider.dart';
 import '../theme/app_theme.dart';
 import '../utils/author_color_cache.dart';
@@ -71,6 +72,7 @@ class BbcodeRenderer extends ConsumerWidget {
     this.selectable = true,
     this.highlightQuery,
     this.stripSpecialStyles = false,
+    this.attachments = const {},
   });
 
   final String bbcode;
@@ -79,6 +81,9 @@ class BbcodeRenderer extends ConsumerWidget {
   final String? currentTid;
   final bool imagesExpanded;
   final VoidCallback? onExpandImages;
+
+  /// 楼层附件表（aid → 元数据）；正文 `[attach]` / `[attachimg]` 依赖它还原地址。
+  final Map<String, PostAttachment> attachments;
 
   /// 顶层是否包 [SelectionArea]。Dialog / 路由切换首帧易触发
   /// `!debugNeedsLayout`（Flutter #125065），预览等浮层应关。
@@ -226,12 +231,14 @@ class BbcodeRenderer extends ConsumerWidget {
         showImages: showImages,
         maxImagesPerPost: maxImagesPerPost,
         quoteDepth: quoteDepth,
+        attachmentsSignature: _attachmentsSignature,
       ),
       build: () => _profiledBbcode(
         'parse',
         () => BbcodeParser.parse(
           cleanedText,
           imageIndexCounter: imageIndexCounter,
+          attachments: attachments,
         ),
         detail: (value) =>
             'cache-miss links=${_countAnchors(value)} len=${value.length}',
@@ -250,6 +257,13 @@ class BbcodeRenderer extends ConsumerWidget {
     for (var i = 0; i < count; i++) {
       imageIndexCounter.assign();
     }
+  }
+
+  /// 附件表参与解析结果，必须进缓存键；按 aid 排序后压成短签名。
+  String get _attachmentsSignature {
+    if (attachments.isEmpty) return '';
+    final aids = attachments.keys.toList()..sort();
+    return aids.map((aid) => '$aid:${attachments[aid]!.imageUrl}').join('|');
   }
 }
 

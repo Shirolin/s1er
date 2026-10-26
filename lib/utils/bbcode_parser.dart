@@ -2,6 +2,7 @@ import 'package:html/dom.dart';
 import 'package:html/parser.dart' show parseFragment;
 import '../config/constants.dart';
 import '../models/emoticon_catalog.dart';
+import '../models/post_attachment.dart';
 import 'author_color_adapter.dart';
 import 'html_optimizer.dart';
 import 'post_image_index_counter.dart';
@@ -11,15 +12,52 @@ class BbcodeParser {
   static String parse(
     String input, {
     PostImageIndexCounter? imageIndexCounter,
+    Map<String, PostAttachment> attachments = const {},
   }) {
     if (input.isEmpty) return '';
 
     var output = input;
 
     output = _preClean(output);
+    if (attachments.isNotEmpty) {
+      output = _resolveAttachments(output, attachments);
+    }
     output = _convertBbcodeToHtml(output);
     output = _normalizeHtml(output, imageIndexCounter: imageIndexCounter);
 
+    return output;
+  }
+
+  /// 把 `[attach]` / `[attachimg]` 换成图片或「附件：xxx」占位。
+  ///
+  /// Discuz 只在登录态把附件元数据放进 `postlist[].attachments`；正文仍是
+  /// `[attach]aid[/attach]`。这里按下发的 aid 还原真实地址（鹅球同款做法），
+  /// 查不到的 aid 保留原文，避免整楼内容被吞。
+  static String _resolveAttachments(
+    String text,
+    Map<String, PostAttachment> attachments,
+  ) {
+    String replace(String tag, Match m) {
+      final aid = m.group(1)?.trim() ?? '';
+      final attachment = attachments[aid];
+      if (attachment == null) return m.group(0)!;
+      final url = attachment.imageUrl;
+      final asImage = tag == 'attachimg' || attachment.isRenderable;
+      if (asImage && url.isNotEmpty) {
+        return '<img src="${_escapeAttr(url)}" />';
+      }
+      return '<span class="attach-placeholder">附件：'
+          '${_escapeHtml(attachment.label)}</span>';
+    }
+
+    var output = text.replaceAllMapped(
+      RegExp(r'\[attachimg\](\d+)\[/attachimg\]', caseSensitive: false),
+      (m) => replace('attachimg', m),
+    );
+    output = output.replaceAllMapped(
+      RegExp(r'\[attach\](\d+)\[/attach\]', caseSensitive: false),
+      (m) => replace('attach', m),
+    );
     return output;
   }
 
@@ -429,6 +467,14 @@ class BbcodeParser {
         .replaceAll('&', '&amp;')
         .replaceAll('"', '&quot;')
         .replaceAll("'", '&#39;')
+        .replaceAll('<', '&lt;')
+        .replaceAll('>', '&gt;');
+  }
+
+  /// HTML 文本节点转义。
+  static String _escapeHtml(String value) {
+    return value
+        .replaceAll('&', '&amp;')
         .replaceAll('<', '&lt;')
         .replaceAll('>', '&gt;');
   }

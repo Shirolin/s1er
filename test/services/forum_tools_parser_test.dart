@@ -101,7 +101,8 @@ void main() {
       final result = ForumToolsService.parseAttendanceResponse(body);
       expect(result.outcome, AttendanceOutcome.unavailable);
       expect(result.isSignedToday, isFalse);
-      expect(result.message, contains('插件不存在'));
+      // 统一文案，不再把服务端原文透传给用户。
+      expect(result.message, '论坛已暂停签到插件');
     });
 
     test('unavailable without handler call still detected', () {

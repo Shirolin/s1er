@@ -607,7 +607,17 @@ class _ThreadDetailScreenState extends ConsumerState<ThreadDetailScreen> {
   }
 
   /// 翻页失败时明确告知用户：页码与路由都停在原页，避免误以为翻页没生效。
-  void _showPageLoadFailed(int page) {
+  ///
+  /// 三槽 PageView 失败后必须复位回中心槽，否则滑动路径会把用户留在「新页
+  /// 空白槽位 + 旧页内容」的状态，正是 #52 的反面。
+  void _handlePageLoadFailed(int page) {
+    if (!mounted) return;
+    setState(() {
+      _manualPageChange = true;
+      _openScrollConsumed = true;
+      _pendingInitialNavigation = false;
+    });
+    _swipeKey.currentState?.syncAfterExternalPageChange();
     S1SnackBar.show(context, message: '第 $page 页加载失败，请稍后重试');
   }
 
@@ -650,26 +660,14 @@ class _ThreadDetailScreenState extends ConsumerState<ThreadDetailScreen> {
                 absoluteFloor: (page - 1) * ppp + rememberedFloor,
               );
       if (!ok) {
-        if (!mounted) return;
-        setState(() {
-          _manualPageChange = true;
-          _openScrollConsumed = true;
-          _pendingInitialNavigation = false;
-        });
-        _showPageLoadFailed(page);
+        _handlePageLoadFailed(page);
         return;
       }
     } else {
       final ok =
           await ref.read(postProvider(widget.tid).notifier).goToPage(page);
       if (!ok) {
-        if (!mounted) return;
-        setState(() {
-          _manualPageChange = true;
-          _openScrollConsumed = true;
-          _pendingInitialNavigation = false;
-        });
-        _showPageLoadFailed(page);
+        _handlePageLoadFailed(page);
         return;
       }
     }

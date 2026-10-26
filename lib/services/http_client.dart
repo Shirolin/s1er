@@ -566,6 +566,8 @@ class S1HttpClient {
 
   /// 服务端拒绝对话时（5xx / 403 / 429）把响应体与关键响应头写进 Talker。
   ///
+  /// 只在 debug / profile 构建生效：这条日志用于定位论坛侧故障，release 下
+  /// 既不诊断也没有价值，还会把服务端内容写进日志历史。
   /// TalkerDioLogger 默认不打印错误体，线上只看到 `Status: 503` 无法判断是
   /// 网关过载、php-fpm 耗尽还是 WAF 拦截。这里采样响应体前 300 字符与少量
   /// 响应头；不记录请求头、Cookie 与表单内容。
@@ -581,6 +583,7 @@ class S1HttpClient {
   };
 
   static void _logRejectedResponse(DioException error) {
+    if (kReleaseMode) return;
     final response = error.response;
     final status = response?.statusCode;
     if (response == null || status == null) return;
@@ -597,7 +600,7 @@ class S1HttpClient {
         _responseBodyText(response.data).replaceAll(RegExp(r'\s+'), ' ').trim();
     if (body.length > 300) body = '${body.substring(0, 300)}…';
 
-    talker.error(
+    talker.debug(
       'HTTP $status ${error.requestOptions.method} '
       '${_requestUri(error.requestOptions)}'
       '${headers.isEmpty ? '' : ' | ${headers.join(' ')}'}'

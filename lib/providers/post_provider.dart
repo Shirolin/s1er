@@ -241,7 +241,9 @@ class PostNotifier extends AsyncNotifier<PostListState> {
   /// 保持可回复，与历史行为一致。
   static bool _resolveAllowReply(Map<String, dynamic> thread) {
     if (thread['closed']?.toString() == '1') return false;
-    return thread['allowreply']?.toString() != '0';
+    final allowReply = thread['allowreply']?.toString().trim() ?? '';
+    if (allowReply.isEmpty) return true;
+    return allowReply != '0';
   }
 
   /// 打开置顶帖时对齐 live / lastSeen（不碰阅读记录）。

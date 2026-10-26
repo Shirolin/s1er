@@ -180,38 +180,44 @@ class ForumToolsService {
       // 论坛停用签到插件时返回的是插件路由的通用错误，不是签到失败：
       // 用户点多少次都不会成功，卡片需要收起入口而不是继续给重试。
       if (isAttendancePluginUnavailable(error)) {
-        return AttendanceResult(
-          outcome: AttendanceOutcome.unavailable,
-          message: error.isEmpty ? '论坛已暂停签到插件' : error,
-        );
+        return _pluginUnavailableResult;
       }
       final already = error.contains('已签到');
       return AttendanceResult(
         outcome: already
             ? AttendanceOutcome.alreadySigned
             : AttendanceOutcome.failed,
-        message: error.isEmpty ? html : error,
+        message: error.isEmpty ? _attendanceFallbackMessage(html) : error,
       );
     }
 
     if (html.contains('已签到')) {
       return AttendanceResult(
         outcome: AttendanceOutcome.alreadySigned,
-        message: html.trim(),
+        message: _attendanceFallbackMessage(html),
       );
     }
 
     if (isAttendancePluginUnavailable(html)) {
-      return const AttendanceResult(
-        outcome: AttendanceOutcome.unavailable,
-        message: '论坛已暂停签到插件',
-      );
+      return _pluginUnavailableResult;
     }
 
     return AttendanceResult(
       outcome: AttendanceOutcome.unknown,
-      message: html.trim().isEmpty ? '服务器返回异常' : html.trim(),
+      message: _attendanceFallbackMessage(html),
     );
+  }
+
+  static const AttendanceResult _pluginUnavailableResult = AttendanceResult(
+    outcome: AttendanceOutcome.unavailable,
+    message: '论坛已暂停签到插件',
+  );
+
+  /// 签到失败/未知时给用户的文案：抽取服务端提示文字，拿不到就不展示 HTML。
+  static String _attendanceFallbackMessage(String html) {
+    final text = DiscuzSubmitResponse.extractMessagetextParagraph(html)?.trim();
+    if (text != null && text.isNotEmpty && !text.contains('<')) return text;
+    return '签到失败，请稍后重试';
   }
 
   /// 论坛是否已停用签到插件（插件路由返回「插件不存在或已关闭」一类文案）。

@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:dio/dio.dart' show DioException;
 import 'package:url_launcher/url_launcher.dart';
 
 import '../config/api_config.dart';
@@ -35,6 +36,9 @@ class S1ErrorView extends StatelessWidget {
     final effective = unwrapServerNotice(error);
     final isLogin = effective is LoginRequiredException;
     final isMaintenance = effective is ServerMaintenanceException;
+    // 技术细节默认折叠：普通用户只看到「加载失败 + 重试」，开发者可展开查看
+    // 服务端原文（5xx 原因 / 未预期的异常类型）。
+    final diagnostic = _diagnosticOf(effective);
 
     return Center(
       child: Padding(
@@ -107,10 +111,28 @@ class S1ErrorView extends StatelessWidget {
                 ),
               ],
             ],
+            if (diagnostic != null) ...[
+              const SizedBox(height: 20),
+              _ErrorDiagnosticPanel(detail: diagnostic),
+            ],
           ],
         ),
       ),
     );
+  }
+
+  /// 需要折叠展示的技术细节；null 表示无需展示。
+  ///
+  /// 只暴露服务端返回的原因与我们已知的异常类型，不带堆栈（堆栈进 Talker）。
+  String? _diagnosticOf(Object effective) {
+    if (effective is ServerBusyException) {
+      return effective.diagnosticDetail;
+    }
+    if (effective is DioException) {
+      final status = effective.response?.statusCode;
+      return status == null ? null : 'HTTP $status';
+    }
+    return null;
   }
 
   Future<void> _openForumWeb(BuildContext context) async {
@@ -139,5 +161,57 @@ class S1ErrorView extends StatelessWidget {
       return effective.message;
     }
     return userFacingError(effective);
+  }
+}
+
+/// 错误页底部的「详情」折叠区：默认收起，展开后暴露服务端原文。
+class _ErrorDiagnosticPanel extends StatefulWidget {
+  const _ErrorDiagnosticPanel({required this.detail});
+
+  final String detail;
+
+  @override
+  State<_ErrorDiagnosticPanel> createState() => _ErrorDiagnosticPanelState();
+}
+
+class _ErrorDiagnosticPanelState extends State<_ErrorDiagnosticPanel> {
+  bool _expanded = false;
+
+  @override
+  Widget build(BuildContext context) {
+    final scheme = Theme.of(context).colorScheme;
+    final textTheme = Theme.of(context).textTheme;
+
+    return ConstrainedBox(
+      constraints: const BoxConstraints(maxWidth: 520),
+      child: Column(
+        children: [
+          TextButton.icon(
+            onPressed: () => setState(() => _expanded = !_expanded),
+            icon: Icon(
+              _expanded ? Icons.expand_less : Icons.expand_more,
+              size: 18,
+            ),
+            label: Text(_expanded ? '收起详情' : '查看详情'),
+          ),
+          if (_expanded)
+            Container(
+              width: double.infinity,
+              padding: const EdgeInsets.all(12),
+              decoration: BoxDecoration(
+                color: scheme.surfaceContainerHighest,
+                borderRadius: BorderRadius.circular(8),
+              ),
+              child: SelectableText(
+                widget.detail,
+                style: textTheme.bodySmall?.copyWith(
+                  color: scheme.onSurfaceVariant,
+                  fontFamily: 'monospace',
+                ),
+              ),
+            ),
+        ],
+      ),
+    );
   }
 }

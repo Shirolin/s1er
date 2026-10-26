@@ -59,6 +59,43 @@ void main() {
     );
   });
 
+  testWidgets('DailySignCard hides sign button when plugin unavailable', (
+    tester,
+  ) async {
+    var tapped = false;
+    await tester.pumpWidget(
+      MaterialApp(
+        theme: AppTheme.lightTheme('purple'),
+        home: Scaffold(
+          body: DailySignCard(
+            isSubmitting: false,
+            result: const AttendanceResult(
+              outcome: AttendanceOutcome.unavailable,
+              message: '插件不存在或已关闭',
+            ),
+            onSign: () => tapped = true,
+          ),
+        ),
+      ),
+    );
+
+    expect(find.text('每日签到'), findsOneWidget);
+    expect(find.text('论坛已暂停签到插件'), findsOneWidget);
+    expect(find.text('签到'), findsNothing);
+    expect(find.text('插件不存在或已关闭'), findsNothing);
+    expect(tapped, isFalse);
+
+    // 无按钮时右侧内边距与已签到态一致，避免文字贴边。
+    expect(
+      find.byWidgetPredicate(
+        (w) =>
+            w is Padding &&
+            w.padding == const EdgeInsets.fromLTRB(16, 14, 16, 14),
+      ),
+      findsOneWidget,
+    );
+  });
+
   testWidgets('DailySignCard button state keeps reduced right padding', (
     tester,
   ) async {

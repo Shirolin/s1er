@@ -177,6 +177,14 @@ class ForumToolsService {
       messageIndex: 0,
     );
     if (error != null) {
+      // 论坛停用签到插件时返回的是插件路由的通用错误，不是签到失败：
+      // 用户点多少次都不会成功，卡片需要收起入口而不是继续给重试。
+      if (isAttendancePluginUnavailable(error)) {
+        return AttendanceResult(
+          outcome: AttendanceOutcome.unavailable,
+          message: error.isEmpty ? '论坛已暂停签到插件' : error,
+        );
+      }
       final already = error.contains('已签到');
       return AttendanceResult(
         outcome: already
@@ -193,10 +201,26 @@ class ForumToolsService {
       );
     }
 
+    if (isAttendancePluginUnavailable(html)) {
+      return const AttendanceResult(
+        outcome: AttendanceOutcome.unavailable,
+        message: '论坛已暂停签到插件',
+      );
+    }
+
     return AttendanceResult(
       outcome: AttendanceOutcome.unknown,
       message: html.trim().isEmpty ? '服务器返回异常' : html.trim(),
     );
+  }
+
+  /// 论坛是否已停用签到插件（插件路由返回「插件不存在或已关闭」一类文案）。
+  ///
+  /// 与「今日已签到」「用户组不允许签到」区分：这是插件整体不可用，
+  /// 客户端需要收起签到入口，而不是让用户反复重试。
+  static bool isAttendancePluginUnavailable(String text) {
+    if (text.contains('插件不存在')) return true;
+    return text.contains('插件') && text.contains('已关闭');
   }
 
   static DarkRoomPage parseDarkRoomJson(

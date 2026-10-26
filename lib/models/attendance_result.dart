@@ -1,4 +1,10 @@
-enum AttendanceOutcome { signedNow, alreadySigned, failed, unknown }
+enum AttendanceOutcome {
+  signedNow,
+  alreadySigned,
+  failed,
+  unavailable,
+  unknown
+}
 
 class AttendanceResult {
   const AttendanceResult({required this.outcome, required this.message});

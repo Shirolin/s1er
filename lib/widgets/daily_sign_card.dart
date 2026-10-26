@@ -22,8 +22,10 @@ class DailySignCard extends StatelessWidget {
     final scheme = Theme.of(context).colorScheme;
     final textTheme = Theme.of(context).textTheme;
     final signed = result?.isSignedToday == true;
-    final failed = result?.outcome == AttendanceOutcome.failed ||
-        result?.outcome == AttendanceOutcome.unknown;
+    final unavailable = result?.outcome == AttendanceOutcome.unavailable;
+    final failed = !unavailable &&
+        (result?.outcome == AttendanceOutcome.failed ||
+            result?.outcome == AttendanceOutcome.unknown);
 
     return Card(
       elevation: 0,
@@ -33,13 +35,20 @@ class DailySignCard extends StatelessWidget {
       shape: S1Shape.cardShape,
       clipBehavior: Clip.antiAlias,
       child: Padding(
-        padding: EdgeInsets.fromLTRB(16, 14, signed ? 16 : 12, 14),
+        padding: EdgeInsets.fromLTRB(
+          16,
+          14,
+          signed || unavailable ? 16 : 12,
+          14,
+        ),
         child: Row(
           children: [
             Icon(
               signed
                   ? Icons.check_circle_outline
-                  : Icons.calendar_month_outlined,
+                  : unavailable
+                      ? Icons.block_outlined
+                      : Icons.calendar_month_outlined,
               color: signed ? scheme.primary : scheme.onSurfaceVariant,
             ),
             const SizedBox(width: 12),
@@ -56,7 +65,9 @@ class DailySignCard extends StatelessWidget {
                   ),
                   const SizedBox(height: 4),
                   Text(
-                    result?.message ?? '点击完成今日 Discuz 签到',
+                    unavailable
+                        ? '论坛已暂停签到插件'
+                        : result?.message ?? '点击完成今日 Discuz 签到',
                     style: textTheme.bodySmall?.copyWith(
                       color: failed ? scheme.error : scheme.onSurfaceVariant,
                     ),
@@ -67,7 +78,7 @@ class DailySignCard extends StatelessWidget {
             const SizedBox(width: 8),
             if (signed)
               Icon(Icons.done, color: scheme.primary)
-            else
+            else if (!unavailable)
               FilledButton(
                 onPressed: isSubmitting
                     ? null

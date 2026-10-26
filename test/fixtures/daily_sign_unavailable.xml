@@ -1,0 +1,8 @@
+<?xml version="1.0" encoding="utf-8"?>
+<root><![CDATA[<div class="tip">
+<dt id="messagetext">
+<p>插件不存在或已关闭<script type="text/javascript" reload="1">if(typeof errorhandle_=='function') {errorhandle_('插件不存在或已关闭', {});}</script></p>
+<dd><input type="button" class="close pn" onclick="popup.close();" value="关闭"></dd>
+</dt>
+</div>
+]]></root>

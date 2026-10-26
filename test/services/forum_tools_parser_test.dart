@@ -93,6 +93,23 @@ void main() {
       final result = ForumToolsService.parseAttendanceResponse('');
       expect(result.outcome, AttendanceOutcome.unknown);
     });
+
+    test('plugin missing is unavailable, not failed', () {
+      final body = File(
+        'test/fixtures/daily_sign_unavailable.xml',
+      ).readAsStringSync();
+      final result = ForumToolsService.parseAttendanceResponse(body);
+      expect(result.outcome, AttendanceOutcome.unavailable);
+      expect(result.isSignedToday, isFalse);
+      expect(result.message, contains('插件不存在'));
+    });
+
+    test('unavailable without handler call still detected', () {
+      final result = ForumToolsService.parseAttendanceResponse(
+        '<div class="tip">插件不存在或已关闭</div>',
+      );
+      expect(result.outcome, AttendanceOutcome.unavailable);
+    });
   });
 
   group('parseDarkRoomJson', () {

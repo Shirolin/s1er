@@ -192,6 +192,7 @@ class S1HttpClient {
           handler.next(response);
         },
         onError: (error, handler) {
+          _logRejectedResponse(error);
           // 错误体里可能携带着官方公告（维护页 / 网关错误页 / 5xx JSON）：
           // 抽得出原文才升级提示，抽不出则维持原错误与通用文案。
           final notice = ServerNotice.fromErrorBody(error.response?.data);
@@ -539,6 +540,54 @@ class S1HttpClient {
       return Uri.parse(path);
     }
     return Uri.parse('https://${ResourceDomains.apiHost}$path');
+  }
+
+  /// 服务端拒绝对话时（5xx / 403 / 429）把响应体与关键响应头写进 Talker。
+  ///
+  /// TalkerDioLogger 默认不打印错误体，线上只看到 `Status: 503` 无法判断是
+  /// 网关过载、php-fpm 耗尽还是 WAF 拦截。这里采样响应体前 300 字符与少量
+  /// 响应头；不记录请求头、Cookie 与表单内容。
+  static const Set<String> _diagnosticResponseHeaders = {
+    'server',
+    'x-powered-by',
+    'retry-after',
+    'content-type',
+    'x-cache',
+    'cf-ray',
+    'x-ratelimit-limit',
+    'x-ratelimit-remaining',
+  };
+
+  static void _logRejectedResponse(DioException error) {
+    final response = error.response;
+    final status = response?.statusCode;
+    if (response == null || status == null) return;
+    if (status < 500 && status != 403 && status != 429) return;
+
+    final headers = <String>[];
+    for (final entry in response.headers.map.entries) {
+      final key = entry.key.toLowerCase();
+      if (!_diagnosticResponseHeaders.contains(key)) continue;
+      headers.add('$key=${entry.value.join(",")}');
+    }
+
+    var body =
+        _responseBodyText(response.data).replaceAll(RegExp(r'\s+'), ' ').trim();
+    if (body.length > 300) body = '${body.substring(0, 300)}…';
+
+    talker.error(
+      'HTTP $status ${error.requestOptions.method} '
+      '${_requestUri(error.requestOptions)}'
+      '${headers.isEmpty ? '' : ' | ${headers.join(' ')}'}'
+      '${body.isEmpty ? '' : ' | body: $body'}',
+    );
+  }
+
+  static String _responseBodyText(dynamic data) {
+    if (data is String) return data;
+    if (data is List<int>) return utf8.decode(data, allowMalformed: true);
+    if (data == null) return '';
+    return data.toString();
   }
 
   /// 关闭事件流。仅用于测试。

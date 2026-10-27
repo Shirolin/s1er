@@ -228,21 +228,15 @@ abstract final class DiscuzParser {
         .toList();
   }
 
-  /// 解析 v4 `Variables.commentcount`（pid → 计数）。
+  /// 解析 v4 `Variables.commentcount` 的键集合（本页有评分/点评的 pid）。
   ///
-  /// 键集合即本页有评分/点评的楼层；v1 响应没有该字段。评分明细仍需按
-  /// pid 拉 `misc&action=viewratings`。
-  static Map<String, int> parseCommentCount(Map<String, dynamic> json) {
+  /// v1 响应没有该字段。评分明细仍需按 pid 拉 `misc&action=viewratings`。
+  static Set<String> parseRateMarkedPids(Map<String, dynamic> json) {
     final variables = json['Variables'] as Map<String, dynamic>?;
     final commentCount = variables?['commentcount'];
-    if (commentCount is! Map) return {};
+    if (commentCount is! Map) return const {};
 
-    return commentCount.map((key, value) {
-      return MapEntry(
-        key.toString(),
-        int.tryParse(value?.toString() ?? '') ?? 0,
-      );
-    });
+    return commentCount.keys.map((key) => key.toString()).toSet();
   }
 
   /// 解析投票数据。非投票帖或缺 `special_poll` 时返回 null。

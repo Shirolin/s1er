@@ -390,8 +390,8 @@ void main() {
       });
     });
 
-    group('parseCommentCount', () {
-      test('parses comment count map from viewthread JSON', () {
+    group('parseRateMarkedPids', () {
+      test('returns pid keys from viewthread JSON', () {
         final json = {
           'Variables': {
             'commentcount': {
@@ -401,12 +401,12 @@ void main() {
           },
         };
 
-        expect(DiscuzParser.parseCommentCount(json), {'100': 2, '200': 0});
+        expect(DiscuzParser.parseRateMarkedPids(json), {'100', '200'});
       });
 
-      test('returns empty map when commentcount is missing', () {
+      test('returns empty set when commentcount is missing', () {
         final json = {'Variables': <String, dynamic>{}};
-        expect(DiscuzParser.parseCommentCount(json), isEmpty);
+        expect(DiscuzParser.parseRateMarkedPids(json), isEmpty);
       });
 
       test('keeps pid keys when commentcount values are null', () {
@@ -416,7 +416,7 @@ void main() {
           },
         };
 
-        expect(DiscuzParser.parseCommentCount(json), {'70365643': 0});
+        expect(DiscuzParser.parseRateMarkedPids(json), {'70365643'});
       });
     });
 

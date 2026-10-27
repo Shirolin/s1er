@@ -945,10 +945,12 @@ class _ThreadDetailScreenState extends ConsumerState<ThreadDetailScreen> {
   Future<void> _openRateLog(Post post) async {
     final notifier = ref.read(threadRateLogsProvider(widget.tid).notifier);
     final key = (widget.tid, post.pid);
-    if (ref.read(rateLogProvider(key)) == null) {
-      await notifier.refreshRateLog(post.pid);
-    }
+    final ok = await notifier.ensureRateLog(post.pid);
     if (!mounted) return;
+    if (!ok) {
+      S1SnackBar.error(context, message: '加载评分失败，请稍后重试');
+      return;
+    }
     final log = ref.read(rateLogProvider(key));
     if (log == null || log.isEmpty) {
       S1SnackBar.show(context, message: '该楼暂无评分记录');

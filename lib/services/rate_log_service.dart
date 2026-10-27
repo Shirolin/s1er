@@ -4,7 +4,6 @@ import 'package:html/parser.dart' show parse;
 import '../config/api_config.dart';
 import '../models/rate_log.dart';
 import 'http_client.dart';
-import 'talker.dart';
 
 class RateLogService {
   RateLogService(this._httpClient);
@@ -34,49 +33,62 @@ class RateLogService {
   ///
   /// 列顺序：积分 / 用户名 / 时间 / 理由。表头行也是 `<td>`，靠用户名列
   /// 没有 `<a>` 链接过滤掉。服务端不返回参与人数，故以条目数计。
+  ///
+  /// 返回 null 表示「该楼确实没有评分」（未评分楼返回无表格的
+  /// `…还没有评分记录` 提示）；其它无表格响应视为异常抛出，避免把错误
+  /// 当成空结果缓存。
   static PostRateLog? parseRateTable(String html, {required String pid}) {
-    if (html.isEmpty) return null;
-
-    try {
-      final doc = parse(html);
-      var rows = doc.querySelectorAll('table tbody tr');
-      // html5 解析通常会补 tbody；保留回退以兼容异常片段。
-      if (rows.isEmpty) rows = doc.querySelectorAll('table tr');
-      if (rows.isEmpty) return null;
-
-      final entries = <RateLog>[];
-      for (final row in rows) {
-        final cells = row.children;
-        if (cells.length < 4) continue;
-
-        final link = cells[1].querySelector('a');
-        if (link == null) continue;
-        final username = link.text.trim();
-        if (username.isEmpty) continue;
-
-        entries.add(
-          RateLog(
-            uid: _parseUid(link.attributes['href']),
-            username: username,
-            score: _parseScore(cells[0].text),
-            ratedAt: _parseRatedAt(cells[2].text),
-            reason: cells[3].text.trim(),
-          ),
-        );
-      }
-
-      if (entries.isEmpty) return null;
-
-      return PostRateLog(
-        pid: pid,
-        entries: entries,
-        totalScore: entries.fold<int>(0, (sum, entry) => sum + entry.score),
-        participantCount: entries.length,
-      );
-    } catch (e, st) {
-      talker.handle(e, st, 'parse rate table failed pid=$pid');
-      return null;
+    final raw = html.trim();
+    if (raw.isEmpty) {
+      throw const FormatException('empty rate log response');
     }
+
+    // `inajax=1` 返回 XML + CDATA；先剥掉壳再解析，避免 CDATA 起始符
+    // 被当成 bogus comment 吞掉第一个标签。
+    final cdata = RegExp(r'<!\[CDATA\[([\s\S]*?)\]\]>').firstMatch(raw);
+    final body = (cdata?.group(1) ?? raw).trim();
+    if (body.isEmpty) {
+      throw const FormatException('empty rate log response');
+    }
+
+    final doc = parse(body);
+    var rows = doc.querySelectorAll('table tbody tr');
+    // html5 解析通常会补 tbody；保留回退以兼容异常片段。
+    if (rows.isEmpty) rows = doc.querySelectorAll('table tr');
+    if (rows.isEmpty) {
+      if (body.contains('没有评分记录')) return null;
+      throw const FormatException('rate log response has no ratings table');
+    }
+
+    final entries = <RateLog>[];
+    for (final row in rows) {
+      final cells = row.children;
+      if (cells.length < 4) continue;
+
+      final link = cells[1].querySelector('a');
+      if (link == null) continue;
+      final username = link.text.trim();
+      if (username.isEmpty) continue;
+
+      entries.add(
+        RateLog(
+          uid: _parseUid(link.attributes['href']),
+          username: username,
+          score: _parseScore(cells[0].text),
+          ratedAt: _parseRatedAt(cells[2].text),
+          reason: cells[3].text.trim(),
+        ),
+      );
+    }
+
+    if (entries.isEmpty) return null;
+
+    return PostRateLog(
+      pid: pid,
+      entries: entries,
+      totalScore: entries.fold<int>(0, (sum, entry) => sum + entry.score),
+      participantCount: entries.length,
+    );
   }
 
   static int _parseScore(String raw) {

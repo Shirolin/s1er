@@ -8,9 +8,7 @@ import '../models/poll.dart';
 import '../models/thread_open_intent.dart';
 import '../services/api_service.dart';
 import '../services/discuz_parser.dart';
-import '../services/http_client.dart';
 import '../services/poll_vote_cache.dart';
-import '../services/rate_log_service.dart';
 import '../services/talker.dart';
 import '../utils/thread_navigation.dart';
 import 'api_service_provider.dart';
@@ -100,10 +98,6 @@ class PostListState {
     );
   }
 }
-
-final rateLogServiceProvider = Provider<RateLogService>((ref) {
-  return RateLogService(ref.watch(httpClientProvider));
-});
 
 final pollVoteCacheProvider =
     Provider.autoDispose.family<PollVoteCache, String>((ref, uid) {
@@ -224,7 +218,7 @@ class PostNotifier extends AsyncNotifier<PostListState> {
     // postlist 不含楼层 rate；v4 的 Variables.commentcount 键即本页有评分
     // 的 pid（v1 无此字段）。只登记标记，实际拉取由可见楼层的评分区按需
     // 触发，避免为每页额外拉整页 HTML，也避免整页批量请求。
-    final markedPids = DiscuzParser.parseCommentCount(result).keys;
+    final markedPids = DiscuzParser.parseRateMarkedPids(result);
     if (markedPids.isNotEmpty) {
       ref.read(threadRateLogsProvider(tid).notifier).markPids(markedPids);
     }

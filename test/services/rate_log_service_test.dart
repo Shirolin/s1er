@@ -7,6 +7,8 @@ import 'package:s1er/services/http_client.dart';
 import 'package:s1er/services/rate_log_service.dart';
 
 const _ratedTableHtml = '''
+<?xml version="1.0" encoding="utf-8"?>
+<root><![CDATA[
 <table class="list" cellspacing="0" cellpadding="0">
 <thead>
 <tr>
@@ -28,6 +30,7 @@ const _ratedTableHtml = '''
 <td>扣分</td>
 </tr>
 </table>
+]]></root>
 ''';
 
 void main() {
@@ -72,23 +75,34 @@ void main() {
       expect(log.participantCount, 1);
     });
 
-    test('returns null for empty or non-table html', () {
-      expect(RateLogService.parseRateTable('', pid: '1'), isNull);
+    test('returns null for unrated response without table', () {
+      const html = '''
+<?xml version="1.0" encoding="utf-8"?>
+<root><![CDATA[
+<div class="alert_error">抱歉，指定的帖子不存在或还没有评分记录</div>
+]]></root>
+''';
+      expect(RateLogService.parseRateTable(html, pid: '1'), isNull);
+    });
+
+    test('throws for empty or unexpected response without table', () {
       expect(
-        RateLogService.parseRateTable(
+        () => RateLogService.parseRateTable('', pid: '1'),
+        throwsFormatException,
+      );
+      expect(
+        () => RateLogService.parseRateTable(
           '<html><body>无权限</body></html>',
           pid: '1',
         ),
-        isNull,
+        throwsFormatException,
       );
-      expect(
-        RateLogService.parseRateTable(
-          '<table><thead><tr><td>积分</td><td>用户名</td>'
-          '<td>时间</td><td>理由</td></tr></thead></table>',
-          pid: '1',
-        ),
-        isNull,
-      );
+    });
+
+    test('returns null for header-only table', () {
+      const html = '<table><thead><tr><td>积分</td><td>用户名</td>'
+          '<td>时间</td><td>理由</td></tr></thead></table>';
+      expect(RateLogService.parseRateTable(html, pid: '1'), isNull);
     });
   });
 

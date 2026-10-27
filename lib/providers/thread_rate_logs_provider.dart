@@ -9,123 +9,113 @@ import 'post_provider.dart';
 
 typedef RateLogKey = (String tid, String pid);
 
-/// 进程内会话缓存：不依赖 keepAlive Timer，避免 widget 测试残留定时器。
+/// 进程内会话缓存：按 (tid, pid) 存放已拉到的评分记录，
+/// 不依赖 keepAlive Timer，避免 widget 测试残留定时器。
 class _RateLogSessionStore {
   _RateLogSessionStore._();
 
-  static final Map<(String tid, int page), _RateLogPageCache> _pages = {};
+  static final Map<(String tid, String pid), _CachedRateLog> _logs = {};
 
-  static Map<String, PostRateLog>? get(String tid, int page) {
-    final key = (tid, page);
-    final cached = _pages[key];
+  static PostRateLog? get(String tid, String pid) {
+    final key = (tid, pid);
+    final cached = _logs[key];
     if (cached == null) return null;
     if (DateTime.now().difference(cached.loadedAt) >=
         S1Constants.postSessionCacheExpiry) {
-      _pages.remove(key);
+      _logs.remove(key);
       return null;
     }
-    return cached.logs;
+    return cached.log;
   }
 
-  static void put(String tid, int page, Map<String, PostRateLog> logs) {
-    _pages[(tid, page)] = _RateLogPageCache(logs, DateTime.now());
-  }
-
-  static void updatePid(String tid, int page, String pid, PostRateLog log) {
-    final key = (tid, page);
-    final cached = _pages[key];
-    if (cached == null) return;
-    _pages[key] = _RateLogPageCache(
-      {...cached.logs, pid: log},
-      DateTime.now(),
-    );
+  static void put(String tid, String pid, PostRateLog log) {
+    _logs[(tid, pid)] = _CachedRateLog(log, DateTime.now());
   }
 
   static void clearTid(String tid) {
-    _pages.removeWhere((key, _) => key.$1 == tid);
+    _logs.removeWhere((key, _) => key.$1 == tid);
   }
 
   @visibleForTesting
-  static void clearAll() => _pages.clear();
+  static void clearAll() => _logs.clear();
 }
 
 class ThreadRateLogsNotifier extends Notifier<Map<String, PostRateLog>> {
   ThreadRateLogsNotifier(this.tid);
 
   final String tid;
-  int? _loadedPage;
-  final Map<int, Future<void>> _inFlightPages = {};
+  final Map<String, Future<void>> _inFlightPids = {};
 
   @override
   Map<String, PostRateLog> build() => const {};
 
   void clear() {
-    _loadedPage = null;
-    _inFlightPages.clear();
+    _inFlightPids.clear();
     _RateLogSessionStore.clearTid(tid);
     state = const {};
   }
 
-  void mergePage(Map<String, PostRateLog> rateLogs) {
+  void mergeLogs(Map<String, PostRateLog> rateLogs) {
     if (rateLogs.isEmpty) return;
     state = {...state, ...rateLogs};
-  }
-
-  void replacePage(Map<String, PostRateLog> rateLogs) {
-    state = rateLogs;
   }
 
   void setForPid(String pid, PostRateLog log) {
     state = {...state, pid: log};
   }
 
-  Future<void> ensurePageRateLogs(int page, {bool force = false}) {
-    if (!force) {
-      final cached = _RateLogSessionStore.get(tid, page);
+  /// 按 v4 `commentcount` 标记出的 pid 逐个补拉评分记录。
+  ///
+  /// 已缓存（会话内 2 分钟）或正在请求的 pid 不会重复发请求；串行执行，
+  /// 与 `S1HttpClient` 的全局限速叠加，避免翻页时放大请求。
+  Future<void> ensureRateLogs(Iterable<String> pids) async {
+    for (final pid in pids.toSet()) {
+      if (pid.isEmpty) continue;
+      final cached = _RateLogSessionStore.get(tid, pid);
       if (cached != null) {
-        _loadedPage = page;
-        mergePage(cached);
-        return Future.value();
+        if (ref.mounted && state[pid] == null) setForPid(pid, cached);
+        continue;
       }
+      await _ensurePid(pid);
     }
+  }
 
-    final inFlight = _inFlightPages[page];
+  Future<void> _ensurePid(String pid) {
+    final inFlight = _inFlightPids[pid];
     if (inFlight != null) return inFlight;
 
     late final Future<void> future;
-    future = _fetchPage(page).whenComplete(() {
-      _inFlightPages.remove(page);
+    future = _fetchPid(pid).whenComplete(() {
+      _inFlightPids.remove(pid);
     });
-    _inFlightPages[page] = future;
+    _inFlightPids[pid] = future;
     return future;
   }
 
-  Future<void> _fetchPage(int page) async {
+  Future<void> _fetchPid(String pid) async {
     final service = ref.read(rateLogServiceProvider);
-    final rateLogs = await service.fetchRateLogs(tid, page: page);
-    // 即使 provider 已 dispose，仍写入会话缓存，避免返回同页重复拉 HTML。
-    _RateLogSessionStore.put(tid, page, rateLogs);
+    final log = await service.fetchFullRateLog(tid, pid);
+    // 无评分或请求失败不写缓存，便于下次进入重试。
+    if (log == null) return;
+    _RateLogSessionStore.put(tid, pid, log);
     if (!ref.mounted) return;
-    mergePage(rateLogs);
-    _loadedPage = page;
+    setForPid(pid, log);
   }
 
   Future<void> loadFullRateLog(String pid) async {
     final service = ref.read(rateLogServiceProvider);
     final full = await service.fetchFullRateLog(tid, pid);
-    if (!ref.mounted || full == null) return;
+    if (full == null) return;
+    _RateLogSessionStore.put(tid, pid, full);
+    if (!ref.mounted) return;
     setForPid(pid, full);
-    final page = _loadedPage;
-    if (page != null) {
-      _RateLogSessionStore.updatePid(tid, page, pid, full);
-    }
   }
 }
 
-class _RateLogPageCache {
-  const _RateLogPageCache(this.logs, this.loadedAt);
+class _CachedRateLog {
+  const _CachedRateLog(this.log, this.loadedAt);
 
-  final Map<String, PostRateLog> logs;
+  final PostRateLog log;
   final DateTime loadedAt;
 }
 

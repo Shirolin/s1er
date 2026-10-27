@@ -1,6 +1,6 @@
 import 'package:dio/dio.dart';
-import 'package:flutter/foundation.dart';
 import 'package:html/parser.dart' show parse;
+
 import '../config/api_config.dart';
 import '../models/rate_log.dart';
 import 'http_client.dart';
@@ -9,182 +9,73 @@ class RateLogService {
   RateLogService(this._httpClient);
   final S1HttpClient _httpClient;
 
-  static String _buildUrl(String tid, {int page = 1}) {
+  /// `inajax=1` 只返回评分表格片段；`mobile=no` 保留桌面 `<table>`，
+  /// 带 `space-uid-<uid>.html` 链接且比移动弹层更小（约 1 KB）。
+  static String _buildUrl(String tid, String pid) {
     return '${ApiConfig.forumPostUrl}'
-        '?mod=viewthread&tid=$tid&page=$page&mobile=2';
+        '?mod=misc&action=viewratings&tid=$tid&pid=$pid'
+        '&inajax=1&mobile=no';
   }
 
-  Future<Map<String, PostRateLog>> fetchRateLogs(
-    String tid, {
-    int page = 1,
-  }) async {
-    try {
-      final url = _buildUrl(tid, page: page);
-      final response = await _httpClient.get(
-        url,
-        options: Options(responseType: ResponseType.plain),
-      );
-      final html = response.data as String;
-      if (html.length > 32 * 1024) {
-        return compute(_parseRateLogsIsolate, html);
-      }
-      return parseRateLogs(html);
-    } catch (_) {
-      return {};
-    }
-  }
-
-  /// 获取特定帖子的完整评分记录
+  /// 获取单楼完整评分记录；该楼无评分或请求失败时返回 null。
   Future<PostRateLog?> fetchFullRateLog(String tid, String pid) async {
     try {
-      final url = '${ApiConfig.forumPostUrl}'
-          '?mod=misc&action=viewratings&tid=$tid&pid=$pid&mobile=2';
       final response = await _httpClient.get(
-        url,
+        _buildUrl(tid, pid),
         options: Options(responseType: ResponseType.plain),
       );
       final html = response.data as String;
-      final results = html.length > 32 * 1024
-          ? await compute(_parseFullRateLogsIsolate, (html, pid))
-          : parseRateLogs(html, fallbackPid: pid);
-      return results[pid];
+      return parseRateTable(html, pid: pid);
     } catch (_) {
       return null;
     }
   }
 
-  static Map<String, PostRateLog> _parseRateLogsIsolate(String html) {
-    return parseRateLogs(html);
-  }
-
-  static Map<String, PostRateLog> _parseFullRateLogsIsolate(
-    (String html, String pid) args,
-  ) {
-    return parseRateLogs(args.$1, fallbackPid: args.$2);
-  }
-
-  static Map<String, PostRateLog> parseRateLogs(
-    String html, {
-    String? fallbackPid,
-  }) {
-    final result = <String, PostRateLog>{};
-    if (html.isEmpty) return result;
+  /// 解析 `misc&action=viewratings&inajax=1&mobile=no` 的桌面表格片段。
+  ///
+  /// 列顺序：积分 / 用户名 / 时间 / 理由。表头行也是 `<td>`，靠用户名列
+  /// 没有 `<a>` 链接过滤掉。服务端不返回参与人数，故以条目数计。
+  static PostRateLog? parseRateTable(String html, {required String pid}) {
+    if (html.isEmpty) return null;
 
     try {
       final doc = parse(html);
-      final ratelogDivs = doc.querySelectorAll('[id^=ratelog_]');
+      var rows = doc.querySelectorAll('table tbody tr');
+      // html5 解析通常会补 tbody；保留回退以兼容异常片段。
+      if (rows.isEmpty) rows = doc.querySelectorAll('table tr');
+      if (rows.isEmpty) return null;
 
-      for (final div in ratelogDivs) {
-        final pid = div.id.replaceFirst('ratelog_', '');
-        if (pid.isEmpty) continue;
+      final entries = <RateLog>[];
+      for (final row in rows) {
+        final cells = row.children;
+        if (cells.length < 4) continue;
 
-        final lis = div.querySelectorAll('li');
-        if (lis.isEmpty) continue;
+        final link = cells[1].querySelector('a');
+        if (link == null) continue;
+        final username = link.text.trim();
+        if (username.isEmpty) continue;
 
-        final entries = <RateLog>[];
-        int participantCount = 0;
-        int totalScore = 0;
-
-        for (final li in lis) {
-          final liText = li.text;
-
-          if (liText.contains('参与人数')) {
-            for (final d in li.querySelectorAll('div')) {
-              final dText = d.text;
-              if (dText.contains('参与人数')) {
-                final m = RegExp(r'(\d+)').firstMatch(dText);
-                if (m != null) {
-                  participantCount = int.tryParse(m.group(1) ?? '') ?? 0;
-                }
-              } else if (dText.contains('战斗力')) {
-                final m = RegExp(r'([+-]?\s*\d+)').firstMatch(
-                  dText.replaceAll('战斗力', ''),
-                );
-                if (m != null) {
-                  totalScore = _parseScore(m.group(1) ?? '');
-                }
-              }
-            }
-            continue;
-          }
-
-          final divs = li.querySelectorAll('div');
-          if (divs.length < 2) continue;
-
-          final link = divs[0].querySelector('a');
-          if (link == null) continue;
-          final username = link.text.trim();
-          if (username.isEmpty) continue;
-          final uid = _parseUid(link.attributes['href']);
-
-          final score = _parseScore(divs[1].text);
-
-          String reason = '';
-          if (divs.length >= 3) {
-            reason = divs[2].text.trim();
-          }
-
-          entries.add(
-            RateLog(
-              uid: uid,
-              username: username,
-              score: score,
-              reason: reason,
-            ),
-          );
-        }
-
-        if (entries.isNotEmpty) {
-          result[pid] = PostRateLog(
-            pid: pid,
-            entries: entries,
-            totalScore: totalScore,
-            participantCount: participantCount,
-          );
-        }
-      }
-    } catch (_) {}
-
-    if (result.isEmpty && fallbackPid != null && fallbackPid.isNotEmpty) {
-      final entries = _parseRatingTable(html);
-      if (entries.isNotEmpty) {
-        result[fallbackPid] = PostRateLog(
-          pid: fallbackPid,
-          entries: entries,
-          totalScore: entries.fold<int>(0, (sum, entry) => sum + entry.score),
-          participantCount: entries.length,
+        entries.add(
+          RateLog(
+            uid: _parseUid(link.attributes['href']),
+            username: username,
+            score: _parseScore(cells[0].text),
+            ratedAt: _parseRatedAt(cells[2].text),
+            reason: cells[3].text.trim(),
+          ),
         );
       }
-    }
 
-    return result;
-  }
+      if (entries.isEmpty) return null;
 
-  static List<RateLog> _parseRatingTable(String html) {
-    try {
-      final doc = parse(html);
-      return doc
-          .querySelectorAll('table tbody tr')
-          .map((row) {
-            final cells = row.children;
-            if (cells.length < 4) return null;
-
-            final link = cells[1].querySelector('a');
-            final username = link?.text.trim() ?? '';
-            if (username.isEmpty) return null;
-
-            return RateLog(
-              uid: _parseUid(link?.attributes['href']),
-              username: username,
-              score: _parseScore(cells[0].text),
-              ratedAt: _parseRatedAt(cells[2].text),
-              reason: cells[3].text.trim(),
-            );
-          })
-          .whereType<RateLog>()
-          .toList();
+      return PostRateLog(
+        pid: pid,
+        entries: entries,
+        totalScore: entries.fold<int>(0, (sum, entry) => sum + entry.score),
+        participantCount: entries.length,
+      );
     } catch (_) {
-      return [];
+      return null;
     }
   }
 
@@ -196,7 +87,7 @@ class RateLogService {
 
   static String? _parseUid(String? href) {
     if (href == null || href.isEmpty) return null;
-    return RegExp(r'uid=(\d+)').firstMatch(href)?.group(1);
+    return RegExp(r'(?:uid=|space-uid-)(\d+)').firstMatch(href)?.group(1);
   }
 
   static DateTime? _parseRatedAt(String raw) {

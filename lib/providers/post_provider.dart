@@ -221,16 +221,24 @@ class PostNotifier extends AsyncNotifier<PostListState> {
     final loaded = _buildStateFromResult(result, page, posts: posts);
     _syncSeenRepliesAfterLoad(loaded);
 
-    // 评分明细只在 HTML viewthread 的 #ratelog_*；Mobile JSON 的 postlist
-    // 不含楼层 rate（thread.rate 仅主题级标记）。会话缓存避免同页重复拉取。
-    unawaited(
-      ref
-          .read(threadRateLogsProvider(tid).notifier)
-          .ensurePageRateLogs(page)
-          .catchError((Object e, StackTrace st) {
-        talker.handle(e, st, 'ensurePageRateLogs failed tid=$tid page=$page');
-      }),
-    );
+    // postlist 不含楼层 rate；v4 的 Variables.commentcount 键即本页有评分
+    // 的 pid（v1 无此字段）。只对这些楼按 pid 拉约 1 KB 的小接口，不再拉
+    // 整页 HTML。会话缓存避免同页/回访重复拉取。
+    final markedPids = DiscuzParser.parseCommentCount(result).keys.toSet();
+    if (markedPids.isNotEmpty) {
+      unawaited(
+        ref
+            .read(threadRateLogsProvider(tid).notifier)
+            .ensureRateLogs(markedPids)
+            .catchError((Object e, StackTrace st) {
+          talker.handle(
+            e,
+            st,
+            'ensureRateLogs failed tid=$tid pids=${markedPids.join(",")}',
+          );
+        }),
+      );
+    }
     return loaded;
   }
 

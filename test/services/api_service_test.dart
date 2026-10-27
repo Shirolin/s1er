@@ -408,6 +408,16 @@ void main() {
         final json = {'Variables': <String, dynamic>{}};
         expect(DiscuzParser.parseCommentCount(json), isEmpty);
       });
+
+      test('keeps pid keys when commentcount values are null', () {
+        final json = {
+          'Variables': {
+            'commentcount': {'70365643': null},
+          },
+        };
+
+        expect(DiscuzParser.parseCommentCount(json), {'70365643': 0});
+      });
     });
 
     group('parsePoll', () {

@@ -202,7 +202,7 @@ void main() {
       expect(adapter.requestedPages, contains(3));
     });
 
-    test('fetches rate logs when commentcount is zero', () async {
+    test('fetches rate logs for commentcount keys with zero value', () async {
       adapter.commentCount = {'1': 0};
       container = buildContainer(
         extraOverrides: [
@@ -216,9 +216,11 @@ void main() {
       await pumpEventQueue();
 
       expect(adapter.rateLogRequests, isNotEmpty);
+      expect(adapter.rateLogRequests.single.queryParameters['pid'], '1');
     });
 
-    test('fetches rate logs when commentcount is missing', () async {
+    test('skips rate logs when commentcount is missing (v1 fallback)',
+        () async {
       container = buildContainer(
         extraOverrides: [
           readingRecordProvider('100').overrideWithValue(null),
@@ -230,7 +232,8 @@ void main() {
       await container.read(postProvider('100').future);
       await pumpEventQueue();
 
-      expect(adapter.rateLogRequests, isNotEmpty);
+      expect(adapter.rateLogRequests, isEmpty);
+      expect(adapter.pageHtmlRequests, isEmpty);
     });
 
     test('auto-fetches rate logs on page load when commentcount > 0', () async {
@@ -246,10 +249,17 @@ void main() {
       await container.read(postProvider('100').future);
       await pumpEventQueue();
 
-      expect(adapter.rateLogRequests, isNotEmpty);
+      expect(adapter.rateLogRequests, hasLength(1));
+      final uri = adapter.rateLogRequests.single;
+      expect(uri.queryParameters['action'], 'viewratings');
+      expect(uri.queryParameters['pid'], '1');
+      expect(uri.queryParameters['inajax'], '1');
+      expect(uri.queryParameters['mobile'], 'no');
+      expect(adapter.pageHtmlRequests, isEmpty);
     });
 
-    test('reuses the current page rate log cache', () async {
+    test('reuses the current pid rate log cache', () async {
+      adapter.commentCount = {'1': 2};
       container = buildContainer(
         extraOverrides: [
           readingRecordProvider('100').overrideWithValue(null),
@@ -264,29 +274,13 @@ void main() {
 
       await container
           .read(threadRateLogsProvider('100').notifier)
-          .ensurePageRateLogs(1);
+          .ensureRateLogs(['1']);
 
       expect(adapter.rateLogRequests, hasLength(requestsAfterLoad));
     });
 
     test('rate log merge does not mutate postProvider state', () async {
       adapter.commentCount = {'1': 2};
-      adapter.rateLogHtml = '''
-<div id="ratelog_1">
-  <ul class="post_box cl">
-    <li class="flex-box mli p0">
-      <div class="flex-2"><a> 参与人数 <span class="xi1">1</span></a></div>
-      <div class="flex-2">战斗力 <i><span class="xi1">+2</span></i></div>
-      <div class="flex-3">理由</div>
-    </li>
-    <li class="flex-box mli p0">
-      <div class="flex-2"><a href="home.php?mod=space&uid=1">userA</a></div>
-      <div class="flex-2 xi1"> + 2</div>
-      <div class="flex-3">good</div>
-    </li>
-  </ul>
-</div>
-''';
       container = buildContainer(
         extraOverrides: [
           readingRecordProvider('100').overrideWithValue(null),
@@ -488,9 +482,20 @@ class _ThreadDetailAdapter implements HttpClientAdapter {
   final locateRequests = <String>[];
   final locatePageForPid = <String, int>{};
   final rateLogRequests = <Uri>[];
+  final pageHtmlRequests = <Uri>[];
   final failPages = <int>{};
   Map<String, int>? commentCount;
-  String rateLogHtml = '<html></html>';
+  String rateLogHtml = '''
+<table class="list">
+<thead><tr><td>积分</td><td>用户名</td><td>时间</td><td>理由</td></tr></thead>
+<tr>
+<td>战斗力 +2 鹅</td>
+<td><a href="space-uid-1.html">userA</a></td>
+<td>2026-8-12 20:27</td>
+<td>good</td>
+</tr>
+</table>
+''';
   bool omitPidFromPostlist = false;
   String? _lastLocatedPid;
 
@@ -567,9 +572,14 @@ class _ThreadDetailAdapter implements HttpClientAdapter {
       );
     }
 
-    if (uri.query.contains('mod=viewthread')) {
+    if (uri.query.contains('action=viewratings')) {
       rateLogRequests.add(uri);
       return ResponseBody.fromString(rateLogHtml, 200);
+    }
+
+    if (uri.query.contains('mod=viewthread')) {
+      pageHtmlRequests.add(uri);
+      return ResponseBody.fromString('<html></html>', 200);
     }
 
     return ResponseBody.fromString('{}', 200);

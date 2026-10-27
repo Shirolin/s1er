@@ -228,6 +228,10 @@ abstract final class DiscuzParser {
         .toList();
   }
 
+  /// 解析 v4 `Variables.commentcount`（pid → 计数）。
+  ///
+  /// 键集合即本页有评分/点评的楼层；v1 响应没有该字段。评分明细仍需按
+  /// pid 拉 `misc&action=viewratings`。
   static Map<String, int> parseCommentCount(Map<String, dynamic> json) {
     final variables = json['Variables'] as Map<String, dynamic>?;
     final commentCount = variables?['commentcount'];

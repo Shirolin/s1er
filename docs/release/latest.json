@@ -1,8 +1,8 @@
 {
-  "latest": "0.9.2",
+  "latest": "0.9.3",
   "minSupported": "0.3.2",
-  "notes": "Beta — 0.9.2：论坛升级后打不开的帖子页已修复，附件也能正常显示",
-  "publishedAt": "2026-10-26",
+  "notes": "Beta — 0.9.3：签到功能恢复，修复误报论坛公告",
+  "publishedAt": "2026-10-27",
   "channels": {
     "github": "https://github.com/Shirolin/s1er/releases/latest",
     "androidApk": "https://github.com/Shirolin/s1er/releases/download/v0.9.2/s1er-0.9.2%2B16-android-universal.apk",

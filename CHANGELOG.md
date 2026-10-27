@@ -5,6 +5,13 @@ All notable changes to S1er will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.9.3] - 2026-10-27
+
+### Fixed
+
+- **签到功能恢复**：论坛已更换签到插件，客户端同步接入新插件，可正常查看签到状态并签到，显示累计与连续签到天数。
+- **误报「论坛公告」**：修复某些接口返回的提示页被误识别为官方公告、并把页面脚本源码一并显示的问题。
+
 ## [0.9.2] - 2026-10-26
 
 ### Fixed

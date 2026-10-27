@@ -218,11 +218,21 @@ class PostNotifier extends AsyncNotifier<PostListState> {
     // postlist 不含楼层 rate；v4 的 Variables.commentcount 键即本页有评分
     // 的 pid（v1 无此字段）。只登记标记，实际拉取由可见楼层的评分区按需
     // 触发，避免为每页额外拉整页 HTML，也避免整页批量请求。
-    final markedPids = DiscuzParser.parseRateMarkedPids(result);
-    if (markedPids.isNotEmpty) {
+    var markedPids = DiscuzParser.parseRateMarkedPids(result);
+    if (markedPids.isEmpty && _isLegacyVersion(result)) {
+      // v4 503 降级到 v1 时没有 commentcount，补一次 v4 只为取标记；
+      // 否则该页所有评分卡都会消失。失败静默（评分是增强功能）。
+      markedPids = await _apiService.fetchRateMarkedPids(tid, page: page);
+    }
+    if (markedPids.isNotEmpty && ref.mounted) {
       ref.read(threadRateLogsProvider(tid).notifier).markPids(markedPids);
     }
     return loaded;
+  }
+
+  /// 该响应是否为 v4 不可用后的 v1 降级结果。
+  static bool _isLegacyVersion(Map<String, dynamic> result) {
+    return result['Version']?.toString() == ApiService.legacyApiVersion;
   }
 
   /// 是否允许回复。

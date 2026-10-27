@@ -260,6 +260,31 @@ void main() {
       );
       expect(adapter.rateLogRequests, isEmpty);
       expect(adapter.pageHtmlRequests, isEmpty);
+      // v1 响应没有 commentcount，会补一次 v4 只为取标记
+      expect(adapter.v4RateRequests, hasLength(1));
+    });
+
+    test('v4 503 downgrade still fetches rate marks with a v4 request',
+        () async {
+      adapter.commentCount = {'1': 2};
+      adapter.failV4With503 = true;
+      container = buildContainer(
+        extraOverrides: [
+          readingRecordProvider('100').overrideWithValue(null),
+        ],
+      );
+      final sub = container.listen(postProvider('100'), (_, __) {});
+      addTearDown(sub.close);
+
+      await container.read(postProvider('100').future);
+      await pumpEventQueue();
+
+      expect(adapter.v4RateRequests, hasLength(1));
+      expect(
+        container.read(threadRateLogsProvider('100').notifier).isMarked('1'),
+        isTrue,
+      );
+      expect(adapter.pageHtmlRequests, isEmpty);
     });
 
     test('ensureRateLog requests only the given pid', () async {
@@ -506,8 +531,10 @@ class _ThreadDetailAdapter implements HttpClientAdapter {
   final locatePageForPid = <String, int>{};
   final rateLogRequests = <Uri>[];
   final pageHtmlRequests = <Uri>[];
+  final v4RateRequests = <Uri>[];
   final failPages = <int>{};
   Map<String, int>? commentCount;
+  bool failV4With503 = false;
   String rateLogHtml = '''
 <table class="list">
 <thead><tr><td>积分</td><td>用户名</td><td>时间</td><td>理由</td></tr></thead>
@@ -562,6 +589,16 @@ class _ThreadDetailAdapter implements HttpClientAdapter {
         );
       }
       final pid = omitPidFromPostlist ? '1' : (_lastLocatedPid ?? '1');
+      final version = uri.queryParameters['version'];
+      if (version == '4') v4RateRequests.add(uri);
+      if (version == '4' && failV4With503) {
+        throw DioException(
+          requestOptions: options,
+          type: DioExceptionType.badResponse,
+          response: Response(requestOptions: options, statusCode: 503),
+          message: 'simulated v4 503',
+        );
+      }
       final variables = <String, dynamic>{
         'ppp': '40',
         'thread': {
@@ -586,6 +623,7 @@ class _ThreadDetailAdapter implements HttpClientAdapter {
       }
       return ResponseBody.fromString(
         jsonEncode({
+          'Version': version ?? '4',
           'Variables': variables,
         }),
         200,

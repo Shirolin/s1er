@@ -569,13 +569,13 @@ class ApiService {
         tid,
         page: page,
         authorId: authorId,
-        version: _legacyApiVersion,
+        version: legacyApiVersion,
       );
     }
   }
 
   /// v4 不可用时的降级协议版本（鹅球看帖使用同一版本，长期可用）。
-  static const String _legacyApiVersion = '1';
+  static const String legacyApiVersion = '1';
 
   Future<Map<String, dynamic>> _requestThreadDetail(
     String tid, {
@@ -605,6 +605,26 @@ class ApiService {
   Future<int?> fetchThreadReplies(String tid) async {
     final result = await getThreadDetail(tid, page: 1);
     return DiscuzParser.parseThreadReplies(result);
+  }
+
+  /// 取本页「有评分」的楼层 pid（v4 `Variables.commentcount` 的键）。
+  ///
+  /// 正常翻页时直接复用 `viewthread` v4 响应即可；只有 v4 503 降级到 v1 时
+  /// 才需要补发这一次请求。失败（含仍 503）返回空集，评分属增强功能，
+  /// 不因此中断读帖。
+  Future<Set<String>> fetchRateMarkedPids(String tid, {int page = 1}) async {
+    try {
+      final response = await _httpClient.get(
+        buildApiUrl(
+          module: ApiConfig.moduleViewThread,
+          params: {'tid': tid, 'page': page.toString()},
+        ),
+      );
+      return DiscuzParser.parseRateMarkedPids(ensureJson(response.data));
+    } catch (e, st) {
+      talker.handle(e, st, 'fetchRateMarkedPids failed tid=$tid page=$page');
+      return const {};
+    }
   }
 
   /// API 登录：返回 null 表示成功，否则返回错误信息。

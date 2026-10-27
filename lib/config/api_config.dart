@@ -159,10 +159,16 @@ class ApiConfig {
   /// 好友 Mobile API 使用 version=1（实测响应 `Version:"1"`）。
   static const String friendApiVersion = '1';
 
-  /// Discuz 每日签到插件（GET，需 formhash；会产生服务端写入）。
-  static String dailyAttendanceUrl({required String formhash}) =>
-      '$baseUrl/study_daily_attendance-daily_attendance.html'
-      '?inajax=1&formhash=${Uri.encodeComponent(formhash)}';
+  /// 每日签到插件 `muanyun_053`（「签到摸鱼」）。
+  ///
+  /// 该插件没有手机版模板，必须带 `mobile=no` 取桌面模板：
+  /// - GET 页面：解析是否已签到 / 累计 / 连续 / 等级；
+  /// - POST `op=checkin` + `checkinsubmit=1` + formhash：产生服务端写入。
+  static String dailyAttendancePageUrl() =>
+      '$baseUrl/plugin.php?id=muanyun_053&mobile=no';
+
+  static String dailyAttendanceCheckinUrl() =>
+      '$baseUrl/plugin.php?id=muanyun_053&op=checkin';
 
   /// 小黑屋公开处罚列表（cursor 分页）。
   static String darkRoomUrl({String? cursor}) {

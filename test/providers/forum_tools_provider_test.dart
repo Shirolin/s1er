@@ -11,11 +11,8 @@ import 'package:s1er/providers/daily_attendance_provider.dart';
 import 'package:s1er/providers/dark_room_provider.dart';
 import 'package:s1er/providers/forum_tools_provider.dart';
 import 'package:s1er/providers/friend_list_provider.dart';
-import 'package:s1er/providers/settings_provider.dart';
 import 'package:s1er/services/forum_tools_service.dart';
 import 'package:s1er/services/http_client.dart';
-import 'package:s1er/utils/daily_attendance_store.dart';
-import '../helpers/test_local_data.dart';
 
 void main() {
   group('friendListProvider', () {
@@ -83,85 +80,57 @@ void main() {
       );
     });
 
-    test('persists signed day and restores as alreadySigned', () async {
-      final opened = await openTestLocalData();
-      addTearDown(() => opened.$1.close());
-      final store = opened.$2.settings;
+    test('loads status from page and signs afterwards', () async {
       final service = _FakeForumToolsService();
       final auth = AuthState(
         isLoggedIn: true,
         username: 'me',
         user: User(uid: '9', username: 'me'),
       );
-
-      final overrides = [
-        forumToolsServiceProvider.overrideWithValue(service),
-        localDataProvider.overrideWithValue(opened.$2),
-        authStateProvider.overrideWith(() => _Auth(auth)),
-      ];
-
-      final container = ProviderContainer(overrides: overrides);
-      addTearDown(container.dispose);
-      final sub = container.listen(dailyAttendanceProvider, (_, __) {});
-      addTearDown(sub.close);
-
-      expect(container.read(dailyAttendanceProvider).result, isNull);
-
-      await container.read(dailyAttendanceProvider.notifier).sign();
-      expect(
-        container.read(dailyAttendanceProvider).result?.outcome,
-        AttendanceOutcome.signedNow,
-      );
-      expect(
-        DailyAttendanceStore.matches(
-          raw: store.get(DailyAttendanceStore.settingsKey),
-          uid: '9',
-          now: DateTime.now(),
-        ),
-        isTrue,
-      );
-
-      // New container simulates leaving the page / process restart.
-      final restored = ProviderContainer(overrides: overrides);
-      addTearDown(restored.dispose);
-      final sub2 = restored.listen(dailyAttendanceProvider, (_, __) {});
-      addTearDown(sub2.close);
-      expect(
-        restored.read(dailyAttendanceProvider).result?.outcome,
-        AttendanceOutcome.alreadySigned,
-      );
-      expect(service.signCalls, 1);
-    });
-
-    test('does not restore cache for a different uid', () async {
-      final opened = await openTestLocalData();
-      addTearDown(() => opened.$1.close());
-      final store = opened.$2.settings;
-      store.put(
-        DailyAttendanceStore.settingsKey,
-        DailyAttendanceStore.payload(uid: '1', now: DateTime.now()),
-      );
-
       final container = ProviderContainer(
         overrides: [
-          forumToolsServiceProvider.overrideWithValue(_FakeForumToolsService()),
-          localDataProvider.overrideWithValue(opened.$2),
-          authStateProvider.overrideWith(
-            () => _Auth(
-              AuthState(
-                isLoggedIn: true,
-                username: 'other',
-                user: User(uid: '9', username: 'other'),
-              ),
-            ),
-          ),
+          forumToolsServiceProvider.overrideWithValue(service),
+          authStateProvider.overrideWith(() => _Auth(auth)),
         ],
       );
       addTearDown(container.dispose);
       final sub = container.listen(dailyAttendanceProvider, (_, __) {});
       addTearDown(sub.close);
 
-      expect(container.read(dailyAttendanceProvider).result, isNull);
+      await pumpEventQueue();
+      expect(
+        container.read(dailyAttendanceProvider).result?.outcome,
+        AttendanceOutcome.ready,
+      );
+
+      await container.read(dailyAttendanceProvider.notifier).sign();
+      expect(
+        container.read(dailyAttendanceProvider).result?.outcome,
+        AttendanceOutcome.signedNow,
+      );
+      expect(service.signCalls, 1);
+    });
+
+    test('reads page status on build without writing', () async {
+      final service = _FakeForumToolsService();
+      final auth = AuthState(
+        isLoggedIn: true,
+        username: 'me',
+        user: User(uid: '9', username: 'me'),
+      );
+      final container = ProviderContainer(
+        overrides: [
+          forumToolsServiceProvider.overrideWithValue(service),
+          authStateProvider.overrideWith(() => _Auth(auth)),
+        ],
+      );
+      addTearDown(container.dispose);
+      final sub = container.listen(dailyAttendanceProvider, (_, __) {});
+      addTearDown(sub.close);
+
+      await pumpEventQueue();
+      expect(service.statusCalls, 1);
+      expect(service.signCalls, 0);
     });
   });
 
@@ -227,6 +196,16 @@ class _FakeForumToolsService extends ForumToolsService {
   final friendCalls = <String>[];
   final darkRoomCursors = <String?>[];
   var signCalls = 0;
+  var statusCalls = 0;
+
+  @override
+  Future<AttendanceResult> fetchAttendanceStatus() async {
+    statusCalls += 1;
+    return const AttendanceResult(
+      outcome: AttendanceOutcome.ready,
+      message: '点击完成今日签到',
+    );
+  }
 
   @override
   Future<FriendListResult> getFriendList({required String uid}) async {

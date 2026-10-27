@@ -11,11 +11,15 @@ class DailySignCard extends StatelessWidget {
     required this.isSubmitting,
     required this.result,
     required this.onSign,
+    this.loadingStatus = false,
   });
 
   final bool isSubmitting;
   final AttendanceResult? result;
   final VoidCallback onSign;
+
+  /// 首次进入时正在读取插件页面状态。
+  final bool loadingStatus;
 
   @override
   Widget build(BuildContext context) {
@@ -23,10 +27,10 @@ class DailySignCard extends StatelessWidget {
     final textTheme = Theme.of(context).textTheme;
     final signed = result?.isSignedToday == true;
     final unavailable = result?.outcome == AttendanceOutcome.unavailable;
+    final busy = isSubmitting || (loadingStatus && result == null);
     final failed = !unavailable &&
         (result?.outcome == AttendanceOutcome.failed ||
             result?.outcome == AttendanceOutcome.unknown);
-    // 插件被论坛停用时整块置灰冻结：入口不可点，也不给「稍后再试」的错觉。
     final mutedColor = scheme.onSurfaceVariant;
 
     final card = Card(
@@ -73,7 +77,7 @@ class DailySignCard extends StatelessWidget {
                   Text(
                     unavailable
                         ? '论坛已暂停签到插件'
-                        : result?.message ?? '点击完成今日 Discuz 签到',
+                        : result?.message ?? (busy ? '正在读取签到状态…' : '点击完成今日签到'),
                     style: textTheme.bodySmall?.copyWith(
                       color: failed
                           ? scheme.error
@@ -90,13 +94,13 @@ class DailySignCard extends StatelessWidget {
               Icon(Icons.done, color: scheme.primary)
             else if (!unavailable)
               FilledButton(
-                onPressed: isSubmitting
+                onPressed: busy
                     ? null
                     : () {
                         S1Haptics.medium();
                         onSign();
                       },
-                child: isSubmitting
+                child: busy
                     ? SizedBox(
                         width: 18,
                         height: 18,

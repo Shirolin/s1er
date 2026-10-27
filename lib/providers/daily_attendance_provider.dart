@@ -2,25 +2,31 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../models/attendance_result.dart';
 import '../services/forum_tools_service.dart';
-import '../services/settings_store.dart';
-import '../utils/daily_attendance_store.dart';
 import 'auth_provider.dart';
 import 'forum_tools_provider.dart';
-import 'settings_provider.dart';
 
 class DailyAttendanceState {
-  const DailyAttendanceState({this.isSubmitting = false, this.result});
+  const DailyAttendanceState({
+    this.isSubmitting = false,
+    this.result,
+    this.loadingStatus = false,
+  });
 
   final bool isSubmitting;
   final AttendanceResult? result;
 
+  /// 首次进个人页时正在读取插件页面状态。
+  final bool loadingStatus;
+
   DailyAttendanceState copyWith({
     bool? isSubmitting,
     AttendanceResult? result,
+    bool? loadingStatus,
   }) {
     return DailyAttendanceState(
       isSubmitting: isSubmitting ?? this.isSubmitting,
       result: result ?? this.result,
+      loadingStatus: loadingStatus ?? this.loadingStatus,
     );
   }
 }
@@ -34,30 +40,32 @@ class DailyAttendanceNotifier extends Notifier<DailyAttendanceState> {
       return const DailyAttendanceState();
     }
 
-    final store = _trySettingsStore();
-    if (store != null &&
-        DailyAttendanceStore.matches(
-          raw: store.get(DailyAttendanceStore.settingsKey),
-          uid: uid,
-          now: DateTime.now(),
-        )) {
-      return const DailyAttendanceState(
-        result: AttendanceResult(
-          outcome: AttendanceOutcome.alreadySigned,
-          message: '今日已签到',
-        ),
-      );
-    }
-    return const DailyAttendanceState();
+    // 页面是唯一真源（插件没有只读接口），进入时主动读一次。
+    Future.microtask(loadStatus);
+
+    return const DailyAttendanceState(loadingStatus: true);
   }
 
   ForumToolsService get _service => ref.read(forumToolsServiceProvider);
 
-  SettingsStore? _trySettingsStore() {
+  /// 读取插件页面状态；只读，不产生签到写入。
+  Future<void> loadStatus() async {
     try {
-      return ref.read(settingsStoreProvider);
-    } on Object {
-      return null;
+      final result = await _service.fetchAttendanceStatus();
+      if (!ref.mounted) return;
+      if (result.outcome == AttendanceOutcome.unavailable) {
+        state = DailyAttendanceState(result: result);
+        return;
+      }
+      state = DailyAttendanceState(result: result);
+    } catch (e) {
+      if (!ref.mounted) return;
+      state = DailyAttendanceState(
+        result: AttendanceResult(
+          outcome: AttendanceOutcome.unknown,
+          message: e.toString(),
+        ),
+      );
     }
   }
 
@@ -68,9 +76,6 @@ class DailyAttendanceNotifier extends Notifier<DailyAttendanceState> {
     try {
       final result = await _service.dailySign();
       if (!ref.mounted) return;
-      if (result.isSignedToday) {
-        _persistSignedToday();
-      }
       state = DailyAttendanceState(isSubmitting: false, result: result);
     } catch (e) {
       if (!ref.mounted) return;
@@ -82,16 +87,6 @@ class DailyAttendanceNotifier extends Notifier<DailyAttendanceState> {
         ),
       );
     }
-  }
-
-  void _persistSignedToday() {
-    final uid = ref.read(authStateProvider).user?.uid.trim() ?? '';
-    if (uid.isEmpty) return;
-    final store = _trySettingsStore();
-    store?.put(
-      DailyAttendanceStore.settingsKey,
-      DailyAttendanceStore.payload(uid: uid, now: DateTime.now()),
-    );
   }
 }
 

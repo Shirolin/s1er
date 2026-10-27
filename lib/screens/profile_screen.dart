@@ -222,6 +222,7 @@ class _DailySignSection extends ConsumerWidget {
     final state = ref.watch(dailyAttendanceProvider);
     return DailySignCard(
       isSubmitting: state.isSubmitting,
+      loadingStatus: state.loadingStatus,
       result: state.result,
       onSign: () =>
           unawaited(ref.read(dailyAttendanceProvider.notifier).sign()),

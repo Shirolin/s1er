@@ -40,6 +40,18 @@ void main() {
       expect(ServerNotice.fromResponseBody('{"error":"公告"}'), '公告');
     });
 
+    test('strips inline script from prompt page', () {
+      const html = '<div class="tip">\n<dt id="messagetext">\n'
+          '<p>插件不存在或已关闭<script type="text/javascript" reload="1">'
+          "if(typeof errorhandle_=='function') "
+          "{errorhandle_('插件不存在或已关闭', {});}</script></p>\n"
+          '</dt>\n</div>';
+      final notice = ServerNotice.fromResponseBody(html);
+      expect(notice, '插件不存在或已关闭');
+      expect(notice, isNot(contains('script')));
+      expect(notice, isNot(contains('errorhandle')));
+    });
+
     test('extracts Discuz messagetext prompt page', () {
       const html = '<!DOCTYPE html><html><body>'
           '<div id="messagetext" class="alert_error"><p>姨妈一会，太卡了</p></div>'

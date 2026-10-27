@@ -1,4 +1,6 @@
 enum AttendanceOutcome {
+  /// 页面显示可以签到（尚未签）。
+  ready,
   signedNow,
   alreadySigned,
   failed,

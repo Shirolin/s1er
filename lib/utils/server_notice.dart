@@ -39,10 +39,25 @@ class ServerNotice {
 
   /// HTML 提示页中的官方文本；抽不到返回 `null`。
   static String? fromHtml(String html, {bool gateway = false}) {
+    // Discuz 提示页的 `<p>` 里常紧跟 `<script>errorhandle_(...)</script>`，
+    // 先剥掉脚本/样式，否则 JS 源码会被当作公告正文展示。
+    final cleaned = html
+        .replaceAll(
+          RegExp(r'<script[\s\S]*?</script>', caseSensitive: false),
+          ' ',
+        )
+        .replaceAll(
+          RegExp(r'<style[\s\S]*?</style>', caseSensitive: false),
+          ' ',
+        );
     for (final pattern in _patterns(gateway: gateway)) {
-      final match = pattern.firstMatch(html);
+      final match = pattern.firstMatch(cleaned);
       if (match == null) continue;
-      final raw = match.group(1)!.replaceAll(RegExp(r'<[^>]+>'), '').trim();
+      final raw = match
+          .group(1)!
+          .replaceAll(RegExp(r'<[^>]+>'), '')
+          .replaceAll(RegExp(r'\s+'), ' ')
+          .trim();
       if (raw.isNotEmpty) return raw;
     }
     return null;
@@ -78,25 +93,26 @@ class ServerNotice {
 
   static List<RegExp> _patterns({required bool gateway}) {
     final patterns = [
-      // Discuz 提示以 <p> 包裹（真实 S1 HTML 可能在 </div> 前就接 <script>）。
+      // 真实 S1 提示页常写成 `<dt id="messagetext">`（<dt> 而非 <div>），
+      // 且 <p> 里紧跟 <script>errorhandle_(...)</script>，故只取 <p> 内容。
       RegExp(
-        r'<div\s+id="messagetext"[^>]*>\s*<p>(.*?)</p>',
+        r'<di[vt]\s+id="messagetext"[^>]*>\s*<p>(.*?)</p>',
         caseSensitive: false,
         dotAll: true,
       ),
       RegExp(
-        r'<div[^>]*class="[^"]*alert_error[^"]*"[^>]*>\s*<p>(.*?)</p>',
+        r'<di[vt][^>]*class="[^"]*(?:alert_error|tip)[^"]*"[^>]*>\s*<p>(.*?)</p>',
         caseSensitive: false,
         dotAll: true,
       ),
-      // 无 <p> 包裹时回退到 div 内容本身。
+      // 无 <p> 包裹时回退到容器内容本身。
       RegExp(
-        r'<div\s+id="messagetext"[^>]*>(.*?)</div>',
+        r'<di[vt]\s+id="messagetext"[^>]*>(.*?)</di[vt]>',
         caseSensitive: false,
         dotAll: true,
       ),
       RegExp(
-        r'<div[^>]*class="[^"]*alert_error[^"]*"[^>]*>(.*?)</div>',
+        r'<di[vt][^>]*class="[^"]*(?:alert_error|tip)[^"]*"[^>]*>(.*?)</di[vt]>',
         caseSensitive: false,
         dotAll: true,
       ),

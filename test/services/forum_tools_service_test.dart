@@ -1,4 +1,5 @@
 import 'dart:convert';
+import 'dart:io';
 import 'dart:typed_data';
 
 import 'package:dio/dio.dart';
@@ -66,7 +67,7 @@ void main() {
     });
 
     test(
-      'daily sign GET includes formhash and does not retry on failure',
+      'daily sign POSTs checkinsubmit once and does not retry on failure',
       () async {
         final container = ProviderContainer();
         addTearDown(container.dispose);
@@ -80,15 +81,35 @@ void main() {
         expect(result.outcome, AttendanceOutcome.failed);
         expect(adapter.requests, hasLength(1));
         final req = adapter.requests.single;
-        expect(req.method, 'GET');
-        expect(
-          req.path,
-          contains('study_daily_attendance-daily_attendance.html'),
-        );
-        expect(req.path, contains('inajax=1'));
-        expect(req.path, contains('formhash=fh123'));
+        expect(req.method, 'POST');
+        expect(req.path, contains('id=muanyun_053'));
+        expect(req.path, contains('op=checkin'));
+        final body = req.data.toString();
+        expect(body, contains('checkinsubmit'));
+        expect(body, contains('formhash'));
       },
     );
+
+    test('status load reads the plugin page without writing', () async {
+      final container = ProviderContainer();
+      addTearDown(container.dispose);
+      final adapter = _CaptureAdapter(
+        responseBody: File(
+          'test/fixtures/muanyun_sign_page_ready.html',
+        ).readAsStringSync(),
+      );
+      final dio = Dio()..httpClientAdapter = adapter;
+      final client = S1HttpClient.test(container, dio);
+      final service = ForumToolsService(client);
+
+      final result = await service.fetchAttendanceStatus();
+      expect(result.outcome, AttendanceOutcome.ready);
+      expect(adapter.requests, hasLength(1));
+      final req = adapter.requests.single;
+      expect(req.method, 'GET');
+      expect(req.path, contains('id=muanyun_053'));
+      expect(req.path, contains('mobile=no'));
+    });
 
     test('dark room keeps raw non-standard JSON for normalization', () async {
       final container = ProviderContainer();

@@ -10,6 +10,7 @@ import '../models/friend_summary.dart';
 import '../models/server_blacklist.dart';
 import '../utils/discuz_submit_response.dart';
 import '../utils/error_handler.dart';
+import 'attendance_plugin_parser.dart';
 import 'http_client.dart';
 
 /// 低频论坛工具：好友列表、每日签到、小黑屋。
@@ -56,7 +57,28 @@ class ForumToolsService {
     }
   }
 
-  /// 用户显式点击后调用；GET 会产生服务端签到写入，失败不自动重试。
+  /// 用户在个人页展开卡片时调用：只读页面，不产生签到写入。
+  Future<AttendanceResult> fetchAttendanceStatus() async {
+    try {
+      final response = await _httpClient.get(
+        ApiConfig.dailyAttendancePageUrl(),
+        options: Options(responseType: ResponseType.plain),
+      );
+      final html = response.data?.toString() ?? '';
+      if (html.contains('id="loginform') || html.contains('name="login"')) {
+        throw LoginRequiredException();
+      }
+      return parseAttendancePage(html);
+    } catch (e, st) {
+      if (e is LoginRequiredException) rethrow;
+      return AttendanceResult(
+        outcome: AttendanceOutcome.failed,
+        message: friendlyError(e, '签到状态', st),
+      );
+    }
+  }
+
+  /// 用户显式点击后调用；POST 会产生服务端签到写入，失败不自动重试。
   Future<AttendanceResult> dailySign() async {
     final formhash = await _httpClient.requireFormhash();
     if (formhash == null) {
@@ -66,11 +88,17 @@ class ForumToolsService {
       );
     }
 
-    final url = ApiConfig.dailyAttendanceUrl(formhash: formhash);
     try {
-      final response = await _httpClient.get(
-        url,
-        options: Options(responseType: ResponseType.plain),
+      final response = await _httpClient.post(
+        ApiConfig.dailyAttendanceCheckinUrl(),
+        data: <String, String>{
+          'formhash': formhash,
+          'checkinsubmit': '1',
+        },
+        options: Options(
+          contentType: Headers.formUrlEncodedContentType,
+          responseType: ResponseType.plain,
+        ),
       );
       return parseAttendanceResponse(response.data?.toString() ?? '');
     } catch (e, st) {
@@ -79,6 +107,34 @@ class ForumToolsService {
         message: friendlyError(e, '每日签到', st),
       );
     }
+  }
+
+  /// 解析签到插件页面（`mobile=no` 桌面模板）。
+  static AttendanceResult parseAttendancePage(String html) {
+    final page = AttendancePluginPage.parse(html);
+    if (page.unavailable) {
+      return _pluginUnavailableResult;
+    }
+    if (page.signedToday) {
+      return AttendanceResult(
+        outcome: AttendanceOutcome.alreadySigned,
+        message: _signedMessage(page),
+      );
+    }
+    return AttendanceResult(
+      outcome: AttendanceOutcome.ready,
+      message: page.consecutiveDays == null
+          ? '点击完成今日签到'
+          : '已连续签到 ${page.consecutiveDays} 天',
+    );
+  }
+
+  static String _signedMessage(AttendancePluginPage page) {
+    final used = <String>[];
+    if (page.totalDays != null) used.add('累计 ${page.totalDays} 天');
+    if (page.level != null) used.add('等级 ${page.level}');
+    final detail = used.isEmpty ? '' : '（${used.join(' · ')}）';
+    return '今日已签到$detail';
   }
 
   Future<DarkRoomPage> getDarkRoom({String? cursor}) async {
@@ -147,6 +203,7 @@ class ForumToolsService {
     return FriendListResult(items: items, count: count);
   }
 
+  /// 解析 `op=checkin` 提交后的结果页（`muanyun-053-message-box`）。
   static AttendanceResult parseAttendanceResponse(String body) {
     final html = DiscuzSubmitResponse.unwrapAjaxHtml(body);
     if (html.trim().isEmpty) {
@@ -156,6 +213,19 @@ class ForumToolsService {
       );
     }
 
+    if (isAttendancePluginUnavailable(html)) {
+      return _pluginUnavailableResult;
+    }
+
+    final outcome = AttendanceCheckinOutcome.parse(html);
+    if (outcome.signed) {
+      return AttendanceResult(
+        outcome: AttendanceOutcome.signedNow,
+        message: outcome.message,
+      );
+    }
+
+    // 兜底：旧插件 / Discuz 通用 handler 语义（`inajax=1` 响应）。
     final succeed = DiscuzSubmitResponse.extractHandlerMessage(
       html,
       handlerPrefix: 'succeedhandle_',
@@ -176,30 +246,22 @@ class ForumToolsService {
       handlerPrefix: 'errorhandle_',
       messageIndex: 0,
     );
-    if (error != null) {
-      // 论坛停用签到插件时返回的是插件路由的通用错误，不是签到失败：
-      // 用户点多少次都不会成功，卡片需要收起入口而不是继续给重试。
-      if (isAttendancePluginUnavailable(error)) {
-        return _pluginUnavailableResult;
-      }
+    if (error != null && error.isNotEmpty) {
       final already = error.contains('已签到');
       return AttendanceResult(
         outcome: already
             ? AttendanceOutcome.alreadySigned
             : AttendanceOutcome.failed,
-        message: error.isEmpty ? _attendanceFallbackMessage(html) : error,
+        message: error,
       );
     }
 
-    if (html.contains('已签到')) {
-      return AttendanceResult(
-        outcome: AttendanceOutcome.alreadySigned,
-        message: _attendanceFallbackMessage(html),
+    // 提交后页面仍显示 checkin 表单 = 未成功，不动本地状态。
+    if (html.contains('checkinsubmit')) {
+      return const AttendanceResult(
+        outcome: AttendanceOutcome.failed,
+        message: '签到未生效，请稍后重试',
       );
-    }
-
-    if (isAttendancePluginUnavailable(html)) {
-      return _pluginUnavailableResult;
     }
 
     return AttendanceResult(

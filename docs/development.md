@@ -57,8 +57,8 @@ flutter build ios --no-codesign        # 无签名冒烟，验证工程可构建
 
 ### 性能排查（回应「卡卡的」类反馈）
 
-1. **先看构建模式**：设置 → 关于 → 版本行末尾的 `Debug` / `Release`。是 `Debug` 就先换 `--release` 重测。
-2. **帧率掉帧统计**：运行中若发生掉帧，App 会自动以 `[frame-timing]` 打一条聚合警告（每秒最多一条，仅掉帧秒出现）。入口：设置 → 关于 → **连点「版本」5 下** 打开 Talker 日志页。
+1. **先看构建模式**：设置 → 关于 → 版本行末尾的 `Debug` / `Release`。是 `Debug` 就先换 `--profile` 重测（`--release` 不注册下条的掉帧统计，无法复现日志）。
+2. **帧率掉帧统计**：仅 debug / profile 注册，release 零开销。运行中若发生掉帧，App 会自动以 `[frame-timing]` 打一条聚合警告（每秒最多一条，仅掉帧秒出现，首行带当前路由归属）。入口：设置 → 关于 → **连点「版本」5 下** 打开 Talker 日志页。
 3. **正文渲染打点**：编译时加 `--dart-define=BBCODE_PROFILE=true`，BBCode 解析 / Html 首帧耗时以 `[bbcode-profile]` 写入 Talker（App 内可见，无需连控制台）。
 4. **系统级分析**：`flutter run --profile` 后打开 DevTools Performance overlay，区分 UI 线程（build）与 Raster 线程瓶颈。
 

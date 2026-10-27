@@ -9,7 +9,8 @@ import 'talker.dart';
 /// 设计取舍：
 /// - 不做全量逐帧日志（会刷爆 Talker 历史上限），只在掉帧秒聚合输出；
 /// - 60Hz 下单帧预算 16.7ms，超过 2 帧预算（33.4ms）记 1 次严重掉帧；
-/// - `kReleaseMode` 下同样生效，方便真机排查「卡卡的」类回帖。
+/// - **仅在 debug / profile 下注册**（`main.dart` 按 `kReleaseMode` 判断），
+///   正式版不带这套统计；真机排查卡顿一律用 `--profile`。
 class FrameTimingService {
   FrameTimingService._();
 
@@ -17,6 +18,10 @@ class FrameTimingService {
 
   static const int _budgetMicros = 16667; // ~60fps 单帧预算
   static const int _severeBudgetMicros = 33334; // 连续两帧预算
+
+  /// 当前所在路由（由 app.dart 注入），写进掉帧日志用于归属到页面。
+  /// 未注入时为 `-`，不影响统计。
+  String Function()? routeResolver;
 
   bool _registered = false;
 
@@ -98,7 +103,8 @@ class FrameTimingService {
 
     String ms(int micros) => (micros / 1000).toStringAsFixed(1);
     talker.warning(
-      '[frame-timing] $frames 帧窗口掉帧：'
+      '[frame-timing] @ ${routeResolver?.call() ?? '-'} '
+      '$frames 帧窗口掉帧：'
       'build 超预算 $buildOver 帧（最差 ${ms(worstBuild)}ms）· '
       'raster 超预算 $rasterOver 帧（最差 ${ms(worstRaster)}ms）· '
       '严重掉帧 $severe 次',

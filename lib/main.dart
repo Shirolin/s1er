@@ -171,7 +171,10 @@ void main() async {
     _setupErrorHub();
 
     // 掉帧统计进 Talker（仅掉帧秒打点）；App 内版本行点 5 下可查看。
-    FrameTimingService.instance.register();
+    // 正式版不注册：release 零开销，卡顿排查改用 --profile。
+    if (!kReleaseMode) {
+      FrameTimingService.instance.register();
+    }
 
     runApp(
       UncontrolledProviderScope(

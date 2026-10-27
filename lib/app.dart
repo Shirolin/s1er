@@ -30,6 +30,7 @@ import 'screens/image_viewer_screen.dart';
 import 'screens/user_space_screen.dart';
 import 'screens/pm_conversation_screen.dart';
 import 'services/font_import_service.dart';
+import 'services/frame_timing_service.dart';
 import 'services/talker.dart';
 import 'theme/app_theme.dart';
 import 'utils/thread_navigation.dart';
@@ -235,6 +236,12 @@ class _S1AppState extends ConsumerState<S1App> with WidgetsBindingObserver {
   void initState() {
     super.initState();
     WidgetsBinding.instance.addObserver(this);
+    // 掉帧日志带上当前路由：一条 [frame-timing] 告警即可归属到页面，
+    // 不必再靠时间戳比对其它日志。路由尚未初始化时退化为 `-`。
+    FrameTimingService.instance.routeResolver = () {
+      final config = _router.routerDelegate.currentConfiguration;
+      return config.isEmpty ? '-' : config.uri.toString();
+    };
   }
 
   @override

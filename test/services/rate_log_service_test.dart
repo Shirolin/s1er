@@ -92,7 +92,7 @@ void main() {
     });
   });
 
-  group('RateLogService.fetchFullRateLog', () {
+  group('RateLogService.fetchRateLog', () {
     test('requests single-post ratings endpoint and parses it', () async {
       final adapter = _RecordingAdapter(_ratedTableHtml);
       final dio = Dio()..httpClientAdapter = adapter;
@@ -102,7 +102,7 @@ void main() {
         S1HttpClient.test(container, dio, delay: (_) async {}),
       );
 
-      final log = await service.fetchFullRateLog('2135953', '70365643');
+      final log = await service.fetchRateLog('2135953', '70365643');
 
       expect(log, isNotNull);
       expect(log!.entries, hasLength(2));
@@ -119,7 +119,7 @@ void main() {
       expect(uri.queryParameters.containsKey('page'), isFalse);
     });
 
-    test('returns null on request failure', () async {
+    test('propagates request failure instead of swallowing it', () async {
       final dio = Dio()..httpClientAdapter = _FailingAdapter();
       final container = ProviderContainer();
       addTearDown(container.dispose);
@@ -127,7 +127,10 @@ void main() {
         S1HttpClient.test(container, dio, delay: (_) async {}),
       );
 
-      expect(await service.fetchFullRateLog('1', '2'), isNull);
+      await expectLater(
+        service.fetchRateLog('1', '2'),
+        throwsA(isA<DioException>()),
+      );
     });
   });
 }

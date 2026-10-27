@@ -222,22 +222,11 @@ class PostNotifier extends AsyncNotifier<PostListState> {
     _syncSeenRepliesAfterLoad(loaded);
 
     // postlist 不含楼层 rate；v4 的 Variables.commentcount 键即本页有评分
-    // 的 pid（v1 无此字段）。只对这些楼按 pid 拉约 1 KB 的小接口，不再拉
-    // 整页 HTML。会话缓存避免同页/回访重复拉取。
-    final markedPids = DiscuzParser.parseCommentCount(result).keys.toSet();
+    // 的 pid（v1 无此字段）。只登记标记，实际拉取由可见楼层的评分区按需
+    // 触发，避免为每页额外拉整页 HTML，也避免整页批量请求。
+    final markedPids = DiscuzParser.parseCommentCount(result).keys;
     if (markedPids.isNotEmpty) {
-      unawaited(
-        ref
-            .read(threadRateLogsProvider(tid).notifier)
-            .ensureRateLogs(markedPids)
-            .catchError((Object e, StackTrace st) {
-          talker.handle(
-            e,
-            st,
-            'ensureRateLogs failed tid=$tid pids=${markedPids.join(",")}',
-          );
-        }),
-      );
+      ref.read(threadRateLogsProvider(tid).notifier).markPids(markedPids);
     }
     return loaded;
   }

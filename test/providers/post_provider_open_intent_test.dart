@@ -202,7 +202,26 @@ void main() {
       expect(adapter.requestedPages, contains(3));
     });
 
-    test('fetches rate logs for commentcount keys with zero value', () async {
+    test('marks rate pids but does not fetch on page load', () async {
+      adapter.commentCount = {'1': 2};
+      container = buildContainer(
+        extraOverrides: [
+          readingRecordProvider('100').overrideWithValue(null),
+        ],
+      );
+      final sub = container.listen(postProvider('100'), (_, __) {});
+      addTearDown(sub.close);
+
+      await container.read(postProvider('100').future);
+      await pumpEventQueue();
+
+      final notifier = container.read(threadRateLogsProvider('100').notifier);
+      expect(notifier.isMarked('1'), isTrue);
+      expect(adapter.rateLogRequests, isEmpty);
+      expect(adapter.pageHtmlRequests, isEmpty);
+    });
+
+    test('marks commentcount keys with zero value', () async {
       adapter.commentCount = {'1': 0};
       container = buildContainer(
         extraOverrides: [
@@ -215,8 +234,11 @@ void main() {
       await container.read(postProvider('100').future);
       await pumpEventQueue();
 
-      expect(adapter.rateLogRequests, isNotEmpty);
-      expect(adapter.rateLogRequests.single.queryParameters['pid'], '1');
+      expect(
+        container.read(threadRateLogsProvider('100').notifier).isMarked('1'),
+        isTrue,
+      );
+      expect(adapter.rateLogRequests, isEmpty);
     });
 
     test('skips rate logs when commentcount is missing (v1 fallback)',
@@ -232,12 +254,15 @@ void main() {
       await container.read(postProvider('100').future);
       await pumpEventQueue();
 
+      expect(
+        container.read(threadRateLogsProvider('100').notifier).isMarked('1'),
+        isFalse,
+      );
       expect(adapter.rateLogRequests, isEmpty);
       expect(adapter.pageHtmlRequests, isEmpty);
     });
 
-    test('auto-fetches rate logs on page load when commentcount > 0', () async {
-      adapter.commentCount = {'1': 2};
+    test('ensureRateLog requests only the given pid', () async {
       container = buildContainer(
         extraOverrides: [
           readingRecordProvider('100').overrideWithValue(null),
@@ -247,7 +272,9 @@ void main() {
       addTearDown(sub.close);
 
       await container.read(postProvider('100').future);
-      await pumpEventQueue();
+      await container
+          .read(threadRateLogsProvider('100').notifier)
+          .ensureRateLog('1');
 
       expect(adapter.rateLogRequests, hasLength(1));
       final uri = adapter.rateLogRequests.single;
@@ -259,7 +286,6 @@ void main() {
     });
 
     test('reuses the current pid rate log cache', () async {
-      adapter.commentCount = {'1': 2};
       container = buildContainer(
         extraOverrides: [
           readingRecordProvider('100').overrideWithValue(null),
@@ -269,14 +295,11 @@ void main() {
       addTearDown(sub.close);
 
       await container.read(postProvider('100').future);
-      await pumpEventQueue();
-      final requestsAfterLoad = adapter.rateLogRequests.length;
+      final notifier = container.read(threadRateLogsProvider('100').notifier);
+      await notifier.ensureRateLog('1');
+      await notifier.ensureRateLog('1');
 
-      await container
-          .read(threadRateLogsProvider('100').notifier)
-          .ensureRateLogs(['1']);
-
-      expect(adapter.rateLogRequests, hasLength(requestsAfterLoad));
+      expect(adapter.rateLogRequests, hasLength(1));
     });
 
     test('rate log merge does not mutate postProvider state', () async {
@@ -291,14 +314,14 @@ void main() {
       addTearDown(sub.close);
 
       final initial = await container.read(postProvider('100').future);
-      await pumpEventQueue();
       final postsBefore = initial.posts;
 
-      expect(adapter.rateLogRequests, isNotEmpty);
+      await container
+          .read(threadRateLogsProvider('100').notifier)
+          .ensureRateLog('1');
 
       final after = container.read(postProvider('100')).asData!.value;
       expect(identical(after.posts, postsBefore), isTrue);
-      expect(adapter.rateLogRequests, isNotEmpty);
       expect(
         container.read(threadRateLogsProvider('100')),
         isNotEmpty,

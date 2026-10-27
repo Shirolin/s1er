@@ -29,13 +29,14 @@ void main() {
     expect(find.text('回复'), findsOneWidget);
     expect(find.text('编辑'), findsOneWidget);
     expect(find.text('评分'), findsOneWidget);
+    expect(find.text('评分记录'), findsOneWidget);
     expect(find.text('分享'), findsOneWidget);
     expect(find.text('选择文字'), findsOneWidget);
     expect(find.text('复制全文'), findsOneWidget);
     expect(find.text('加入黑名单'), findsOneWidget);
     expect(find.text('举报'), findsOneWidget);
     expect(find.byType(S1MenuDivider), findsOneWidget);
-    expect(find.byType(MenuItemButton), findsNWidgets(11));
+    expect(find.byType(MenuItemButton), findsNWidgets(12));
 
     await tester.tap(find.text('只看该作者'));
     await tester.pumpAndSettle();
@@ -133,6 +134,7 @@ void main() {
 
     await tester.tap(find.byIcon(Icons.more_vert));
     await tester.pumpAndSettle();
+    await tester.ensureVisible(find.text('举报'));
     await tester.tap(find.text('举报'));
     await tester.pumpAndSettle();
 

@@ -1,9 +1,13 @@
+import 'package:dio/dio.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:s1er/models/post.dart';
 import 'package:s1er/models/rate_log.dart';
+import 'package:s1er/providers/post_provider.dart';
 import 'package:s1er/providers/thread_rate_logs_provider.dart';
+import 'package:s1er/services/http_client.dart';
+import 'package:s1er/services/rate_log_service.dart';
 import 'package:s1er/theme/app_theme.dart';
 import 'package:s1er/widgets/post_item.dart';
 import 'package:s1er/widgets/rate_log_card.dart';
@@ -108,6 +112,65 @@ void main() {
       await tester.pumpAndSettle();
 
       expect(find.text('评分 +2'), findsOneWidget);
+    });
+
+    testWidgets('PostItem fetches only marked pids when built', (tester) async {
+      clearRateLogSessionCacheForTest();
+      final service = _RecordingRateLogService();
+      final container = ProviderContainer(
+        overrides: [rateLogServiceProvider.overrideWithValue(service)],
+      );
+      addTearDown(container.dispose);
+      final sub = container.listen(threadRateLogsProvider('123'), (_, __) {});
+      addTearDown(sub.close);
+      container
+          .read(threadRateLogsProvider('123').notifier)
+          .markPids(['1', '2']);
+
+      await tester.pumpWidget(
+        UncontrolledProviderScope(
+          container: container,
+          child: MaterialApp(
+            theme: AppTheme.lightTheme('purple'),
+            home: Scaffold(
+              body: PostItem(
+                post: _post(pid: '1'),
+                tid: '123',
+              ),
+            ),
+          ),
+        ),
+      );
+      await tester.pump();
+
+      expect(service.requestedPids, ['1']);
+    });
+
+    testWidgets('PostItem does not fetch unmarked pids', (tester) async {
+      clearRateLogSessionCacheForTest();
+      final service = _RecordingRateLogService();
+      final container = ProviderContainer(
+        overrides: [rateLogServiceProvider.overrideWithValue(service)],
+      );
+      addTearDown(container.dispose);
+
+      await tester.pumpWidget(
+        UncontrolledProviderScope(
+          container: container,
+          child: MaterialApp(
+            theme: AppTheme.lightTheme('purple'),
+            home: Scaffold(
+              body: PostItem(
+                post: _post(pid: '1'),
+                tid: '123',
+              ),
+            ),
+          ),
+        ),
+      );
+      await tester.pump();
+
+      expect(service.requestedPids, isEmpty);
     });
 
     testWidgets('expands to show entries on tap', (tester) async {
@@ -317,4 +380,27 @@ void main() {
       expect(reasonText.overflow, isNull);
     });
   });
+}
+
+Post _post({required String pid}) {
+  return Post(
+    pid: pid,
+    message: 'body',
+    author: 'author',
+    authorId: '1',
+    dateline: 0,
+    floor: 1,
+  );
+}
+
+class _RecordingRateLogService extends RateLogService {
+  _RecordingRateLogService() : super(S1HttpClient.test(null, Dio()));
+
+  final List<String> requestedPids = [];
+
+  @override
+  Future<PostRateLog?> fetchRateLog(String tid, String pid) async {
+    requestedPids.add(pid);
+    return null;
+  }
 }

@@ -10,6 +10,7 @@ class PostActionMenu extends StatelessWidget {
     this.onReply,
     this.onEdit,
     this.onRate,
+    this.onViewRates,
     this.onAddToBlacklist,
     this.onReport,
     this.onShare,
@@ -27,6 +28,7 @@ class PostActionMenu extends StatelessWidget {
   final VoidCallback? onReply;
   final VoidCallback? onEdit;
   final VoidCallback? onRate;
+  final VoidCallback? onViewRates;
   final VoidCallback? onAddToBlacklist;
   final VoidCallback? onReport;
   final VoidCallback? onShare;
@@ -94,6 +96,11 @@ class PostActionMenu extends StatelessWidget {
           onPressed: onRate,
           icon: Icons.favorite_outline,
           label: '评分',
+        ),
+        s1MenuItem(
+          onPressed: onViewRates,
+          icon: Icons.star_outline,
+          label: '评分记录',
         ),
         s1MenuItem(
           onPressed: onAddToBlacklist,

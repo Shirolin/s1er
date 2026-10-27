@@ -5,18 +5,22 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../config/constants.dart';
 import '../models/rate_log.dart';
+import '../services/talker.dart';
 import 'post_provider.dart';
 
 typedef RateLogKey = (String tid, String pid);
 
-/// 进程内会话缓存：按 (tid, pid) 存放已拉到的评分记录，
+/// 进程内会话缓存：按 (tid, pid) 存放解析结果，含「已确认无评分」的空条目，
+/// 避免标记命中但无评分的楼层被反复请求。
+///
 /// 不依赖 keepAlive Timer，避免 widget 测试残留定时器。
 class _RateLogSessionStore {
   _RateLogSessionStore._();
 
   static final Map<(String tid, String pid), _CachedRateLog> _logs = {};
 
-  static PostRateLog? get(String tid, String pid) {
+  /// 返回缓存条目；`log == null` 表示已确认该楼没有评分。
+  static _CachedRateLog? get(String tid, String pid) {
     final key = (tid, pid);
     final cached = _logs[key];
     if (cached == null) return null;
@@ -25,11 +29,15 @@ class _RateLogSessionStore {
       _logs.remove(key);
       return null;
     }
-    return cached.log;
+    return cached;
   }
 
-  static void put(String tid, String pid, PostRateLog log) {
+  static void putLog(String tid, String pid, PostRateLog log) {
     _logs[(tid, pid)] = _CachedRateLog(log, DateTime.now());
+  }
+
+  static void putEmpty(String tid, String pid) {
+    _logs[(tid, pid)] = _CachedRateLog(null, DateTime.now());
   }
 
   static void clearTid(String tid) {
@@ -45,39 +53,48 @@ class ThreadRateLogsNotifier extends Notifier<Map<String, PostRateLog>> {
 
   final String tid;
   final Map<String, Future<void>> _inFlightPids = {};
+  final Set<String> _markedPids = {};
 
   @override
   Map<String, PostRateLog> build() => const {};
 
   void clear() {
     _inFlightPids.clear();
+    _markedPids.clear();
     _RateLogSessionStore.clearTid(tid);
     state = const {};
-  }
-
-  void mergeLogs(Map<String, PostRateLog> rateLogs) {
-    if (rateLogs.isEmpty) return;
-    state = {...state, ...rateLogs};
   }
 
   void setForPid(String pid, PostRateLog log) {
     state = {...state, pid: log};
   }
 
-  /// 按 v4 `commentcount` 标记出的 pid 逐个补拉评分记录。
+  /// 登记本页 v4 `Variables.commentcount` 标记出的 pid。
   ///
-  /// 已缓存（会话内 2 分钟）或正在请求的 pid 不会重复发请求；串行执行，
-  /// 与 `S1HttpClient` 的全局限速叠加，避免翻页时放大请求。
-  Future<void> ensureRateLogs(Iterable<String> pids) async {
-    for (final pid in pids.toSet()) {
-      if (pid.isEmpty) continue;
-      final cached = _RateLogSessionStore.get(tid, pid);
-      if (cached != null) {
-        if (ref.mounted && state[pid] == null) setForPid(pid, cached);
-        continue;
+  /// 只登记不请求；真正拉取由可见楼层的 `_PostRateLogSection` 触发，
+  /// 避免翻页时对本页所有标记楼批量发请求。
+  void markPids(Iterable<String> pids) {
+    _markedPids.addAll(pids.where((pid) => pid.isNotEmpty));
+  }
+
+  bool isMarked(String pid) => _markedPids.contains(pid);
+
+  /// 拉取单楼评分记录（先查会话缓存）。
+  ///
+  /// 与 `S1HttpClient` 的全局限速叠加；同一 pid 的并发调用复用同一 future。
+  Future<void> ensureRateLog(String pid) async {
+    if (pid.isEmpty) return;
+
+    final cached = _RateLogSessionStore.get(tid, pid);
+    if (cached != null) {
+      final log = cached.log;
+      if (log != null && ref.mounted && state[pid] == null) {
+        setForPid(pid, log);
       }
-      await _ensurePid(pid);
+      return;
     }
+
+    await _ensurePid(pid);
   }
 
   Future<void> _ensurePid(String pid) {
@@ -92,30 +109,32 @@ class ThreadRateLogsNotifier extends Notifier<Map<String, PostRateLog>> {
     return future;
   }
 
+  /// 强制刷新单楼（评分提交后使用），不复用缓存与在途请求。
+  Future<void> refreshRateLog(String pid) => _fetchPid(pid);
+
   Future<void> _fetchPid(String pid) async {
     final service = ref.read(rateLogServiceProvider);
-    final log = await service.fetchFullRateLog(tid, pid);
-    // 无评分或请求失败不写缓存，便于下次进入重试。
-    if (log == null) return;
-    _RateLogSessionStore.put(tid, pid, log);
-    if (!ref.mounted) return;
-    setForPid(pid, log);
-  }
-
-  Future<void> loadFullRateLog(String pid) async {
-    final service = ref.read(rateLogServiceProvider);
-    final full = await service.fetchFullRateLog(tid, pid);
-    if (full == null) return;
-    _RateLogSessionStore.put(tid, pid, full);
-    if (!ref.mounted) return;
-    setForPid(pid, full);
+    try {
+      final log = await service.fetchRateLog(tid, pid);
+      if (log == null) {
+        _RateLogSessionStore.putEmpty(tid, pid);
+        return;
+      }
+      _RateLogSessionStore.putLog(tid, pid, log);
+      if (!ref.mounted) return;
+      setForPid(pid, log);
+    } catch (e, st) {
+      // 请求失败不写缓存，保留下次重试机会。
+      talker.handle(e, st, 'fetch rate log failed tid=$tid pid=$pid');
+    }
   }
 }
 
 class _CachedRateLog {
   const _CachedRateLog(this.log, this.loadedAt);
 
-  final PostRateLog log;
+  /// null 表示已确认该楼没有评分。
+  final PostRateLog? log;
   final DateTime loadedAt;
 }
 

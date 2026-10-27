@@ -97,7 +97,7 @@ class _RateDialogState extends ConsumerState<_RateDialog> {
 
       await ref
           .read(threadRateLogsProvider(widget.tid).notifier)
-          .loadFullRateLog(widget.pid);
+          .refreshRateLog(widget.pid);
 
       if (!mounted) return;
       S1SnackBar.success(context, message: '评分成功');

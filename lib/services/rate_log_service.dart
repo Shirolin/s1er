@@ -4,6 +4,7 @@ import 'package:html/parser.dart' show parse;
 import '../config/api_config.dart';
 import '../models/rate_log.dart';
 import 'http_client.dart';
+import 'talker.dart';
 
 class RateLogService {
   RateLogService(this._httpClient);
@@ -17,18 +18,16 @@ class RateLogService {
         '&inajax=1&mobile=no';
   }
 
-  /// 获取单楼完整评分记录；该楼无评分或请求失败时返回 null。
-  Future<PostRateLog?> fetchFullRateLog(String tid, String pid) async {
-    try {
-      final response = await _httpClient.get(
-        _buildUrl(tid, pid),
-        options: Options(responseType: ResponseType.plain),
-      );
-      final html = response.data as String;
-      return parseRateTable(html, pid: pid);
-    } catch (_) {
-      return null;
-    }
+  /// 获取单楼评分记录；该楼没有评分时返回 null。
+  ///
+  /// 传输/HTTP 异常向上抛，由 provider 记录并决定是否重试；不在此吞掉，
+  /// 否则「无评分」和「请求失败」无法区分。
+  Future<PostRateLog?> fetchRateLog(String tid, String pid) async {
+    final response = await _httpClient.get(
+      _buildUrl(tid, pid),
+      options: Options(responseType: ResponseType.plain),
+    );
+    return parseRateTable(response.data as String, pid: pid);
   }
 
   /// 解析 `misc&action=viewratings&inajax=1&mobile=no` 的桌面表格片段。
@@ -74,7 +73,8 @@ class RateLogService {
         totalScore: entries.fold<int>(0, (sum, entry) => sum + entry.score),
         participantCount: entries.length,
       );
-    } catch (_) {
+    } catch (e, st) {
+      talker.handle(e, st, 'parse rate table failed pid=$pid');
       return null;
     }
   }

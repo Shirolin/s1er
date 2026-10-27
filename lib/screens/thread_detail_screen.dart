@@ -17,6 +17,7 @@ import '../providers/auth_provider.dart';
 import '../providers/reading_history_provider.dart';
 import '../providers/settings_provider.dart';
 import '../providers/thread_open_intent_provider.dart';
+import '../providers/thread_rate_logs_provider.dart';
 import '../utils/compose_img_tags.dart';
 import '../utils/quote_snapshot_store.dart';
 import '../widgets/app_bar_more_menu.dart';
@@ -941,6 +942,19 @@ class _ThreadDetailScreenState extends ConsumerState<ThreadDetailScreen> {
     );
   }
 
+  Future<void> _openRateLog(Post post) async {
+    final notifier = ref.read(threadRateLogsProvider(widget.tid).notifier);
+    final key = (widget.tid, post.pid);
+    if (ref.read(rateLogProvider(key)) == null) {
+      await notifier.refreshRateLog(post.pid);
+    }
+    if (!mounted) return;
+    final log = ref.read(rateLogProvider(key));
+    if (log == null || log.isEmpty) {
+      S1SnackBar.show(context, message: '该楼暂无评分记录');
+    }
+  }
+
   Future<void> _openReportDialog(Post post, PostListState state) async {
     if (!ref.read(authStateProvider).isLoggedIn) return;
     await showReportDialog(
@@ -1052,6 +1066,7 @@ class _ThreadDetailScreenState extends ConsumerState<ThreadDetailScreen> {
       onShareSelectToggle: () => _toggleShareFloor(post, displayFloor),
       onEdit: () => _openEdit(state, post),
       onRate: () => _openRateDialog(post),
+      onViewRates: () => _openRateLog(post),
       onAddToBlacklist: () => _confirmAddToBlacklist(post),
       onReport: () => _openReportDialog(post, state),
     );
@@ -1712,6 +1727,7 @@ class _ThreadDetailPostTile extends ConsumerWidget {
     required this.onShareSelectToggle,
     required this.onEdit,
     required this.onRate,
+    required this.onViewRates,
     required this.onAddToBlacklist,
     required this.onReport,
     this.highlightQuery,
@@ -1734,6 +1750,7 @@ class _ThreadDetailPostTile extends ConsumerWidget {
   final VoidCallback onShareSelectToggle;
   final VoidCallback onEdit;
   final VoidCallback onRate;
+  final VoidCallback onViewRates;
   final VoidCallback onAddToBlacklist;
   final VoidCallback onReport;
   final String? highlightQuery;
@@ -1800,6 +1817,7 @@ class _ThreadDetailPostTile extends ConsumerWidget {
         onShareSelectToggle: onShareSelectToggle,
         onEdit: canEdit ? onEdit : null,
         onRate: canRate ? onRate : null,
+        onViewRates: onViewRates,
         onAddToBlacklist: canAddToBlacklist ? onAddToBlacklist : null,
         onReport: isLoggedIn ? onReport : null,
       ),

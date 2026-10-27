@@ -39,7 +39,7 @@ class _RateLogCardState extends ConsumerState<RateLogCard> {
     try {
       await ref
           .read(threadRateLogsProvider(widget.tid).notifier)
-          .loadFullRateLog(widget.pid);
+          .refreshRateLog(widget.pid);
       if (mounted) setState(() => _isLocalExpanded = true);
     } finally {
       if (mounted) setState(() => _isLoadingFull = false);

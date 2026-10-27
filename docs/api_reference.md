@@ -431,7 +431,7 @@ version=3。所有请求走 `ApiConfig.mobileApiUrl`，通过 query params 指�
 > **坑点**：与 `forumdisplay` 一样，`dateline` 是日期字符串，`dbdateline` 才是 Unix 时间戳。
 > 实测发现 `first: "1"` 的楼主帖也包含在 `postlist` 中，可通过 `first` 字段过滤。
 > **评分（战斗力）**：Mobile JSON 的 `postlist` 项**不返回**楼层 `rate`；`Variables.thread.rate` 仅表示主题级状态，实测即使本页有评分楼也可能为 `0`，不能用来判断。
-> 楼层评分标记在 v4 响应的 `Variables.commentcount`：**键集合**即本页有评分/点评的 pid（值可能为 `null`，只看键）。v1 响应没有该字段。
+> 楼层评分标记在 v4 响应的 `Variables.commentcount`：**键集合**即本页有评分/点评的 pid；值统一按整数解析（`null` → 0），评分标记只看键。v1 响应没有该字段，此时该页不做自动摘要（可在楼层菜单「评分记录」手动拉取）。
 > 评分明细按 pid 单独拉：`forum.php?mod=misc&action=viewratings&tid=<tid>&pid=<pid>&inajax=1&mobile=no`，返回桌面 `<table>` 片段（约 1 KB，含 `space-uid-<uid>.html`）；`mobile=2` 会变成移动弹层且没有 uid 链接。不要为此拉 `viewthread&mobile=2` 整页 HTML。
 
 | 字段 | 类型 | 示例值 | 说明 |

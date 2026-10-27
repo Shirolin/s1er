@@ -748,17 +748,29 @@ class _PostRateLogSection extends ConsumerStatefulWidget {
 }
 
 class _PostRateLogSectionState extends ConsumerState<_PostRateLogSection> {
+  Timer? _fetchDebounce;
+
   @override
   void initState() {
     super.initState();
     // 只为本页标记过、且真正被构建（接近可见）的楼层拉取评分。
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      if (!mounted) return;
-      final notifier = ref.read(threadRateLogsProvider(widget.tid).notifier);
-      if (notifier.isMarked(widget.pid)) {
-        unawaited(notifier.ensureRateLog(widget.pid));
-      }
-    });
+    // 300ms 防抖：快速划过/连续翻页的楼层不发请求，避免把 1 KB 小请求
+    // 堆进全局限速队列，拖慢后续翻页 API。
+    _fetchDebounce = Timer(const Duration(milliseconds: 300), _maybeFetch);
+  }
+
+  void _maybeFetch() {
+    if (!mounted) return;
+    final notifier = ref.read(threadRateLogsProvider(widget.tid).notifier);
+    if (notifier.isMarked(widget.pid)) {
+      unawaited(notifier.ensureRateLog(widget.pid));
+    }
+  }
+
+  @override
+  void dispose() {
+    _fetchDebounce?.cancel();
+    super.dispose();
   }
 
   @override

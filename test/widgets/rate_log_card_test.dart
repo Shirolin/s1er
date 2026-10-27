@@ -141,7 +141,7 @@ void main() {
           ),
         ),
       );
-      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 350));
 
       expect(service.requestedPids, ['1']);
     });
@@ -168,7 +168,41 @@ void main() {
           ),
         ),
       );
-      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 350));
+
+      expect(service.requestedPids, isEmpty);
+    });
+
+    testWidgets('PostItem cancels rate fetch when disposed before debounce',
+        (tester) async {
+      clearRateLogSessionCacheForTest();
+      final service = _RecordingRateLogService();
+      final container = ProviderContainer(
+        overrides: [rateLogServiceProvider.overrideWithValue(service)],
+      );
+      addTearDown(container.dispose);
+      final sub = container.listen(threadRateLogsProvider('123'), (_, __) {});
+      addTearDown(sub.close);
+      container.read(threadRateLogsProvider('123').notifier).markPids(['1']);
+
+      await tester.pumpWidget(
+        UncontrolledProviderScope(
+          container: container,
+          child: MaterialApp(
+            theme: AppTheme.lightTheme('purple'),
+            home: Scaffold(
+              body: PostItem(
+                post: _post(pid: '1'),
+                tid: '123',
+              ),
+            ),
+          ),
+        ),
+      );
+
+      // 楼层在防抖窗口内被移出构建范围（快速划过/翻页）。
+      await tester.pumpWidget(const SizedBox.shrink());
+      await tester.pump(const Duration(milliseconds: 350));
 
       expect(service.requestedPids, isEmpty);
     });

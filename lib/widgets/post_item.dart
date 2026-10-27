@@ -749,6 +749,7 @@ class _PostRateLogSection extends ConsumerStatefulWidget {
 
 class _PostRateLogSectionState extends ConsumerState<_PostRateLogSection> {
   Timer? _fetchDebounce;
+  Timer? _retryTimer;
 
   @override
   void initState() {
@@ -762,14 +763,21 @@ class _PostRateLogSectionState extends ConsumerState<_PostRateLogSection> {
   void _maybeFetch() {
     if (!mounted) return;
     final notifier = ref.read(threadRateLogsProvider(widget.tid).notifier);
-    if (notifier.isMarked(widget.pid)) {
+    if (!notifier.isMarked(widget.pid)) return;
+    unawaited(notifier.ensureRateLog(widget.pid));
+    // 兜底路径（v1 降级页的整页 HTML）可能晚于首次构建返回：2 秒后再查一次，
+    // 仍未命中就交给会话负缓存，不再重试。
+    _retryTimer ??= Timer(const Duration(seconds: 2), () {
+      if (!mounted) return;
+      if (ref.read(rateLogProvider((widget.tid, widget.pid))) != null) return;
       unawaited(notifier.ensureRateLog(widget.pid));
-    }
+    });
   }
 
   @override
   void dispose() {
     _fetchDebounce?.cancel();
+    _retryTimer?.cancel();
     super.dispose();
   }
 

@@ -241,8 +241,9 @@ void main() {
       expect(adapter.rateLogRequests, isEmpty);
     });
 
-    test('skips rate logs when commentcount is missing (v1 fallback)',
+    test('v1 response without commentcount triggers page HTML fallback',
         () async {
+      adapter.forceLegacyVersion = true;
       container = buildContainer(
         extraOverrides: [
           readingRecordProvider('100').overrideWithValue(null),
@@ -252,6 +253,7 @@ void main() {
       addTearDown(sub.close);
 
       await container.read(postProvider('100').future);
+      await pumpEventQueue();
       await pumpEventQueue();
 
       expect(
@@ -259,15 +261,44 @@ void main() {
         isFalse,
       );
       expect(adapter.rateLogRequests, isEmpty);
-      expect(adapter.pageHtmlRequests, isEmpty);
-      // v1 响应没有 commentcount，会补一次 v4 只为取标记
-      expect(adapter.v4RateRequests, hasLength(1));
+      expect(adapter.pageHtmlRequests, hasLength(1));
     });
 
-    test('v4 503 downgrade still fetches rate marks with a v4 request',
-        () async {
+    test('v4 503 downgrade falls back to page HTML for rate logs', () async {
       adapter.commentCount = {'1': 2};
+      adapter.pageHtml = '''
+<div id="ratelog_1"><ul>
+<li><div class="flex-2"><a>参与人数 <span>1</span></a></div>
+<div class="flex-2">战斗力 <i>+2</i></div><div class="flex-3">理由</div></li>
+<li><div class="flex-2"><a href="space-uid-1.html">userA</a></div>
+<div class="flex-2">+ 2</div><div class="flex-3">good</div></li>
+</ul></div>
+''';
       adapter.failV4With503 = true;
+      adapter.forceLegacyVersion = true;
+      container = buildContainer(
+        extraOverrides: [
+          readingRecordProvider('100').overrideWithValue(null),
+        ],
+      );
+      final sub = container.listen(postProvider('100'), (_, __) {});
+      addTearDown(sub.close);
+
+      await container.read(postProvider('100').future);
+      await pumpEventQueue();
+      await pumpEventQueue();
+
+      // 走整页 HTML 兜底，而不是补发 v4
+      expect(adapter.pageHtmlRequests, hasLength(1));
+      expect(adapter.v4RateRequests, hasLength(1)); // 只有最初失败的那次
+      expect(adapter.rateLogRequests, isEmpty);
+      final log = container.read(rateLogProvider(('100', '1')));
+      expect(log, isNotNull);
+      expect(log!.totalScore, 2);
+    });
+
+    test('normal v4 page never requests page HTML', () async {
+      adapter.commentCount = {'1': 2};
       container = buildContainer(
         extraOverrides: [
           readingRecordProvider('100').overrideWithValue(null),
@@ -279,12 +310,11 @@ void main() {
       await container.read(postProvider('100').future);
       await pumpEventQueue();
 
-      expect(adapter.v4RateRequests, hasLength(1));
+      expect(adapter.pageHtmlRequests, isEmpty);
       expect(
         container.read(threadRateLogsProvider('100').notifier).isMarked('1'),
         isTrue,
       );
-      expect(adapter.pageHtmlRequests, isEmpty);
     });
 
     test('ensureRateLog requests only the given pid', () async {
@@ -535,6 +565,8 @@ class _ThreadDetailAdapter implements HttpClientAdapter {
   final failPages = <int>{};
   Map<String, int>? commentCount;
   bool failV4With503 = false;
+  bool forceLegacyVersion = false;
+  String pageHtml = '<html></html>';
   String rateLogHtml = '''
 <table class="list">
 <thead><tr><td>积分</td><td>用户名</td><td>时间</td><td>理由</td></tr></thead>
@@ -589,9 +621,9 @@ class _ThreadDetailAdapter implements HttpClientAdapter {
         );
       }
       final pid = omitPidFromPostlist ? '1' : (_lastLocatedPid ?? '1');
-      final version = uri.queryParameters['version'];
-      if (version == '4') v4RateRequests.add(uri);
-      if (version == '4' && failV4With503) {
+      final requestedVersion = uri.queryParameters['version'];
+      if (requestedVersion == '4') v4RateRequests.add(uri);
+      if (requestedVersion == '4' && failV4With503) {
         throw DioException(
           requestOptions: options,
           type: DioExceptionType.badResponse,
@@ -599,6 +631,8 @@ class _ThreadDetailAdapter implements HttpClientAdapter {
           message: 'simulated v4 503',
         );
       }
+      // 响应体里的 Version：模拟「服务端降级返回 v1」
+      final version = forceLegacyVersion ? '1' : requestedVersion;
       final variables = <String, dynamic>{
         'ppp': '40',
         'thread': {
@@ -618,7 +652,8 @@ class _ThreadDetailAdapter implements HttpClientAdapter {
           },
         ],
       };
-      if (commentCount != null) {
+      // 模拟真实 v1 响应：没有 commentcount
+      if (commentCount != null && version == '4') {
         variables['commentcount'] = commentCount;
       }
       return ResponseBody.fromString(
@@ -640,9 +675,8 @@ class _ThreadDetailAdapter implements HttpClientAdapter {
 
     if (uri.query.contains('mod=viewthread')) {
       pageHtmlRequests.add(uri);
-      return ResponseBody.fromString('<html></html>', 200);
+      return ResponseBody.fromString(pageHtml, 200);
     }
-
     return ResponseBody.fromString('{}', 200);
   }
 }

@@ -4,6 +4,7 @@ import 'package:html/parser.dart' show parse;
 import '../config/api_config.dart';
 import '../models/rate_log.dart';
 import 'http_client.dart';
+import 'talker.dart';
 
 class RateLogService {
   RateLogService(this._httpClient);
@@ -27,6 +28,100 @@ class RateLogService {
       options: Options(responseType: ResponseType.plain),
     );
     return parseRateTable(response.data as String, pid: pid);
+  }
+
+  /// 整页 HTML 兜底：解析 `viewthread&mobile=2` 里的 `#ratelog_<pid>`。
+  ///
+  /// 仅在 v4 `commentcount` 标记不可用（登录态下该页 v4 稳定 503）时调用，
+  /// 正常页一律走 [fetchRateLog]，不产生这笔约 40 KB 的请求。
+  Future<Map<String, PostRateLog>> fetchRateLogsByPage(
+    String tid, {
+    int page = 1,
+  }) async {
+    try {
+      final response = await _httpClient.get(
+        '${ApiConfig.forumPostUrl}'
+        '?mod=viewthread&tid=$tid&page=$page&mobile=2',
+        options: Options(responseType: ResponseType.plain),
+      );
+      return parseRateLogBlocks(response.data as String);
+    } catch (e, st) {
+      talker.handle(e, st, 'fetchRateLogsByPage failed tid=$tid page=$page');
+      return const {};
+    }
+  }
+
+  /// 解析整页 HTML 中的 `#ratelog_<pid>` 区块（兜底路径专用）。
+  static Map<String, PostRateLog> parseRateLogBlocks(String html) {
+    final result = <String, PostRateLog>{};
+    if (html.trim().isEmpty) return result;
+
+    try {
+      final doc = parse(html);
+      for (final div in doc.querySelectorAll('[id^=ratelog_]')) {
+        final pid = div.id.replaceFirst('ratelog_', '');
+        if (pid.isEmpty) continue;
+
+        final lis = div.querySelectorAll('li');
+        if (lis.isEmpty) continue;
+
+        final entries = <RateLog>[];
+        int participantCount = 0;
+        int totalScore = 0;
+
+        for (final li in lis) {
+          final liText = li.text;
+          if (liText.contains('参与人数')) {
+            for (final d in li.querySelectorAll('div')) {
+              final dText = d.text;
+              if (dText.contains('参与人数')) {
+                final m = RegExp(r'(\d+)').firstMatch(dText);
+                if (m != null) {
+                  participantCount = int.tryParse(m.group(1) ?? '') ?? 0;
+                }
+              } else if (dText.contains('战斗力')) {
+                final m = RegExp(r'([+-]?\s*\d+)')
+                    .firstMatch(dText.replaceAll('战斗力', ''));
+                if (m != null) {
+                  totalScore = _parseScore(m.group(1) ?? '');
+                }
+              }
+            }
+            continue;
+          }
+
+          final divs = li.querySelectorAll('div');
+          if (divs.length < 2) continue;
+
+          final link = divs[0].querySelector('a');
+          if (link == null) continue;
+          final username = link.text.trim();
+          if (username.isEmpty) continue;
+
+          entries.add(
+            RateLog(
+              uid: _parseUid(link.attributes['href']),
+              username: username,
+              score: _parseScore(divs[1].text),
+              reason: divs.length >= 3 ? divs[2].text.trim() : '',
+            ),
+          );
+        }
+
+        if (entries.isNotEmpty) {
+          result[pid] = PostRateLog(
+            pid: pid,
+            entries: entries,
+            totalScore: totalScore,
+            participantCount: participantCount,
+          );
+        }
+      }
+    } catch (e, st) {
+      talker.handle(e, st, 'parse rate log blocks failed');
+    }
+
+    return result;
   }
 
   /// 解析 `misc&action=viewratings&inajax=1&mobile=no` 的桌面表格片段。

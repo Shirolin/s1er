@@ -78,6 +78,14 @@ class ThreadRateLogsNotifier extends Notifier<Map<String, PostRateLog>> {
     _markedPids.addAll(pids.where((pid) => pid.isNotEmpty));
   }
 
+  /// 直接写入已解析好的评分记录（整页 HTML 兜底用），并登记标记。
+  void primeRateLog(String pid, PostRateLog log) {
+    if (pid.isEmpty) return;
+    _markedPids.add(pid);
+    _RateLogSessionStore.putLog(tid, pid, log);
+    if (ref.mounted) _setForPid(pid, log);
+  }
+
   bool isMarked(String pid) => _markedPids.contains(pid);
 
   /// 拉取单楼评分记录（先查会话缓存）。

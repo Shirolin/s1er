@@ -5,6 +5,24 @@ All notable changes to S1er will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.9.4] - 2026-10-28
+
+### Changed
+
+- **评分明细按楼懒加载**：不再为评分额外请求整页 HTML，改为按 `commentcount` 标记逐楼拉取可见楼层，并对可见楼请求加 300ms 防抖；翻页与滚动更省流量、更少卡顿。
+- **掉帧统计**：仅在 debug / profile 构建注册，并附带路由归属，release 包不再承担这部分开销。
+
+### Fixed
+
+- **评分请求失败被当成「无评分」**：区分请求失败与空结果，失败时保留可重试状态并清理陈旧卡片。
+- **v4 降级 v1 后评分整块消失**：降级到 v1 时补一次 v4 请求取评分标记。
+- **v1 降级页评分缺失**：v1 降级页改用整页 HTML 兜底解析。
+- **签到结果文案折行**：保留服务端的分段，「连续签到 N 天」不再被拆成「连续签到 / N 天」两行。
+
+### Removed
+
+- 移除迁移到新签到插件后遗留的本地签到缓存（`DailyAttendanceStore`）。
+
 ## [0.9.3] - 2026-10-27
 
 ### Fixed

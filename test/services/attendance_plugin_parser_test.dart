@@ -64,6 +64,18 @@ void main() {
       expect(outcome.message, isNot(contains('<span')));
       expect(outcome.message, isNot(contains('color:')));
     });
+
+    test('结果文案保留服务端分行，不在「连续签到 N 天」中间折断', () {
+      final outcome = AttendanceCheckinOutcome.parse(
+        fixture('muanyun_checkin_success.html'),
+      );
+      // 插件用 <br/> 把「奖励 / 倍数说明 / 连续签到」分成三段；倍数说明在
+      // span 内，剥离后留下的空段应丢弃，而不是留一行空白。
+      expect(outcome.message.split('\n'), [
+        '签到成功！获得经验 10 点、死鱼 1 点',
+        '连续签到 2 天',
+      ]);
+    });
   });
 
   group('ForumToolsService.parseAttendancePage', () {

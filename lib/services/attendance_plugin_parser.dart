@@ -121,13 +121,7 @@ class AttendanceCheckinOutcome {
       r'class="[^"]*muanyun-053-message-text[^"]*"[^>]*>([\s\S]*?)</div>',
     ).firstMatch(html)?.group(1);
 
-    final plainText = text == null
-        ? ''
-        : text
-            .replaceAll(RegExp(r'<span[\s\S]*?</span>'), ' ')
-            .replaceAll(RegExp(r'<[^>]+>'), ' ')
-            .replaceAll(RegExp(r'\s+'), ' ')
-            .trim();
+    final plainText = text == null ? '' : _plainMessage(text);
 
     final succeeded =
         (title != null && title.contains('成功')) || plainText.contains('签到成功');
@@ -140,5 +134,24 @@ class AttendanceCheckinOutcome {
       message: plainText.isNotEmpty ? plainText : (title ?? '签到状态未知，请刷新后确认'),
       consecutiveDays: int.tryParse(consecutive ?? ''),
     );
+  }
+
+  /// 把结果页 HTML 压成纯文本，但保留服务端 `<br>` 的分行。
+  ///
+  /// 插件文案是三段：奖励 / （倍数说明，`span` 内）/ 连续签到，用 `<br/>` 断开。
+  /// 整段压成一行会让卡片在「连续签到 N 天」中间折行（「连续签到」/「3 天」），
+  /// 所以这里按 `<br>` 分段清洗，被剥掉的 `span` 留下空段则丢弃。
+  static String _plainMessage(String html) {
+    return html
+        .split(RegExp(r'<br[^>]*>', caseSensitive: false))
+        .map(
+          (segment) => segment
+              .replaceAll(RegExp(r'<span[\s\S]*?</span>'), ' ')
+              .replaceAll(RegExp(r'<[^>]+>'), ' ')
+              .replaceAll(RegExp(r'\s+'), ' ')
+              .trim(),
+        )
+        .where((line) => line.isNotEmpty)
+        .join('\n');
   }
 }

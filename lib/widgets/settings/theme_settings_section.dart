@@ -92,6 +92,9 @@ class ThemeModeSelector extends StatelessWidget {
               ),
         icon: Tooltip(
           message: tooltip,
+          // 有可见标签时图标 tooltip 只是鼠标提示；不排除的话读屏会
+          // 把「浅色模式」和标签「浅色」叠加念成「浅色模式 浅色」。
+          excludeFromSemantics: !compact,
           child: Icon(icon, size: 18),
         ),
         tooltip: compact ? tooltip : null,

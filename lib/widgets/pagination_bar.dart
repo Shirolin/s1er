@@ -283,6 +283,7 @@ class _PageIndicator extends StatelessWidget {
       button: true,
       enabled: enabled,
       label: '第 $currentPage / $totalPages 页，选择页码',
+      excludeSemantics: true,
       child: Material(
         color: scheme.secondaryContainer,
         borderRadius: S1Shape.full,

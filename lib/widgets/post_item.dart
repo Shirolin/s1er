@@ -631,8 +631,12 @@ class _PostItemState extends ConsumerState<PostItem>
     );
 
     final avatar = Semantics(
+      // container: 不加时该按钮配置会并入楼层所在的语义节点，
+      // 读屏把整层正文都念成「查看 … 的资料」按钮的一部分。
+      container: true,
       button: true,
       label: '查看 ${widget.post.author} 的资料',
+      excludeSemantics: true,
       child: S1ClickRegion(
         onTap: () => _showUserInfo(context, ref),
         child: WebAvatar(

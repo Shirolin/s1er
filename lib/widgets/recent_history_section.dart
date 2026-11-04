@@ -134,61 +134,76 @@ class _RecentHistoryTile extends StatelessWidget {
       color: scheme.onSurfaceVariant,
     );
     final title = record.subject.isEmpty ? '(无标题)' : record.subject;
+    // 行本身可点按，但裸 InkWell 只带点击动作、没有按钮角色；
+    // 同时把「#1/6432」这种视觉简写展开成完整读法。
+    final readState = finished
+        ? '已读完'
+        : '读到第 ${record.lastReadFloor} 楼，共 ${record.totalPosts} 楼';
+    final semanticsLabel = [
+      '继续阅读 $title',
+      if (meta.isNotEmpty) meta,
+      readState,
+    ].join('，');
 
-    return InkWell(
-      onTap: () {
-        S1Haptics.selection();
-        context.push(
-          buildThreadDetailPath(
-            record.tid,
-            record: record,
-            liveTotalReplies: record.totalReplies,
-          ),
-        );
-      },
-      child: ConstrainedBox(
-        constraints: const BoxConstraints(minHeight: 48),
-        child: Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-          child: Row(
-            children: [
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      title,
-                      style: textTheme.bodyMedium,
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                    ),
-                    Text.rich(
-                      TextSpan(
-                        style: metaStyle,
-                        children: [
-                          if (meta.isNotEmpty) TextSpan(text: '$meta · '),
-                          TextSpan(
-                            text: progress,
-                            style: metaStyle?.copyWith(
-                              color: accent,
-                              fontWeight: FontWeight.w500,
-                            ),
-                          ),
-                        ],
+    return Semantics(
+      button: true,
+      label: semanticsLabel,
+      excludeSemantics: true,
+      child: InkWell(
+        onTap: () {
+          S1Haptics.selection();
+          context.push(
+            buildThreadDetailPath(
+              record.tid,
+              record: record,
+              liveTotalReplies: record.totalReplies,
+            ),
+          );
+        },
+        child: ConstrainedBox(
+          constraints: const BoxConstraints(minHeight: 48),
+          child: Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+            child: Row(
+              children: [
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        title,
+                        style: textTheme.bodyMedium,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
                       ),
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                    ),
-                  ],
+                      Text.rich(
+                        TextSpan(
+                          style: metaStyle,
+                          children: [
+                            if (meta.isNotEmpty) TextSpan(text: '$meta · '),
+                            TextSpan(
+                              text: progress,
+                              style: metaStyle?.copyWith(
+                                color: accent,
+                                fontWeight: FontWeight.w500,
+                              ),
+                            ),
+                          ],
+                        ),
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                    ],
+                  ),
                 ),
-              ),
-              const SizedBox(width: 8),
-              Icon(
-                Icons.chevron_right,
-                size: 16,
-                color: scheme.onSurfaceVariant,
-              ),
-            ],
+                const SizedBox(width: 8),
+                Icon(
+                  Icons.chevron_right,
+                  size: 16,
+                  color: scheme.onSurfaceVariant,
+                ),
+              ],
+            ),
           ),
         ),
       ),

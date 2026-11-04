@@ -213,10 +213,12 @@ class ThreadCard extends ConsumerWidget {
         : isSticky
             ? scheme.onPrimaryContainer
             : scheme.onSurface;
+    // 染底卡片上的次要文字不降透明度：11px 的 labelSmall 叠加 0.7 alpha
+    // 后，暖沙浅色主题在 primaryContainer 上仅约 3.6:1，低于 4.5:1。
     final onCardSecondary = selected
-        ? scheme.onSecondaryContainer.withValues(alpha: S1Alpha.strong)
+        ? scheme.onSecondaryContainer
         : isSticky
-            ? scheme.onPrimaryContainer.withValues(alpha: S1Alpha.strong)
+            ? scheme.onPrimaryContainer
             : scheme.onSurfaceVariant;
     final metaStyle = textTheme.labelSmall?.copyWith(
       color: onCardSecondary,
@@ -226,35 +228,36 @@ class ThreadCard extends ConsumerWidget {
     final canFilterType =
         onTypeFilter != null && typeId != null && typeId.isNotEmpty;
 
-    return Semantics(
-      selected: selected,
-      button: true,
-      label: thread.subject,
-      child: Card(
-        margin: S1ReadingCardStyle.margin(
+    return Card(
+      margin: S1ReadingCardStyle.margin(
+        context,
+        enabled: compactListFullBleed,
+        vertical: tokens.cardMarginVertical,
+      ),
+      elevation: 0,
+      shadowColor: Colors.transparent,
+      surfaceTintColor: Colors.transparent,
+      color: selected
+          ? scheme.secondaryContainer
+          : isSticky
+              ? scheme.primaryContainer
+              : S1Surface.reading(scheme),
+      shape: S1ReadingCardStyle.shape(
+        context,
+        enabled: compactListFullBleed,
+      ),
+      clipBehavior: Clip.antiAlias,
+      child: InkWell(
+        onTap: () => _handleTap(context, ref),
+        borderRadius: S1ReadingCardStyle.inkBorderRadius(
           context,
           enabled: compactListFullBleed,
-          vertical: tokens.cardMarginVertical,
         ),
-        elevation: 0,
-        shadowColor: Colors.transparent,
-        surfaceTintColor: Colors.transparent,
-        color: selected
-            ? scheme.secondaryContainer
-            : isSticky
-                ? scheme.primaryContainer
-                : S1Surface.reading(scheme),
-        shape: S1ReadingCardStyle.shape(
-          context,
-          enabled: compactListFullBleed,
-        ),
-        clipBehavior: Clip.antiAlias,
-        child: InkWell(
-          onTap: () => _handleTap(context, ref),
-          borderRadius: S1ReadingCardStyle.inkBorderRadius(
-            context,
-            enabled: compactListFullBleed,
-          ),
+        // 旧外层 Semantics(label: subject) 与 InkWell 自身的按钮节点重复，
+        // 读屏会把标题念两遍；这里只保留选中态，标签交给子节点合并。
+        child: Semantics(
+          selected: selected,
+          button: true,
           child: Padding(
             padding: EdgeInsets.symmetric(
               horizontal: 12,
@@ -404,8 +407,12 @@ class _TitleLine extends StatelessWidget {
       overflow: TextOverflow.ellipsis,
     );
 
-    final pin =
-        isSticky ? Icon(Icons.push_pin, size: 13, color: pinColor) : null;
+    final pin = isSticky
+        ? Semantics(
+            label: '置顶',
+            child: Icon(Icons.push_pin, size: 13, color: pinColor),
+          )
+        : null;
 
     final fullTagName = tagName ?? '';
     final displayTag =
@@ -873,27 +880,44 @@ class _CategoryTag extends StatelessWidget {
           }
         },
       );
+      // FilterChip 默认把截断后的短标签当作 checkbox 朗读；这里换成完整分类名，
+      // 并说明点按行为（筛选 / 取消筛选）。
+      final labeledChip = Semantics(
+        button: true,
+        selected: selected,
+        label: selected ? '分类 $fullLabel，已筛选' : '分类 $fullLabel，筛选',
+        excludeSemantics: true,
+        child: chip,
+      );
       if (fullLabel != label) {
-        return Tooltip(message: fullLabel, child: chip);
+        return Tooltip(
+          message: fullLabel,
+          excludeFromSemantics: true,
+          child: labeledChip,
+        );
       }
-      return chip;
+      return labeledChip;
     }
 
-    return Chip(
-      label: CompactLabel.text(
-        label,
-        style: CompactLabel.style(
-          context,
-          color: scheme.onSurfaceVariant,
-          fontWeight: FontWeight.w600,
+    return Semantics(
+      label: '分类 $fullLabel',
+      excludeSemantics: true,
+      child: Chip(
+        label: CompactLabel.text(
+          label,
+          style: CompactLabel.style(
+            context,
+            color: scheme.onSurfaceVariant,
+            fontWeight: FontWeight.w600,
+          ),
         ),
+        backgroundColor: scheme.surfaceContainerHighest,
+        side: BorderSide.none,
+        labelPadding: chipLabelPadding,
+        visualDensity: chipVisualDensity,
+        materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
+        padding: EdgeInsets.zero,
       ),
-      backgroundColor: scheme.surfaceContainerHighest,
-      side: BorderSide.none,
-      labelPadding: chipLabelPadding,
-      visualDensity: chipVisualDensity,
-      materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
-      padding: EdgeInsets.zero,
     );
   }
 }

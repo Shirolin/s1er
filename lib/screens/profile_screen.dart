@@ -677,7 +677,13 @@ class _SystemGroupCard extends ConsumerWidget {
               mainAxisSize: MainAxisSize.min,
               children: [
                 if (count > 0) ...[
-                  Badge(label: Text('$count')),
+                  // 裸数字徽标读屏只念「2」，补上计数对象。
+                  Semantics(
+                    label: '共 $count 条阅读记录',
+                    child: ExcludeSemantics(
+                      child: Badge(label: Text('$count')),
+                    ),
+                  ),
                   const SizedBox(width: 8),
                 ],
                 Icon(

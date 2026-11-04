@@ -733,7 +733,8 @@ class _ForumCategoryTile extends ConsumerWidget {
             child: Semantics(
               button: hasSubs,
               expanded: hasSubs ? !isCollapsed : null,
-              label: category.name,
+              // 不再传 label：可见标题与 _StatChip 的语义会合并成同一节点，
+              // 额外 label 会让读屏把分类名念两遍。
               child: ConstrainedBox(
                 constraints: const BoxConstraints(minHeight: 48),
                 child: Padding(

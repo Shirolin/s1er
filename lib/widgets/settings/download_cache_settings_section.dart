@@ -148,10 +148,14 @@ class _DownloadCacheSettingsSectionState
                         .toList(),
                     selected: {settings.imageCacheLimitMb},
                     showSelectedIcon: false,
-                    onSelectionChanged: (selection) {
-                      S1Haptics.selection();
-                      notifier.setImageCacheLimitMb(selection.first);
-                    },
+                    // Web 不管理应用内图片内存缓存，副标题已注明仅移动端/桌面端；
+                    // 保持可点会变成改设置但无效果的空操作。
+                    onSelectionChanged: kIsWeb
+                        ? null
+                        : (selection) {
+                            S1Haptics.selection();
+                            notifier.setImageCacheLimitMb(selection.first);
+                          },
                   ),
                 ],
               ),

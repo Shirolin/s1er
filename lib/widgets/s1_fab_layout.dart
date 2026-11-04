@@ -324,6 +324,9 @@ class _NavActionButtonState extends State<_NavActionButton> {
     final scheme = Theme.of(context).colorScheme;
     return Tooltip(
       message: widget.tooltip,
+      // 语义标签已经描述了动作，Tooltip 若再贡献一次，
+      // 读屏会念成「下一楼（长按到底部） 下一楼」。
+      excludeFromSemantics: true,
       child: Semantics(
         button: true,
         label: widget.semanticLabel,

@@ -103,7 +103,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
               constraints: const BoxConstraints(maxWidth: 400),
               child: Card(
                 elevation: 0,
-                color: scheme.surfaceContainerHighest,
+                color: S1Surface.card(scheme),
                 child: Padding(
                   padding: const EdgeInsets.all(32),
                   child: Column(

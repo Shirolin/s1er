@@ -340,14 +340,16 @@ class _ReadingProgressBar extends ConsumerWidget {
 
     return Padding(
       padding: EdgeInsets.only(top: progressTop),
-      child: ClipRRect(
-        borderRadius: S1Shape.extraSmall,
-        child: LinearProgressIndicator(
-          value: record.progressAt(liveTotalReplies),
-          minHeight: 2,
-          backgroundColor: scheme.surfaceContainerHighest,
-          valueColor: AlwaysStoppedAnimation<Color>(
-            scheme.primary.withValues(alpha: S1Alpha.strong),
+      child: ExcludeSemantics(
+        child: ClipRRect(
+          borderRadius: S1Shape.extraSmall,
+          child: LinearProgressIndicator(
+            value: record.progressAt(liveTotalReplies),
+            minHeight: 2,
+            backgroundColor: scheme.surfaceContainerHighest,
+            valueColor: AlwaysStoppedAnimation<Color>(
+              scheme.primary.withValues(alpha: S1Alpha.strong),
+            ),
           ),
         ),
       ),
@@ -559,6 +561,7 @@ class _MetaLine extends StatelessWidget {
                   value: views,
                   color: secondaryColor,
                   textStyle: metaStyle,
+                  semanticLabel: '浏览 $views',
                 ),
                 const SizedBox(width: 8),
                 _ReplyMetaStat(
@@ -609,7 +612,8 @@ class _PageCountButton extends StatelessWidget {
     const shape = S1Shape.chipShape;
     return Semantics(
       button: true,
-      label: label,
+      label: '$label，选择页码',
+      excludeSemantics: true,
       child: Material(
         color: Colors.transparent,
         shape: shape,
@@ -665,33 +669,44 @@ class _ReplyMetaStat extends ConsumerWidget {
     final progress = record?.progressAt(liveTotalReplies) ?? 0;
     final isFinished = record != null && record.isFinishedAt(liveTotalReplies);
 
-    return Row(
-      mainAxisSize: MainAxisSize.min,
-      crossAxisAlignment: CrossAxisAlignment.center,
-      children: [
-        Transform.translate(
-          offset: const Offset(0, 0.5),
-          child: Icon(Icons.chat_bubble_outline, size: 12, color: color),
+    final readingState = record == null || progress <= 0
+        ? ''
+        : isFinished
+            ? '，已读'
+            : '，读到第 ${record.lastReadFloor} 楼';
+
+    return Semantics(
+      label: '回复 $base$readingState',
+      child: ExcludeSemantics(
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.center,
+          children: [
+            Transform.translate(
+              offset: const Offset(0, 0.5),
+              child: Icon(Icons.chat_bubble_outline, size: 12, color: color),
+            ),
+            const SizedBox(width: 2),
+            CompactLabel.text(
+              base,
+              style: CompactLabel.style(
+                context,
+                base: textStyle,
+                color: color,
+              ),
+            ),
+            if (record != null && progress > 0) ...[
+              const SizedBox(width: 4),
+              _ReadingStateBadge(
+                isFinished: isFinished,
+                lastReadFloor: record.lastReadFloor,
+                textStyle: textStyle,
+                scheme: scheme,
+              ),
+            ],
+          ],
         ),
-        const SizedBox(width: 2),
-        CompactLabel.text(
-          base,
-          style: CompactLabel.style(
-            context,
-            base: textStyle,
-            color: color,
-          ),
-        ),
-        if (record != null && progress > 0) ...[
-          const SizedBox(width: 4),
-          _ReadingStateBadge(
-            isFinished: isFinished,
-            lastReadFloor: record.lastReadFloor,
-            textStyle: textStyle,
-            scheme: scheme,
-          ),
-        ],
-      ],
+      ),
     );
   }
 }
@@ -750,30 +765,36 @@ class _MetaStat extends StatelessWidget {
     required this.value,
     required this.color,
     required this.textStyle,
+    required this.semanticLabel,
   });
 
   final IconData icon;
   final String value;
   final Color color;
   final TextStyle? textStyle;
+  final String semanticLabel;
 
   @override
   Widget build(BuildContext context) {
-    return Row(
-      mainAxisSize: MainAxisSize.min,
-      crossAxisAlignment: CrossAxisAlignment.center,
-      children: [
-        Icon(icon, size: 12, color: color),
-        const SizedBox(width: 2),
-        CompactLabel.text(
-          value,
-          style: CompactLabel.style(
-            context,
-            base: textStyle,
-            color: color,
+    return Semantics(
+      label: semanticLabel,
+      excludeSemantics: true,
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.center,
+        children: [
+          Icon(icon, size: 12, color: color),
+          const SizedBox(width: 2),
+          CompactLabel.text(
+            value,
+            style: CompactLabel.style(
+              context,
+              base: textStyle,
+              color: color,
+            ),
           ),
-        ),
-      ],
+        ],
+      ),
     );
   }
 }

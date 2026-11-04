@@ -5,6 +5,13 @@ All notable changes to S1er will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.10.0] - 2026-11-04
+
+### Added
+
+- **宽屏直接打开帖子使用左右分区**：宽屏下从首页「最近浏览」、通知或外部链接进入帖子时，也显示与论坛列表一致的左侧主题列表 + 右侧正文，不再退化成单栏详情。
+- **分区内换帖保持布局**：在分区左侧切换主题或翻页时保持当前帖子路由与左右分区，不再整页跳转回单栏。
+
 ## [0.9.4] - 2026-10-28
 
 ### Changed

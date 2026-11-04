@@ -98,6 +98,9 @@ abstract final class ThreadRouteCodec {
   static const forumThreadIdQuery = 'tid';
   static const forumThreadPageQuery = 'threadPage';
 
+  /// `/thread/:tid` 上携带的论坛 fid 提示（由双栏左栏选帖写入）。
+  static const threadFidQuery = 'fid';
+
   static Uri encode(ThreadDestination destination) {
     final tid = destination.tid;
     switch (destination) {
@@ -139,6 +142,31 @@ abstract final class ThreadRouteCodec {
         }
     }
     return Uri(path: '/forum/$fid', queryParameters: query).toString();
+  }
+
+  /// 将详情目标编码为 `/thread/:tid` 路由。
+  ///
+  /// [forumFid] 非空时附带论坛 fid 提示，供宽屏双栏在帖子数据返回前
+  /// 直接定位左栏版块；[resumePageHint] 用于续读时预带页码（防闪页）。
+  static String encodeThreadPath(
+    ThreadDestination destination, {
+    int? resumePageHint,
+    String? forumFid,
+  }) {
+    var path = encodePath(destination);
+    if (destination is ResumeThread &&
+        resumePageHint != null &&
+        resumePageHint > 1) {
+      path = encodeResumeWithPageHint(destination.tid, resumePageHint);
+    }
+    if (forumFid == null || forumFid.isEmpty) return path;
+    final uri = Uri.parse(path);
+    return uri.replace(
+      queryParameters: {
+        ...uri.queryParameters,
+        threadFidQuery: forumFid,
+      },
+    ).toString();
   }
 
   /// 从论坛双栏路由解析详情 Intent。

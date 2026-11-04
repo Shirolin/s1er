@@ -49,10 +49,15 @@ class ForumListScreen extends ConsumerStatefulWidget {
     required this.fid,
     this.selectedThreadId,
     this.selectedThreadIntent,
+    this.keepThreadRoute = false,
   });
   final String fid;
   final String? selectedThreadId;
   final ThreadOpenIntent? selectedThreadIntent;
+
+  /// 本页由 `/thread/:tid` 升成的双栏时保持详情路由，避免列表选帖和
+  /// 帖内翻页切到论坛路由后重建详情、重复拉取。
+  final bool keepThreadRoute;
 
   @override
   ConsumerState<ForumListScreen> createState() => _ForumListScreenState();
@@ -72,19 +77,41 @@ class _ForumListScreenState extends ConsumerState<ForumListScreen> {
     super.dispose();
   }
 
+  String _destinationPath(
+    ThreadDestination destination, {
+    int? resumePageHint,
+  }) {
+    if (!widget.keepThreadRoute) {
+      return ThreadRouteCodec.encodeForumPath(
+        widget.fid,
+        destination,
+        resumePageHint: resumePageHint,
+      );
+    }
+    return ThreadRouteCodec.encodeThreadPath(
+      destination,
+      resumePageHint: resumePageHint,
+      forumFid: widget.fid,
+    );
+  }
+
   void _openThread(
     ThreadDestination destination, {
     int? resumePageHint,
   }) {
-    // 同一 forum 页面改查询参数时用 go，避免叠两层同 path（pageKey 虽唯一，
-    // 也不应把双栏状态拆成两条历史）。
-    context.go(
-      ThreadRouteCodec.encodeForumPath(
-        widget.fid,
-        destination,
-        resumePageHint: resumePageHint,
-      ),
+    final location = _destinationPath(
+      destination,
+      resumePageHint: resumePageHint,
     );
+    // 同一路由内改查询参数用 go，避免叠两层同 path（pageKey 虽唯一，
+    // 也不应把双栏状态拆成两条历史）；跨路由（如由 `/thread/:tid`
+    // 直接入口升成的双栏）用 replace，保留首页等下层页面。
+    final targetPath = Uri.parse(location).path;
+    if (GoRouterState.of(context).uri.path == targetPath) {
+      context.go(location);
+    } else {
+      context.replace(location);
+    }
   }
 
   void _onScrollMetricsChanged(S1ScrollMetrics metrics) {
@@ -229,9 +256,8 @@ class _ForumListScreenState extends ConsumerState<ForumListScreen> {
         child: ThreadDetailScreen(
           tid: widget.selectedThreadId!,
           onClose: () => context.replace('/forum/${widget.fid}'),
-          onDestinationChanged: (destination) => context.replace(
-            ThreadRouteCodec.encodeForumPath(widget.fid, destination),
-          ),
+          onDestinationChanged: (destination) =>
+              context.replace(_destinationPath(destination)),
         ),
       );
     }
@@ -473,12 +499,8 @@ class _ForumListScreenState extends ConsumerState<ForumListScreen> {
                       suppressAppBar: true,
                       chromeBridge: _detailChrome,
                       onClose: _closeSplitDetail,
-                      onDestinationChanged: (destination) => context.replace(
-                        ThreadRouteCodec.encodeForumPath(
-                          widget.fid,
-                          destination,
-                        ),
-                      ),
+                      onDestinationChanged: (destination) =>
+                          context.replace(_destinationPath(destination)),
                     ),
                   ),
                 ),

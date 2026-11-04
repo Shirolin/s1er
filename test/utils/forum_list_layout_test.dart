@@ -37,5 +37,25 @@ void main() {
       expect(forumListPaneWidth(1600, userOverride: 300), 360);
       expect(forumListPaneWidth(1600, userOverride: 480), 480);
     });
+
+    test('direct thread entry prefers live fid then hint then history', () {
+      expect(
+        resolveThreadForumFid(liveFid: '4', fidHint: '5', historyFid: '9'),
+        '4',
+      );
+      expect(
+        resolveThreadForumFid(fidHint: '5', historyFid: '9'),
+        '5',
+      );
+      expect(
+        resolveThreadForumFid(liveFid: null, historyFid: '9'),
+        '9',
+      );
+      expect(
+        resolveThreadForumFid(liveFid: '', fidHint: '', historyFid: ''),
+        isNull,
+      );
+      expect(resolveThreadForumFid(), isNull);
+    });
   });
 }

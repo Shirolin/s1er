@@ -16,7 +16,7 @@ import 'providers/whats_new_provider.dart';
 import 'screens/home_screen.dart';
 import 'screens/login_screen.dart';
 import 'screens/forum_list_screen.dart';
-import 'screens/thread_detail_screen.dart';
+import 'screens/thread_route_screen.dart';
 import 'screens/compose_screen.dart';
 import 'screens/profile_screen.dart';
 import 'screens/settings_screen.dart';
@@ -101,12 +101,18 @@ final _router = GoRouter(
       pageBuilder: (context, state) {
         final tid = state.pathParameters['tid']!;
         final intent = ThreadRouteCodec.intentFromUri(state.uri, tid: tid);
+        final fidHint =
+            state.uri.queryParameters[ThreadRouteCodec.threadFidQuery];
         return NoTransitionPage<void>(
           key: state.pageKey,
           child: ThreadOpenIntentScope(
             tid: tid,
             intent: intent,
-            child: ThreadDetailScreen(tid: tid),
+            child: ThreadRouteScreen(
+              tid: tid,
+              intent: intent,
+              fidHint: fidHint,
+            ),
           ),
         );
       },

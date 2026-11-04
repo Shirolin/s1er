@@ -11,6 +11,21 @@ bool shouldShowForumSplitView(
 }) =>
     shouldOpenForumThreadInPlace(windowWidth) && hasSelectedThread;
 
+/// 直接打开 `/thread/:tid` 时用于双栏的论坛 fid。
+///
+/// 优先用帖子首屏解析出的 fid；请求完成前退回路由提示或阅读历史里的 fid，
+/// 让双栏左栏无需等待接口（「最近浏览」等入口也能立即进入双栏）。
+String? resolveThreadForumFid({
+  String? liveFid,
+  String? fidHint,
+  String? historyFid,
+}) {
+  if (liveFid != null && liveFid.isNotEmpty) return liveFid;
+  if (fidHint != null && fidHint.isNotEmpty) return fidHint;
+  if (historyFid != null && historyFid.isNotEmpty) return historyFid;
+  return null;
+}
+
 /// Minimum list pane width when user-resized (desktop split).
 const double forumListPaneMinWidth = 360;
 

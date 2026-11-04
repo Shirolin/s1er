@@ -69,6 +69,35 @@ void main() {
       expect(ThreadRouteCodec.decode(uri, tid: '100'), isA<ResumeThread>());
     });
 
+    test('thread path carries forum fid hint without changing intent', () {
+      expect(
+        ThreadRouteCodec.encodeThreadPath(
+          const ResumeThread('100'),
+          forumFid: '4',
+        ),
+        '/thread/100?fid=4',
+      );
+      expect(
+        ThreadRouteCodec.encodeThreadPath(
+          const ResumeThread('100'),
+          resumePageHint: 3,
+          forumFid: '4',
+        ),
+        '/thread/100?page=3&resume=1&fid=4',
+      );
+      final uri = Uri.parse(
+        ThreadRouteCodec.encodeThreadPath(
+          const ThreadPage('100', 2),
+          forumFid: '4',
+        ),
+      );
+      expect(ThreadRouteCodec.decode(uri, tid: '100'), isA<ThreadPage>());
+      expect(
+        uri.queryParameters[ThreadRouteCodec.threadFidQuery],
+        '4',
+      );
+    });
+
     test('page=1 encodes and decodes as forced page', () {
       const dest = ThreadPage('100', 1);
       final uri = ThreadRouteCodec.encode(dest);

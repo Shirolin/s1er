@@ -41,10 +41,13 @@ class NoticeListTile extends StatelessWidget {
       child: ListTile(
         onTap: item.canNavigate ? S1Haptics.wrapTap(onTap) : null,
         shape: S1Shape.cardShape,
-        leading: WebAvatar(
-          url: item.avatarUrl,
-          radius: 22,
-          fallbackLetter: letter,
+        leading: ExcludeSemantics(
+          // 头像首字母只是占位，混进合并后的按钮文本会成为噪声。
+          child: WebAvatar(
+            url: item.avatarUrl,
+            radius: 22,
+            fallbackLetter: letter,
+          ),
         ),
         title: Row(
           children: [

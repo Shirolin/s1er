@@ -572,10 +572,13 @@ class _UserHitTile extends ConsumerWidget {
       clipBehavior: Clip.antiAlias,
       child: ListTile(
         contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-        leading: WebAvatar(
-          url: avatarUrl,
-          radius: 20,
-          fallbackLetter: hit.name.isNotEmpty ? hit.name[0] : '?',
+        leading: ExcludeSemantics(
+          // 头像首字母是占位图，混进 ListTile 合并文本会被读成多余字符。
+          child: WebAvatar(
+            url: avatarUrl,
+            radius: 20,
+            fallbackLetter: hit.name.isNotEmpty ? hit.name[0] : '?',
+          ),
         ),
         title: Text(hit.name, style: textTheme.titleMedium),
         subtitle: Text(

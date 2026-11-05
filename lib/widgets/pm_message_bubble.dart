@@ -84,19 +84,29 @@ class PmMessageBubble extends StatelessWidget {
       fallbackLetter: displayName.characters.first,
     );
 
-    return Padding(
-      padding: EdgeInsets.symmetric(
-        horizontal: compact ? 12 : 24,
-        vertical: compact ? 5 : 6,
-      ),
-      child: Row(
-        mainAxisAlignment: message.isOutgoing
-            ? MainAxisAlignment.end
-            : MainAxisAlignment.start,
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: message.isOutgoing
-            ? [messageColumn, const SizedBox(width: 8), avatar]
-            : [avatar, const SizedBox(width: 8), messageColumn],
+    // 不合并时读屏会把头像首字母、`名字 · 时间`、正文拆成三四个节点，
+    // 逐条念出「李」再念「李四 · 时间」再念正文。合并成一条按阅读顺序播报。
+    final semanticsLabel = '$displayName，$messageTime，'
+        '${message.message.isEmpty ? '（空消息）' : message.message}';
+
+    return Semantics(
+      container: true,
+      label: semanticsLabel,
+      excludeSemantics: true,
+      child: Padding(
+        padding: EdgeInsets.symmetric(
+          horizontal: compact ? 12 : 24,
+          vertical: compact ? 5 : 6,
+        ),
+        child: Row(
+          mainAxisAlignment: message.isOutgoing
+              ? MainAxisAlignment.end
+              : MainAxisAlignment.start,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: message.isOutgoing
+              ? [messageColumn, const SizedBox(width: 8), avatar]
+              : [avatar, const SizedBox(width: 8), messageColumn],
+        ),
       ),
     );
   }

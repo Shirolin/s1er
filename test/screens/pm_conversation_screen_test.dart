@@ -121,6 +121,51 @@ void main() {
     expect(find.byKey(const ValueKey('pm_desktop_composer')), findsNothing);
     expect(tester.takeException(), isNull);
   });
+
+  testWidgets('私信气泡合并成单条语义，头像首字母不再单独播报', (tester) async {
+    final handle = tester.ensureSemantics();
+
+    await tester.pumpWidget(
+      ProviderScope(
+        overrides: [
+          authStateProvider.overrideWith(_LoggedInAuthNotifier.new),
+          pmConversationProvider(_touid).overrideWith(
+            () => _SeededPmConversationNotifier(_touid, _sampleState),
+          ),
+          settingsProvider.overrideWith(
+            () => SettingsNotifier(
+              initial: const AppSettings(
+                avatarLoadPolicy: ImageLoadPolicy.manual,
+              ),
+            ),
+          ),
+          wifiConnectedProvider.overrideWith((ref) => Stream.value(true)),
+        ],
+        child: MaterialApp(
+          theme: AppTheme.lightTheme('purple'),
+          home: const PmConversationScreen(
+            touid: _touid,
+            partnerName: 'Kiyohara_Yasuke',
+          ),
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    expect(
+      find.bySemanticsLabel(
+        RegExp(r'^Kiyohara_Yasuke，2024-.*收到，我来确认。$'),
+      ),
+      findsOneWidget,
+    );
+    expect(
+      find.bySemanticsLabel(RegExp(r'^本地用户，2024-.*谢谢。$')),
+      findsOneWidget,
+    );
+    expect(find.bySemanticsLabel('K'), findsNothing);
+    expect(find.bySemanticsLabel('本'), findsNothing);
+    handle.dispose();
+  });
 }
 
 class _SeededPmConversationNotifier extends PmConversationNotifier {

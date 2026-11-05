@@ -30,10 +30,14 @@ class PmListTile extends StatelessWidget {
       child: ListTile(
         onTap: S1Haptics.wrapTap(onTap),
         shape: S1Shape.cardShape,
-        leading: WebAvatar(
-          url: item.avatarUrl,
-          radius: 22,
-          fallbackLetter: letter,
+        leading: ExcludeSemantics(
+          // 头像是装饰：首字母会混进 ListTile 合并后的按钮文本
+          //（「李 李四 对我说 …」），读屏没有额外信息。
+          child: WebAvatar(
+            url: item.avatarUrl,
+            radius: 22,
+            fallbackLetter: letter,
+          ),
         ),
         title: Text(
           item.isOutgoing

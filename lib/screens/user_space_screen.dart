@@ -378,34 +378,44 @@ class _ThreadCard extends ConsumerWidget {
                 overflow: TextOverflow.ellipsis,
               ),
               const SizedBox(height: 8),
-              Row(
-                children: [
-                  if (item.dateline > 0) ...[
-                    Text(formatTimeAgo(item.dateline), style: metaStyle),
-                    const SizedBox(width: 12),
+              // 裸数字「45万 6435」在合并后的卡片按钮里没有单位，
+              // 与帖子列表卡一致补上「浏览 / 回复」。
+              Semantics(
+                label: [
+                  if (item.dateline > 0) formatTimeAgo(item.dateline),
+                  '浏览 ${formatCount(item.views)}',
+                  '回复 ${formatCount(item.replies)}',
+                ].join('，'),
+                excludeSemantics: true,
+                child: Row(
+                  children: [
+                    if (item.dateline > 0) ...[
+                      Text(formatTimeAgo(item.dateline), style: metaStyle),
+                      const SizedBox(width: 12),
+                    ],
+                    Icon(
+                      Icons.visibility_outlined,
+                      size: 12,
+                      color: scheme.onSurfaceVariant,
+                    ),
+                    const SizedBox(width: 2),
+                    Text(
+                      formatCount(item.views),
+                      style: metaStyle,
+                    ),
+                    const SizedBox(width: 8),
+                    Icon(
+                      Icons.chat_bubble_outline,
+                      size: 12,
+                      color: scheme.onSurfaceVariant,
+                    ),
+                    const SizedBox(width: 2),
+                    Text(
+                      formatCount(item.replies),
+                      style: metaStyle,
+                    ),
                   ],
-                  Icon(
-                    Icons.visibility_outlined,
-                    size: 12,
-                    color: scheme.onSurfaceVariant,
-                  ),
-                  const SizedBox(width: 2),
-                  Text(
-                    formatCount(item.views),
-                    style: metaStyle,
-                  ),
-                  const SizedBox(width: 8),
-                  Icon(
-                    Icons.chat_bubble_outline,
-                    size: 12,
-                    color: scheme.onSurfaceVariant,
-                  ),
-                  const SizedBox(width: 2),
-                  Text(
-                    formatCount(item.replies),
-                    style: metaStyle,
-                  ),
-                ],
+                ),
               ),
             ],
           ),

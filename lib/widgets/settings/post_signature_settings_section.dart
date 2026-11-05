@@ -110,16 +110,36 @@ class _PostSignatureSettingsSectionState
               ),
               Padding(
                 padding: const EdgeInsets.fromLTRB(8, 8, 8, 0),
-                child: TextField(
-                  controller: _customController,
-                  enabled: settings.postSignatureEnabled,
-                  maxLength: PostSignature.maxCustomLength,
-                  decoration: const InputDecoration(
-                    labelText: '自定义前缀',
-                    hintText: '可选，如「今日宜摸鱼」',
-                    border: OutlineInputBorder(),
+                // 自成语义节点：否则本分区其它文字会并进输入框的读屏标签。
+                child: Semantics(
+                  container: true,
+                  child: TextField(
+                    controller: _customController,
+                    enabled: settings.postSignatureEnabled,
+                    maxLength: PostSignature.maxCustomLength,
+                    decoration: const InputDecoration(
+                      labelText: '自定义前缀',
+                      hintText: '可选，如「今日宜摸鱼」',
+                      border: OutlineInputBorder(),
+                    ),
+                    // 默认计数器依赖 MaterialLocalizations，未配中文时
+                    // 读屏会念「20 characters remaining」。
+                    buildCounter: (
+                      context, {
+                      required currentLength,
+                      required isFocused,
+                      required maxLength,
+                    }) =>
+                        Text(
+                      '$currentLength/${maxLength ?? 0}',
+                      style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                            color: Theme.of(
+                              context,
+                            ).colorScheme.onSurfaceVariant,
+                          ),
+                    ),
+                    onChanged: notifier.setPostSignatureCustom,
                   ),
-                  onChanged: notifier.setPostSignatureCustom,
                 ),
               ),
               Padding(

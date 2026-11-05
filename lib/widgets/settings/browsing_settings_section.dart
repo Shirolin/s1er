@@ -158,23 +158,30 @@ class BrowsingSettingsSection extends ConsumerWidget {
                 borderRadius: S1Shape.small,
               ),
             ),
-            ListTile(
-              leading: Icon(
-                Icons.visibility_off_outlined,
-                color: scheme.onSurfaceVariant,
+            // 自成语义节点：不隔离时本分区标题与密度说明会并进这个可点行，
+            // 整个分区在读屏里变成一个长按钮。
+            Semantics(
+              container: true,
+              child: ListTile(
+                leading: Icon(
+                  Icons.visibility_off_outlined,
+                  color: scheme.onSurfaceVariant,
+                ),
+                title: const Text('已屏蔽版块'),
+                subtitle: Text(
+                  hiddenCount == 0 ? '从首页隐藏不感兴趣的版块' : '已屏蔽 $hiddenCount 个版块',
+                  style: subtitleStyle,
+                ),
+                trailing: Icon(
+                  Icons.chevron_right,
+                  color: scheme.onSurfaceVariant,
+                ),
+                contentPadding: const EdgeInsets.symmetric(horizontal: 8),
+                shape: const RoundedRectangleBorder(
+                  borderRadius: S1Shape.small,
+                ),
+                onTap: () => context.push('/hidden-forums'),
               ),
-              title: const Text('已屏蔽版块'),
-              subtitle: Text(
-                hiddenCount == 0 ? '从首页隐藏不感兴趣的版块' : '已屏蔽 $hiddenCount 个版块',
-                style: subtitleStyle,
-              ),
-              trailing: Icon(
-                Icons.chevron_right,
-                color: scheme.onSurfaceVariant,
-              ),
-              contentPadding: const EdgeInsets.symmetric(horizontal: 8),
-              shape: const RoundedRectangleBorder(borderRadius: S1Shape.small),
-              onTap: () => context.push('/hidden-forums'),
             ),
             const SizedBox(height: 8),
             Padding(

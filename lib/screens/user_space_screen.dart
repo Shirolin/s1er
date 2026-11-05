@@ -298,7 +298,7 @@ class _ReplyList extends ConsumerWidget {
                     }
                     final item = state.items[index];
                     return KeyedSubtree(
-                      key: ValueKey('uspace_reply_${item.pid ?? item.tid}'),
+                      key: ValueKey('uspace_reply_${item.tid}'),
                       child: _ReplyCard(item: item),
                     );
                   },
@@ -429,6 +429,9 @@ class _ReplyCard extends StatelessWidget {
   const _ReplyCard({required this.item});
   final UserSpaceItem item;
 
+  /// 一张卡最多铺开的回复摘要条数，其余折叠为计数。
+  static const maxVisibleEntries = 3;
+
   @override
   Widget build(BuildContext context) {
     final scheme = Theme.of(context).colorScheme;
@@ -440,8 +443,10 @@ class _ReplyCard extends StatelessWidget {
       shape: S1Shape.cardShape,
       child: InkWell(
         onTap: () {
-          final destination = item.pid != null && item.pid!.isNotEmpty
-              ? ThreadPost(item.tid, item.pid!)
+          final firstPid =
+              item.replyEntries.isEmpty ? null : item.replyEntries.first.pid;
+          final destination = firstPid != null && firstPid.isNotEmpty
+              ? ThreadPost(item.tid, firstPid)
               : ResumeThread(item.tid);
           context.push(ThreadRouteCodec.encodePath(destination));
         },
@@ -460,27 +465,39 @@ class _ReplyCard extends StatelessWidget {
                 maxLines: 1,
                 overflow: TextOverflow.ellipsis,
               ),
-              if (item.replyExcerpt != null &&
-                  item.replyExcerpt!.isNotEmpty) ...[
-                const SizedBox(height: 4),
-                Container(
-                  padding: const EdgeInsets.only(left: 8),
-                  decoration: BoxDecoration(
-                    border: Border(
-                      left: BorderSide(
-                        color: scheme.outlineVariant,
-                        width: 2,
+              // 同一主题的多条回复合并在同一张卡里，避免标题/版块重复出现；
+              // 一页里同一主题可能十几条，全部铺开会挤掉后续主题。
+              for (final entry
+                  in item.replyEntries.take(_ReplyCard.maxVisibleEntries))
+                if (entry.excerpt.isNotEmpty) ...[
+                  const SizedBox(height: 6),
+                  Container(
+                    padding: const EdgeInsets.only(left: 8),
+                    decoration: BoxDecoration(
+                      border: Border(
+                        left: BorderSide(
+                          color: scheme.outlineVariant,
+                          width: 2,
+                        ),
                       ),
                     ),
-                  ),
-                  child: Text(
-                    item.replyExcerpt!,
-                    style: textTheme.bodySmall?.copyWith(
-                      color: scheme.onSurfaceVariant,
-                      height: 1.4,
+                    child: Text(
+                      entry.excerpt,
+                      style: textTheme.bodySmall?.copyWith(
+                        color: scheme.onSurfaceVariant,
+                        height: 1.4,
+                      ),
+                      maxLines: 3,
+                      overflow: TextOverflow.ellipsis,
                     ),
-                    maxLines: 3,
-                    overflow: TextOverflow.ellipsis,
+                  ),
+                ],
+              if (item.replyEntries.length > _ReplyCard.maxVisibleEntries) ...[
+                const SizedBox(height: 6),
+                Text(
+                  '还有 ${item.replyEntries.length - _ReplyCard.maxVisibleEntries} 条回复',
+                  style: textTheme.labelSmall?.copyWith(
+                    color: scheme.onSurfaceVariant,
                   ),
                 ),
               ],

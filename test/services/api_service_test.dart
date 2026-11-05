@@ -1243,9 +1243,9 @@ window.location.href = 'forum.php?mod=viewthread&tid=2253488&pid=69963296&page=1
         final result = DiscuzParser.parseSpaceReplyHtml(html, page: 1);
         expect(result.items, hasLength(1));
         expect(result.items.first.tid, '100');
-        expect(result.items.first.pid, '55');
+        expect(result.items.first.replyEntries.single.pid, '55');
         expect(result.items.first.subject, '标题A');
-        expect(result.items.first.replyExcerpt, '回复摘要一');
+        expect(result.items.first.replyEntries.single.excerpt, '回复摘要一');
       });
 
       test('parses desktop pid-then-ptid links', () {
@@ -1256,8 +1256,8 @@ window.location.href = 'forum.php?mod=viewthread&tid=2253488&pid=69963296&page=1
         final result = DiscuzParser.parseSpaceReplyHtml(html, page: 1);
         expect(result.items, hasLength(1));
         expect(result.items.first.tid, '200');
-        expect(result.items.first.pid, '99');
-        expect(result.items.first.replyExcerpt, '摘要B');
+        expect(result.items.first.replyEntries.single.pid, '99');
+        expect(result.items.first.replyEntries.single.excerpt, '摘要B');
       });
 
       test('parses mobile threadlist with findpost anchors', () {
@@ -1273,9 +1273,38 @@ window.location.href = 'forum.php?mod=viewthread&tid=2253488&pid=69963296&page=1
         final result = DiscuzParser.parseSpaceReplyHtml(html, page: 1);
         expect(result.items, hasLength(1));
         expect(result.items.first.tid, '300');
-        expect(result.items.first.pid, '42');
+        expect(result.items.first.replyEntries.single.pid, '42');
         expect(result.items.first.subject, '手机标题');
-        expect(result.items.first.replyExcerpt, '手机回复');
+        expect(result.items.first.replyEntries.single.excerpt, '手机回复');
+      });
+
+      test('merges multiple replies of one thread into a single item', () {
+        const html = '''
+<div class="threadlist cl">
+<li class="list">
+<a href="forum.php?mod=redirect&amp;goto=findpost&amp;ptid=400&amp;pid=" target="_blank" class="mt10">
+<div class="threadlist_tit cl"><em >同主题标题</em></div></a>
+<a href="forum.php?mod=redirect&amp;goto=findpost&amp;ptid=400&amp;pid=61&amp;mobile=2" target="_blank"><div class="quote"><blockquote>第一条</blockquote></div></a>
+<a href="forum.php?mod=redirect&amp;goto=findpost&amp;ptid=400&amp;pid=62&amp;mobile=2" target="_blank"><div class="quote"><blockquote>第二条</blockquote></div></a>
+</li>
+<li class="list">
+<a href="forum.php?mod=redirect&amp;goto=findpost&amp;ptid=401&amp;pid=" target="_blank" class="mt10">
+<div class="threadlist_tit cl"><em >另一主题</em></div></a>
+<a href="forum.php?mod=redirect&amp;goto=findpost&amp;ptid=401&amp;pid=63&amp;mobile=2" target="_blank"><div class="quote"><blockquote>第三条</blockquote></div></a>
+</li>
+</div>
+''';
+        final result = DiscuzParser.parseSpaceReplyHtml(html, page: 1);
+
+        expect(result.items, hasLength(2));
+        expect(result.items[0].tid, '400');
+        expect(result.items[0].subject, '同主题标题');
+        expect(
+          result.items[0].replyEntries.map((e) => e.excerpt),
+          ['第一条', '第二条'],
+        );
+        expect(result.items[0].replyEntries.map((e) => e.pid), ['61', '62']);
+        expect(result.items[1].replyEntries.single.pid, '63');
       });
     });
   });

@@ -8,9 +8,7 @@ class UserSpaceItem {
     required this.dateline,
     this.replies = 0,
     this.views = 0,
-    this.replyExcerpt,
-    this.pid,
-    this.isReply = false,
+    this.replyEntries = const [],
   });
 
   factory UserSpaceItem.fromThreadJson(Map<String, dynamic> json) {
@@ -30,9 +28,10 @@ class UserSpaceItem {
   final int dateline;
   final int replies;
   final int views;
-  final String? replyExcerpt;
-  final String? pid;
-  final bool isReply;
+
+  /// 同一主题下的回复摘要。空间回复列表按主题聚合为一张卡，
+  /// 论坛一次返回同一主题多条回复，拆成多张卡会重复标题与版块。
+  final List<UserSpaceReplyEntry> replyEntries;
 
   static String _decodeHtml(String text) {
     return decodeHtmlEntities(
@@ -42,6 +41,13 @@ class UserSpaceItem {
           .replaceAll('&gt;', '>'),
     ).replaceAll(RegExp(r'<[^>]+>'), '');
   }
+}
+
+class UserSpaceReplyEntry {
+  const UserSpaceReplyEntry({required this.pid, required this.excerpt});
+
+  final String pid;
+  final String excerpt;
 }
 
 /// 用户空间主题 / 回复列表的一页结果。

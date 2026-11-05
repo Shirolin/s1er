@@ -25,6 +25,14 @@ class NoticeListTile extends StatelessWidget {
     return rest.isEmpty ? summary : rest;
   }
 
+  /// 摘要末尾的「查看」是提醒里的链接文字，整行已可点击，留着只是噪声。
+  static String displaySummary(String summary, String authorName) {
+    final text = summaryWithoutAuthor(summary, authorName)
+        .replaceFirst(RegExp(r'\s*查看\s*$'), '')
+        .trimRight();
+    return text.isEmpty ? summary : text;
+  }
+
   IconData _iconForType() {
     switch (item.type) {
       case NoticeType.reply:
@@ -83,7 +91,7 @@ class NoticeListTile extends StatelessWidget {
           ],
         ),
         subtitle: Text(
-          summaryWithoutAuthor(item.summary, item.authorName),
+          displaySummary(item.summary, item.authorName),
           maxLines: 3,
           overflow: TextOverflow.ellipsis,
           style: textTheme.bodySmall?.copyWith(color: scheme.onSurfaceVariant),

@@ -33,11 +33,18 @@ void main() {
     expect(NoticeListTile.summaryWithoutAuthor(summary, ''), summary);
   });
 
-  testWidgets('列表行不再重复显示作者名', (tester) async {
+  test('displaySummary 同时去掉作者名与结尾的「查看」链接文字', () {
+    expect(
+      NoticeListTile.displaySummary('無始無終 回复了您的帖子 [S1er] 查看', '無始無終'),
+      '回复了您的帖子 [S1er]',
+    );
+  });
+
+  testWidgets('列表行不再重复显示作者名与「查看」', (tester) async {
     await tester.pumpWidget(
       wrapWithAppTheme(
         NoticeListTile(
-          item: _item('無始無終', '無始無終 回复了您的帖子 [S1er]'),
+          item: _item('無始無終', '無始無終 回复了您的帖子 [S1er] 查看'),
           onTap: () {},
         ),
       ),

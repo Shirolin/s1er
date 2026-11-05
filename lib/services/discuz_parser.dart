@@ -1817,7 +1817,7 @@ abstract final class DiscuzParser {
     final items = <UserSpaceItem>[];
 
     if (html.contains('<div class="threadlist cl">')) {
-      // 手机版模板
+      // 手机版模板：一个 <li> 是一个主题，多条回复摘要按主题合并成一张卡。
       final blocks = html.split('<li class="list">');
       for (var i = 1; i < blocks.length; i++) {
         final block = blocks[i];
@@ -1829,47 +1829,54 @@ abstract final class DiscuzParser {
         var subject =
             titleMatch != null ? stripHtml(titleMatch.group(1) ?? '') : '';
 
-        // 优先从块内 findpost 链接取 tid（兼容 ptid&pid / pid&ptid；空 pid 为标题行）。
-        String? blockTid;
+        final entries = <UserSpaceReplyEntry>[];
+        var tid = '';
         for (final m in _spaceFindPostAnchorRe.allMatches(block)) {
           final href = _unescapeHtmlAmp(m.group(1) ?? '');
           final parsed = _parseSpaceFindPostHref(href);
           if (parsed == null) continue;
-          final (tid, pid) = parsed;
-          if (pid == null || pid.isEmpty) {
-            blockTid ??= tid;
+          final (anchorTid, pid) = parsed;
+          tid = anchorTid;
+          if (pid == null) {
             if (subject.isEmpty) {
               subject = stripHtml(m.group(2) ?? '');
             }
             continue;
           }
-          blockTid ??= tid;
-          items.add(
-            UserSpaceItem(
-              tid: tid,
-              subject: subject,
-              dateline: 0,
-              replyExcerpt: stripHtml(m.group(2) ?? ''),
+          entries.add(
+            UserSpaceReplyEntry(
               pid: pid,
-              isReply: true,
+              excerpt: stripHtml(m.group(2) ?? ''),
             ),
           );
         }
 
         // 块内无 findpost 时再尝试 viewthread tid（兼容旧结构）。
-        if (blockTid == null) {
+        if (tid.isEmpty) {
           final tidMatch = RegExp(
             r'mod=viewthread&(?:amp;)?(?:p)?tid=(\d+)',
           ).firstMatch(block);
-          blockTid = tidMatch?.group(1);
+          tid = tidMatch?.group(1) ?? '';
         }
-        if (blockTid == null) continue;
+        if (tid.isEmpty || entries.isEmpty) continue;
+        items.add(
+          UserSpaceItem(
+            tid: tid,
+            subject: subject,
+            dateline: 0,
+            replyEntries: entries,
+          ),
+        );
       }
     } else {
-      // 桌面版模板
+      // 桌面版模板：标题行切换当前主题，后续摘要挂到该主题上。
       String? currentSubject;
       String? currentForum;
       String? currentTid;
+      final order = <String>[];
+      final subjects = <String, String>{};
+      final forums = <String, String?>{};
+      final groups = <String, List<UserSpaceReplyEntry>>{};
       final forumLinkRe = RegExp(
         r'<a href="forum-\d+-\d+-\d+.html" class="xg1"[^>]*>(.*?)</a>',
         dotAll: true,
@@ -1883,7 +1890,7 @@ abstract final class DiscuzParser {
         final text = stripHtml(match.group(2) ?? '');
         if (tid.isEmpty) continue;
 
-        if (pid == null || pid.isEmpty) {
+        if (pid == null) {
           currentTid = tid;
           currentSubject = text;
           final end =
@@ -1891,19 +1898,31 @@ abstract final class DiscuzParser {
           final after = html.substring(match.end, end);
           final fm = forumLinkRe.firstMatch(after);
           currentForum = fm != null ? stripHtml(fm.group(1) ?? '') : null;
+          subjects[tid] = currentSubject;
+          forums[tid] = currentForum;
         } else {
-          items.add(
-            UserSpaceItem(
-              tid: tid,
-              subject: currentTid == tid ? (currentSubject ?? '') : '',
-              forumName: currentTid == tid ? currentForum : null,
-              dateline: 0,
-              replyExcerpt: text,
-              pid: pid,
-              isReply: true,
-            ),
-          );
+          if (!groups.containsKey(tid)) {
+            order.add(tid);
+            groups[tid] = [];
+            if (currentTid == tid) {
+              subjects[tid] = currentSubject ?? '';
+              forums[tid] = currentForum;
+            }
+          }
+          groups[tid]!.add(UserSpaceReplyEntry(pid: pid, excerpt: text));
         }
+      }
+
+      for (final tid in order) {
+        items.add(
+          UserSpaceItem(
+            tid: tid,
+            subject: subjects[tid] ?? '',
+            forumName: forums[tid],
+            dateline: 0,
+            replyEntries: groups[tid]!,
+          ),
+        );
       }
     }
 

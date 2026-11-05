@@ -1190,6 +1190,43 @@ window.location.href = 'forum.php?mod=viewthread&tid=2253488&pid=69963296&page=1
       });
     });
 
+    group('parseSpaceThreadHtml', () {
+      test('parses mobile threadlist with unpadded mtime', () {
+        const html = '''
+<div class="threadlist cl">
+<li class="list">
+<div class="threadlist_top cl">
+<a href="home.php?mod=space&amp;uid=1&amp;mobile=2" class="mimg">
+<img src="https://avatar.stage1st.com/x.jpg"></a>
+<div class="muser"><h3><a href="home.php?mod=space&amp;uid=1" class="mmc">shirolin</a></h3>
+<span class="mtime">2026-7-22</span></div>
+</div>
+<a href="forum.php?mod=viewthread&amp;tid=2286001&amp;extra=&amp;mobile=2">
+<em>标题X</em></a>
+<a href="forum.php?mod=forumdisplay&amp;fid=4&amp;mobile=2">#归墟</a>
+<i class="dm-eye-fill"></i>
+1,349
+<i class="dm-chat-s-fill"></i>
+8
+</li>
+</div>
+''';
+        final result = DiscuzParser.parseSpaceThreadHtml(html, page: 1);
+
+        expect(result.items, hasLength(1));
+        final item = result.items.single;
+        expect(item.tid, '2286001');
+        expect(item.subject, '标题X');
+        expect(item.forumName, '归墟');
+        expect(item.views, 1349);
+        expect(item.replies, 8);
+        expect(
+          item.dateline,
+          DateTime(2026, 7, 22).millisecondsSinceEpoch ~/ 1000,
+        );
+      });
+    });
+
     group('parseSpaceReplyHtml', () {
       test('parses desktop ptid-then-pid links', () {
         const html = '''

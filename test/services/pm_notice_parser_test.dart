@@ -98,6 +98,30 @@ void main() {
       expect(result.totalPages, 1);
     });
 
+    test('parses formatted vdateline from mypm list', () {
+      final result = DiscuzParser.parsePmListJson({
+        'Variables': {
+          'list': [
+            {
+              'touid': '535036',
+              'msgfrom': 'shirolin',
+              'msgfromid': '426519',
+              'tousername': 'Kiyohara_Yasuke',
+              'message': '那就好',
+              'vdateline': '2025-6-17 09:34',
+            },
+          ],
+          'perpage': '20',
+          'count': '1',
+        },
+      });
+
+      expect(
+        result.items.single.dateline,
+        DateTime(2025, 6, 17, 9, 34).millisecondsSinceEpoch ~/ 1000,
+      );
+    });
+
     test('parses alternate mypm field aliases', () {
       final json = {
         'Variables': {

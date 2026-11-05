@@ -85,6 +85,25 @@ void main() {
       expect(page.hits[1].name, 'demo_user_fan');
     });
 
+    test('prefers h4 username over avatar URL link text', () {
+      const html = '''
+<ul class="buddy cl">
+<li class="bbda cl">
+<div class="avt">
+<a href="space-uid-426519.html" target="_blank">https://avatar.stage1st.com/000/42/65/19_avatar_small.jpg</a>
+</div>
+<h4><a href="space-uid-426519.html" title="shirolin" target="_blank">shirolin</a></h4>
+<p class="maxh">注册时间: 2018-1-1</p>
+</li>
+</ul>
+''';
+      final page = DiscuzParser.parseUserSearchHtml(html);
+
+      expect(page.hits, hasLength(1));
+      expect(page.hits.single.uid, '426519');
+      expect(page.hits.single.name, 'shirolin');
+    });
+
     test('surfaces messagetext error', () {
       final html =
           File('test/fixtures/search_rate_limited.html').readAsStringSync();

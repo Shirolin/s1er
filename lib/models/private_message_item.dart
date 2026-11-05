@@ -101,6 +101,9 @@ class PrivateMessageItem {
     final dbTs = int.tryParse(json['dbdateline']?.toString() ?? '');
     if (dbTs != null && dbTs > 0) return dbTs;
     final date = _firstNonEmpty([
+      // mypm 列表只给格式化后的 `vdateline`（如 `2025-6-17 09:34`），
+      // 没有数字时间戳；漏掉它列表行的时间整列为空。
+      json['vdateline'],
       json['date'],
       json['pmdate'],
       json['postdatetime'],

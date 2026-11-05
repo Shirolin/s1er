@@ -27,7 +27,8 @@ String formatTimeAgo(int dateline) {
   final month = dt.month.toString().padLeft(2, '0');
   final day = dt.day.toString().padLeft(2, '0');
   if (dt.year == now.year) return '$month-$day';
-  return '${dt.year % 100}/$month/$day';
+  // 与当年的 `07-22` 保持同一分隔符；`25/06/17` 既混用分隔符又容易被读成月日。
+  return '${dt.year}-$month-$day';
 }
 
 /// 完整日期时间：用于详情页，如 "2024-11-12 19:01"

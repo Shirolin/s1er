@@ -5,6 +5,23 @@ All notable changes to S1er will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.11.0] - 2026-11-05
+
+### Fixed
+
+- **多选分享跳回顶部**：从任意楼层进入多选模式后停在原楼层，不再跳回本页顶部；退出多选同样保持位置。
+- **标题里的 HTML 实体**：主题标题中的 `&`、引号等不再显示成 `&amp;`、`&#39;`。
+- **读屏把整块内容并成一个节点**：楼层正文、评分卡、私信气泡、设置项、个人资料、收藏与阅读历史等位置拆分为独立节点，不再整层被读成一个可点组或一张图片；评分人名字不再重复播报。
+- **私信与用户空间时间**：恢复时间显示。
+- **用户搜索**：修正搜索结果中的用户名。
+- **提醒摘要**：去掉重复的作者名与结尾多余链接文字。
+
+### Changed
+
+- 版块列表行更紧凑，列表与分页补全无障碍标签，置顶卡对比度提高。
+- 收藏与阅读历史列表统一行高与信息密度。
+- 用户空间的回复按主题聚合展示。
+
 ## [0.10.0] - 2026-11-04
 
 ### Added

@@ -133,7 +133,7 @@ class _HistoryTile extends ConsumerWidget {
       onDismissed: (_) =>
           ref.read(readingHistoryProvider.notifier).delete(record.tid),
       child: Card(
-        margin: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
+        margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
         elevation: 0,
         color: S1Surface.card(scheme),
         shape: S1Shape.cardShape,
@@ -173,17 +173,22 @@ class _HistoryTile extends ConsumerWidget {
                     ),
                     const SizedBox(width: 6),
                     Expanded(
-                      child: ClipRRect(
-                        borderRadius: S1Shape.extraSmall,
-                        child: LinearProgressIndicator(
-                          value: record.progress,
-                          minHeight: 4,
-                          backgroundColor: scheme.surfaceContainerHighest,
-                          valueColor: AlwaysStoppedAnimation<Color>(
-                            isFinished
-                                ? scheme.onSurfaceVariant
-                                    .withValues(alpha: S1Alpha.medium)
-                                : scheme.primary,
+                      // 进度条是装饰：不排除时整行会被读成 progressbar，
+                      // 楼层进度也被念成百分比；进度文字已经在右侧。
+                      child: ExcludeSemantics(
+                        child: ClipRRect(
+                          borderRadius: S1Shape.extraSmall,
+                          child: LinearProgressIndicator(
+                            value: record.progress,
+                            minHeight: 4,
+                            backgroundColor: scheme.surfaceContainerHighest,
+                            valueColor: AlwaysStoppedAnimation<Color>(
+                              isFinished
+                                  ? scheme.onSurfaceVariant.withValues(
+                                      alpha: S1Alpha.medium,
+                                    )
+                                  : scheme.primary,
+                            ),
                           ),
                         ),
                       ),

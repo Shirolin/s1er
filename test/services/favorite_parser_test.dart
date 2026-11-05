@@ -77,6 +77,19 @@ void main() {
       expect(result.items.first.id, '2253488');
       expect(result.items.first.favid, '1001');
     });
+
+    test('decodes titles that the forum escaped twice', () {
+      const html = '''
+<li class="list">
+<a href="forum.php?mod=viewthread&amp;tid=2264749&amp;mobile=2">
+<em>FS总结的游戏&amp;amp;地图设计经验。</em>
+</a>
+<a href="home.php?mod=spacecp&amp;ac=favorite&amp;op=delete&amp;favid=3093261&amp;mobile=2" class="dialog">删除</a>
+</li>
+''';
+      final result = DiscuzParser.parseFavoriteListHtml(html);
+      expect(result.items.single.title, 'FS总结的游戏&地图设计经验。');
+    });
   });
 
   group('parseFavoriteMutationResponse', () {

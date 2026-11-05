@@ -1419,12 +1419,18 @@ abstract final class DiscuzParser {
   }
 
   static String _extractFavoriteTitle(String block) {
+    String decodeTitle(String raw) {
+      // 标题含 `&` 时论坛先存成 `&amp;`，页面再转义一次成 `&amp;amp;`；
+      // stripHtml 只解一层，列表里会直接显示 `&amp;`。
+      return stripHtml(raw).replaceAll('&amp;', '&');
+    }
+
     final emMatch = RegExp(
       r'<em[^>]*>(.*?)</em>',
       dotAll: true,
     ).firstMatch(block);
     if (emMatch != null) {
-      final title = stripHtml(emMatch.group(1) ?? '');
+      final title = decodeTitle(emMatch.group(1) ?? '');
       if (title.isNotEmpty) return title;
     }
 
@@ -1434,7 +1440,7 @@ abstract final class DiscuzParser {
       dotAll: true,
     ).firstMatch(block);
     if (linkMatch != null) {
-      return stripHtml(linkMatch.group(1) ?? '');
+      return decodeTitle(linkMatch.group(1) ?? '');
     }
     return '';
   }

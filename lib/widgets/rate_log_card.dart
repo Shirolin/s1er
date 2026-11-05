@@ -79,6 +79,8 @@ class _RateLogCardState extends ConsumerState<RateLogCard> {
         : rateLog.entries.length;
     final collapsedHiddenCount = totalEntryCount - collapsedEntries.length;
 
+    void toggleExpanded() => setState(() => _expanded = !_expanded);
+
     return Padding(
       padding: const EdgeInsets.only(top: 8),
       child: Material(
@@ -86,75 +88,85 @@ class _RateLogCardState extends ConsumerState<RateLogCard> {
         elevation: 0,
         shape: S1Shape.cardShape,
         clipBehavior: Clip.antiAlias,
-        child: InkWell(
-          onTap: () => setState(() => _expanded = !_expanded),
-          child: AnimatedSize(
-            duration: const Duration(milliseconds: 200),
-            curve: Curves.easeInOut,
-            alignment: Alignment.topCenter,
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                _SummaryRow(
-                  totalScore: rateLog.totalScore,
-                  participantCount: rateLog.participantCount,
-                  accentColor: accentColor,
-                  expanded: _expanded,
-                  hiddenCount: collapsedHiddenCount,
-                ),
-                if (!_expanded && collapsedEntries.isNotEmpty)
-                  _EntriesPanel(
-                    scheme: scheme,
-                    children: [
-                      ...collapsedEntries.map(
-                        (entry) => _EntryRow(entry: entry),
-                      ),
-                    ],
+        // 自成语义节点：不加时展开/收起动作会并进整楼，读屏把整层正文
+        // 当成一个可点组。InkWell 让出语义后，评分人按钮仍是独立节点。
+        child: Semantics(
+          container: true,
+          onTap: toggleExpanded,
+          hint: _expanded ? '收起评分详情' : '展开评分详情',
+          child: InkWell(
+            excludeFromSemantics: true,
+            onTap: toggleExpanded,
+            child: AnimatedSize(
+              duration: const Duration(milliseconds: 200),
+              curve: Curves.easeInOut,
+              alignment: Alignment.topCenter,
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  _SummaryRow(
+                    totalScore: rateLog.totalScore,
+                    participantCount: rateLog.participantCount,
+                    accentColor: accentColor,
+                    expanded: _expanded,
+                    hiddenCount: collapsedHiddenCount,
                   ),
-                if (_expanded)
-                  _EntriesPanel(
-                    scheme: scheme,
-                    children: [
-                      ...displayEntries.map(
-                        (entry) => _EntryRow(entry: entry),
-                      ),
-                      if (needsMoreButton)
-                        Padding(
-                          padding: const EdgeInsets.only(top: 4),
-                          child: Center(
-                            child: _isLoadingFull
-                                ? const SizedBox(
-                                    height: 32,
-                                    width: 32,
-                                    child: Padding(
-                                      padding: EdgeInsets.all(8),
-                                      child: CircularProgressIndicator(
-                                        strokeWidth: 2,
+                  if (!_expanded && collapsedEntries.isNotEmpty)
+                    _EntriesPanel(
+                      scheme: scheme,
+                      children: [
+                        ...collapsedEntries.map(
+                          (entry) => _EntryRow(entry: entry),
+                        ),
+                      ],
+                    ),
+                  if (_expanded)
+                    _EntriesPanel(
+                      scheme: scheme,
+                      children: [
+                        ...displayEntries.map(
+                          (entry) => _EntryRow(entry: entry),
+                        ),
+                        if (needsMoreButton)
+                          Padding(
+                            padding: const EdgeInsets.only(top: 4),
+                            child: Center(
+                              child: _isLoadingFull
+                                  ? const SizedBox(
+                                      height: 32,
+                                      width: 32,
+                                      child: Padding(
+                                        padding: EdgeInsets.all(8),
+                                        child: CircularProgressIndicator(
+                                          strokeWidth: 2,
+                                        ),
+                                      ),
+                                    )
+                                  : TextButton(
+                                      onPressed: () {
+                                        if (hasMoreLocally) {
+                                          setState(
+                                            () => _isLocalExpanded = true,
+                                          );
+                                        } else if (isServerTruncated) {
+                                          _handleLoadFull();
+                                        }
+                                      },
+                                      style: TextButton.styleFrom(
+                                        visualDensity: VisualDensity.compact,
+                                      ),
+                                      child: Text(
+                                        hasMoreLocally
+                                            ? '显示全部本地记录 (共${rateLog.entries.length}条)'
+                                            : '加载完整评分历史 (共${rateLog.participantCount}人)',
                                       ),
                                     ),
-                                  )
-                                : TextButton(
-                                    onPressed: () {
-                                      if (hasMoreLocally) {
-                                        setState(() => _isLocalExpanded = true);
-                                      } else if (isServerTruncated) {
-                                        _handleLoadFull();
-                                      }
-                                    },
-                                    style: TextButton.styleFrom(
-                                      visualDensity: VisualDensity.compact,
-                                    ),
-                                    child: Text(
-                                      hasMoreLocally
-                                          ? '显示全部本地记录 (共${rateLog.entries.length}条)'
-                                          : '加载完整评分历史 (共${rateLog.participantCount}人)',
-                                    ),
-                                  ),
+                            ),
                           ),
-                        ),
-                    ],
-                  ),
-              ],
+                      ],
+                    ),
+                ],
+              ),
             ),
           ),
         ),
@@ -303,8 +315,11 @@ class _EntryRow extends ConsumerWidget {
                 uid == null
                     ? username
                     : Semantics(
+                        container: true,
                         button: true,
                         label: '查看 ${entry.username} 的资料',
+                        // 孩子只是用户名文本，不加会并成「查看 X 的资料 X」。
+                        excludeSemantics: true,
                         child: S1ClickRegion(
                           behavior: HitTestBehavior.opaque,
                           onTap: () => showUserProfileSheet(

@@ -1,3 +1,4 @@
+import 'package:flutter/semantics.dart';
 import 'package:dio/dio.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -111,6 +112,96 @@ void main() {
       await tester.pumpAndSettle();
 
       expect(find.text('评分 +2'), findsOneWidget);
+    });
+
+    testWidgets('rating card keeps its own tap target inside a list item',
+        (tester) async {
+      final handle = tester.ensureSemantics();
+      const rateLog = PostRateLog(
+        pid: '1',
+        entries: [RateLog(username: 'a', score: 2)],
+        totalScore: 2,
+        participantCount: 1,
+      );
+
+      await tester.pumpWidget(
+        wrap(
+          ListView(
+            children: const [
+              Card(
+                child: Column(
+                  children: [
+                    Text('楼层正文'),
+                    RateLogCard(tid: '123', pid: '1'),
+                  ],
+                ),
+              ),
+            ],
+          ),
+          tid: '123',
+          seed: {'1': rateLog},
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      // 评分卡的展开/收起动作不能并进楼层节点，否则整楼被读成一个可点组。
+      final bodyNode =
+          tester.getSemantics(find.text('楼层正文')).getSemanticsData();
+      expect(bodyNode.hasAction(SemanticsAction.tap), isFalse);
+
+      final cardNode = tester
+          .getSemantics(
+            find.descendant(
+              of: find.byType(RateLogCard),
+              matching: find.byType(InkWell),
+            ),
+          )
+          .getSemanticsData();
+      expect(cardNode.hasAction(SemanticsAction.tap), isTrue);
+      handle.dispose();
+    });
+
+    testWidgets('rating entry profile button announces the name once',
+        (tester) async {
+      final handle = tester.ensureSemantics();
+      const rateLog = PostRateLog(
+        pid: '1',
+        entries: [RateLog(uid: '42', username: 'alice', score: 2)],
+        totalScore: 2,
+        participantCount: 1,
+      );
+
+      await tester.pumpWidget(
+        wrap(
+          const RateLogCard(tid: '123', pid: '1'),
+          tid: '123',
+          seed: {'1': rateLog},
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      final label = tester
+          .getSemantics(
+            find
+                .descendant(
+                  of: find.byType(RateLogCard),
+                  matching: find.byType(InkWell),
+                )
+                .first,
+          )
+          .getSemanticsData()
+          .label;
+      expect(label, isNot(contains('查看 alice 的资料')));
+      // 评分人按钮保持独立节点，用户名只念一次。
+      expect(
+        find.bySemanticsLabel(RegExp(r'^查看 alice 的资料$')),
+        findsOneWidget,
+      );
+      expect(
+        find.bySemanticsLabel(RegExp(r'查看 alice 的资料\s+alice')),
+        findsNothing,
+      );
+      handle.dispose();
     });
 
     testWidgets('PostItem fetches only marked pids when built', (tester) async {

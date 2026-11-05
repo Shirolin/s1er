@@ -498,10 +498,12 @@ class _MemoizedHtmlBlockState extends State<_MemoizedHtmlBlock> {
             );
           }
           if (src.isNotEmpty) {
-            return ImageViewer(
-              imageUrl: src,
-              isEmoticon: true,
-              margin: const EdgeInsets.symmetric(horizontal: 2),
+            return ExcludeSemantics(
+              child: ImageViewer(
+                imageUrl: src,
+                isEmoticon: true,
+                margin: const EdgeInsets.symmetric(horizontal: 2),
+              ),
             );
           }
           return EmoticonWidget(code: code);
@@ -521,10 +523,12 @@ class _MemoizedHtmlBlockState extends State<_MemoizedHtmlBlock> {
                 child: EmoticonImage(item: item, size: 24),
               );
             }
-            return ImageViewer(
-              imageUrl: src,
-              isEmoticon: true,
-              margin: const EdgeInsets.symmetric(horizontal: 2),
+            return ExcludeSemantics(
+              child: ImageViewer(
+                imageUrl: src,
+                isEmoticon: true,
+                margin: const EdgeInsets.symmetric(horizontal: 2),
+              ),
             );
           }
 

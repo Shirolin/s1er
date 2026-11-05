@@ -44,38 +44,42 @@ class EmoticonImage extends StatelessWidget {
     final textTheme = Theme.of(context).textTheme;
     final network = platformImageUrl(item.networkUrl, isWeb: kIsWeb);
 
-    return Image.asset(
-      item.assetPath,
-      width: size,
-      height: size,
-      fit: BoxFit.contain,
-      errorBuilder: (_, __, ___) {
-        if (kIsWeb) {
-          return Image.network(
-            network,
+    // 表情是正文的一部分，不是独立图片：不排除时整层文字会被并进
+    // 一个 image 语义节点，读屏把整楼念成「图片」。
+    return ExcludeSemantics(
+      child: Image.asset(
+        item.assetPath,
+        width: size,
+        height: size,
+        fit: BoxFit.contain,
+        errorBuilder: (_, __, ___) {
+          if (kIsWeb) {
+            return Image.network(
+              network,
+              width: size,
+              height: size,
+              fit: BoxFit.contain,
+              errorBuilder: (_, __, ___) => Icon(
+                Icons.broken_image_outlined,
+                size: size * 0.7,
+                color: scheme.onSurfaceVariant,
+              ),
+            );
+          }
+          return CachedNetworkImage(
+            imageUrl: network,
             width: size,
             height: size,
             fit: BoxFit.contain,
-            errorBuilder: (_, __, ___) => Icon(
-              Icons.broken_image_outlined,
-              size: size * 0.7,
-              color: scheme.onSurfaceVariant,
+            fadeInDuration: Duration.zero,
+            fadeOutDuration: Duration.zero,
+            errorWidget: (_, __, ___) => Text(
+              item.entity,
+              style: textTheme.bodySmall,
             ),
           );
-        }
-        return CachedNetworkImage(
-          imageUrl: network,
-          width: size,
-          height: size,
-          fit: BoxFit.contain,
-          fadeInDuration: Duration.zero,
-          fadeOutDuration: Duration.zero,
-          errorWidget: (_, __, ___) => Text(
-            item.entity,
-            style: textTheme.bodySmall,
-          ),
-        );
-      },
+        },
+      ),
     );
   }
 }

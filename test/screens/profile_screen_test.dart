@@ -152,6 +152,57 @@ void main() {
       expect(find.text('小黑屋'), findsOneWidget);
     });
 
+    testWidgets('merges stats and info rows into readable labels',
+        (tester) async {
+      tester.view.physicalSize = const Size(1080, 2400);
+      tester.view.devicePixelRatio = 1.0;
+      addTearDown(() => tester.view.resetPhysicalSize());
+
+      final handle = tester.ensureSemantics();
+      await tester.pumpWidget(
+        ProviderScope(
+          overrides: [
+            ...localOverrides(),
+            packageInfoOverride(),
+            authStateProvider.overrideWith(
+              () => _TestAuthNotifier(
+                AuthState(
+                  isLoggedIn: true,
+                  username: 'TestUser',
+                  user: User(
+                    uid: '123',
+                    username: 'TestUser',
+                    credits: 1200,
+                    posts: 7,
+                    threads: 2,
+                    friends: 3,
+                    deadfish: 11,
+                    combat: 5,
+                    oltime: 10,
+                  ),
+                ),
+                shouldFail: false,
+              ),
+            ),
+          ],
+          child: MaterialApp(
+            theme: AppTheme.lightTheme('purple'),
+            home: const ProfileScreen(),
+          ),
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      expect(find.bySemanticsLabel('积分 1.2k'), findsOneWidget);
+      expect(find.bySemanticsLabel('帖子 7'), findsOneWidget);
+      expect(find.bySemanticsLabel('死鱼 11 条'), findsOneWidget);
+      expect(find.bySemanticsLabel('战斗力 5 鹅'), findsOneWidget);
+      expect(find.bySemanticsLabel('UID，123'), findsOneWidget);
+      expect(find.bySemanticsLabel('在线时长，10 小时'), findsOneWidget);
+
+      handle.dispose();
+    });
+
     testWidgets('shows project support links and opens their URLs',
         (tester) async {
       tester.view.physicalSize = const Size(1080, 2400);

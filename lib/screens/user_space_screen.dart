@@ -332,7 +332,7 @@ class _ThreadCard extends ConsumerWidget {
       height: 1.2,
     );
     return Card(
-      margin: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+      margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
       elevation: 0,
       color: S1Surface.card(scheme),
       shape: S1Shape.cardShape,
@@ -434,7 +434,7 @@ class _ReplyCard extends StatelessWidget {
     final scheme = Theme.of(context).colorScheme;
     final textTheme = Theme.of(context).textTheme;
     return Card(
-      margin: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+      margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
       elevation: 0,
       color: S1Surface.card(scheme),
       shape: S1Shape.cardShape,

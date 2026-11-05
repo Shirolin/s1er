@@ -15,6 +15,16 @@ class NoticeListTile extends StatelessWidget {
   final NoticeItem item;
   final VoidCallback onTap;
 
+  /// 提醒正文以作者名开头（`作者 回复了您的帖子 …`），而标题行已显示作者名。
+  /// 重复一遍只会挤掉正文，读屏也会连读两次。
+  static String summaryWithoutAuthor(String summary, String authorName) {
+    final text = summary.trimLeft();
+    if (authorName.isEmpty || !text.startsWith(authorName)) return summary;
+    final rest =
+        text.substring(authorName.length).replaceFirst(RegExp(r'^\s*'), '');
+    return rest.isEmpty ? summary : rest;
+  }
+
   IconData _iconForType() {
     switch (item.type) {
       case NoticeType.reply:
@@ -73,7 +83,7 @@ class NoticeListTile extends StatelessWidget {
           ],
         ),
         subtitle: Text(
-          item.summary,
+          summaryWithoutAuthor(item.summary, item.authorName),
           maxLines: 3,
           overflow: TextOverflow.ellipsis,
           style: textTheme.bodySmall?.copyWith(color: scheme.onSurfaceVariant),

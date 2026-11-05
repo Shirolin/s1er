@@ -17,7 +17,10 @@ class S1TerminalLeftSwipe extends StatefulWidget {
 
   final ScrollController scrollController;
   final BoundaryFeedbackController feedback;
-  final Future<void> Function() onRefresh;
+
+  /// 为 null 时不派发刷新（如多选分享模式），手势本身仍保留：外层若有条件
+  /// 增删本 Widget，子树会重建、列表滚动位置归零。
+  final Future<void> Function()? onRefresh;
   final Widget child;
 
   /// 左滑触发刷新的位移阈值。
@@ -64,6 +67,8 @@ class _S1TerminalLeftSwipeState extends State<S1TerminalLeftSwipe> {
     // 右滑不刷新；需累计向左超过阈值。
     if (_accumulatedDx > -S1TerminalLeftSwipe.swipeThreshold) return;
 
+    final onRefresh = widget.onRefresh;
+    if (onRefresh == null) return;
     final result = widget.feedback.hit(
       context,
       BoundaryEdge.lastPage,
@@ -71,7 +76,7 @@ class _S1TerminalLeftSwipeState extends State<S1TerminalLeftSwipe> {
     );
     if (result == BoundaryHitResult.ignored) return;
     _dispatchedThisGesture = true;
-    unawaited(widget.onRefresh());
+    unawaited(onRefresh());
   }
 
   void _onEnd(DragEndDetails details) => _resetGesture();

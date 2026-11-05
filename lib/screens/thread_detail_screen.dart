@@ -1519,16 +1519,18 @@ class _ThreadDetailScreenState extends ConsumerState<ThreadDetailScreen> {
                       onScrollEnd: _onScrollEndRecordProgress,
                       child: Scrollbar(
                         controller: scrollController,
-                        child: _shareSelectMode
-                            ? list
-                            : RefreshIndicator(
-                                onRefresh: () => S1Haptics.wrapRefresh(
-                                  () => ref
-                                      .read(postProvider(widget.tid).notifier)
-                                      .refresh(),
-                                ),
-                                child: list,
-                              ),
+                        // 多选模式仍保留 RefreshIndicator，只关掉下拉触发：
+                        // 换掉外层 Widget 会重建 Scrollable，滚动位置归零。
+                        child: RefreshIndicator(
+                          notificationPredicate: (notification) =>
+                              !_shareSelectMode && notification.depth == 0,
+                          onRefresh: () => S1Haptics.wrapRefresh(
+                            () => ref
+                                .read(postProvider(widget.tid).notifier)
+                                .refresh(),
+                          ),
+                          child: list,
+                        ),
                       ),
                     );
                   },

@@ -5,6 +5,7 @@ import '../config/constants.dart';
 import '../models/open_scroll_target.dart';
 import '../models/post.dart';
 import '../models/poll.dart';
+import '../models/thread.dart';
 import '../models/thread_open_intent.dart';
 import '../services/api_service.dart';
 import '../services/discuz_parser.dart';
@@ -299,7 +300,9 @@ class PostNotifier extends AsyncNotifier<PostListState> {
       posts: parsedPosts,
       currentPage: page,
       totalPages: totalPages,
-      threadSubject: thread['subject']?.toString(),
+      threadSubject: thread['subject'] == null
+          ? null
+          : Thread.decodeThreadText(thread['subject'].toString()),
       threadFid: thread['fid']?.toString(),
       threadSpecial: threadSpecial,
       perPage: perPage,

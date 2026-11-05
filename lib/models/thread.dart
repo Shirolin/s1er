@@ -1,3 +1,5 @@
+import '../utils/html_entities.dart';
+
 class Thread {
   Thread({
     required this.tid,
@@ -18,7 +20,7 @@ class Thread {
   factory Thread.fromJson(Map<String, dynamic> json) {
     return Thread(
       tid: json['tid']?.toString() ?? '',
-      subject: json['subject']?.toString() ?? '',
+      subject: decodeThreadText(json['subject']?.toString() ?? ''),
       author: json['author']?.toString() ?? '',
       authorId: json['authorid']?.toString() ?? '',
       dateline: int.tryParse(json['dbdateline']?.toString() ?? '') ?? 0,
@@ -32,6 +34,18 @@ class Thread {
       lastPoster: json['lastposter']?.toString(),
     );
   }
+
+  /// 移动版 API 的标题按 HTML 转义返回（`Slice &amp; Dice`），
+  /// 直接显示会露出 `&amp;`。主题列表与帖子详情都走这里。
+  static String decodeThreadText(String text) {
+    return decodeHtmlEntities(
+      text
+          .replaceAll('&amp;', '&')
+          .replaceAll('&lt;', '<')
+          .replaceAll('&gt;', '>'),
+    ).replaceAll(RegExp(r'<[^>]+>'), '');
+  }
+
   final String tid;
   final String subject;
   final String author;

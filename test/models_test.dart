@@ -26,6 +26,14 @@ void main() {
       expect(thread.replies, 20);
     });
 
+    test('decodes HTML entities in the subject', () {
+      final thread = Thread.fromJson({
+        'tid': '1',
+        'subject': 'Slice &amp; Dice &#39;20 &quot;版&quot;',
+      });
+      expect(thread.subject, 'Slice & Dice \'20 "版"');
+    });
+
     test('serializes to JSON', () {
       final thread = Thread(
         tid: '1',

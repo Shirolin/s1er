@@ -6,7 +6,26 @@
     <title>隐私政策 · S1er</title>
     <meta name="description" content="S1er 隐私政策：说明本应用如何收集、使用和保护用户信息。" />
     <meta name="theme-color" content="#09090b" />
-    <meta name="color-scheme" content="dark" />
+    <meta name="color-scheme" content="light dark" />
+    <script>
+      (function () {
+        var d = document.documentElement, theme = 'dark', seed = 'blue', size = 'normal';
+        try {
+          var t = localStorage.getItem('s1er-theme');
+          if (t === 'light' || t === 'dark') theme = t;
+          else if (window.matchMedia('(prefers-color-scheme: light)').matches) theme = 'light';
+          var s = localStorage.getItem('s1er-seed');
+          if (s) seed = s;
+          var z = localStorage.getItem('s1er-size');
+          if (z) size = z;
+        } catch {
+          // 读不到就用默认
+        }
+        d.dataset.theme = theme;
+        d.dataset.seed = seed;
+        d.dataset.size = size;
+      })();
+    </script>
     <link rel="icon" href="assets/branding/s1er_mark.png" type="image/png" />
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
@@ -15,7 +34,7 @@
       rel="stylesheet"
     />
     <link rel="canonical" href="https://shirolin.github.io/s1er/privacy.html" id="canonical" />
-    <link rel="stylesheet" href="css/styles.css?v=20261107" />
+    <link rel="stylesheet" href="css/styles.css?v=20261106h" />
     <script>
       (function() {
         var base = location.protocol + '//' + location.hostname;
@@ -37,6 +56,18 @@
         <nav class="top__nav" aria-label="主导航">
           <a href="index.html">首页</a>
           <a href="index.html#platforms">平台</a>
+          <button class="theme-btn" type="button" data-theme-toggle aria-pressed="false" aria-label="切换到浅色主题">
+            <svg class="theme-btn__sun" viewBox="0 0 20 20" aria-hidden="true">
+              <circle cx="10" cy="10" r="3.6" fill="currentColor" />
+              <g stroke="currentColor" stroke-width="1.4" stroke-linecap="round">
+                <path d="M10 1.8v2.1M10 16.1v2.1M1.8 10h2.1M16.1 10h2.1" />
+                <path d="m4.2 4.2 1.5 1.5M14.3 14.3l1.5 1.5M15.8 4.2l-1.5 1.5M5.7 14.3l-1.5 1.5" />
+              </g>
+            </svg>
+            <svg class="theme-btn__moon" viewBox="0 0 20 20" aria-hidden="true">
+              <path d="M15.6 12.4A6.4 6.4 0 0 1 7.6 4.4a7 7 0 1 0 8 8z" fill="currentColor" />
+            </svg>
+          </button>
           <a class="btn btn--primary btn--sm" href="https://github.com/Shirolin/s1er/releases/latest" rel="noopener noreferrer">下载</a>
         </nav>
       </header>
@@ -213,6 +244,6 @@
       </div>
     </footer>
 
-    <script src="js/main.js?v=20261107" defer></script>
+    <script src="js/main.js?v=20261106h" defer></script>
   </body>
 </html>

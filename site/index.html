@@ -10,7 +10,26 @@
     />
     <meta name="keywords" content="Stage1st, S1, S1er, 论坛客户端, Flutter, Material Design 3, 麻将脸, 动漫论坛, 游戏论坛, 泥潭" />
     <meta name="theme-color" content="#09090b" />
-    <meta name="color-scheme" content="dark" />
+    <meta name="color-scheme" content="light dark" />
+    <script>
+      (function () {
+        var d = document.documentElement, theme = 'dark', seed = 'blue', size = 'normal';
+        try {
+          var t = localStorage.getItem('s1er-theme');
+          if (t === 'light' || t === 'dark') theme = t;
+          else if (window.matchMedia('(prefers-color-scheme: light)').matches) theme = 'light';
+          var s = localStorage.getItem('s1er-seed');
+          if (s) seed = s;
+          var z = localStorage.getItem('s1er-size');
+          if (z) size = z;
+        } catch {
+          // 读不到就用默认
+        }
+        d.dataset.theme = theme;
+        d.dataset.seed = seed;
+        d.dataset.size = size;
+      })();
+    </script>
     <link rel="canonical" href="https://shirolin.github.io/s1er/" id="canonical" />
     <link rel="icon" href="assets/branding/s1er_mark.png" type="image/png" />
     <link rel="apple-touch-icon" href="assets/branding/s1er_mark.png" />
@@ -22,7 +41,7 @@
       href="https://fonts.googleapis.com/css2?family=Noto+Sans+SC:wght@400;500;700&family=Space+Grotesk:wght@400;500;600&display=swap"
       rel="stylesheet"
     />
-    <link rel="stylesheet" href="css/styles.css?v=20261107" />
+    <link rel="stylesheet" href="css/styles.css?v=20261106h" />
     <meta property="og:title" content="S1er — Stage1st 第三方客户端" />
     <meta
       property="og:description"
@@ -83,51 +102,138 @@
             <a href="#more">功能</a>
             <a href="#faces">表情</a>
             <a href="#platforms">平台</a>
+            <button class="theme-btn" type="button" data-theme-toggle aria-pressed="false" aria-label="切换到浅色主题">
+              <svg class="theme-btn__sun" viewBox="0 0 20 20" aria-hidden="true">
+                <circle cx="10" cy="10" r="3.6" fill="currentColor" />
+                <g stroke="currentColor" stroke-width="1.4" stroke-linecap="round">
+                  <path d="M10 1.8v2.1M10 16.1v2.1M1.8 10h2.1M16.1 10h2.1" />
+                  <path d="m4.2 4.2 1.5 1.5M14.3 14.3l1.5 1.5M15.8 4.2l-1.5 1.5M5.7 14.3l-1.5 1.5" />
+                </g>
+              </svg>
+              <svg class="theme-btn__moon" viewBox="0 0 20 20" aria-hidden="true">
+                <path d="M15.6 12.4A6.4 6.4 0 0 1 7.6 4.4a7 7 0 1 0 8 8z" fill="currentColor" />
+              </svg>
+            </button>
             <a class="btn btn--primary btn--sm" href="https://github.com/Shirolin/s1er/releases/latest" rel="noopener noreferrer">下载</a>
           </nav>
         </header>
 
         <div class="hero__inner">
           <div class="hero__stage">
-            <div class="thread" data-ui data-thread>
-              <div class="thread__bar">
-                <span class="thread__title">【S1er】又一个 S1 APP</span>
-                <span class="thread__meta">第 1 / 2 页</span>
+            <div class="app" data-ui data-app>
+              <div class="app__bar">
+                <img src="assets/branding/s1er_mark.png" width="16" height="16" alt="" />
+                <span class="app__name">S1er</span>
+                <span class="app__demo">示例数据</span>
+                <span class="app__ctrl" aria-hidden="true">
+                  <svg viewBox="0 0 10 10"><path d="M2 5h6" stroke="currentColor" stroke-width="1.2" /></svg>
+                  <svg viewBox="0 0 10 10"><rect x="2.4" y="2.4" width="5.2" height="5.2" fill="none" stroke="currentColor" stroke-width="1.2" /></svg>
+                  <svg viewBox="0 0 10 10"><path d="m2.5 2.5 5 5m0-5-5 5" stroke="currentColor" stroke-width="1.2" /></svg>
+                </span>
               </div>
 
-              <article class="thread__floor">
-                <header class="thread__head">
-                  <span class="thread__avatar" aria-hidden="true">S</span>
-                  <span class="thread__who"><b>S1er 更新</b><time datetime="2026-11-05">11-05 21:40</time></span>
-                  <span class="thread__no">#1</span>
-                </header>
-                <p class="thread__body">0.11.0：多选分享不再跳回页面顶部；读屏导航合并为整楼；主题标题里的 HTML 实体现在会解码。</p>
-                <div class="thread__acts">
-                  <button type="button" aria-pressed="false" data-quote-btn data-quote-floor="#1" data-quote-author="S1er 更新" data-quote-text="0.11.0：多选分享不再跳回页面顶部；读屏导航合并为整楼；主题标题里的 HTML 实体现在会解码。">引用</button>
-                  <span>评分</span>
-                  <span>举报</span>
+              <div class="app__body">
+                <div class="app__rail" aria-hidden="true">
+                  <span class="app__railitem is-on">
+                    <svg viewBox="0 0 16 16"><path d="M2.5 3h11v7.5H7l-3 2.6v-2.6H2.5z" fill="currentColor" /></svg>论坛
+                  </span>
+                  <span class="app__railitem">
+                    <svg viewBox="0 0 16 16"><circle cx="7" cy="7" r="4.2" fill="none" stroke="currentColor" stroke-width="1.5" /><path d="m10.3 10.3 3.2 3.2" stroke="currentColor" stroke-width="1.5" fill="none" /></svg>搜索
+                  </span>
+                  <span class="app__railitem">
+                    <svg viewBox="0 0 16 16"><path d="M2 3.5h12v9H2z" fill="none" stroke="currentColor" stroke-width="1.4" /><path d="m2.4 4 5.6 4.2L13.6 4" fill="none" stroke="currentColor" stroke-width="1.4" /></svg>消息
+                  </span>
+                  <span class="app__railitem">
+                    <svg viewBox="0 0 16 16"><circle cx="8" cy="5.4" r="2.6" fill="none" stroke="currentColor" stroke-width="1.4" /><path d="M3.2 14c0-2.7 2.2-4.4 4.8-4.4s4.8 1.7 4.8 4.4" fill="none" stroke="currentColor" stroke-width="1.4" /></svg>我的
+                  </span>
                 </div>
-              </article>
 
-              <article class="thread__floor">
-                <header class="thread__head">
-                  <span class="thread__avatar" aria-hidden="true">S</span>
-                  <span class="thread__who"><b>S1er 更新</b><time datetime="2026-11-04">11-04 14:58</time></span>
-                  <span class="thread__no">#2</span>
-                </header>
-                <p class="thread__body">0.10.0：宽屏直接打开帖子也使用左右分区。</p>
-                <div class="thread__acts">
-                  <button type="button" aria-pressed="false" data-quote-btn data-quote-floor="#2" data-quote-author="S1er 更新" data-quote-text="0.10.0：宽屏直接打开帖子也使用左右分区。">引用</button>
-                  <span>评分</span>
-                  <span>举报</span>
+                <div class="app__list">
+                  <div class="app__head">
+                    <p class="app__crumb"><b>游戏论坛</b><span>《星港黎明》试玩版：手感还得再调调</span></p>
+                    <p class="app__filter"><span>全部主题 · 全部时间</span><span aria-hidden="true">⌄</span></p>
+                  </div>
+                  <ul class="trows">
+                    <li class="trow is-on">
+                      <p class="trow__title">《星港黎明》试玩版：手感还得再调调</p>
+                      <span class="trow__badge">试玩</span>
+                      <p class="trow__meta">白河 · 2 小时前</p>
+                      <span class="trow__count"><span>2.1k</span><span>43</span></span>
+                    </li>
+                    <li class="trow">
+                      <p class="trow__title">《碎流》第二章流程有多长</p>
+                      <span class="trow__badge">独立</span>
+                      <p class="trow__meta">夜航船 · 10 小时前</p>
+                      <span class="trow__count"><span>1.2k</span><span>18</span></span>
+                    </li>
+                    <li class="trow">
+                      <p class="trow__title">今年还有哪些值得等的独立游戏</p>
+                      <span class="trow__badge">讨论</span>
+                      <p class="trow__meta">半糖 · 7 天前</p>
+                      <span class="trow__count"><span>3.4k</span><span>86</span></span>
+                    </li>
+                    <li class="trow">
+                      <p class="trow__title">《旧日回声》的配乐是谁写的</p>
+                      <span class="trow__badge">音乐</span>
+                      <p class="trow__meta">石膏 · 09-12</p>
+                      <span class="trow__count"><span>900</span><span>12</span></span>
+                    </li>
+                  </ul>
+                  <div class="app__bottom">
+                    <span class="app__chip">主题</span>
+                    <span class="app__page">第 1 / 4100 页</span>
+                  </div>
                 </div>
-              </article>
 
-              <div class="thread__compose">
-                <p class="thread__line" data-compose-line><span class="thread__hint">回复这栋楼…</span></p>
-                <span class="thread__send" aria-hidden="true">发送</span>
+                <div class="app__thread">
+                  <p class="app__threadhead">第 1 / 1 页 · 共 43 楼</p>
+
+                  <article class="pfloor">
+                    <header class="pfloor__head">
+                      <span class="pfloor__av" aria-hidden="true">夜</span>
+                      <span class="pfloor__who"><b>夜航船</b><time datetime="2026-11-04">11-04 15:59</time></span>
+                      <span class="pfloor__no">#41</span>
+                    </header>
+                    <p class="pfloor__body">试玩里翻滚的启动帧好像多了两帧，节奏有点飘。</p>
+                    <div class="pfloor__acts">
+                      <button type="button" aria-pressed="false" data-hero-quote data-quote-floor="#41" data-quote-author="夜航船" data-quote-text="试玩里翻滚的启动帧好像多了两帧，节奏有点飘。">引用</button>
+                      <span>评分</span>
+                    </div>
+                  </article>
+
+                  <article class="pfloor">
+                    <header class="pfloor__head">
+                      <span class="pfloor__av" aria-hidden="true">白</span>
+                      <span class="pfloor__who"><b>白河</b><time datetime="2026-11-04">11-04 16:57</time></span>
+                      <span class="pfloor__no">#42</span>
+                    </header>
+                    <p class="pfloor__body">PC 版开垂直同步反而更稳，你可以试试。</p>
+                    <div class="pfloor__acts">
+                      <button type="button" aria-pressed="false" data-hero-quote data-quote-floor="#42" data-quote-author="白河" data-quote-text="PC 版开垂直同步反而更稳，你可以试试。">引用</button>
+                      <span>评分</span>
+                    </div>
+                  </article>
+
+                  <article class="pfloor">
+                    <header class="pfloor__head">
+                      <span class="pfloor__av" aria-hidden="true">半</span>
+                      <span class="pfloor__who"><b>半糖</b><time datetime="2026-11-04">11-04 19:10</time></span>
+                      <span class="pfloor__no">#43</span>
+                    </header>
+                    <p class="pfloor__body">等正式版吧，这版的手感已经比上次测试好多了。</p>
+                    <div class="pfloor__acts">
+                      <button type="button" aria-pressed="false" data-hero-quote data-quote-floor="#43" data-quote-author="半糖" data-quote-text="等正式版吧，这版的手感已经比上次测试好多了。">引用</button>
+                      <span>评分</span>
+                    </div>
+                  </article>
+
+                  <div class="app__compose">
+                    <p class="app__line" data-compose-line><span class="app__hint">回复这栋楼…</span></p>
+                    <span class="app__send" aria-hidden="true">发送</span>
+                  </div>
+                  <p class="visually-hidden" role="status" data-compose-status></p>
+                </div>
               </div>
-              <p class="visually-hidden" role="status" data-compose-status></p>
             </div>
           </div>
 
@@ -150,59 +256,96 @@
 
       <!-- 楼层：一层楼的三个状态 -->
       <section class="section" id="floor" aria-labelledby="floor-title">
-        <div class="wrap floor-layout">
-          <div class="floor-intro">
+        <div class="wrap">
+          <div class="floor-head">
             <h2 id="floor-title">一层楼，三个动作</h2>
             <p>菜单里有引用、评分和举报；点下引用，这层楼就带着出处落进回复框，不用来回复制。</p>
           </div>
           <div class="states">
             <div class="state">
-              <p class="state__word">到达</p>
-              <article class="floor" data-ui>
-                <header class="floor__head">
-                  <span class="floor__avatar" aria-hidden="true">S</span>
-                  <span class="floor__who"><b>S1er 更新</b><time datetime="2026-11-05">11-05 21:40</time></span>
-                  <span class="floor__no">#1</span>
-                  <span class="floor__more" aria-hidden="true">⋮</span>
-                </header>
-                <p class="floor__body">0.9.4：评分加载更省流量，修复评分丢失与签到提示折行。</p>
-              </article>
-            </div>
-
-            <div class="state">
-              <p class="state__word">悬停</p>
-              <article class="floor is-hover" data-ui data-floor-source>
-                <header class="floor__head">
-                  <span class="floor__avatar" aria-hidden="true">S</span>
-                  <span class="floor__who"><b>S1er 更新</b><time datetime="2026-11-05">11-05 21:40</time></span>
-                  <span class="floor__no">#1</span>
-                  <button class="floor__more is-on" type="button" aria-expanded="true" aria-controls="floor-menu" data-floor-more aria-label="楼层操作">
-                    <span aria-hidden="true">⋮</span>
-                  </button>
-                </header>
-                <p class="floor__body">0.9.4：评分加载更省流量，修复评分丢失与签到提示折行。</p>
-                <div class="floor__menu" id="floor-menu" data-floor-menu>
-                  <button type="button" data-floor-quote>引用</button>
-                  <button type="button">评分</button>
-                  <button type="button">举报</button>
+              <div class="app app--crop" data-ui data-app>
+                <div class="app__bar">
+                  <img src="assets/branding/s1er_mark.png" width="14" height="14" alt="" />
+                  <span class="app__name">S1er</span>
+                  <span class="app__demo">示例数据</span>
                 </div>
-              </article>
+                <div class="app__thread">
+                  <p class="app__threadhead">《星港黎明》试玩版 · #41</p>
+                  <article class="pfloor">
+                    <header class="pfloor__head">
+                      <span class="pfloor__av" aria-hidden="true">夜</span>
+                      <span class="pfloor__who"><b>夜航船</b><time datetime="2026-11-04">11-04 15:59</time></span>
+                      <span class="pfloor__no">#41</span>
+                    </header>
+                    <p class="pfloor__body">试玩里翻滚的启动帧好像多了两帧，节奏有点飘。</p>
+                    <div class="pfloor__acts">
+                      <button type="button" aria-pressed="false" data-quote-btn data-quote-floor="#41" data-quote-author="夜航船" data-quote-text="试玩里翻滚的启动帧好像多了两帧，节奏有点飘。">引用</button>
+                      <span>评分</span>
+                    </div>
+                  </article>
+                </div>
+              </div>
+              <p class="state__word">到达</p>
             </div>
 
             <div class="state">
-              <p class="state__word" data-quote-word>已引用</p>
-              <article class="floor is-quoted" data-ui>
-                <header class="floor__head">
-                  <span class="floor__avatar" aria-hidden="true">S</span>
-                  <span class="floor__who"><b>S1er 更新</b><time datetime="2026-11-05">11-05 21:40</time></span>
-                  <span class="floor__no">#1</span>
-                  <span class="floor__more" aria-hidden="true">⋮</span>
-                </header>
-                <p class="floor__body">0.9.4：评分加载更省流量，修复评分丢失与签到提示折行。</p>
-                <blockquote class="floor__quote" data-quote>
-                  <p><b>S1er 更新 · #1</b>0.9.4：评分加载更省流量，修复评分丢失与签到提示折行。</p>
-                </blockquote>
-              </article>
+              <div class="app app--crop" data-ui data-app>
+                <div class="app__bar">
+                  <img src="assets/branding/s1er_mark.png" width="14" height="14" alt="" />
+                  <span class="app__name">S1er</span>
+                  <span class="app__demo">示例数据</span>
+                </div>
+                <div class="app__thread">
+                  <p class="app__threadhead">《星港黎明》试玩版 · #41</p>
+                  <article class="pfloor">
+                    <header class="pfloor__head">
+                      <span class="pfloor__av" aria-hidden="true">夜</span>
+                      <span class="pfloor__who"><b>夜航船</b><time datetime="2026-11-04">11-04 15:59</time></span>
+                      <span class="pfloor__no">#41</span>
+                      <button class="pfloor__more" type="button" aria-expanded="true" aria-controls="floor-menu" data-floor-more aria-label="楼层操作">
+                        <span aria-hidden="true">⋮</span>
+                      </button>
+                    </header>
+                    <p class="pfloor__body">试玩里翻滚的启动帧好像多了两帧，节奏有点飘。</p>
+                    <div class="pfloor__menu" id="floor-menu" data-floor-menu>
+                      <button type="button" data-floor-quote data-quote-floor="#41" data-quote-author="夜航船" data-quote-text="试玩里翻滚的启动帧好像多了两帧，节奏有点飘。">引用</button>
+                      <button type="button">评分</button>
+                      <button type="button">举报</button>
+                    </div>
+                  </article>
+                </div>
+              </div>
+              <p class="state__word">菜单</p>
+            </div>
+
+            <div class="state">
+              <div class="app app--crop" data-ui data-app>
+                <div class="app__bar">
+                  <img src="assets/branding/s1er_mark.png" width="14" height="14" alt="" />
+                  <span class="app__name">S1er</span>
+                  <span class="app__demo">示例数据</span>
+                </div>
+                <div class="app__thread">
+                  <p class="app__threadhead">《星港黎明》试玩版 · #41</p>
+                  <article class="pfloor">
+                    <header class="pfloor__head">
+                      <span class="pfloor__av" aria-hidden="true">夜</span>
+                      <span class="pfloor__who"><b>夜航船</b><time datetime="2026-11-04">11-04 15:59</time></span>
+                      <span class="pfloor__no">#41</span>
+                    </header>
+                    <p class="pfloor__body">试玩里翻滚的启动帧好像多了两帧，节奏有点飘。</p>
+                    <div class="pfloor__acts">
+                      <button type="button" aria-pressed="false" data-quote-btn data-quote-floor="#41" data-quote-author="夜航船" data-quote-text="试玩里翻滚的启动帧好像多了两帧，节奏有点飘。">引用</button>
+                      <span>评分</span>
+                    </div>
+                  </article>
+                  <div class="app__compose">
+                    <p class="app__line" data-floor-compose><span class="app__hint">回复这栋楼…</span></p>
+                    <span class="app__send" aria-hidden="true">发送</span>
+                  </div>
+                </div>
+              </div>
+              <p class="state__word" data-quote-word>回帖</p>
             </div>
           </div>
         </div>
@@ -229,51 +372,53 @@
               </div>
             </article>
 
-            <article class="cell cell--flip">
+            <article class="cell">
+              <div class="cell__text">
+                <h3>本地黑名单</h3>
+                <p>按主题过滤关键词、按楼层折叠用户；名单只存在这台设备上，换机时随备份带走。</p>
+              </div>
               <div class="cell__art" data-ui>
                 <div class="switch-list" role="group" aria-label="过滤示例">
                   <label class="switch"><span>只看楼主</span><input type="checkbox" checked /><i aria-hidden="true"></i></label>
                   <label class="switch"><span>折叠黑名单用户</span><input type="checkbox" /><i aria-hidden="true"></i></label>
                 </div>
               </div>
-              <div class="cell__text">
-                <h3>本地黑名单</h3>
-                <p>按主题过滤关键词、按楼层折叠用户；名单只存在这台设备上，换机时随备份带走。</p>
-              </div>
             </article>
 
             <article class="cell">
               <div class="cell__text">
                 <h3>五套种子色与字号</h3>
-                <p>Material 3 从一颗种子色生成整套色板，字号另有一档单独调，不跟着系统走。</p>
+                <p>Material 3 从一颗种子色生成整套色板，字号另有一档单独调，不跟着系统走。点一下色块，整页跟着换。</p>
               </div>
               <div class="cell__art" data-ui>
                 <div class="theme-frag" role="group" aria-label="主题色示例">
                   <div class="seeds">
-                    <button class="seed is-on" type="button" style="--seed: #00639b" aria-pressed="true" aria-label="蓝色"></button>
-                    <button class="seed" type="button" style="--seed: #825500" aria-pressed="false" aria-label="沙色"></button>
-                    <button class="seed" type="button" style="--seed: #6750a4" aria-pressed="false" aria-label="紫色"></button>
-                    <button class="seed" type="button" style="--seed: #4a6741" aria-pressed="false" aria-label="鼠尾草绿"></button>
-                    <button class="seed" type="button" style="--seed: #8c4a60" aria-pressed="false" aria-label="玫瑰色"></button>
+                    <button class="seed is-on" type="button" data-seed="blue" style="--seed: #00639b" aria-pressed="true" aria-label="蓝色"></button>
+                    <button class="seed" type="button" data-seed="sand" style="--seed: #825500" aria-pressed="false" aria-label="沙色"></button>
+                    <button class="seed" type="button" data-seed="purple" style="--seed: #6750a4" aria-pressed="false" aria-label="紫色"></button>
+                    <button class="seed" type="button" data-seed="green" style="--seed: #4a6741" aria-pressed="false" aria-label="鼠尾草绿"></button>
+                    <button class="seed" type="button" data-seed="rose" style="--seed: #8c4a60" aria-pressed="false" aria-label="玫瑰色"></button>
                   </div>
-                  <div class="sizes" role="group" aria-label="字号示例">
-                    <span>小</span><span class="is-on">标准</span><span>大</span>
+                  <div class="sizes" role="group" aria-label="字号">
+                    <button type="button" data-size="small" aria-pressed="false">小</button>
+                    <button type="button" data-size="normal" aria-pressed="true">标准</button>
+                    <button type="button" data-size="large" aria-pressed="false">大</button>
                   </div>
                 </div>
               </div>
             </article>
 
-            <article class="cell cell--flip">
+            <article class="cell">
+              <div class="cell__text">
+                <h3>阅读历史</h3>
+                <p>读到哪一层、什么时候读的，都记在本机；清空是一次点击的事，没有云端副本。</p>
+              </div>
               <div class="cell__art" data-ui>
                 <div class="hist" role="list" aria-label="阅读历史示例">
                   <div class="hist__row" role="listitem"><span>【S1er】又一个 S1 APP</span><span>3 分钟前</span></div>
                   <div class="hist__row" role="listitem"><span>2026 年夏季在播动画专楼汇总</span><span>昨天</span></div>
                   <div class="hist__row" role="listitem"><span>最近玩了火纹回声和圣兽之王</span><span>11-02</span></div>
                 </div>
-              </div>
-              <div class="cell__text">
-                <h3>阅读历史</h3>
-                <p>读到哪一层、什么时候读的，都记在本机；清空是一次点击的事，没有云端副本。</p>
               </div>
             </article>
 
@@ -290,17 +435,17 @@
               </div>
             </article>
 
-            <article class="cell cell--flip">
+            <article class="cell">
+              <div class="cell__text">
+                <h3>私信与提醒</h3>
+                <p>私信、系统提醒、好友与每日签到都在客户端里，不用为了回一句话跳回网页。</p>
+              </div>
               <div class="cell__art" data-ui>
                 <div class="msgs" role="list" aria-label="消息示例">
                   <div class="msgs__row" role="listitem"><span>私信</span><span class="msgs__badge">2</span></div>
                   <div class="msgs__row" role="listitem"><span>系统提醒</span><span class="msgs__badge">5</span></div>
                   <div class="msgs__row" role="listitem"><span>好友申请</span><span class="msgs__badge">1</span></div>
                 </div>
-              </div>
-              <div class="cell__text">
-                <h3>私信与提醒</h3>
-                <p>私信、系统提醒、好友与每日签到都在客户端里，不用为了回一句话跳回网页。</p>
               </div>
             </article>
           </div>
@@ -317,50 +462,128 @@
 
           <ul class="faces">
             <li class="face face--a">
-              <div class="face__art"><img src="assets/emoticons/face2017/001.png" width="96" height="96" alt="麻将脸 f:001" loading="eager" /></div>
+              <div class="face__art" aria-hidden="true">
+                <img src="assets/emoticons/face2017/001.png" width="32" height="32" alt="" loading="lazy" />
+                <img src="assets/emoticons/face2017/002.png" width="32" height="32" alt="" loading="lazy" />
+                <img src="assets/emoticons/face2017/003.png" width="32" height="32" alt="" loading="lazy" />
+                <img src="assets/emoticons/face2017/004.gif" width="32" height="32" alt="" loading="lazy" />
+                <img src="assets/emoticons/face2017/005.png" width="32" height="32" alt="" loading="lazy" />
+                <img src="assets/emoticons/face2017/006.png" width="32" height="32" alt="" loading="lazy" />
+                <img src="assets/emoticons/face2017/007.png" width="32" height="32" alt="" loading="lazy" />
+                <img src="assets/emoticons/face2017/008.png" width="32" height="32" alt="" loading="lazy" />
+                <img src="assets/emoticons/face2017/009.gif" width="32" height="32" alt="" loading="lazy" />
+                <img src="assets/emoticons/face2017/010.png" width="32" height="32" alt="" loading="lazy" />
+                <img src="assets/emoticons/face2017/011.png" width="32" height="32" alt="" loading="lazy" />
+                <img src="assets/emoticons/face2017/012.png" width="32" height="32" alt="" loading="lazy" />
+              </div>
               <div class="face__tag">
-                <p><span>麻将脸</span><span>f:001</span></p>
-                <p><span>32×32 · PNG</span><span>358 B</span></p>
-                <p><span>本地资源</span><span>静态</span></p>
+                <p><span>麻将脸</span><span>f · 275 张</span></p>
+                <p><span>32×32</span><span>PNG / GIF</span></p>
+                <p><span>本地资源</span><span>静态 + 动图</span></p>
               </div>
             </li>
             <li class="face face--b">
-              <div class="face__art"><img src="assets/emoticons/face2017/004.gif" width="96" height="96" alt="麻将脸 f:004（动图）" loading="eager" /></div>
+              <div class="face__art" aria-hidden="true">
+                <img src="assets/emoticons/carton2017/001.png" width="32" height="32" alt="" loading="lazy" />
+                <img src="assets/emoticons/carton2017/002.png" width="32" height="32" alt="" loading="lazy" />
+                <img src="assets/emoticons/carton2017/003.png" width="32" height="32" alt="" loading="lazy" />
+                <img src="assets/emoticons/carton2017/004.png" width="32" height="32" alt="" loading="lazy" />
+                <img src="assets/emoticons/carton2017/005.png" width="32" height="32" alt="" loading="lazy" />
+                <img src="assets/emoticons/carton2017/006.png" width="32" height="32" alt="" loading="lazy" />
+                <img src="assets/emoticons/carton2017/007.png" width="32" height="32" alt="" loading="lazy" />
+                <img src="assets/emoticons/carton2017/008.png" width="32" height="32" alt="" loading="lazy" />
+                <img src="assets/emoticons/carton2017/009.png" width="32" height="32" alt="" loading="lazy" />
+                <img src="assets/emoticons/carton2017/010.png" width="32" height="32" alt="" loading="lazy" />
+                <img src="assets/emoticons/carton2017/011.png" width="32" height="32" alt="" loading="lazy" />
+                <img src="assets/emoticons/carton2017/012.png" width="32" height="32" alt="" loading="lazy" />
+              </div>
               <div class="face__tag">
-                <p><span>麻将脸</span><span>f:004</span></p>
-                <p><span>32×32 · GIF</span><span>1.7 KB</span></p>
-                <p><span>本地资源</span><span>动图</span></p>
+                <p><span>动漫</span><span>c · 430 张</span></p>
+                <p><span>32×32</span><span>PNG / GIF</span></p>
+                <p><span>本地资源</span><span>静态 + 动图</span></p>
               </div>
             </li>
             <li class="face face--c">
-              <div class="face__art"><img src="assets/emoticons/carton2017/001.png" width="96" height="96" alt="动漫 c:001" loading="eager" /></div>
+              <div class="face__art" aria-hidden="true">
+                <img src="assets/emoticons/animal2017/001.png" width="32" height="32" alt="" loading="lazy" />
+                <img src="assets/emoticons/animal2017/002.png" width="32" height="32" alt="" loading="lazy" />
+                <img src="assets/emoticons/animal2017/003.png" width="32" height="32" alt="" loading="lazy" />
+                <img src="assets/emoticons/animal2017/004.png" width="32" height="32" alt="" loading="lazy" />
+                <img src="assets/emoticons/animal2017/005.png" width="32" height="32" alt="" loading="lazy" />
+                <img src="assets/emoticons/animal2017/006.png" width="32" height="32" alt="" loading="lazy" />
+                <img src="assets/emoticons/animal2017/007.png" width="32" height="32" alt="" loading="lazy" />
+                <img src="assets/emoticons/animal2017/008.png" width="32" height="32" alt="" loading="lazy" />
+                <img src="assets/emoticons/animal2017/009.png" width="32" height="32" alt="" loading="lazy" />
+                <img src="assets/emoticons/animal2017/010.png" width="32" height="32" alt="" loading="lazy" />
+                <img src="assets/emoticons/animal2017/011.png" width="32" height="32" alt="" loading="lazy" />
+                <img src="assets/emoticons/animal2017/012.png" width="32" height="32" alt="" loading="lazy" />
+              </div>
               <div class="face__tag">
-                <p><span>动漫</span><span>c:001</span></p>
-                <p><span>32×32 · PNG</span><span>547 B</span></p>
+                <p><span>动物</span><span>a · 30 张</span></p>
+                <p><span>32×32</span><span>PNG</span></p>
                 <p><span>本地资源</span><span>静态</span></p>
               </div>
             </li>
             <li class="face face--b">
-              <div class="face__art"><img src="assets/emoticons/animal2017/001.png" width="96" height="96" alt="动物 a:001" loading="eager" /></div>
+              <div class="face__art" aria-hidden="true">
+                <img src="assets/emoticons/device2017/001.png" width="32" height="32" alt="" loading="lazy" />
+                <img src="assets/emoticons/device2017/002.png" width="32" height="32" alt="" loading="lazy" />
+                <img src="assets/emoticons/device2017/003.png" width="32" height="32" alt="" loading="lazy" />
+                <img src="assets/emoticons/device2017/004.png" width="32" height="32" alt="" loading="lazy" />
+                <img src="assets/emoticons/device2017/005.png" width="32" height="32" alt="" loading="lazy" />
+                <img src="assets/emoticons/device2017/006.png" width="32" height="32" alt="" loading="lazy" />
+                <img src="assets/emoticons/device2017/007.png" width="32" height="32" alt="" loading="lazy" />
+                <img src="assets/emoticons/device2017/008.png" width="32" height="32" alt="" loading="lazy" />
+                <img src="assets/emoticons/device2017/009.png" width="32" height="32" alt="" loading="lazy" />
+                <img src="assets/emoticons/device2017/010.png" width="32" height="32" alt="" loading="lazy" />
+                <img src="assets/emoticons/device2017/011.png" width="32" height="32" alt="" loading="lazy" />
+                <img src="assets/emoticons/device2017/012.png" width="32" height="32" alt="" loading="lazy" />
+              </div>
               <div class="face__tag">
-                <p><span>动物</span><span>a:001</span></p>
-                <p><span>32×32 · PNG</span><span>1.3 KB</span></p>
-                <p><span>本地资源</span><span>静态</span></p>
+                <p><span>硬件</span><span>d · 44 张</span></p>
+                <p><span>32×32</span><span>PNG / GIF</span></p>
+                <p><span>本地资源</span><span>静态 + 动图</span></p>
               </div>
             </li>
             <li class="face face--a">
-              <div class="face__art"><img src="assets/emoticons/device2017/001.png" width="96" height="96" alt="硬件 d:001" loading="eager" /></div>
+              <div class="face__art" aria-hidden="true">
+                <img src="assets/emoticons/goose2017/001.png" width="32" height="32" alt="" loading="lazy" />
+                <img src="assets/emoticons/goose2017/002.png" width="32" height="32" alt="" loading="lazy" />
+                <img src="assets/emoticons/goose2017/003.png" width="32" height="32" alt="" loading="lazy" />
+                <img src="assets/emoticons/goose2017/004.png" width="32" height="32" alt="" loading="lazy" />
+                <img src="assets/emoticons/goose2017/005.png" width="32" height="32" alt="" loading="lazy" />
+                <img src="assets/emoticons/goose2017/006.png" width="32" height="32" alt="" loading="lazy" />
+                <img src="assets/emoticons/goose2017/007.png" width="32" height="32" alt="" loading="lazy" />
+                <img src="assets/emoticons/goose2017/008.png" width="32" height="32" alt="" loading="lazy" />
+                <img src="assets/emoticons/goose2017/009.png" width="32" height="32" alt="" loading="lazy" />
+                <img src="assets/emoticons/goose2017/010.png" width="32" height="32" alt="" loading="lazy" />
+                <img src="assets/emoticons/goose2017/011.png" width="32" height="32" alt="" loading="lazy" />
+                <img src="assets/emoticons/goose2017/012.png" width="32" height="32" alt="" loading="lazy" />
+              </div>
               <div class="face__tag">
-                <p><span>硬件</span><span>d:001</span></p>
-                <p><span>32×32 · PNG</span><span>369 B</span></p>
+                <p><span>鹅</span><span>g · 74 张</span></p>
+                <p><span>32×32</span><span>PNG</span></p>
                 <p><span>本地资源</span><span>静态</span></p>
               </div>
             </li>
             <li class="face face--b">
-              <div class="face__art"><img src="assets/emoticons/goose2017/001.png" width="96" height="96" alt="鹅 g:001" loading="eager" /></div>
+              <div class="face__art" aria-hidden="true">
+                <img src="assets/emoticons/bundam2017/001.png" width="32" height="32" alt="" loading="lazy" />
+                <img src="assets/emoticons/bundam2017/002.png" width="32" height="32" alt="" loading="lazy" />
+                <img src="assets/emoticons/bundam2017/003.png" width="32" height="32" alt="" loading="lazy" />
+                <img src="assets/emoticons/bundam2017/004.png" width="32" height="32" alt="" loading="lazy" />
+                <img src="assets/emoticons/bundam2017/005.png" width="32" height="32" alt="" loading="lazy" />
+                <img src="assets/emoticons/bundam2017/006.png" width="32" height="32" alt="" loading="lazy" />
+                <img src="assets/emoticons/bundam2017/007.png" width="32" height="32" alt="" loading="lazy" />
+                <img src="assets/emoticons/bundam2017/008.png" width="32" height="32" alt="" loading="lazy" />
+                <img src="assets/emoticons/bundam2017/009.png" width="32" height="32" alt="" loading="lazy" />
+                <img src="assets/emoticons/bundam2017/010.png" width="32" height="32" alt="" loading="lazy" />
+                <img src="assets/emoticons/bundam2017/011.png" width="32" height="32" alt="" loading="lazy" />
+                <img src="assets/emoticons/bundam2017/012.png" width="32" height="32" alt="" loading="lazy" />
+              </div>
               <div class="face__tag">
-                <p><span>鹅</span><span>g:001</span></p>
-                <p><span>32×32 · PNG</span><span>1.3 KB</span></p>
+                <p><span>高达</span><span>b · 37 张</span></p>
+                <p><span>32×32</span><span>PNG</span></p>
                 <p><span>本地资源</span><span>静态</span></p>
               </div>
             </li>
@@ -464,6 +687,6 @@
       </div>
     </footer>
 
-    <script src="js/main.js?v=20261107" defer></script>
+    <script src="js/main.js?v=20261106h" defer></script>
   </body>
 </html>

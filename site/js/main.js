@@ -1,83 +1,161 @@
 (() => {
   const reduceMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+  const root = document.documentElement;
 
-  const status = document.querySelector("[data-compose-status]");
-  const say = (msg) => {
-    if (status) status.textContent = msg;
+  // —— 明暗主题 ——
+  const themeBtn = document.querySelector("[data-theme-toggle]");
+  const themeMeta = document.querySelector('meta[name="theme-color"]');
+
+  const applyTheme = (theme) => {
+    root.dataset.theme = theme;
+    const light = theme === "light";
+    if (themeBtn) {
+      themeBtn.setAttribute("aria-pressed", String(light));
+      themeBtn.setAttribute("aria-label", light ? "切换到深色主题" : "切换到浅色主题");
+    }
+    if (themeMeta) themeMeta.setAttribute("content", light ? "#f5f5f8" : "#09090b");
   };
 
+  applyTheme(root.dataset.theme === "light" ? "light" : "dark");
+
+  if (themeBtn) {
+    themeBtn.addEventListener("click", () => {
+      const next = root.dataset.theme === "light" ? "dark" : "light";
+      applyTheme(next);
+      try {
+        localStorage.setItem("s1er-theme", next);
+      } catch {
+        // 隐私模式下存不了，本次切换照常生效
+      }
+    });
+  }
+
   // —— 首屏帖子：引用进回复框 ——
-  const quoteBtns = [...document.querySelectorAll("[data-quote-btn]")];
-  const composeLine = document.querySelector("[data-compose-line]");
+  const heroBtns = [...document.querySelectorAll("[data-hero-quote]")];
+  const heroLine = document.querySelector("[data-compose-line]");
 
-  if (quoteBtns.length && composeLine) {
-    const hint = composeLine.innerHTML;
+  const buildQuote = (dataset, onCancel) => {
+    const label = document.createElement("b");
+    label.textContent = `引用 ${dataset.quoteFloor} · ${dataset.quoteAuthor}`;
+    const text = document.createElement("span");
+    text.textContent = dataset.quoteText;
+    const cancel = document.createElement("button");
+    cancel.type = "button";
+    cancel.className = "app__cancel";
+    cancel.textContent = "取消";
+    cancel.addEventListener("click", onCancel);
+    return [label, text, cancel];
+  };
 
-    const reset = () => {
-      composeLine.innerHTML = hint;
-      quoteBtns.forEach((b) => b.setAttribute("aria-pressed", "false"));
+  if (heroBtns.length && heroLine) {
+    const hint = heroLine.innerHTML;
+    const status = document.querySelector("[data-compose-status]");
+    const say = (msg) => {
+      if (status) status.textContent = msg;
     };
 
-    quoteBtns.forEach((btn) => {
+    const reset = () => {
+      heroLine.innerHTML = hint;
+      heroBtns.forEach((b) => b.setAttribute("aria-pressed", "false"));
+    };
+
+    heroBtns.forEach((btn) => {
       btn.addEventListener("click", () => {
-        const { quoteFloor, quoteAuthor, quoteText } = btn.dataset;
-        quoteBtns.forEach((b) => b.setAttribute("aria-pressed", String(b === btn)));
-
-        const label = document.createElement("b");
-        label.textContent = `引用 ${quoteFloor} · ${quoteAuthor}`;
-        const text = document.createElement("span");
-        text.textContent = quoteText;
-        const cancel = document.createElement("button");
-        cancel.type = "button";
-        cancel.className = "thread__cancel";
-        cancel.textContent = "取消";
-        cancel.addEventListener("click", () => {
-          reset();
-          say(`已取消引用 ${quoteFloor}`);
-        });
-
-        composeLine.replaceChildren(label, text, cancel);
-        say(`已引用 ${quoteFloor}，回复框带上了出处`);
+        heroBtns.forEach((b) => b.setAttribute("aria-pressed", String(b === btn)));
+        heroLine.replaceChildren(
+          ...buildQuote(btn.dataset, () => {
+            reset();
+            say(`已取消引用 ${btn.dataset.quoteFloor}`);
+          }),
+        );
+        say(`已引用 ${btn.dataset.quoteFloor}，回复框带上了出处`);
       });
     });
   }
 
-  // —— 楼层：菜单与引用 ——
-  const more = document.querySelector("[data-floor-more]");
-  const menu = document.querySelector("[data-floor-menu]");
+  // —— 一层楼：菜单与引用 ——
+  const floorMore = document.querySelector("[data-floor-more]");
+  const floorMenu = document.querySelector("[data-floor-menu]");
+  const floorLine = document.querySelector("[data-floor-compose]");
+  const floorWord = document.querySelector("[data-quote-word]");
+  const floorBtns = [...document.querySelectorAll("[data-quote-btn], [data-floor-quote]")];
 
-  if (more && menu) {
-    more.addEventListener("click", () => {
-      const open = more.getAttribute("aria-expanded") !== "true";
-      more.setAttribute("aria-expanded", String(open));
-      more.classList.toggle("is-on", open);
-      menu.hidden = !open;
+  if (floorMore && floorMenu) {
+    floorMore.addEventListener("click", (event) => {
+      event.stopPropagation();
+      const open = floorMore.getAttribute("aria-expanded") !== "true";
+      floorMore.setAttribute("aria-expanded", String(open));
+      floorMenu.hidden = !open;
     });
   }
 
-  const quoteBtn = document.querySelector("[data-floor-quote]");
-  const quoted = document.querySelector("[data-quote]");
-  const quoteWord = document.querySelector("[data-quote-word]");
+  if (floorLine && floorBtns.length) {
+    const hint = floorLine.innerHTML;
 
-  if (quoteBtn && quoted) {
-    const floor = quoted.closest(".floor");
-    quoteBtn.addEventListener("click", () => {
-      const off = floor.classList.toggle("is-unquoted");
-      if (quoteWord) quoteWord.textContent = off ? "未引用" : "已引用";
-    });
-  }
+    const reset = () => {
+      floorLine.innerHTML = hint;
+      floorBtns.forEach((b) => b.setAttribute("aria-pressed", "false"));
+      if (floorWord) floorWord.textContent = "回帖";
+    };
 
-  // —— 种子色 ——
-  const seeds = [...document.querySelectorAll(".seed")];
-  seeds.forEach((seed) => {
-    seed.addEventListener("click", () => {
-      seeds.forEach((s) => {
-        const on = s === seed;
-        s.classList.toggle("is-on", on);
-        s.setAttribute("aria-pressed", String(on));
+    floorBtns.forEach((btn) => {
+      btn.addEventListener("click", () => {
+        floorBtns.forEach((b) => b.setAttribute("aria-pressed", String(b === btn)));
+        floorLine.replaceChildren(...buildQuote(btn.dataset, reset));
+        if (floorWord) floorWord.textContent = "已引用";
+        if (floorMenu) {
+          floorMenu.hidden = true;
+          floorMore?.setAttribute("aria-expanded", "false");
+        }
       });
     });
-  });
+  }
+
+  // —— 种子色与字号：整个页面跟着换 ——
+  const seedBtns = [...document.querySelectorAll(".seed")];
+  const sizeBtns = [...document.querySelectorAll(".sizes button")];
+
+  const applySeed = (seed) => {
+    root.dataset.seed = seed;
+    seedBtns.forEach((b) => {
+      const on = b.dataset.seed === seed;
+      b.classList.toggle("is-on", on);
+      b.setAttribute("aria-pressed", String(on));
+    });
+  };
+
+  const applySize = (size) => {
+    root.dataset.size = size;
+    sizeBtns.forEach((b) => b.setAttribute("aria-pressed", String(b.dataset.size === size)));
+  };
+
+  const remember = (key, value) => {
+    try {
+      localStorage.setItem(key, value);
+    } catch {
+      // 隐私模式下存不了，本次切换照常生效
+    }
+  };
+
+  if (seedBtns.length) {
+    applySeed(root.dataset.seed || "blue");
+    seedBtns.forEach((btn) => {
+      btn.addEventListener("click", () => {
+        applySeed(btn.dataset.seed);
+        remember("s1er-seed", btn.dataset.seed);
+      });
+    });
+  }
+
+  if (sizeBtns.length) {
+    applySize(root.dataset.size || "normal");
+    sizeBtns.forEach((btn) => {
+      btn.addEventListener("click", () => {
+        applySize(btn.dataset.size);
+        remember("s1er-size", btn.dataset.size);
+      });
+    });
+  }
 
   // —— 段落入场 ——
   const parts = [];

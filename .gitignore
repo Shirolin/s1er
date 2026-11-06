@@ -169,3 +169,6 @@ scripts/maven-proxy.js
 # Android 签名
 *.jks
 *.keystore
+
+# tasteskill working files
+/.taste-skill/

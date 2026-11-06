@@ -3,19 +3,19 @@
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <title>隐私政策 — S1er</title>
+    <title>隐私政策 · S1er</title>
     <meta name="description" content="S1er 隐私政策：说明本应用如何收集、使用和保护用户信息。" />
-    <meta name="theme-color" content="#08090d" />
+    <meta name="theme-color" content="#09090b" />
     <meta name="color-scheme" content="dark" />
     <link rel="icon" href="assets/branding/s1er_mark.png" type="image/png" />
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link
-      href="https://fonts.googleapis.com/css2?family=Noto+Sans+SC:wght@400;500;600;700&family=Space+Grotesk:wght@400;500;600;700&display=swap"
+      href="https://fonts.googleapis.com/css2?family=Noto+Sans+SC:wght@400;500;700&family=Space+Grotesk:wght@400;500;600&display=swap"
       rel="stylesheet"
     />
     <link rel="canonical" href="https://shirolin.github.io/s1er/privacy.html" id="canonical" />
-    <link rel="stylesheet" href="css/styles.css?v=20261015" />
+    <link rel="stylesheet" href="css/styles.css?v=20261107" />
     <script>
       (function() {
         var base = location.protocol + '//' + location.hostname;
@@ -28,33 +28,20 @@
   </head>
   <body class="privacy-page">
     <a class="skip-link" href="#main">跳到主要内容</a>
-    <div class="bg-mesh" aria-hidden="true">
-      <div class="bg-mesh__blob bg-mesh__blob--a"></div>
-      <div class="bg-mesh__blob bg-mesh__blob--b"></div>
-      <div class="bg-mesh__grid"></div>
-      <div class="bg-mesh__noise"></div>
-    </div>
 
-    <header class="site-nav is-scrolled" data-nav>
-      <div class="site-nav__inner">
-        <a class="site-nav__brand" href="index.html">
-          <img src="assets/branding/s1er_mark.png" width="32" height="32" alt="" />
+    <header class="top">
+        <a class="brand" href="index.html">
+          <img src="assets/branding/s1er_mark.png" width="28" height="28" alt="" />
           <span>S1er</span>
         </a>
-        <div class="site-nav__actions">
-          <a
-            class="btn btn--ghost btn--sm site-nav__gh"
-            href="https://github.com/Shirolin/s1er"
-            rel="noopener noreferrer"
-            >GitHub</a
-          >
-          <a class="btn btn--primary btn--sm" href="index.html">首页</a>
-        </div>
-      </div>
-    </header>
+        <nav class="top__nav" aria-label="主导航">
+          <a href="index.html">首页</a>
+          <a href="index.html#platforms">平台</a>
+          <a class="btn btn--primary btn--sm" href="https://github.com/Shirolin/s1er/releases/latest" rel="noopener noreferrer">下载</a>
+        </nav>
+      </header>
 
     <main class="privacy-main" id="main">
-      <a class="back-home" href="index.html">← 返回首页</a>
       <h1>隐私政策</h1>
       <p class="updated">最后更新：2026-07-18</p>
 
@@ -212,27 +199,20 @@
       </ul>
     </main>
 
-    <footer class="site-footer">
-      <div class="site-footer__inner">
-        <div class="site-footer__brand">
-          <img src="assets/branding/s1er_mark.png" width="24" height="24" alt="" />
-          <div>
-            <strong>S1er</strong>
-            <p>GPL-3.0-or-later · 与 Stage1st 官方无关</p>
-          </div>
+    <footer class="foot">
+      <div class="wrap">
+        <p class="foot__word" aria-hidden="true">S1er</p>
+        <div class="foot__row">
+          <p>GPL-3.0-or-later · 与 Stage1st 官方无关</p>
+          <ul class="foot__links">
+            <li><a href="index.html">首页</a></li>
+            <li><a href="https://github.com/Shirolin/s1er" rel="noopener noreferrer">仓库</a></li>
+            <li><a href="https://github.com/Shirolin/s1er/issues" rel="noopener noreferrer">Issues</a></li>
+          </ul>
         </div>
-        <ul class="site-footer__links">
-          <li><a href="index.html">首页</a></li>
-          <li>
-            <a href="https://github.com/Shirolin/s1er" rel="noopener noreferrer">仓库</a>
-          </li>
-          <li>
-            <a href="https://github.com/Shirolin/s1er/issues" rel="noopener noreferrer">Issues</a>
-          </li>
-        </ul>
       </div>
     </footer>
 
-    <script src="js/main.js?v=20261015" defer></script>
+    <script src="js/main.js?v=20261107" defer></script>
   </body>
 </html>

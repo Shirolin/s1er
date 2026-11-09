@@ -230,6 +230,137 @@ void main() {
     expect(find.text('已恢复草稿'), findsOneWidget);
   });
 
+  testWidgets('new thread restores persisted title, body and category',
+      (tester) async {
+    local.settings.put('new_thread_drafts', {
+      '4': {'subject': '旧标题', 'message': '旧新帖正文', 'typeId': '1'},
+    });
+
+    await tester.pumpWidget(
+      ProviderScope(
+        overrides: [
+          ...buildOverrides(auth: _LoggedInAuthNotifier.new),
+          forumNameProvider('4').overrideWith((ref) => '游戏论坛'),
+        ],
+        child: MaterialApp(
+          theme: AppTheme.lightTheme('purple'),
+          home: const ComposeScreen(fid: '4', newThread: true),
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    expect(
+      tester
+          .widget<TextField>(find.widgetWithText(TextField, '主题标题'))
+          .controller!
+          .text,
+      '旧标题',
+    );
+    expect(
+      tester.widget<TextField>(find.byType(TextField).last).controller!.text,
+      '旧新帖正文',
+    );
+    expect(find.text('主题设置 · 其他'), findsOneWidget);
+    expect(find.text('已恢复草稿'), findsOneWidget);
+  });
+
+  testWidgets('new thread discard clears persisted draft', (tester) async {
+    await tester.pumpWidget(
+      ProviderScope(
+        overrides: [
+          ...buildOverrides(auth: _LoggedInAuthNotifier.new),
+          forumNameProvider('4').overrideWith((ref) => '游戏论坛'),
+        ],
+        child: MaterialApp(
+          theme: AppTheme.lightTheme('purple'),
+          home: Builder(
+            builder: (context) {
+              return Scaffold(
+                body: Center(
+                  child: TextButton(
+                    onPressed: () {
+                      Navigator.of(context).push(
+                        MaterialPageRoute<void>(
+                          builder: (_) =>
+                              const ComposeScreen(fid: '4', newThread: true),
+                        ),
+                      );
+                    },
+                    child: const Text('open-compose'),
+                  ),
+                ),
+              );
+            },
+          ),
+        ),
+      ),
+    );
+    await tester.tap(find.text('open-compose'));
+    await tester.pumpAndSettle();
+
+    await tester.enterText(
+      find.widgetWithText(TextField, '主题标题'),
+      '待放弃标题',
+    );
+    await tester.enterText(find.byType(TextField).last, '待放弃正文');
+    await tester.pumpAndSettle();
+    expect(local.settings.get<Object>('new_thread_drafts'), isNotNull);
+
+    await tester.pageBack();
+    await tester.pumpAndSettle();
+    expect(find.text('离开发帖？'), findsOneWidget);
+    await tester.tap(find.text('放弃草稿'));
+    await tester.pumpAndSettle();
+
+    expect(local.settings.get<Object>('new_thread_drafts'), isNull);
+  });
+
+  testWidgets('edit restores persisted draft with image chip', (tester) async {
+    local.settings.put('edit_post_drafts', {
+      '200': {
+        'subject': '本地标题',
+        'message': '本地正文⟦图1⟧',
+        'mediaTags': ['[img]https://a.test/1.png[/img]'],
+        'mediaSlots': [1],
+      },
+    });
+
+    await tester.pumpWidget(
+      ProviderScope(
+        overrides: [
+          localDataProvider.overrideWithValue(local),
+          authStateProvider.overrideWith(_LoggedInAuthNotifier.new),
+          composeControllerProvider.overrideWith(
+            (ref) => _EditComposeController(ref),
+          ),
+        ],
+        child: MaterialApp(
+          theme: AppTheme.lightTheme('purple'),
+          home: const ComposeScreen(
+            tid: '100',
+            fid: '4',
+            editPid: '200',
+            editIsFirst: true,
+          ),
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    expect(find.text('使用本地草稿？'), findsOneWidget);
+    await tester.tap(find.text('用本地草稿'));
+    await tester.pumpAndSettle();
+
+    final texts = tester
+        .widgetList<TextField>(find.byType(TextField))
+        .map((field) => field.controller!.text)
+        .toList();
+    expect(texts, contains('本地标题'));
+    expect(texts, contains('本地正文⟦图1⟧'));
+    expect(find.text('图片 1'), findsOneWidget);
+  });
+
   testWidgets('ComposeScreen preview shows QuoteBlock when quoting',
       (tester) async {
     final snapshotId = QuoteSnapshotStore.put(samplePost, displayFloor: 5);

@@ -20,7 +20,6 @@ import 'package:s1er/services/app_local_data.dart';
 import 'package:s1er/providers/device_model_label_provider.dart';
 import 'package:s1er/theme/app_theme.dart';
 import 'package:s1er/utils/quote_snapshot_store.dart';
-import 'package:s1er/utils/compose_message_draft.dart';
 import 'package:s1er/utils/window_size.dart';
 import 'package:s1er/widgets/bbcode_renderer.dart';
 
@@ -39,6 +38,14 @@ void main() {
   tearDown(() async {
     await db.close();
   });
+
+  const replyDraftDebounce = Duration(milliseconds: 400);
+
+  String? storedReplyDraft(String key) {
+    final drafts = local.settings.get<Object>('compose_message_drafts');
+    if (drafts is! Map) return null;
+    return (drafts[key] as Map?)?['message'] as String?;
+  }
 
   List<Override> buildOverrides({
     required AuthNotifier Function() auth,
@@ -203,12 +210,9 @@ void main() {
   });
 
   testWidgets('ComposeScreen restores persisted message draft', (tester) async {
-    local.settings.put(
-      ComposeMessageDraft.settingsKey,
-      ComposeMessageDraft.toStoreValue(
-        ComposeMessageDraft.upsert({}, '100', '草稿正文内容'),
-      ),
-    );
+    local.settings.put('compose_message_drafts', {
+      '100': {'message': '草稿正文内容', 'updatedAt': '2026-07-14T00:00:00.000Z'},
+    });
 
     await tester.pumpWidget(
       ProviderScope(
@@ -575,23 +579,14 @@ void main() {
 
     const draftText = '成功回复正文';
     await tester.enterText(find.byType(TextField), draftText);
-    await tester.pump(ComposeMessageDraft.debounce);
+    await tester.pump(replyDraftDebounce);
     await tester.tap(find.text('发送'));
     await tester.pump();
     await tester.pumpAndSettle();
 
     expect(find.text('回复成功'), findsOneWidget);
     expect(find.text('Thread Page'), findsOneWidget);
-    final drafts = ComposeMessageDraft.parseStore(
-      local.settings.get<Object>(ComposeMessageDraft.settingsKey),
-    );
-    expect(
-      ComposeMessageDraft.readMessage(
-        drafts,
-        ComposeMessageDraft.entryKey(tid: '100'),
-      ),
-      isNull,
-    );
+    expect(storedReplyDraft('100'), isNull);
   });
 
   testWidgets('reply rejected keeps draft on compose screen', (tester) async {
@@ -614,7 +609,7 @@ void main() {
 
     const draftText = '失败回复正文';
     await tester.enterText(find.byType(TextField), draftText);
-    await tester.pump(ComposeMessageDraft.debounce);
+    await tester.pump(replyDraftDebounce);
     await tester.tap(find.text('发送'));
     await tester.pump();
     await tester.pumpAndSettle();
@@ -622,16 +617,7 @@ void main() {
     expect(find.text('内容过长'), findsOneWidget);
     expect(find.text(draftText), findsOneWidget);
     expect(find.byType(ComposeScreen), findsOneWidget);
-    final rejectedDrafts = ComposeMessageDraft.parseStore(
-      local.settings.get<Object>(ComposeMessageDraft.settingsKey),
-    );
-    expect(
-      ComposeMessageDraft.readMessage(
-        rejectedDrafts,
-        ComposeMessageDraft.entryKey(tid: '100'),
-      ),
-      draftText,
-    );
+    expect(storedReplyDraft('100'), draftText);
   });
 
   testWidgets('reply uncertain keeps draft and shows banner', (tester) async {
@@ -654,7 +640,7 @@ void main() {
 
     const draftText = '不确定回复正文';
     await tester.enterText(find.byType(TextField), draftText);
-    await tester.pump(ComposeMessageDraft.debounce);
+    await tester.pump(replyDraftDebounce);
     await tester.tap(find.text('发送'));
     await tester.pump();
     await tester.pumpAndSettle();
@@ -662,16 +648,7 @@ void main() {
     expect(find.textContaining('回复状态不明确'), findsWidgets);
     expect(find.text(draftText), findsOneWidget);
     expect(find.byType(ComposeScreen), findsOneWidget);
-    final uncertainDrafts = ComposeMessageDraft.parseStore(
-      local.settings.get<Object>(ComposeMessageDraft.settingsKey),
-    );
-    expect(
-      ComposeMessageDraft.readMessage(
-        uncertainDrafts,
-        ComposeMessageDraft.entryKey(tid: '100'),
-      ),
-      draftText,
-    );
+    expect(storedReplyDraft('100'), draftText);
   });
 
   testWidgets('ComposeScreen edit bottom bar fits narrow width',

@@ -1,3 +1,4 @@
+import '../widgets/s1_ink_well.dart';
 import 'dart:async';
 import 'dart:ui' show PointerDeviceKind;
 
@@ -8,6 +9,8 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+import '../models/compose_draft.dart';
+import '../models/compose_target.dart';
 import '../models/post.dart';
 import '../models/quote_info.dart';
 import '../models/new_thread_form_info.dart';
@@ -17,6 +20,7 @@ import '../models/private_message_item.dart';
 import '../models/user.dart';
 import '../providers/auth_provider.dart';
 import '../providers/compose_provider.dart';
+import '../providers/compose_session_provider.dart';
 import '../providers/forum_name_provider.dart';
 import '../providers/image_cache_provider.dart';
 import '../providers/settings_provider.dart';
@@ -29,9 +33,6 @@ import '../utils/compose_bbcode_wrap.dart';
 import '../utils/compose_clipboard_image.dart';
 import '../utils/compose_img_tags.dart';
 import '../utils/compose_message_char_count.dart';
-import '../utils/compose_message_draft.dart';
-import '../utils/new_thread_draft.dart';
-import '../utils/edit_post_draft.dart';
 import '../utils/edit_post_message.dart';
 import '../utils/platform_image_url.dart';
 import '../utils/post_image_index_counter.dart';
@@ -42,7 +43,6 @@ import '../utils/s1_snack_bar.dart';
 import '../utils/window_size.dart';
 import '../models/forum_attachment_upload_info.dart';
 import '../models/compose_image_upload_result.dart';
-import '../widgets/s1_ink_well.dart';
 import '../widgets/bbcode_renderer.dart';
 import '../widgets/compose_bbcode_toolbar.dart';
 import '../widgets/compose_emoticon_panel.dart';
@@ -136,7 +136,7 @@ class _ComposeScreenState extends ConsumerState<ComposeScreen> {
   final List<_ComposeUploadedImage> _uploadedImages = [];
   final Map<String, String> _imageLabelsByUrl = {};
   List<String> _recentEmoticons = [];
-  Timer? _draftSaveTimer;
+  late final ProviderSubscription<ComposeSession> _sessionSubscription;
   bool _suppressDraftSave = false;
   bool _suppressMediaSync = false;
   NewThreadFormInfo? _newThreadForm;
@@ -357,9 +357,12 @@ class _ComposeScreenState extends ConsumerState<ComposeScreen> {
     setState(() => _replaceUploadedImages(ordered));
   }
 
-  String get _draftEntryKey {
-    final tid = widget.tid ?? '';
-    return ComposeMessageDraft.entryKey(tid: tid, reppost: _quotePid);
+  ComposeSession get _session => _sessionSubscription.read();
+
+  ComposeTarget get _target {
+    if (_isEditing) return EditPostTarget(pid: widget.editPid!);
+    if (_isNewThread) return NewThreadTarget(fid: widget.fid ?? '');
+    return ReplyTarget(tid: widget.tid ?? '', reppost: _quotePid);
   }
 
   @override
@@ -374,6 +377,8 @@ class _ComposeScreenState extends ConsumerState<ComposeScreen> {
     }
     final pid = _quotePid;
     _includeQuote = pid != null && pid.isNotEmpty;
+    _sessionSubscription =
+        ref.listenManual(composeSessionProvider(_target), (_, __) {});
 
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (!mounted) return;
@@ -422,25 +427,19 @@ class _ComposeScreenState extends ConsumerState<ComposeScreen> {
     final form =
         await ref.read(composeControllerProvider).fetchNewThreadForm(fid: fid);
     if (!mounted) return;
-    final saved = _readNewThreadDraft(fid);
-    var restored = false;
+    final saved = _session.restoreDraft();
     setState(() {
       _newThreadForm = form;
       _newThreadLoading = false;
       if (saved != null) {
-        final subject = saved['subject'] as String? ?? '';
-        final message = saved['message'] as String? ?? '';
-        if (subject.trim().isNotEmpty || message.trim().isNotEmpty) {
-          _suppressDraftSave = true;
-          _subjectController.text = subject;
-          _messageController.text = message;
-          _selectedTypeId = saved['typeId'] as String?;
-          _suppressDraftSave = false;
-          restored = true;
-        }
+        _suppressDraftSave = true;
+        _subjectController.text = saved.subject;
+        _messageController.text = saved.message;
+        _selectedTypeId = saved.typeId;
+        _suppressDraftSave = false;
       }
     });
-    if (restored && mounted) {
+    if (saved != null && mounted) {
       S1SnackBar.show(context, message: '已恢复草稿', bottomClearance: 72);
     }
   }
@@ -471,7 +470,7 @@ class _ComposeScreenState extends ConsumerState<ComposeScreen> {
       });
       return;
     }
-    final saved = _readEditDraft(pid);
+    final saved = _session.restoreDraft();
     final parts = EditPostMessageParts.split(form.message);
     _mergeAttachImageUrls(widget.editAttachImageUrls);
     _mergeAttachImageUrls(form.attachImageUrls);
@@ -510,31 +509,29 @@ class _ComposeScreenState extends ConsumerState<ComposeScreen> {
       if (restore) {
         _suppressDraftSave = true;
         _suppressMediaSync = true;
-        final draftMsg = saved['message'] as String? ?? mediaSplit.body;
-        final draftParts = EditPostMessageParts.split(draftMsg);
+        final draftParts = EditPostMessageParts.split(saved.message);
         // 草稿存的是可编辑正文（可含 ⟦图N⟧），不是整帖 raw。
-        final draftBodyRaw = draftParts.hasLeadingQuote
-            ? draftParts.body
-            : (saved['message'] as String? ?? draftParts.body);
+        final draftBodyRaw =
+            draftParts.hasLeadingQuote ? draftParts.body : saved.message;
         final draftMedia = _mediaFromDraft(
-          saved['mediaTags'],
-          mediaSlots: saved['mediaSlots'],
+          saved.mediaTags,
+          mediaSlots: saved.mediaSlots,
           fallbackBody: draftBodyRaw,
         );
-        _subjectController.text = saved['subject'] as String? ?? form.subject;
+        _subjectController.text = saved.subject;
         _messageController.text = draftMedia.body;
-        _selectedTypeId = saved['typeId'] as String? ?? form.selectedTypeId;
+        _selectedTypeId = saved.typeId ?? form.selectedTypeId;
         _selectedReadPerm = normalizeSelectedReadPerm(
-          saved['readPerm'] as String? ?? form.selectedReadPermission,
+          saved.readPerm ?? form.selectedReadPermission,
         );
-        final draftQuote = saved['leadingQuote'] as String?;
+        final draftQuote = saved.leadingQuote;
         setState(() {
           if (draftQuote != null && draftQuote.trim().isNotEmpty) {
             _editLeadingQuote = draftQuote;
           } else if (draftParts.hasLeadingQuote) {
             _editLeadingQuote = draftParts.leadingQuote;
           }
-          _includeEditQuote = saved['includeQuote'] as bool? ??
+          _includeEditQuote = saved.includeQuote ??
               (_editLeadingQuote != null &&
                   _editLeadingQuote!.trim().isNotEmpty);
           _applyEditMedia(draftMedia.media, slots: draftMedia.effectiveSlots);
@@ -542,18 +539,18 @@ class _ComposeScreenState extends ConsumerState<ComposeScreen> {
         _suppressMediaSync = false;
         _suppressDraftSave = false;
       } else {
-        _clearEditDraft(pid);
+        _session.clearDraft();
       }
     }
   }
 
   /// 草稿里的 `mediaTags` + 可选 `mediaSlots` + 正文（可含 `⟦图N⟧`）；旧草稿无占位时补上。
   ComposeMediaSplit _mediaFromDraft(
-    Object? mediaTags, {
-    Object? mediaSlots,
+    List<String>? mediaTags, {
+    List<int>? mediaSlots,
     required String fallbackBody,
   }) {
-    if (mediaTags is! List) {
+    if (mediaTags == null) {
       return splitComposeMediaWithPlaceholders(
         fallbackBody,
         attachImageUrls: _attachImageUrls,
@@ -561,7 +558,7 @@ class _ComposeScreenState extends ConsumerState<ComposeScreen> {
     }
     final media = <ComposeMediaTag>[];
     for (final item in mediaTags) {
-      final tag = item.toString().trim();
+      final tag = item.trim();
       if (tag.isEmpty) continue;
       final parsed = splitComposeMedia(
         tag,
@@ -574,13 +571,7 @@ class _ComposeScreenState extends ConsumerState<ComposeScreen> {
       }
     }
 
-    final slots = <int>[];
-    if (mediaSlots is List) {
-      for (final raw in mediaSlots) {
-        final slot = raw is int ? raw : int.tryParse(raw.toString()) ?? 0;
-        slots.add(slot);
-      }
-    }
+    final slots = [...?mediaSlots];
     while (slots.length < media.length) {
       final next = slots.isEmpty
           ? 1
@@ -613,21 +604,7 @@ class _ComposeScreenState extends ConsumerState<ComposeScreen> {
     );
   }
 
-  Map<String, Object?>? _readEditDraft(String pid) {
-    try {
-      final store = ref.read(settingsStoreProvider);
-      return EditPostDraftStore.read(
-        EditPostDraftStore.parse(
-          store.get<Object>(EditPostDraftStore.settingsKey),
-        ),
-        pid,
-      );
-    } on Object {
-      return null;
-    }
-  }
-
-  bool _editDraftDiffers(Map<String, Object?> draft, EditPostFormInfo form) {
+  bool _editDraftDiffers(ComposeDraft draft, EditPostFormInfo form) {
     final parts = EditPostMessageParts.split(form.message);
     final serverMedia = splitComposeMediaWithPlaceholders(
       parts.body,
@@ -636,15 +613,13 @@ class _ComposeScreenState extends ConsumerState<ComposeScreen> {
         ...form.attachImageUrls,
       },
     );
-    final draftMsg = draft['message'] as String? ?? '';
-    final draftParts = EditPostMessageParts.split(draftMsg);
+    final draftParts = EditPostMessageParts.split(draft.message);
     final draftMedia = _mediaFromDraft(
-      draft['mediaTags'],
-      mediaSlots: draft['mediaSlots'],
+      draft.mediaTags,
+      mediaSlots: draft.mediaSlots,
       fallbackBody: draftParts.body,
     );
-    final draftInclude =
-        draft['includeQuote'] as bool? ?? draftParts.hasLeadingQuote;
+    final draftInclude = draft.includeQuote ?? draftParts.hasLeadingQuote;
     final mediaChanged = draftMedia.media.length != serverMedia.media.length ||
         List.generate(
           draftMedia.media.length,
@@ -653,16 +628,29 @@ class _ComposeScreenState extends ConsumerState<ComposeScreen> {
     return draftMedia.body != serverMedia.body ||
         mediaChanged ||
         draftInclude != parts.hasLeadingQuote ||
-        (draft['subject'] as String? ?? '') != form.subject ||
-        (draft['typeId'] as String?) != form.selectedTypeId ||
-        (draft['readPerm'] as String?) != form.selectedReadPermission;
+        draft.subject != form.subject ||
+        draft.typeId != form.selectedTypeId ||
+        draft.readPerm != form.selectedReadPermission;
   }
 
-  void _persistEditDraft() {
+  void _saveDraft() {
     if (_suppressDraftSave) return;
-    final pid = widget.editPid;
+    if (_isEditing) {
+      _saveEditDraft();
+      return;
+    }
+    _session.saveDraft(
+      ComposeDraft(
+        subject: _subjectController.text,
+        message: _messageController.text,
+        typeId: _selectedTypeId,
+      ),
+    );
+  }
+
+  void _saveEditDraft() {
     final form = _editForm;
-    if (!_isEditing || pid == null || form == null) return;
+    if (form == null) return;
     final hadQuoteOnLoad =
         _editLeadingQuote != null && _editLeadingQuote!.trim().isNotEmpty;
     final unchanged = _messageController.text == _editLoadedBody &&
@@ -671,96 +659,22 @@ class _ComposeScreenState extends ConsumerState<ComposeScreen> {
         _selectedReadPerm == form.selectedReadPermission &&
         _includeEditQuote == hadQuoteOnLoad &&
         !_editMediaChanged;
-    try {
-      final store = ref.read(settingsStoreProvider);
-      final drafts = EditPostDraftStore.parse(
-        store.get<Object>(EditPostDraftStore.settingsKey),
-      );
-      if (unchanged) {
-        store.put(
-          EditPostDraftStore.settingsKey,
-          EditPostDraftStore.toStoreValue(
-            EditPostDraftStore.remove(drafts, pid),
-          ),
-        );
-        return;
-      }
-      store.put(
-        EditPostDraftStore.settingsKey,
-        EditPostDraftStore.toStoreValue(
-          EditPostDraftStore.upsert(
-            drafts,
-            pid,
-            subject: _subjectController.text,
-            message: _messageController.text,
-            typeId: _selectedTypeId,
-            readPerm: _selectedReadPerm,
-            leadingQuote: _editLeadingQuote,
-            includeQuote: _includeEditQuote,
-            mediaTags: _currentMediaTags,
-            mediaSlots: _currentMediaSlots,
-          ),
-        ),
-      );
-    } on Object {
-      // 测试或无本地设置存储时跳过草稿持久化。
+    if (unchanged) {
+      _session.clearDraft();
+      return;
     }
-  }
-
-  void _clearEditDraft(String? pid) {
-    if (pid == null || pid.isEmpty) return;
-    try {
-      final store = ref.read(settingsStoreProvider);
-      final drafts = EditPostDraftStore.parse(
-        store.get<Object>(EditPostDraftStore.settingsKey),
-      );
-      store.put(
-        EditPostDraftStore.settingsKey,
-        EditPostDraftStore.toStoreValue(EditPostDraftStore.remove(drafts, pid)),
-      );
-    } on Object {
-      // 无本地设置存储时跳过清理。
-    }
-  }
-
-  Map<String, Object?>? _readNewThreadDraft(String fid) {
-    try {
-      final store = ref.read(settingsStoreProvider);
-      return NewThreadDraftStore.read(
-        NewThreadDraftStore.parse(
-          store.get<Object>(NewThreadDraftStore.settingsKey),
-        ),
-        fid,
-      );
-    } on Object {
-      return null;
-    }
-  }
-
-  void _persistNewThreadDraft() {
-    if (_suppressDraftSave) return;
-    final fid = widget.fid;
-    if (!_isNewThread || fid == null || fid.isEmpty) return;
-    try {
-      final store = ref.read(settingsStoreProvider);
-      final drafts = NewThreadDraftStore.parse(
-        store.get<Object>(NewThreadDraftStore.settingsKey),
-      );
-      store.put(
-        NewThreadDraftStore.settingsKey,
-        NewThreadDraftStore.toStoreValue(
-          NewThreadDraftStore.upsert(
-            drafts,
-            fid,
-            subject: _subjectController.text,
-            message: _messageController.text,
-            typeId: _selectedTypeId,
-          ),
-        ),
-      );
-    } on Object {
-      // 部分测试未注入 SettingsStore 时跳过草稿持久化。
-    }
+    _session.saveDraft(
+      ComposeDraft(
+        subject: _subjectController.text,
+        message: _messageController.text,
+        typeId: _selectedTypeId,
+        readPerm: _selectedReadPerm,
+        leadingQuote: _editLeadingQuote,
+        includeQuote: _includeEditQuote,
+        mediaTags: _currentMediaTags,
+        mediaSlots: _currentMediaSlots,
+      ),
+    );
   }
 
   Future<void> _openThreadSettingsSheet() async {
@@ -806,17 +720,13 @@ class _ComposeScreenState extends ConsumerState<ComposeScreen> {
               onTypeChanged: (value) {
                 setState(() {
                   _selectedTypeId = value;
-                  if (_isNewThread) {
-                    _persistNewThreadDraft();
-                  } else if (_isEditing) {
-                    _persistEditDraft();
-                  }
+                  _saveDraft();
                 });
               },
               onReadPermChanged: (value) {
                 setState(() {
                   _selectedReadPerm = value;
-                  _persistEditDraft();
+                  _saveDraft();
                 });
               },
             ),
@@ -836,25 +746,6 @@ class _ComposeScreenState extends ConsumerState<ComposeScreen> {
     );
   }
 
-  void _clearNewThreadDraft() {
-    final fid = widget.fid;
-    if (!_isNewThread || fid == null || fid.isEmpty) return;
-    try {
-      final store = ref.read(settingsStoreProvider);
-      final drafts = NewThreadDraftStore.parse(
-        store.get<Object>(NewThreadDraftStore.settingsKey),
-      );
-      store.put(
-        NewThreadDraftStore.settingsKey,
-        NewThreadDraftStore.toStoreValue(
-          NewThreadDraftStore.remove(drafts, fid),
-        ),
-      );
-    } on Object {
-      // 部分测试未注入 SettingsStore 时跳过清理。
-    }
-  }
-
   void _loadRecentEmoticons() {
     try {
       final store = ref.read(settingsStoreProvider);
@@ -870,95 +761,15 @@ class _ComposeScreenState extends ConsumerState<ComposeScreen> {
   }
 
   void _restoreReplyDraft() {
-    if (_isEditing || _isNewThread) return;
-    final tid = widget.tid;
-    if (tid == null || tid.isEmpty) return;
-    try {
-      final store = ref.read(settingsStoreProvider);
-      final drafts = ComposeMessageDraft.parseStore(
-        store.get<Object>(ComposeMessageDraft.settingsKey),
-      );
-      final saved = ComposeMessageDraft.readMessage(drafts, _draftEntryKey);
-      if (saved == null) return;
-      _suppressDraftSave = true;
-      _messageController.value = TextEditingValue(
-        text: saved,
-        selection: TextSelection.collapsed(offset: saved.length),
-      );
-      _suppressDraftSave = false;
-      S1SnackBar.show(context, message: '已恢复草稿', bottomClearance: 72);
-    } on Object {
-      _suppressDraftSave = false;
-    }
-  }
-
-  void _scheduleReplyDraftSave() {
-    if (_suppressDraftSave || _isEditing || _isNewThread) return;
-    _draftSaveTimer?.cancel();
-    _draftSaveTimer = Timer(ComposeMessageDraft.debounce, _persistReplyDraft);
-  }
-
-  void _persistReplyDraft() {
-    if (_isEditing || _isNewThread) return;
-    final tid = widget.tid;
-    if (tid == null || tid.isEmpty) return;
-    try {
-      final store = ref.read(settingsStoreProvider);
-      final drafts = ComposeMessageDraft.parseStore(
-        store.get<Object>(ComposeMessageDraft.settingsKey),
-      );
-      final key = _draftEntryKey;
-      final text = _messageController.text;
-      final next = text.trim().isEmpty
-          ? ComposeMessageDraft.removeEntry(drafts, key)
-          : ComposeMessageDraft.upsert(drafts, key, text);
-      store.put(
-        ComposeMessageDraft.settingsKey,
-        ComposeMessageDraft.toStoreValue(next),
-      );
-    } on Object {
-      // 无 settings store 时跳过。
-    }
-  }
-
-  void _clearReplyDraft() {
-    if (_isEditing || _isNewThread) return;
-    _draftSaveTimer?.cancel();
-    final tid = widget.tid;
-    if (tid == null || tid.isEmpty) return;
-    try {
-      final store = ref.read(settingsStoreProvider);
-      final drafts = ComposeMessageDraft.parseStore(
-        store.get<Object>(ComposeMessageDraft.settingsKey),
-      );
-      final next = ComposeMessageDraft.removeEntry(drafts, _draftEntryKey);
-      store.put(
-        ComposeMessageDraft.settingsKey,
-        ComposeMessageDraft.toStoreValue(next),
-      );
-    } on Object {
-      // 无 settings store 时跳过。
-    }
-  }
-
-  void _flushDraftForMode() {
-    if (_isEditing) {
-      _persistEditDraft();
-    } else if (_isNewThread) {
-      _persistNewThreadDraft();
-    } else {
-      _persistReplyDraft();
-    }
-  }
-
-  void _clearDraftForMode() {
-    if (_isEditing) {
-      _clearEditDraft(widget.editPid);
-    } else if (_isNewThread) {
-      _clearNewThreadDraft();
-    } else {
-      _clearReplyDraft();
-    }
+    final saved = _session.restoreDraft()?.message;
+    if (saved == null) return;
+    _suppressDraftSave = true;
+    _messageController.value = TextEditingValue(
+      text: saved,
+      selection: TextSelection.collapsed(offset: saved.length),
+    );
+    _suppressDraftSave = false;
+    S1SnackBar.show(context, message: '已恢复草稿', bottomClearance: 72);
   }
 
   void _onMessageChanged() {
@@ -987,21 +798,11 @@ class _ComposeScreenState extends ConsumerState<ComposeScreen> {
     } else if (mounted) {
       setState(() {});
     }
-    if (_isEditing) {
-      _persistEditDraft();
-    } else if (_isNewThread) {
-      _persistNewThreadDraft();
-    } else {
-      _scheduleReplyDraftSave();
-    }
+    _saveDraft();
   }
 
   void _onSubjectChanged() {
-    if (_isNewThread) {
-      _persistNewThreadDraft();
-    } else if (_isEditing) {
-      _persistEditDraft();
-    }
+    _saveDraft();
     if (mounted) setState(() {});
   }
 
@@ -1356,14 +1157,6 @@ class _ComposeScreenState extends ConsumerState<ComposeScreen> {
 
   @override
   void dispose() {
-    _draftSaveTimer?.cancel();
-    // 仅回复模式 flush compose_message_drafts；编辑/新主题禁止写入该键。
-    if (!_allowPop &&
-        !_isEditing &&
-        !_isNewThread &&
-        _messageController.text.trim().isNotEmpty) {
-      _persistReplyDraft();
-    }
     _messageController.removeListener(_onMessageChanged);
     _subjectController.removeListener(_onSubjectChanged);
     _messageFocusNode.removeListener(_onMessageFocusChanged);
@@ -1401,7 +1194,7 @@ class _ComposeScreenState extends ConsumerState<ComposeScreen> {
       _suppressMediaSync = false;
       final url = image.previewUrl;
       if (url != null) _imageLabelsByUrl.remove(url);
-      _persistEditDraft();
+      _saveDraft();
       return;
     }
     final url = image.previewUrl;
@@ -1674,7 +1467,7 @@ class _ComposeScreenState extends ConsumerState<ComposeScreen> {
         ),
       );
       _suppressMediaSync = false;
-      _persistEditDraft();
+      _saveDraft();
     } else {
       final selection = _messageController.selection;
       final start =
@@ -1784,7 +1577,7 @@ class _ComposeScreenState extends ConsumerState<ComposeScreen> {
                 );
         if (!mounted) return;
         if (result.isSuccess) {
-          _clearNewThreadDraft();
+          _session.clearDraft();
           _allowPopAndExit(result);
         } else {
           S1SnackBar.error(
@@ -1857,7 +1650,7 @@ class _ComposeScreenState extends ConsumerState<ComposeScreen> {
             );
         if (!mounted) return;
         if (result.isSuccess) {
-          _clearEditDraft(pid);
+          _session.clearDraft();
           _allowPopAndExit(result);
         } else if (result.isConflict) {
           setState(() => _editConflict = true);
@@ -1925,7 +1718,7 @@ class _ComposeScreenState extends ConsumerState<ComposeScreen> {
         if (result.isSuccess) {
           final snapshotId = widget.quoteSnapshotId;
           if (snapshotId != null) QuoteSnapshotStore.remove(snapshotId);
-          _clearReplyDraft();
+          _session.clearDraft();
           setState(() => _replyUncertain = false);
           S1SnackBar.show(
             context,
@@ -1973,7 +1766,7 @@ class _ComposeScreenState extends ConsumerState<ComposeScreen> {
 
   void _removeEditQuote() {
     setState(() => _includeEditQuote = false);
-    _persistEditDraft();
+    _saveDraft();
   }
 
   Future<void> _recheckEditState() async {
@@ -2005,7 +1798,7 @@ class _ComposeScreenState extends ConsumerState<ComposeScreen> {
         (!widget.editIsFirst ||
             latest.subject.trim() == _subjectController.text.trim());
     if (matchesDesired) {
-      _clearEditDraft(widget.editPid);
+      _session.clearDraft();
       setState(() => _editLoading = false);
       _allowPopAndExit(
         const EditPostSubmitResult.success(message: '编辑成功'),
@@ -2088,10 +1881,10 @@ class _ComposeScreenState extends ConsumerState<ComposeScreen> {
       case S1DraftLeaveChoice.stay:
         return;
       case S1DraftLeaveChoice.keepAndLeave:
-        _flushDraftForMode();
+        _saveDraft();
         break;
       case S1DraftLeaveChoice.discardAndLeave:
-        _clearDraftForMode();
+        _session.clearDraft();
         break;
     }
     _allowPopAndExit();
@@ -2162,7 +1955,7 @@ class _ComposeScreenState extends ConsumerState<ComposeScreen> {
             onTypeChanged: (value) {
               setState(() {
                 _selectedTypeId = value;
-                _persistNewThreadDraft();
+                _saveDraft();
               });
             },
             onOpenThreadSettings: _openThreadSettingsSheet,
@@ -2179,13 +1972,13 @@ class _ComposeScreenState extends ConsumerState<ComposeScreen> {
             onTypeChanged: (value) {
               setState(() {
                 _selectedTypeId = value;
-                _persistEditDraft();
+                _saveDraft();
               });
             },
             onReadPermChanged: (value) {
               setState(() {
                 _selectedReadPerm = value;
-                _persistEditDraft();
+                _saveDraft();
               });
             },
             onOpenThreadSettings: _openThreadSettingsSheet,

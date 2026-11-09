@@ -11,9 +11,6 @@ import 'package:s1er/screens/compose_screen.dart';
 import 'package:s1er/services/app_database.dart';
 import 'package:s1er/services/app_local_data.dart';
 import 'package:s1er/theme/app_theme.dart';
-import 'package:s1er/utils/compose_message_draft.dart';
-import 'package:s1er/utils/edit_post_draft.dart';
-import 'package:s1er/utils/new_thread_draft.dart';
 import 'package:s1er/widgets/s1_draft_leave_dialog.dart';
 
 import '../helpers/test_local_data.dart';
@@ -29,6 +26,12 @@ void main() {
   });
 
   tearDown(() async => db.close());
+
+  String? storedMessage(String settingsKey, String entryKey) {
+    final drafts = local.settings.get<Object>(settingsKey);
+    if (drafts is! Map) return null;
+    return (drafts[entryKey] as Map?)?['message'] as String?;
+  }
 
   testWidgets(
     'edit reply must not pollute reply compose_message_drafts',
@@ -77,19 +80,12 @@ void main() {
       );
       await tester.pumpAndSettle();
 
-      final replyDrafts = ComposeMessageDraft.parseStore(
-        local.settings.get<Object>(ComposeMessageDraft.settingsKey),
-      );
       expect(
-        ComposeMessageDraft.readMessage(replyDrafts, '100'),
+        storedMessage('compose_message_drafts', '100'),
         isNull,
         reason: '编辑不得写入 compose_message_drafts[{tid}]',
       );
-
-      final editDrafts = EditPostDraftStore.parse(
-        local.settings.get<Object>(EditPostDraftStore.settingsKey),
-      );
-      expect(editDrafts['200']?['message'], '编辑正文不应进回复草稿');
+      expect(storedMessage('edit_post_drafts', '200'), '编辑正文不应进回复草稿');
 
       // 打开新增回复：不得恢复编辑正文
       await tester.pumpWidget(
@@ -169,10 +165,7 @@ void main() {
     await tester.tap(find.text('放弃草稿'));
     await tester.pumpAndSettle();
 
-    final drafts = ComposeMessageDraft.parseStore(
-      local.settings.get<Object>(ComposeMessageDraft.settingsKey),
-    );
-    expect(ComposeMessageDraft.readMessage(drafts, '100'), isNull);
+    expect(storedMessage('compose_message_drafts', '100'), isNull);
   });
 
   testWidgets('reply leave keep persists compose_message_drafts',
@@ -225,25 +218,7 @@ void main() {
     await tester.tap(find.text('保留草稿并离开'));
     await tester.pumpAndSettle();
 
-    final drafts = ComposeMessageDraft.parseStore(
-      local.settings.get<Object>(ComposeMessageDraft.settingsKey),
-    );
-    expect(ComposeMessageDraft.readMessage(drafts, '100'), '保留的回复草稿');
-  });
-
-  test('new thread empty upsert removes entry', () {
-    final drafts = NewThreadDraftStore.upsert(
-      NewThreadDraftStore.upsert(
-        {},
-        '4',
-        subject: 't',
-        message: 'm',
-      ),
-      '4',
-      subject: '',
-      message: '',
-    );
-    expect(NewThreadDraftStore.toStoreValue(drafts), isNull);
+    expect(storedMessage('compose_message_drafts', '100'), '保留的回复草稿');
   });
 
   testWidgets('showS1DraftLeaveDialog returns choices', (tester) async {

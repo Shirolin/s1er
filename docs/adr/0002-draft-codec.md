@@ -1,6 +1,6 @@
 # 0002. 草稿编解码：三域收敛到 MapDraftCodec，私信独立
 
-- 状态：已接受
+- 状态：已接受；决策 2、4 已被 [ADR-0009](0009-compose-session-drafts.md) 取代（三个草稿类并入 `ComposeSession`）
 - 日期：2026-10-07
 - 相关：`lib/utils/map_draft_codec.dart`、`compose_message_draft.dart`、`new_thread_draft.dart`、`edit_post_draft.dart`、`pm_draft_store.dart`；[ADR-0001](0001-parser-transport-seam.md)
 

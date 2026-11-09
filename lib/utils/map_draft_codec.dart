@@ -1,9 +1,7 @@
 /// 草稿 map 的通用编解码：`SettingsStore` 原始值 ⇄ `entryKey → payload map`。
 ///
-/// 三个撰写域（回复 `compose_message_draft`、新主题 `new_thread_draft`、编辑
-/// `edit_post_draft`）共用同一存储形状：`Map<String, Map<String, Object?>>`。
-/// 它们的 parse / remove / toStoreValue 逐字节相同，upsert 的差异只在 payload
-/// 构造与空判断，故收敛到此模块，各域只提供策略。
+/// `ComposeSession` 的三个撰写目标（回复、新主题、编辑）共用同一存储形状：
+/// `Map<String, Map<String, Object?>>`；payload 构造与空判断由调用方提供。
 ///
 /// 私信草稿（`PmDraftStore`）形状不同（裸 `Map<String, String>`），不并入。
 abstract final class MapDraftCodec {

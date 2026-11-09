@@ -33,11 +33,12 @@ docs/adr/
 | 编号 | 标题 | 状态 |
 |:---|:---|:---|
 | [0001](0001-parser-transport-seam.md) | 解析（纯）与传输（I/O）分层：抽出 DiscuzParser | 已接受 |
-| [0002](0002-draft-codec.md) | 草稿编解码：三域收敛到 MapDraftCodec，私信独立 | 已接受 |
+| [0002](0002-draft-codec.md) | 草稿编解码：三域收敛到 MapDraftCodec，私信独立 | 已接受（决策 2、4 被 0009 取代） |
 | [0003](0003-post-body-cache.md) | 帖子正文解析缓存收敛到 PostBodyCache | 已接受 |
 | [0004](0004-http-event-seam.md) | HTTP 客户端通知依赖反转：事件出、适配器落库 | 已接受 |
 | [0005](0005-share-encoder.md) | 分享卡编码独立为 ShareEncoder | 已接受 |
 | [0006](0006-quote-patterns.md) | 引语语法集中到 QuotePatterns；完整 QuoteBlock 合并暂缓 | 已接受 |
 | [0007](0007-reading-progress-tracker.md) | 阅读进度状态抽出为 ReadingProgressTracker；完整 ThreadOpenCoordinator 暂缓 | 已接受 |
 | [0008](0008-keep-thin-notifiers.md) | forumListProvider 与 postShareProvider 保留（不删） | 已接受 |
+| [0009](0009-compose-session-drafts.md) | 撰写草稿收进 ComposeSession，按 ComposeTarget 寻址 | 已接受 |
 | [0010](0010-desktop-mouse-cursor-policy.md) | 桌面端鼠标指针策略：显式手型 + 审计门禁 | 已接受 |

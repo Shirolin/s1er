@@ -142,6 +142,16 @@ void main() {
       expect(restored.lastSeenReplies, 5);
     });
 
+    test('decodes escaped titles stored by older versions', () {
+      final restored = PinnedThread.fromJson({
+        'tid': '9',
+        'title': 'Slice &amp; Dice 新作',
+        'pinned_at': 3,
+        'display_order': 1,
+      });
+      expect(restored.title, 'Slice & Dice 新作');
+    });
+
     test('omits optional reply fields when null', () {
       const thread = PinnedThread(
         tid: '1',

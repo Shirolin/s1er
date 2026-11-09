@@ -1,3 +1,5 @@
+import 'thread.dart';
+
 class PinnedThread {
   const PinnedThread({
     required this.tid,
@@ -12,7 +14,8 @@ class PinnedThread {
   factory PinnedThread.fromJson(Map<String, dynamic> json) {
     return PinnedThread(
       tid: json['tid']?.toString() ?? '',
-      title: json['title']?.toString() ?? '',
+      // 旧版本钉住的条目录的是转义标题（`&amp;`），加载时统一解码。
+      title: Thread.decodeThreadText(json['title']?.toString() ?? ''),
       pinnedAt: int.tryParse(
             (json['pinnedAt'] ?? json['pinned_at'])?.toString() ?? '',
           ) ??

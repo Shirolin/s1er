@@ -125,6 +125,12 @@ Future<GoRouter> _pumpRouteScreen(
         },
       ),
       GoRoute(
+        path: '/forum/:fid',
+        builder: (context, state) => ForumListScreen(
+          fid: state.pathParameters['fid']!,
+        ),
+      ),
+      GoRoute(
         path: '/',
         builder: (context, state) => const Scaffold(body: SizedBox()),
       ),
@@ -172,6 +178,7 @@ void main() {
     expect(find.byType(ForumListScreen), findsOneWidget);
     expect(find.byType(ThreadDetailScreen), findsOneWidget);
     expect(find.text('楼层正文'), findsOneWidget);
+    expect(find.byTooltip('刷新主题列表'), findsOneWidget);
   });
 
   testWidgets('wide entry without resolved forum fid stays single pane',
@@ -181,6 +188,20 @@ void main() {
     expect(find.byType(ForumSplitPaneDivider), findsNothing);
     expect(find.byType(ForumListScreen), findsNothing);
     expect(find.byType(ThreadDetailScreen), findsOneWidget);
+  });
+
+  testWidgets('split view exposes a close button that returns to the list',
+      (tester) async {
+    final router =
+        await _pumpRouteScreen(tester, size: const Size(1400, 900), fid: '4');
+
+    expect(find.byTooltip('收起帖子，返回主题列表'), findsOneWidget);
+
+    await tester.tap(find.byTooltip('收起帖子，返回主题列表'));
+    await tester.pumpAndSettle();
+
+    expect(router.state.uri.path, '/forum/4');
+    expect(find.byType(ForumSplitPaneDivider), findsNothing);
   });
 
   testWidgets('compact width keeps single-pane thread detail', (tester) async {

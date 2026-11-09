@@ -1,3 +1,4 @@
+import './s1_ink_well.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
@@ -294,7 +295,7 @@ class _PollOptionTile extends StatelessWidget {
                 ? BorderSide(color: scheme.primary, width: 1.5)
                 : BorderSide.none,
           ),
-          child: InkWell(
+          child: S1InkWell(
             onTap: onTap,
             borderRadius: S1Shape.small,
             child: Padding(

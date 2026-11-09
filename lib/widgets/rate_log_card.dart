@@ -1,3 +1,4 @@
+import './s1_ink_well.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../models/rate_log.dart';
@@ -94,7 +95,7 @@ class _RateLogCardState extends ConsumerState<RateLogCard> {
           container: true,
           onTap: toggleExpanded,
           hint: _expanded ? '收起评分详情' : '展开评分详情',
-          child: InkWell(
+          child: S1InkWell(
             excludeFromSemantics: true,
             onTap: toggleExpanded,
             child: AnimatedSize(

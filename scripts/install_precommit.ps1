@@ -8,7 +8,7 @@
 #   .\scripts\install_precommit.ps1
 #
 # Modes (env S1_PRECOMMIT — see scripts/pre-commit-hook.sh):
-#   full (default) — format + analyze + test + M3
+#   full (default) — format + analyze + test + M3 + cursor audit
 #   lite           — format + analyze only
 #   skip           — bypass checks
 #
@@ -56,6 +56,7 @@ Write-Host "  1. dart format"
 Write-Host "  2. flutter analyze"
 Write-Host "  3. flutter test"
 Write-Host "  4. dart run scripts/audit_m3.dart"
+Write-Host "  5. dart run scripts/audit_cursors.dart"
 Write-Host ""
 Write-Host "Lite (small fixes):"
 Write-Host '  $env:S1_PRECOMMIT="lite"; git commit -m "..."'

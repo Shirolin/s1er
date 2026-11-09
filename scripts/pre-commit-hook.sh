@@ -4,7 +4,7 @@
 # Installed as a thin wrapper via: scripts/install_precommit.ps1
 #
 # Modes (env S1_PRECOMMIT):
-#   full  (default) — format + analyze + test + M3 audit
+#   full  (default) — format + analyze + test + M3 audit + cursor audit
 #   lite  / quick   — format + analyze only（小改小修）
 #   skip  / off     — 不做检查直接放行（等价于 --no-verify）
 #
@@ -37,7 +37,7 @@ if [ "$MODE" = lite ]; then
   TOTAL=2
   LABEL="lite (format + analyze)"
 else
-  TOTAL=4
+  TOTAL=5
   LABEL="full"
 fi
 
@@ -61,7 +61,7 @@ echo ""
 if [ "$MODE" = lite ]; then
   echo "────────────────────────────────────────"
   echo "  Lite checks passed! Commit allowed."
-  echo "  (Set S1_PRECOMMIT=full or unset for tests + M3.)"
+  echo "  (Set S1_PRECOMMIT=full or unset for tests + M3 + cursor audit.)"
   echo "────────────────────────────────────────"
   exit 0
 fi
@@ -75,6 +75,12 @@ echo ""
 # 4. Material Design 3 audit
 echo "[4/$TOTAL] dart run scripts/audit_m3.dart — M3 compliance..."
 dart run scripts/audit_m3.dart --fail-on-error
+echo "  OK"
+echo ""
+
+# 5. Desktop/web pointer policy audit
+echo "[5/$TOTAL] dart run scripts/audit_cursors.dart — cursor policy..."
+dart run scripts/audit_cursors.dart --fail-on-error
 echo "  OK"
 echo ""
 

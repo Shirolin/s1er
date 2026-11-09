@@ -1,3 +1,4 @@
+import '../widgets/s1_ink_well.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -42,6 +43,7 @@ import '../utils/window_size.dart';
 import 'messages_screen.dart';
 import 'search_screen.dart';
 import 'profile_screen.dart';
+import '../theme/s1_mouse_cursors.dart';
 
 class HomeScreen extends ConsumerWidget {
   const HomeScreen({super.key});
@@ -253,56 +255,59 @@ class _HomeScreenBodyState extends ConsumerState<_HomeScreenBody> {
         bottomNavigationBar: router != null && context.isMediumOrAbove
             ? null
             : S1HomeNavChrome(
-                child: NavigationBar(
-                  selectedIndex: selectedTab,
-                  onDestinationSelected: (index) {
-                    S1Haptics.selection();
-                    if (selectedTab == 2 && index != 2) {
-                      ref.read(messagesSegmentProvider.notifier).select(0);
-                    }
-                    if (router == null) {
-                      setState(() => _fallbackTab = index);
-                      return;
-                    }
-                    final tabs = isLoggedIn
-                        ? const ['forum', 'search', 'messages', 'profile']
-                        : const ['forum', 'profile'];
-                    final tab = tabs[index];
-                    context.go(tab == 'forum' ? '/' : '/?tab=$tab');
-                  },
-                  destinations: isLoggedIn
-                      ? [
-                          const NavigationDestination(
-                            icon: Icon(Icons.forum),
-                            label: '论坛',
-                          ),
-                          const NavigationDestination(
-                            icon: Icon(Icons.search),
-                            label: '搜索',
-                          ),
-                          NavigationDestination(
-                            icon: Badge(
-                              label: Text(unreadDisplay),
-                              isLabelVisible: unreadTotal > 0,
-                              child: const Icon(Icons.message),
+                child: MouseRegion(
+                  cursor: S1MouseCursors.clickable,
+                  child: NavigationBar(
+                    selectedIndex: selectedTab,
+                    onDestinationSelected: (index) {
+                      S1Haptics.selection();
+                      if (selectedTab == 2 && index != 2) {
+                        ref.read(messagesSegmentProvider.notifier).select(0);
+                      }
+                      if (router == null) {
+                        setState(() => _fallbackTab = index);
+                        return;
+                      }
+                      final tabs = isLoggedIn
+                          ? const ['forum', 'search', 'messages', 'profile']
+                          : const ['forum', 'profile'];
+                      final tab = tabs[index];
+                      context.go(tab == 'forum' ? '/' : '/?tab=$tab');
+                    },
+                    destinations: isLoggedIn
+                        ? [
+                            const NavigationDestination(
+                              icon: Icon(Icons.forum),
+                              label: '论坛',
                             ),
-                            label: '消息',
-                          ),
-                          const NavigationDestination(
-                            icon: Icon(Icons.person),
-                            label: '我的',
-                          ),
-                        ]
-                      : const [
-                          NavigationDestination(
-                            icon: Icon(Icons.forum),
-                            label: '论坛',
-                          ),
-                          NavigationDestination(
-                            icon: Icon(Icons.person),
-                            label: '我的',
-                          ),
-                        ],
+                            const NavigationDestination(
+                              icon: Icon(Icons.search),
+                              label: '搜索',
+                            ),
+                            NavigationDestination(
+                              icon: Badge(
+                                label: Text(unreadDisplay),
+                                isLabelVisible: unreadTotal > 0,
+                                child: const Icon(Icons.message),
+                              ),
+                              label: '消息',
+                            ),
+                            const NavigationDestination(
+                              icon: Icon(Icons.person),
+                              label: '我的',
+                            ),
+                          ]
+                        : const [
+                            NavigationDestination(
+                              icon: Icon(Icons.forum),
+                              label: '论坛',
+                            ),
+                            NavigationDestination(
+                              icon: Icon(Icons.person),
+                              label: '我的',
+                            ),
+                          ],
+                  ),
                 ),
               ),
       ),
@@ -724,7 +729,7 @@ class _ForumCategoryTile extends ConsumerWidget {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           // 分类头部：与卡身同色（不涂 page tint，避免「挖洞」）；层级靠字色/图标。
-          InkWell(
+          S1InkWell(
             onTap: hasSubs
                 ? () => ref
                     .read(settingsProvider.notifier)
@@ -924,7 +929,7 @@ class _ForumTile extends ConsumerWidget {
         ),
       ],
       builder: (context, controller, child) {
-        return InkWell(
+        return S1InkWell(
           onTap: () => context.push('/forum/${forum.fid}'),
           onLongPress: () {
             S1Haptics.selection();

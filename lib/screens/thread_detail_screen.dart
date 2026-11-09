@@ -1,3 +1,4 @@
+import '../widgets/s1_ink_well.dart';
 import 'dart:async';
 
 import 'package:flutter/material.dart';
@@ -1863,7 +1864,7 @@ class _BlockedPostPlaceholder extends ConsumerWidget {
         context,
         enabled: compactListFullBleed,
       ),
-      child: InkWell(
+      child: S1InkWell(
         onTap: onExpand,
         borderRadius: S1ReadingCardStyle.inkBorderRadius(
           context,

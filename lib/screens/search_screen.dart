@@ -1,3 +1,4 @@
+import '../widgets/s1_ink_well.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
@@ -480,7 +481,7 @@ class _ForumHitTile extends StatelessWidget {
       color: S1Surface.card(scheme),
       shape: S1Shape.cardShape,
       clipBehavior: Clip.antiAlias,
-      child: InkWell(
+      child: S1InkWell(
         onTap: () {
           S1Haptics.selection();
           context.push(

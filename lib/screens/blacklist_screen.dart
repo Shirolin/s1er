@@ -10,6 +10,7 @@ import '../utils/s1_snack_bar.dart';
 import '../widgets/s1_confirm_dialog.dart';
 import '../widgets/s1_desktop_scaffold.dart';
 import '../widgets/s1_system_bottom_inset.dart';
+import '../theme/s1_mouse_cursors.dart';
 
 class BlacklistScreen extends ConsumerWidget {
   const BlacklistScreen({super.key});
@@ -430,6 +431,7 @@ class _BlacklistEditorDialogState extends State<_BlacklistEditorDialog> {
               spacing: 8,
               children: [
                 FilterChip(
+                  mouseCursor: S1MouseCursors.clickable,
                   label: const Text('主题列表'),
                   selected: _scopes.contains(BlacklistRecord.scopeThread),
                   onSelected: (selected) {
@@ -444,6 +446,7 @@ class _BlacklistEditorDialogState extends State<_BlacklistEditorDialog> {
                   },
                 ),
                 FilterChip(
+                  mouseCursor: S1MouseCursors.clickable,
                   label: const Text('帖内楼层'),
                   selected: _scopes.contains(BlacklistRecord.scopePost),
                   onSelected: (selected) {
@@ -458,6 +461,7 @@ class _BlacklistEditorDialogState extends State<_BlacklistEditorDialog> {
                   },
                 ),
                 FilterChip(
+                  mouseCursor: S1MouseCursors.clickable,
                   label: const Text('私信'),
                   selected: _scopes.contains(BlacklistRecord.scopePm),
                   onSelected: (selected) {

@@ -1,3 +1,4 @@
+import '../widgets/s1_ink_well.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
@@ -336,7 +337,7 @@ class _ThreadCard extends ConsumerWidget {
       elevation: 0,
       color: S1Surface.card(scheme),
       shape: S1Shape.cardShape,
-      child: InkWell(
+      child: S1InkWell(
         onTap: () {
           final record = ref.read(readingRecordProvider(item.tid));
           context.push(
@@ -441,7 +442,7 @@ class _ReplyCard extends StatelessWidget {
       elevation: 0,
       color: S1Surface.card(scheme),
       shape: S1Shape.cardShape,
-      child: InkWell(
+      child: S1InkWell(
         onTap: () {
           final firstPid =
               item.replyEntries.isEmpty ? null : item.replyEntries.first.pid;

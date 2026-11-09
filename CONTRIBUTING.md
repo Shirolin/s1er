@@ -30,6 +30,7 @@ dart format --output=none --set-exit-if-changed lib test scripts
 flutter analyze
 flutter test
 dart run scripts/audit_m3.dart --fail-on-error  # M3 + 系统底栏 inset 合规
+dart run scripts/audit_cursors.dart --fail-on-error  # 桌面/Web 指针策略
 ```
 
 涉及平台或依赖变更时，再执行对应构建：

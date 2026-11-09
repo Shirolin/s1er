@@ -38,6 +38,7 @@ import '../widgets/share_card.dart';
 import '../widgets/s1_click_region.dart';
 import '../widgets/web_image_stub.dart'
     if (dart.library.html) '../widgets/web_image_html.dart';
+import '../theme/s1_mouse_cursors.dart';
 
 /// Captures post floor(s) as a designed card image and shares or saves it.
 class PostShareService {
@@ -900,6 +901,7 @@ class _SharePreviewSheetState extends ConsumerState<_SharePreviewSheet> {
           runSpacing: 4,
           children: [
             FilterChip(
+              mouseCursor: S1MouseCursors.clickable,
               avatar: const Icon(Icons.image_outlined, size: 16),
               label: const Text('Logo'),
               selected: showLogo,
@@ -910,6 +912,7 @@ class _SharePreviewSheetState extends ConsumerState<_SharePreviewSheet> {
               },
             ),
             FilterChip(
+              mouseCursor: S1MouseCursors.clickable,
               avatar: const Icon(Icons.qr_code_2, size: 16),
               label: const Text('二维码'),
               selected: showQr,

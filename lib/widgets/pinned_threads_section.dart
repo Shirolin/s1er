@@ -1,3 +1,4 @@
+import './s1_ink_well.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
@@ -170,7 +171,7 @@ class _PinnedThreadsSectionState extends ConsumerState<PinnedThreadsSection> {
             Column(
               children: [
                 for (final thread in threads)
-                  InkWell(
+                  S1InkWell(
                     onTap: () {
                       S1Haptics.selection();
                       context.push('/thread/${thread.tid}');

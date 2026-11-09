@@ -1,3 +1,4 @@
+import '../widgets/s1_ink_well.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
@@ -137,7 +138,7 @@ class _HistoryTile extends ConsumerWidget {
         elevation: 0,
         color: S1Surface.card(scheme),
         shape: S1Shape.cardShape,
-        child: InkWell(
+        child: S1InkWell(
           onTap: () {
             S1Haptics.selection();
             _open(context);

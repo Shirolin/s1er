@@ -7,6 +7,7 @@ import '../providers/thread_rate_logs_provider.dart';
 import '../theme/app_theme.dart';
 import '../theme/s1_haptics.dart';
 import '../utils/s1_snack_bar.dart';
+import '../theme/s1_mouse_cursors.dart';
 
 /// 打开评分弹窗：预取表单 → 填写 → 提交 → 刷新评分历史。
 Future<void> showRateDialog(
@@ -202,6 +203,7 @@ class _RateDialogState extends ConsumerState<_RateDialog> {
               runSpacing: 8,
               children: selectableScores.map((score) {
                 return FilterChip(
+                  mouseCursor: S1MouseCursors.clickable,
                   label: Text(score),
                   selected: _score == score,
                   visualDensity: VisualDensity.compact,
@@ -238,6 +240,7 @@ class _RateDialogState extends ConsumerState<_RateDialog> {
               children: reasonPresets.map((preset) {
                 final selected = _reasonController.text == preset;
                 return FilterChip(
+                  mouseCursor: S1MouseCursors.clickable,
                   label: Text(preset),
                   selected: selected,
                   visualDensity: VisualDensity.compact,

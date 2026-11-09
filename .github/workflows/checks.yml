@@ -1,0 +1,59 @@
+name: Checks
+
+# Static gates for the Flutter app. The iOS smoke workflow covers the Apple
+# build; this one covers analyzer + the repo-owned design/policy audits.
+on:
+  pull_request:
+    paths:
+      - "lib/**"
+      - "scripts/**"
+      - "test/**"
+      - "pubspec.yaml"
+      - "pubspec.lock"
+      - "analysis_options.yaml"
+      - ".github/workflows/checks.yml"
+  push:
+    branches:
+      - main
+    paths:
+      - "lib/**"
+      - "scripts/**"
+      - "pubspec.yaml"
+      - ".github/workflows/checks.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: checks-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  checks:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - name: Checkout
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+
+      - name: Setup Flutter
+        uses: subosito/flutter-action@1a449444c387b1966244ae4d4f8c696479add0b2 # v2.23.0
+        with:
+          channel: stable
+          cache: true
+
+      - name: Flutter version
+        run: flutter --version
+
+      - name: Install dependencies
+        run: flutter pub get
+
+      - name: Analyze
+        run: flutter analyze
+
+      - name: M3 audit
+        run: dart run scripts/audit_m3.dart --fail-on-error
+
+      - name: Mouse cursor policy audit
+        run: dart run scripts/audit_cursors.dart --fail-on-error

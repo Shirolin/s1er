@@ -1,3 +1,4 @@
+import '../widgets/s1_ink_well.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
@@ -320,7 +321,7 @@ class _FavoriteThreadTile extends StatelessWidget {
     return Card(
       elevation: 0,
       margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
-      child: InkWell(
+      child: S1InkWell(
         onTap: () => context.push(
           ThreadRouteCodec.encodePath(ResumeThread(item.id)),
         ),
@@ -384,7 +385,7 @@ class _FavoriteForumTile extends StatelessWidget {
     return Card(
       elevation: 0,
       margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
-      child: InkWell(
+      child: S1InkWell(
         onTap: () => context.push('/forum/${item.id}'),
         child: Padding(
           padding: const EdgeInsets.fromLTRB(16, 12, 8, 12),

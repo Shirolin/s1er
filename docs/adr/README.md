@@ -40,3 +40,4 @@ docs/adr/
 | [0006](0006-quote-patterns.md) | 引语语法集中到 QuotePatterns；完整 QuoteBlock 合并暂缓 | 已接受 |
 | [0007](0007-reading-progress-tracker.md) | 阅读进度状态抽出为 ReadingProgressTracker；完整 ThreadOpenCoordinator 暂缓 | 已接受 |
 | [0008](0008-keep-thin-notifiers.md) | forumListProvider 与 postShareProvider 保留（不删） | 已接受 |
+| [0010](0010-desktop-mouse-cursor-policy.md) | 桌面端鼠标指针策略：显式手型 + 审计门禁 | 已接受 |

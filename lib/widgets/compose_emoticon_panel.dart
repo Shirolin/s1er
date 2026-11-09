@@ -1,3 +1,4 @@
+import './s1_ink_well.dart';
 import 'package:flutter/material.dart';
 
 import '../models/emoticon_catalog.dart';
@@ -113,7 +114,7 @@ class _ComposeEmoticonPanelState extends State<ComposeEmoticonPanel>
                     return Material(
                       color: cellColor,
                       borderRadius: S1Shape.small,
-                      child: InkWell(
+                      child: S1InkWell(
                         onTap: () => _pick(item.entity),
                         borderRadius: S1Shape.small,
                         child: Tooltip(
@@ -197,7 +198,7 @@ class _EmoticonGrid extends StatelessWidget {
         return Material(
           color: cellColor,
           borderRadius: S1Shape.small,
-          child: InkWell(
+          child: S1InkWell(
             onTap: () => onSelect(item.entity),
             borderRadius: S1Shape.small,
             child: Tooltip(

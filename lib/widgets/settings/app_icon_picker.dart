@@ -1,3 +1,4 @@
+import '../s1_ink_well.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -34,7 +35,7 @@ class AppIconPicker extends ConsumerWidget {
                 button: true,
                 child: Tooltip(
                   message: variant.label,
-                  child: InkWell(
+                  child: S1InkWell(
                     onTap: () async {
                       if (isSelected) return;
                       S1Haptics.selection();

@@ -155,6 +155,7 @@ flutter run -d chrome --dart-define=PROXY_PORT=19081
 | `scripts/watch_proxy.ps1` | 监听代理文件变更并自动重启 |
 | `scripts/download_emoticons.dart` | 从 s1emoticon GitHub Release 按 `download_list.txt` 导入；见 `ATTRIBUTION.md` |
 | `scripts/audit_m3.dart` | 扫描 Material Design 3 合规问题 |
+| `scripts/audit_cursors.dart` | 扫描可点控件是否走 `S1InkWell` 或显式 `mouseCursor`（桌面/Web 指针策略） |
 | `scripts/sync_app_icons.dart` | 按 `AppIconCatalog` 生成 Android/iOS 交替启动器图标；iOS Info.plist 只做 `APP_ICON_ICONS` 标记区间替换（缺标记拒绝写入，纯函数 `scripts/ios_info_plist_patch.dart`，回归测试 `test/ios_info_plist_test.dart`）；规则见 [启动器图标](app-icons.md) |
 | `scripts/gen_windows_icon.dart` | 从黑底成品图生成 Windows `app_icon.ico`（无运行时切换） |
 | `scripts/build.ps1` | Windows 交互式构建菜单；Release 项需要维护者签名配置 |

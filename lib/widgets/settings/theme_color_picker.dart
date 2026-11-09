@@ -1,3 +1,4 @@
+import '../s1_ink_well.dart';
 import 'package:flutter/material.dart';
 
 import '../../theme/app_theme.dart';
@@ -51,7 +52,7 @@ class ThemeColorPicker extends StatelessWidget {
           excludeSemantics: true,
           child: Tooltip(
             message: _colorLabels[key] ?? key,
-            child: InkWell(
+            child: S1InkWell(
               onTap: onChanged != null
                   ? () {
                       S1Haptics.selection();

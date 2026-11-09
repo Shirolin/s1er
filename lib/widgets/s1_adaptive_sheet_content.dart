@@ -1,3 +1,4 @@
+import './s1_ink_well.dart';
 import 'package:flutter/material.dart';
 
 import '../theme/app_theme.dart';
@@ -341,7 +342,7 @@ class _MobileActionTile extends StatelessWidget {
 
     return Material(
       color: Colors.transparent,
-      child: InkWell(
+      child: S1InkWell(
         onTap: () {
           S1Haptics.selection();
           onTap();

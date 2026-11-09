@@ -42,6 +42,7 @@ import '../utils/s1_snack_bar.dart';
 import '../utils/window_size.dart';
 import '../models/forum_attachment_upload_info.dart';
 import '../models/compose_image_upload_result.dart';
+import '../widgets/s1_ink_well.dart';
 import '../widgets/bbcode_renderer.dart';
 import '../widgets/compose_bbcode_toolbar.dart';
 import '../widgets/compose_emoticon_panel.dart';
@@ -50,6 +51,7 @@ import '../widgets/s1_draft_leave_dialog.dart';
 import '../widgets/s1_adaptive_sheet.dart';
 import '../widgets/s1_content_width.dart';
 import '../widgets/web_avatar.dart';
+import '../theme/s1_mouse_cursors.dart';
 
 const _recentEmoticonsKey = 'compose_recent_emoticons';
 const _maxBatchImages = 20;
@@ -2809,7 +2811,7 @@ class _ComposeThreadMetaSummaryRow extends StatelessWidget {
   Widget build(BuildContext context) {
     final scheme = Theme.of(context).colorScheme;
     final textTheme = Theme.of(context).textTheme;
-    return InkWell(
+    return S1InkWell(
       onTap: onTap,
       child: Padding(
         padding: const EdgeInsets.fromLTRB(16, 4, 8, 4),
@@ -2853,7 +2855,7 @@ class _ComposeCollapsedTitleLine extends StatelessWidget {
     final display = title.trim().isEmpty ? '未填写标题' : title.trim();
     return Material(
       color: scheme.surfaceContainer,
-      child: InkWell(
+      child: S1InkWell(
         onTap: onTap,
         child: Padding(
           padding: const EdgeInsets.fromLTRB(16, 10, 12, 10),
@@ -3248,7 +3250,7 @@ class _ComposeSubjectLineState extends State<_ComposeSubjectLine> {
 
     return Material(
       color: scheme.surfaceContainer,
-      child: InkWell(
+      child: S1InkWell(
         onTap: () => setState(() => _expanded = !_expanded),
         child: Padding(
           padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
@@ -3348,7 +3350,7 @@ class _ComposeQuoteBannerState extends State<_ComposeQuoteBanner> {
               children: [
                 Container(width: 3, color: scheme.primary),
                 Expanded(
-                  child: InkWell(
+                  child: S1InkWell(
                     onTap: () {
                       setState(() => _expanded = !_expanded);
                     },
@@ -3495,6 +3497,7 @@ class _ComposeImageStripState extends State<_ComposeImageStrip> {
                 return Tooltip(
                   message: image.label,
                   child: InputChip(
+                    mouseCursor: S1MouseCursors.clickable,
                     avatar: _ComposeImageChipAvatar(image: image),
                     label: SizedBox(
                       width: maxLabelWidth,
@@ -3610,7 +3613,7 @@ class _ComposeImageUploadOptions extends StatelessWidget {
       child: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
-          InkWell(
+          S1InkWell(
             onTap: enabled ? () => onExpandedChanged(!expanded) : null,
             child: Padding(
               padding: const EdgeInsets.fromLTRB(16, 4, 8, 4),

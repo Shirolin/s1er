@@ -7,6 +7,7 @@ import '../providers/forum_list_provider.dart';
 import '../theme/app_theme.dart';
 import '../theme/s1_haptics.dart';
 import 's1_adaptive_sheet.dart';
+import '../theme/s1_mouse_cursors.dart';
 
 const _sheetMaxHeightFactor = 0.85;
 
@@ -238,6 +239,7 @@ class _ForumSearchAdvancedSheetState
                     Padding(
                       padding: const EdgeInsets.only(right: 8),
                       child: FilterChip(
+                        mouseCursor: S1MouseCursors.clickable,
                         label: Text(_specialChipLabels[special]!),
                         selected: _specials.contains(special.value),
                         showCheckmark: false,

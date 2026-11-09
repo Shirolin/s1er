@@ -1,3 +1,4 @@
+import '../widgets/s1_ink_well.dart';
 import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
@@ -42,6 +43,7 @@ import '../utils/thread_navigation.dart';
 import '../theme/s1_haptics.dart';
 import '../theme/app_theme.dart';
 import '../widgets/thread_open_intent_scope.dart';
+import '../theme/s1_mouse_cursors.dart';
 
 class ForumListScreen extends ConsumerStatefulWidget {
   const ForumListScreen({
@@ -824,6 +826,7 @@ class _ThreadFiltersSection extends ConsumerWidget {
         Tooltip(
           message: tooltip,
           child: ActionChip(
+            mouseCursor: S1MouseCursors.clickable,
             avatar: Icon(icon, size: 16),
             label: Text(label),
             onPressed: onPressed,
@@ -902,7 +905,7 @@ class _ThreadFiltersSection extends ConsumerWidget {
           hint: semanticsHint,
           child: Material(
             color: Colors.transparent,
-            child: InkWell(
+            child: S1InkWell(
               onTap: enabled ? () => _toggleExpanded(ref, expanded) : null,
               child: ConstrainedBox(
                 constraints: const BoxConstraints(minHeight: 44),
@@ -1056,6 +1059,7 @@ class _ThreadSortFilterBar extends StatelessWidget {
             Padding(
               padding: const EdgeInsets.symmetric(horizontal: 4),
               child: FilterChip(
+                mouseCursor: S1MouseCursors.clickable,
                 label: Text(preset.label),
                 selected: query.preset == preset && preset.isPrimaryChip,
                 showCheckmark: false,
@@ -1083,6 +1087,7 @@ class _ThreadSortFilterBar extends StatelessWidget {
                   label: '更多筛选，当前：$_moreLabel',
                   hint: '双击打开排序和时间菜单',
                   child: FilterChip(
+                    mouseCursor: S1MouseCursors.clickable,
                     label: Row(
                       mainAxisSize: MainAxisSize.min,
                       children: [
@@ -1191,6 +1196,7 @@ class _ThreadTypeFilterBar extends StatelessWidget {
           Padding(
             padding: const EdgeInsets.symmetric(horizontal: 4),
             child: FilterChip(
+              mouseCursor: S1MouseCursors.clickable,
               label: const Text('全部'),
               selected: selectedTypeId == null,
               showCheckmark: false,
@@ -1206,6 +1212,7 @@ class _ThreadTypeFilterBar extends StatelessWidget {
             Padding(
               padding: const EdgeInsets.symmetric(horizontal: 4),
               child: FilterChip(
+                mouseCursor: S1MouseCursors.clickable,
                 label: Text(entry.value),
                 selected: selectedTypeId == entry.key,
                 showCheckmark: false,

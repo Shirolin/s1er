@@ -75,7 +75,7 @@
 - **排版常量**：`S1Typography.defaultBodySize` 为字号设置标准档，HTML 渲染通过 `S1Typography.bodySize(textTheme)` 桥接
 - **Modal sheet 关闭**：标准高度抽屉 / `showS1AdaptiveSheet` **不放**顶栏关闭按钮；靠 drag handle（紧凑屏已由 API 提供）、点 scrim、系统返回 / Escape。禁止内容区再画一套自定义 drag handle。例外：`AlertDialog` 的取消/关闭 **actions**；全屏 modal 的顶栏关闭；内容错误/空态且无其它主操作时的内容区 CTA（如「关闭」）
 
-**审计**：`dart run scripts/audit_m3.dart --fail-on-error`（CI / 本地均需通过；含 M3、系统底栏占位与导航栏图标亮度合规）
+**审计**：`dart run scripts/audit_m3.dart --fail-on-error`（M3、系统底栏占位与导航栏图标亮度）与 `dart run scripts/audit_cursors.dart --fail-on-error`（可点控件须走 `S1InkWell` 或显式 `mouseCursor`，见 [ADR 0010](docs/adr/0010-desktop-mouse-cursor-policy.md)）；CI / 本地均需通过
 
 ---
 
@@ -301,8 +301,9 @@ flutter run -d chrome --dart-define=TALKER_LOG_LEVEL=all --dart-define=TALKER_MA
 
 - **Flutter SDK**：预装在 `/home/ubuntu/flutter`（stable，Dart 3.12+），已通过 `~/.bashrc` 加入交互式 shell 的 PATH。非交互式脚本请用全路径 `/home/ubuntu/flutter/bin/flutter`。
 - **Lint / Test**：`flutter analyze`（当前 0 issue）与 `flutter test`（250+ 测试）。注意：**首次** `flutter test` 会一次性编译引擎测试产物，可能数分钟无输出（输出被 shell 缓冲），属正常；产物缓存后整套测试约数秒到十几秒。用 `--reporter expanded` 可看到实时进度。
-- **Pre-commit**：安装 `.\scripts\install_precommit.ps1` 后，默认 `S1_PRECOMMIT=full`（format + analyze + test + M3）。小改用 `S1_PRECOMMIT=lite`；完全跳过用 `skip` 或 `git commit --no-verify`（**仅当用户明确要求跳过时**）。源脚本：`scripts/pre-commit-hook.sh`；用法见 [CONTRIBUTING.md](CONTRIBUTING.md)。
+- **Pre-commit**：安装 `.\scripts\install_precommit.ps1` 后，默认 `S1_PRECOMMIT=full`（format + analyze + test + M3 + cursor）。小改用 `S1_PRECOMMIT=lite`；完全跳过用 `skip` 或 `git commit --no-verify`（**仅当用户明确要求跳过时**）。源脚本：`scripts/pre-commit-hook.sh`；用法见 [CONTRIBUTING.md](CONTRIBUTING.md)。
 - **M3 审计**：`dart run scripts/audit_m3.dart --fail-on-error` 扫描 `lib/`（P0/P1）、`lib/screens/` 系统底栏合规与 `test/`，报告输出至 `reports/m3_audit_<date>.md`。
+- **指针策略审计**：`dart run scripts/audit_cursors.dart --fail-on-error` 扫描 `lib/`，可交互的裸 `InkWell` 且无显式 `mouseCursor` 即失败；规则与理由见 [ADR 0010](docs/adr/0010-desktop-mouse-cursor-policy.md)。
 - **运行 Web 开发环境（推荐的可测试目标）**：需要同时启动两个进程（标准命令见 [docs/development.md](docs/development.md)）：
   1. CORS 代理：`dart run scripts/proxy_server.dart`，监听 `http://localhost:19080`，转发到 `https://stage1st.com/2b/...` 并处理 CORS/Cookie。
   2. Flutter Web：`flutter run -d web-server --web-port 8080 --web-hostname 0.0.0.0`（无头 VM 用 `web-server` 设备，避免依赖 Chrome 调试扩展；桌面 Chrome 可直接访问 `http://localhost:8080`）。

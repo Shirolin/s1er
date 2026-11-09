@@ -1,3 +1,4 @@
+import '../widgets/s1_ink_well.dart';
 import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -507,7 +508,7 @@ class _StatItem extends StatelessWidget {
     }
     return Material(
       color: Colors.transparent,
-      child: InkWell(
+      child: S1InkWell(
         onTap: onTap,
         borderRadius: S1Shape.medium,
         child: Center(
@@ -864,7 +865,7 @@ class _ProfileTwoLineRow extends StatelessWidget {
 
     return Material(
       color: Colors.transparent,
-      child: InkWell(
+      child: S1InkWell(
         onTap: onTap,
         child: Padding(
           padding: const EdgeInsets.symmetric(
@@ -929,7 +930,7 @@ class _LogoutTile extends StatelessWidget {
       elevation: 0,
       child: Material(
         color: Colors.transparent,
-        child: InkWell(
+        child: S1InkWell(
           onTap: onTap,
           borderRadius: S1Shape.medium,
           child: Padding(

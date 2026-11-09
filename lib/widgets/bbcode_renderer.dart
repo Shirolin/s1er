@@ -1,3 +1,4 @@
+import './s1_ink_well.dart';
 import 'dart:async';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
@@ -28,6 +29,7 @@ import 'image_viewer.dart';
 import 'scroll_pointer_gate.dart';
 import '../models/thread_destination.dart';
 import '../utils/thread_navigation.dart';
+import '../theme/s1_mouse_cursors.dart';
 
 final _anchorTag = RegExp(r'<a\s', caseSensitive: false);
 
@@ -152,6 +154,7 @@ class BbcodeRenderer extends ConsumerWidget {
           child: Center(
             child: ExcludeFocus(
               child: ActionChip(
+                mouseCursor: S1MouseCursors.clickable,
                 avatar: Icon(
                   Icons.image_outlined,
                   size: 18,
@@ -563,7 +566,7 @@ class _MemoizedHtmlBlockState extends State<_MemoizedHtmlBlock> {
             child: Semantics(
               button: parsedLink != null,
               label: parsedLink != null ? '跳转到引用帖子' : null,
-              child: InkWell(
+              child: S1InkWell(
                 borderRadius: S1Shape.small,
                 onTap: parsedLink != null
                     ? () {

@@ -1,3 +1,4 @@
+import './s1_ink_well.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/rendering.dart';
 
@@ -333,7 +334,7 @@ class _NavActionButtonState extends State<_NavActionButton> {
         hint: widget.semanticHint,
         child: Material(
           color: Colors.transparent,
-          child: InkWell(
+          child: S1InkWell(
             onTap: _onTap,
             onLongPress: widget.onLongPress == null ? null : _onLongPress,
             customBorder: const CircleBorder(),

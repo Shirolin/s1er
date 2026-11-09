@@ -1,3 +1,4 @@
+import './s1_ink_well.dart';
 import 'dart:async';
 
 import 'package:flutter/material.dart';
@@ -448,7 +449,7 @@ class _PostItemState extends ConsumerState<PostItem>
                           ),
                         ),
                         const SizedBox(width: 8),
-                        InkWell(
+                        S1InkWell(
                           onTap: () =>
                               setState(() => _recoveredQuoteExpanded = false),
                           child: Text(

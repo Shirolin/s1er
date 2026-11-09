@@ -1,3 +1,4 @@
+import '../widgets/s1_ink_well.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
@@ -156,7 +157,7 @@ class _DarkRoomCard extends StatelessWidget {
     return Card(
       elevation: 0,
       clipBehavior: Clip.antiAlias,
-      child: InkWell(
+      child: S1InkWell(
         onTap: entry.uid.isEmpty
             ? null
             : () {

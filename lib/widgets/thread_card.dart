@@ -1,3 +1,4 @@
+import './s1_ink_well.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
@@ -14,6 +15,7 @@ import '../utils/compact_label.dart';
 import '../utils/format_utils.dart';
 import '../utils/thread_navigation.dart';
 import 'page_picker_sheet.dart';
+import '../theme/s1_mouse_cursors.dart';
 
 typedef ThreadOpenCallback = void Function(
   ThreadDestination destination, {
@@ -247,7 +249,7 @@ class ThreadCard extends ConsumerWidget {
         enabled: compactListFullBleed,
       ),
       clipBehavior: Clip.antiAlias,
-      child: InkWell(
+      child: S1InkWell(
         onTap: () => _handleTap(context, ref),
         borderRadius: S1ReadingCardStyle.inkBorderRadius(
           context,
@@ -624,7 +626,7 @@ class _PageCountButton extends StatelessWidget {
       child: Material(
         color: Colors.transparent,
         shape: shape,
-        child: InkWell(
+        child: S1InkWell(
           onTap: onPressed,
           customBorder: shape,
           child: Container(
@@ -857,6 +859,7 @@ class _CategoryTag extends StatelessWidget {
                   : scheme.surfaceContainerHighest;
 
       final chip = FilterChip(
+        mouseCursor: S1MouseCursors.clickable,
         label: CompactLabel.text(label, style: labelStyle),
         selected: selected,
         showCheckmark: false,

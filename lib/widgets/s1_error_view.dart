@@ -4,6 +4,7 @@ import 'package:url_launcher/url_launcher.dart';
 
 import '../config/api_config.dart';
 import '../models/app_exceptions.dart';
+import '../theme/app_theme.dart';
 import '../utils/error_handler.dart';
 import '../utils/post_link_resolver.dart';
 import '../utils/s1_snack_bar.dart';
@@ -201,7 +202,7 @@ class _ErrorDiagnosticPanelState extends State<_ErrorDiagnosticPanel> {
               padding: const EdgeInsets.all(12),
               decoration: BoxDecoration(
                 color: scheme.surfaceContainerHighest,
-                borderRadius: BorderRadius.circular(8),
+                borderRadius: S1Shape.small,
               ),
               child: SelectableText(
                 widget.detail,

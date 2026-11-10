@@ -17,6 +17,7 @@ void main() {
       expect(AppIconCatalog.normalize('black'), 'black');
       expect(AppIconCatalog.normalize('xb2'), 'xb2');
       expect(AppIconCatalog.normalize('md'), 'md');
+      expect(AppIconCatalog.normalize('oot'), 'oot');
     });
 
     test('contains known variants only', () {
@@ -24,28 +25,31 @@ void main() {
       expect(AppIconCatalog.contains('white'), isTrue);
       expect(AppIconCatalog.contains('xb2'), isTrue);
       expect(AppIconCatalog.contains('md'), isTrue);
+      expect(AppIconCatalog.contains('oot'), isTrue);
       expect(AppIconCatalog.contains('seasonal'), isFalse);
     });
 
     test('alternateVariants excludes default', () {
       expect(
         AppIconCatalog.alternateVariants.map((v) => v.id),
-        ['white', 'xb2', 'md'],
+        ['white', 'xb2', 'md', 'oot'],
       );
     });
 
-    test('black stock; white solid-plate; xb2/md master with 16% safe zone',
+    test('black stock; white solid-plate; themed masters with 16% safe zone',
         () {
       expect(AppIconCatalog.defaultVariant.androidMipmap, 'ic_launcher');
       expect(AppIconCatalog.defaultVariant.reuseExistingAndroid, isTrue);
       expect(AppIconCatalog.find('white')!.androidMasterAsIcon, isFalse);
       expect(AppIconCatalog.find('xb2')!.androidMasterAsIcon, isTrue);
       expect(AppIconCatalog.find('md')!.androidMasterAsIcon, isTrue);
+      expect(AppIconCatalog.find('oot')!.androidMasterAsIcon, isTrue);
       expect(AppIconCatalog.find('md')!.androidMipmap, 'ic_launcher_md');
+      expect(AppIconCatalog.find('oot')!.androidMipmap, 'ic_launcher_oot');
       expect(AppIconCatalog.adaptiveInsetPercent, 16);
       expect(
         AppIconCatalog.androidGeneratedVariants.map((v) => v.id),
-        ['white', 'xb2', 'md'],
+        ['white', 'xb2', 'md', 'oot'],
       );
     });
   });

@@ -91,6 +91,15 @@ abstract final class AppIconCatalog {
       masterPath: 'assets/branding/s1er_logo_md.png',
       androidMasterAsIcon: true,
     ),
+    AppIconVariant(
+      id: 'oot',
+      label: '时之笛',
+      previewAsset: 'assets/branding/s1er_logo_oot.png',
+      androidMipmap: 'ic_launcher_oot',
+      backgroundColor: '#183728',
+      masterPath: 'assets/branding/s1er_logo_oot.png',
+      androidMasterAsIcon: true,
+    ),
   ];
 
   static AppIconVariant get defaultVariant =>

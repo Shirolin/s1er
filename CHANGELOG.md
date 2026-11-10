@@ -5,6 +5,24 @@ All notable changes to S1er will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.12.0] - 2026-11-10
+
+### Added
+
+- **「时之笛」桌面图标**：设置 → 主题设置 → 应用图标新增「时之笛」主题（Android / iOS 均可切换）。
+- **宽屏双栏可直接收起正文**：右侧详情顶栏最右新增关闭按钮，点击回到纯列表；左栏筛选行另有独立刷新，只刷列表、不影响右侧帖子。
+
+### Changed
+
+- **桌面端指针统一**：Windows / macOS / Linux 上可点区域（列表、导航、标签等）一律手型指针。
+
+### Fixed
+
+- **草稿最后一段输入可能丢失**：退出撰写时把尚未落盘的防抖内容补写，草稿更可靠。
+- **应用图标预览被裁成竖条**：设置里的图标预览在窄屏保持正方形，不再横向裁掉构图。
+- **Android 切换图标提示「更换应用图标失败」**：补上「时之笛」的原生别名映射。
+- **首页置顶帖标题的 HTML 实体**：旧数据里的 `&amp;` 这类转义恢复为原字符。
+
 ## [0.11.0] - 2026-11-05
 
 ### Fixed

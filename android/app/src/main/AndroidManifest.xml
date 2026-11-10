@@ -27,7 +27,7 @@
               />
 
         </activity>
-                                                                                                        <!-- APP_ICON_ALIASES_BEGIN -->
+        <!-- APP_ICON_ALIASES_BEGIN -->
         <activity-alias
             android:name=".IconBlack"
             android:enabled="true"

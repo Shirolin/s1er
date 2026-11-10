@@ -290,7 +290,9 @@ Future<void> _patchAndroidManifest(String root) async {
   var content = await file.readAsString();
 
   final aliases = StringBuffer();
-  aliases.writeln('        ${_androidManifestMarkers.begin}');
+  // 标记行不带缩进：`_replaceMarkedRegion` 从标记文本开始替换，行首空白由文件保留，
+  // 若这里再写一遍缩进会每次 sync 多叠一层。
+  aliases.writeln(_androidManifestMarkers.begin);
   for (final variant in AppIconCatalog.variants) {
     final component = _aliasComponentName(variant.id);
     final enabled = variant.isDefault ? 'true' : 'false';
@@ -308,6 +310,7 @@ Future<void> _patchAndroidManifest(String root) async {
             </intent-filter>
         </activity-alias>''');
   }
+  // END 行在替换区间内，缩进必须自己给。
   aliases.write('        ${_androidManifestMarkers.end}');
 
   content = _replaceMarkedRegion(

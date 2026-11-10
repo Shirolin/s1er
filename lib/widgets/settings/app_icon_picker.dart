@@ -61,54 +61,64 @@ class AppIconPicker extends ConsumerWidget {
                       child: Column(
                         mainAxisSize: MainAxisSize.min,
                         children: [
-                          SizedBox(
-                            width: _previewSize,
-                            height: _previewSize,
-                            child: Stack(
-                              clipBehavior: Clip.none,
-                              children: [
-                                // Bare launcher-style preview — no frame/shadow.
-                                ClipRRect(
-                                  borderRadius: S1Shape.medium,
-                                  child: Image.asset(
-                                    variant.previewAsset,
-                                    width: _previewSize,
-                                    height: _previewSize,
-                                    fit: BoxFit.cover,
-                                    errorBuilder:
-                                        (context, error, stackTrace) =>
-                                            ColoredBox(
-                                      color: scheme.surfaceContainerHighest,
-                                      child: Icon(
-                                        Icons.image_not_supported_outlined,
-                                        color: scheme.onSurfaceVariant,
-                                      ),
-                                    ),
-                                  ),
-                                ),
-                                if (isSelected)
-                                  Positioned(
-                                    right: -2,
-                                    bottom: -2,
-                                    child: Container(
-                                      width: 22,
-                                      height: 22,
-                                      decoration: BoxDecoration(
-                                        color: scheme.primary,
-                                        shape: BoxShape.circle,
-                                        border: Border.all(
-                                          color: scheme.surface,
-                                          width: 2,
+                          // 五列并排时槽位宽度可能小于 56，SizedBox 会被压成非正方形，
+                          // BoxFit.cover 于是横向裁掉构图；用 AspectRatio 保证始终正方。
+                          ConstrainedBox(
+                            constraints: const BoxConstraints(
+                              maxWidth: _previewSize,
+                              maxHeight: _previewSize,
+                            ),
+                            child: AspectRatio(
+                              aspectRatio: 1,
+                              child: Stack(
+                                clipBehavior: Clip.none,
+                                children: [
+                                  // Bare launcher-style preview — no frame/shadow.
+                                  Positioned.fill(
+                                    child: ClipRRect(
+                                      borderRadius: S1Shape.medium,
+                                      child: Image.asset(
+                                        variant.previewAsset,
+                                        fit: BoxFit.cover,
+                                        errorBuilder:
+                                            (context, error, stackTrace) =>
+                                                ColoredBox(
+                                          color: scheme.surfaceContainerHighest,
+                                          child: Center(
+                                            child: Icon(
+                                              Icons
+                                                  .image_not_supported_outlined,
+                                              color: scheme.onSurfaceVariant,
+                                            ),
+                                          ),
                                         ),
                                       ),
-                                      child: Icon(
-                                        Icons.check,
-                                        size: 12,
-                                        color: scheme.onPrimary,
-                                      ),
                                     ),
                                   ),
-                              ],
+                                  if (isSelected)
+                                    Positioned(
+                                      right: -2,
+                                      bottom: -2,
+                                      child: Container(
+                                        width: 22,
+                                        height: 22,
+                                        decoration: BoxDecoration(
+                                          color: scheme.primary,
+                                          shape: BoxShape.circle,
+                                          border: Border.all(
+                                            color: scheme.surface,
+                                            width: 2,
+                                          ),
+                                        ),
+                                        child: Icon(
+                                          Icons.check,
+                                          size: 12,
+                                          color: scheme.onPrimary,
+                                        ),
+                                      ),
+                                    ),
+                                ],
+                              ),
                             ),
                           ),
                           const SizedBox(height: 8),

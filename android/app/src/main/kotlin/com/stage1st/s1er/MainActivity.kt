@@ -35,12 +35,14 @@ class MainActivity : FlutterActivity() {
         "play.google.com",
     )
 
-    /** Must stay aligned with AppIconCatalog ids / sync_app_icons aliases. */
+    /** Must stay aligned with AppIconCatalog ids / sync_app_icons aliases.
+     *  增删变体后须同步本表；test/config/app_icon_catalog_test.dart 会校对。 */
     private val iconAliasSuffixes = linkedMapOf(
         "black" to ".IconBlack",
         "white" to ".IconWhite",
         "xb2" to ".IconXb2",
         "md" to ".IconMd",
+        "oot" to ".IconOot",
     )
 
     override fun configureFlutterEngine(flutterEngine: FlutterEngine) {

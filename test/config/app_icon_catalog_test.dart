@@ -56,6 +56,29 @@ void main() {
       );
     });
 
+    // 新增变体时最容易漏的两处：Kotlin 的 id→alias 表、Manifest 的 activity-alias。
+    // 漏了 Kotlin 表会直接报「更换应用图标失败」（invalid_id）。
+    test('native 入口与 Catalog 同步（Kotlin id 表 / Manifest alias）', () {
+      final mainActivity = File(
+        'android/app/src/main/kotlin/com/stage1st/s1er/MainActivity.kt',
+      ).readAsStringSync();
+      final manifest =
+          File('android/app/src/main/AndroidManifest.xml').readAsStringSync();
+
+      for (final variant in AppIconCatalog.variants) {
+        expect(
+          mainActivity.contains('"${variant.id}" to ".Icon'),
+          isTrue,
+          reason: 'MainActivity.iconAliasSuffixes 缺 "${variant.id}"',
+        );
+        expect(
+          manifest.contains('android:icon="@mipmap/${variant.androidMipmap}"'),
+          isTrue,
+          reason: 'AndroidManifest 缺 ${variant.androidMipmap} 的 activity-alias',
+        );
+      }
+    });
+
     // 生成器原图直接入库过一次：1254²、1.2 MB、满图噪点，APK 体积凭空涨了 1 MB。
     test('branding 方图规格：≤1024px 方图且体积 ≤300 KB', () {
       final paths = <String>{

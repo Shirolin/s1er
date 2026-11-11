@@ -73,14 +73,17 @@ echo "  OK"
 echo ""
 
 # 4. Material Design 3 audit
-echo "[4/$TOTAL] dart run scripts/audit_m3.dart — M3 compliance..."
-dart run scripts/audit_m3.dart --fail-on-error
+# Run through `dart <script>` rather than `dart run`: the latter resolves the
+# package's native build hooks first and blocks on a cold cnativeapi compile,
+# while these audits only read Dart sources.
+echo "[4/$TOTAL] dart scripts/audit_m3.dart — M3 compliance..."
+dart scripts/audit_m3.dart --fail-on-error
 echo "  OK"
 echo ""
 
 # 5. Desktop/web pointer policy audit
-echo "[5/$TOTAL] dart run scripts/audit_cursors.dart — cursor policy..."
-dart run scripts/audit_cursors.dart --fail-on-error
+echo "[5/$TOTAL] dart scripts/audit_cursors.dart — cursor policy..."
+dart scripts/audit_cursors.dart --fail-on-error
 echo "  OK"
 echo ""
 

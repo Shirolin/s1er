@@ -263,7 +263,7 @@ flutter run -d chrome --dart-define=BBCODE_PROFILE=true
 
 ```bash
 # 运行 Material Design 3 规范静态审计
-dart run scripts/audit_m3.dart --fail-on-error
+dart scripts/audit_m3.dart --fail-on-error
 
 # 运行代码分析与单元测试
 flutter analyze

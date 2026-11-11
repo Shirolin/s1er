@@ -57,10 +57,12 @@ jobs:
         run: flutter analyze
 
       - name: M3 audit
-        run: dart run scripts/audit_m3.dart --fail-on-error
+        # `dart <script>` skips the package's native build hooks; `dart run`
+        # would cold-build cnativeapi (a tray_manager dependency) first.
+        run: dart scripts/audit_m3.dart --fail-on-error
 
       - name: Mouse cursor policy audit
-        run: dart run scripts/audit_cursors.dart --fail-on-error
+        run: dart scripts/audit_cursors.dart --fail-on-error
 
   tests:
     # PRs get the full suite; a push to main repeats a commit that was already
@@ -81,6 +83,18 @@ jobs:
 
       - name: Install dependencies
         run: flutter pub get
+
+      # `flutter test` builds the native assets for the host, which compiles
+      # cnativeapi (tray_manager) from C++ on a cold cache. Hook outputs are
+      # content-addressed, so restoring them only skips work — a stale entry
+      # rebuilds by itself.
+      - name: Cache native build hooks
+        uses: actions/cache@0057852bfaa89a56745cba8c7296529d2fc39830 # v4.3.0
+        with:
+          path: .dart_tool/hooks_runner
+          key: hooks-runner-${{ runner.os }}-${{ hashFiles('pubspec.lock', 'pubspec.yaml') }}
+          restore-keys: |
+            hooks-runner-${{ runner.os }}-
 
       - name: Run tests
         run: flutter test --reporter compact

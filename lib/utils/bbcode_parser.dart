@@ -95,6 +95,11 @@ class BbcodeParser {
     output = output.replaceAll(RegExp(r'<br/>\s*\r?\n'), '<br/>');
     output =
         output.replaceAll(RegExp(r'(<br/>\s*|[\n\r]\s*){3,}'), '<br/><br/>');
+    // 去掉尾部空行：否则正文末尾会多出一整行留白（分享卡页脚前尤其明显）。
+    output = output.replaceFirst(
+      RegExp(r'(?:\s*<br\s*/?>\s*)+$', caseSensitive: false),
+      '',
+    );
 
     return output;
   }

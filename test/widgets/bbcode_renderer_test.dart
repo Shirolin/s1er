@@ -184,6 +184,32 @@ void main() {
       expect(find.textContaining('quoted'), findsOneWidget);
     });
 
+    testWidgets('static quote header hides the jump affordance',
+        (tester) async {
+      const html = '<blockquote>'
+          '<font size="2"><a href="forum.php?mod=redirect&amp;goto=findpost'
+          '&amp;pid=123&amp;ptid=456">Author 发表于 2026-7-20 12:00</a>'
+          '</font><br/>Quoted</blockquote>';
+
+      await tester.pumpWidget(
+        _wrapBbcode(
+          BbcodeRenderer(
+            bbcode: html,
+            imageIndexCounter: PostImageIndexCounter(),
+            quoteJumpEnabled: false,
+          ),
+        ),
+      );
+      await tester.pump();
+
+      expect(find.byIcon(Icons.format_quote), findsOneWidget);
+      expect(find.byIcon(Icons.open_in_new), findsNothing);
+      expect(
+        find.textContaining('Author', findRichText: true),
+        findsOneWidget,
+      );
+    });
+
     testWidgets('handles multiple quote blocks', (tester) async {
       await tester.pumpWidget(
         _wrapBbcode(

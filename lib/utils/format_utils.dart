@@ -45,6 +45,34 @@ String formatDateTime(int dateline) {
   return '${dt.year}-$month-$day $hour:$minute';
 }
 
+/// 归一化引用头里的日期文本（源帖常写 `2026-11-7 16:44`），
+/// 补齐为 `2026-11-07 16:44`；保留年份（引文可能来自往年）。
+/// 无法识别时原样返回，避免吞掉非标准写法。
+String formatLooseDateTime(String raw) {
+  final text = raw.trim();
+  final match = RegExp(
+    r'^(\d{4})-(\d{1,2})-(\d{1,2})\s+(\d{1,2}):(\d{2})(?::\d{2})?$',
+  ).firstMatch(text);
+  if (match == null) return text;
+
+  final year = int.parse(match.group(1)!);
+  final month = int.parse(match.group(2)!);
+  final day = int.parse(match.group(3)!);
+  final hour = int.parse(match.group(4)!);
+  final minute = int.parse(match.group(5)!);
+  if (month < 1 ||
+      month > 12 ||
+      day < 1 ||
+      day > 31 ||
+      hour > 23 ||
+      minute > 59) {
+    return text;
+  }
+
+  String two(int value) => value.toString().padLeft(2, '0');
+  return '$year-${two(month)}-${two(day)} ${two(hour)}:${two(minute)}';
+}
+
 /// 注册时间：支持 Unix 时间戳或已有日期字符串，输出紧凑格式。
 String formatRegDate(String regdate) {
   if (regdate.isEmpty) return '';

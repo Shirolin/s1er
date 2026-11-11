@@ -10,6 +10,26 @@ void main() {
     });
   });
 
+  group('formatLooseDateTime', () {
+    test('pads quote header dates and keeps the year', () {
+      expect(
+        formatLooseDateTime('2026-11-7 16:44'),
+        '2026-11-07 16:44',
+      );
+    });
+
+    test('keeps older years', () {
+      expect(
+        formatLooseDateTime('2025-3-9 08:05'),
+        '2025-03-09 08:05',
+      );
+    });
+
+    test('returns unrecognized text unchanged', () {
+      expect(formatLooseDateTime('某天某时'), '某天某时');
+    });
+  });
+
   group('formatRegDate', () {
     test('formats unix timestamp', () {
       // 2019-03-19 19:01:40 UTC+8 approx - use known timestamp

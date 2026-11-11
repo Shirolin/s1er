@@ -13,6 +13,7 @@ import '../providers/settings_provider.dart';
 import '../theme/app_theme.dart';
 import '../utils/author_color_cache.dart';
 import '../utils/author_style_stripper.dart';
+import '../utils/format_utils.dart';
 import '../utils/post_body_cache.dart';
 import '../utils/bbcode_parser.dart';
 import '../utils/post_image_index_counter.dart';
@@ -75,6 +76,7 @@ class BbcodeRenderer extends ConsumerWidget {
     this.highlightQuery,
     this.stripSpecialStyles = false,
     this.attachments = const {},
+    this.quoteJumpEnabled = true,
   });
 
   final String bbcode;
@@ -97,6 +99,9 @@ class BbcodeRenderer extends ConsumerWidget {
   /// 为 true 时剥离作者特殊样式（字色 / 底色 / 字号）并跳过色适配；
   /// 由调用方按「全局开关 OR 本楼会话标记」计算后传入。
   final bool stripSpecialStyles;
+
+  /// 为 false 时引用头不显示跳转图标、不响应点击（分享卡等静态导出）。
+  final bool quoteJumpEnabled;
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -216,6 +221,7 @@ class BbcodeRenderer extends ConsumerWidget {
           currentTid: currentTid,
           highlightQuery: highlightQuery,
           stripSpecialStyles: stripSpecialStyles,
+          quoteJumpEnabled: quoteJumpEnabled,
         ),
       );
     }
@@ -282,6 +288,7 @@ class _MemoizedHtmlBlock extends StatefulWidget {
     this.currentTid,
     this.highlightQuery,
     this.stripSpecialStyles = false,
+    this.quoteJumpEnabled = true,
   });
 
   final String html;
@@ -294,6 +301,7 @@ class _MemoizedHtmlBlock extends StatefulWidget {
   final String? currentTid;
   final String? highlightQuery;
   final bool stripSpecialStyles;
+  final bool quoteJumpEnabled;
   @override
   State<_MemoizedHtmlBlock> createState() => _MemoizedHtmlBlockState();
 }
@@ -330,7 +338,8 @@ class _MemoizedHtmlBlockState extends State<_MemoizedHtmlBlock> {
         widget.maxImagesPerPost != _cachedMaxImages ||
         widget.imagesExpanded != _cachedImagesExpanded ||
         widget.highlightQuery != _cachedHighlightQuery ||
-        widget.stripSpecialStyles != _cachedStripSpecialStyles) {
+        widget.stripSpecialStyles != _cachedStripSpecialStyles ||
+        widget.quoteJumpEnabled != oldWidget.quoteJumpEnabled) {
       _cachedHtml = widget.html;
       _cachedShowImages = widget.showImages;
       _cachedMaxImages = widget.maxImagesPerPost;
@@ -554,12 +563,71 @@ class _MemoizedHtmlBlockState extends State<_MemoizedHtmlBlock> {
           final author = _unescapeHtml(context.attributes['author'] ?? '引用');
           final link = context.attributes['href'];
 
-          final parsedLink = link != null && link.isNotEmpty
-              ? QuoteJumpParser.parsePostLink(
-                  link,
-                  fallbackTid: widget.currentTid,
-                )
-              : null;
+          final parsedLink =
+              widget.quoteJumpEnabled && link != null && link.isNotEmpty
+                  ? QuoteJumpParser.parsePostLink(
+                      link,
+                      fallbackTid: widget.currentTid,
+                    )
+                  : null;
+
+          // 作者与「发表于 时间」拆开：作者名保持强调色，时间走次级色；
+          // 源帖常写 `2026-11-7 16:44`，这里归一成与楼层时间一致的格式。
+          final headerMatch =
+              RegExp(r'^(.*?)\s*发表于\s*(.*)$').firstMatch(author);
+          final authorName = (headerMatch?.group(1)?.trim().isNotEmpty ?? false)
+              ? headerMatch!.group(1)!.trim()
+              : author;
+          final rawTime = headerMatch?.group(2)?.trim() ?? '';
+          final time = rawTime.isEmpty ? '' : formatLooseDateTime(rawTime);
+          final headerStyle = textTheme.bodySmall;
+
+          final header = Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+            child: Row(
+              children: [
+                Icon(
+                  Icons.format_quote,
+                  size: 15,
+                  color: scheme.primary,
+                ),
+                const SizedBox(width: 4),
+                Expanded(
+                  child: Text.rich(
+                    TextSpan(
+                      children: [
+                        TextSpan(
+                          text: authorName,
+                          style: headerStyle?.copyWith(
+                            fontWeight: FontWeight.w600,
+                            color: scheme.primary,
+                          ),
+                        ),
+                        if (time.isNotEmpty)
+                          TextSpan(
+                            text: ' 发表于 $time',
+                            style: headerStyle?.copyWith(
+                              color: scheme.onSurfaceVariant,
+                            ),
+                          ),
+                      ],
+                    ),
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                ),
+                if (parsedLink != null)
+                  Icon(
+                    Icons.open_in_new,
+                    size: 13,
+                    color: scheme.onSurfaceVariant,
+                  ),
+              ],
+            ),
+          );
+
+          // 静态导出（分享卡）不保留点击语义与跳转图标。
+          if (!widget.quoteJumpEnabled) return header;
 
           return Material(
             color: Colors.transparent,
@@ -579,39 +647,7 @@ class _MemoizedHtmlBlockState extends State<_MemoizedHtmlBlock> {
                         );
                       }
                     : null,
-                child: Padding(
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 12,
-                    vertical: 8,
-                  ),
-                  child: Row(
-                    children: [
-                      Icon(
-                        Icons.format_quote,
-                        size: 15,
-                        color: scheme.primary,
-                      ),
-                      const SizedBox(width: 4),
-                      Expanded(
-                        child: Text(
-                          author,
-                          style: textTheme.bodySmall?.copyWith(
-                            fontWeight: FontWeight.w600,
-                            color: scheme.primary,
-                          ),
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
-                        ),
-                      ),
-                      if (parsedLink != null)
-                        Icon(
-                          Icons.open_in_new,
-                          size: 13,
-                          color: scheme.onSurfaceVariant,
-                        ),
-                    ],
-                  ),
-                ),
+                child: header,
               ),
             ),
           );

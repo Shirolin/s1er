@@ -277,5 +277,13 @@ void main() {
       final parsed = BbcodeParser.parse(input);
       expect(parsed, equals('Paragraph 1<br/><br/>Paragraph 2'));
     });
+
+    test('drops trailing line breaks', () {
+      expect(
+        BbcodeParser.parse('Paragraph<br />\r\n<br />\r\n'),
+        equals('Paragraph'),
+      );
+      expect(BbcodeParser.parse('Paragraph<br/>'), equals('Paragraph'));
+    });
   });
 }

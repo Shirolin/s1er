@@ -95,6 +95,10 @@ class ShareCard extends StatelessWidget {
   /// Share-card body size (logical px).
   static const double shareBodySize = 18;
 
+  /// Share-card metadata size (logical px). The card is often downscaled in
+  /// chat apps, so time / floor / footer text must not fall below this.
+  static const double shareMetaSize = 14;
+
   /// Forum URL encoded into the footer QR, or null when [tid] is empty.
   ///
   /// Prefers Discuz `findpost` when [pid] is set so a scan opens that floor.
@@ -199,13 +203,13 @@ class ShareCard extends StatelessWidget {
         height: S1Typography.defaultBodyLineHeight,
       ),
       bodySmall: base.bodySmall?.copyWith(
-        fontSize: scaled(base.bodySmall?.fontSize, 12),
+        fontSize: shareMetaSize,
       ),
       labelMedium: base.labelMedium?.copyWith(
-        fontSize: scaled(base.labelMedium?.fontSize, 12),
+        fontSize: shareMetaSize,
       ),
       labelSmall: base.labelSmall?.copyWith(
-        fontSize: scaled(base.labelSmall?.fontSize, 11),
+        fontSize: shareMetaSize,
       ),
     );
   }
@@ -382,6 +386,8 @@ class ShareFloorBlock extends ConsumerWidget {
               imageIndexCounter: imageIndexCounter,
               imagesExpanded: true,
               stripSpecialStyles: effectiveStrip,
+              // 导出图里没有可点击的引用跳转，别留一个假链接图标。
+              quoteJumpEnabled: false,
             ),
           ),
           if (poll != null) _SharePollView(poll: poll!),
@@ -453,7 +459,7 @@ class ShareCardFooter extends StatelessWidget {
     );
     final attributionIcon = Icon(
       Icons.smartphone_outlined,
-      size: 14,
+      size: 16,
       color: scheme.onSurfaceVariant,
     );
 

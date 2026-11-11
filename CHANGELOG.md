@@ -5,6 +5,23 @@ All notable changes to S1er will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.13.0] - 2026-11-12
+
+### Added
+
+- **Windows 系统托盘**：关闭窗口可最小化到托盘，托盘菜单支持显示 / 隐藏窗口与退出。
+- **桌面图标主题**：所选应用图标同步到 Windows 窗口 / 任务栏、自绘标题栏与托盘图标，并可创建或移除本应用的桌面快捷方式。
+
+### Changed
+
+- 设置 → 通用新增「桌面」区块：托盘开关、桌面图标选择与快捷方式状态集中在一处。
+- 备份包含桌面端「关闭到托盘」设置（`close_to_tray`）。
+
+### Fixed
+
+- **分享卡附件显示原始 BBCode**：`[attach]` / `[attachimg]` 重新渲染为附件图片。
+- 分享卡引用头保留完整年份、时间使用次级色；静态导出去掉跳转图标，元数据字号统一，正文尾部不再多一行留白。
+
 ## [0.12.0] - 2026-11-10
 
 ### Added

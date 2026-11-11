@@ -7,6 +7,7 @@ import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:talker_dio_logger/talker_dio_logger.dart';
 import 'app.dart';
+import 'config/app_icon_catalog.dart';
 import 'config/env_config.dart';
 import 'theme/app_theme.dart';
 import 'models/emoticon_catalog.dart';
@@ -15,6 +16,7 @@ import 'providers/http_event_bridge_provider.dart';
 import 'services/app_database.dart';
 import 'services/app_local_data.dart';
 import 'services/frame_timing_service.dart';
+import 'utils/desktop_tray.dart';
 import 'utils/desktop_window.dart';
 import 'utils/update_startup_marker.dart';
 import 'services/http_client.dart';
@@ -164,6 +166,18 @@ void main() async {
     unawaited(
       container.read(settingsProvider.notifier).syncAppIconWithNative(),
     );
+
+    // Desktop tray: keep the app reachable while its window is hidden.
+    if (S1DesktopTray.isSupported) {
+      unawaited(
+        DesktopTrayController.instance.initialize(
+          closeToTray: container.read(settingsProvider).closeToTray,
+          iconAsset: AppIconCatalog.previewAssetFor(
+            container.read(settingsProvider).appIcon,
+          ),
+        ),
+      );
+    }
 
     // 订阅 HTTP 事件（未读计数 / 服务器公告）；客户端只转发、由适配器落库。
     container.read(httpEventBridgeProvider);

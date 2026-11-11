@@ -51,6 +51,9 @@ dependencies:
   qr_flutter: ^4.1.0
   device_info_plus: ^13.2.0
   window_manager: ^0.5.1
+  tray_manager: 0.8.3
+  win32: ^6.3.0
+  ffi: ^2.2.0
 dev_dependencies:
   flutter_test:
     sdk: flutter

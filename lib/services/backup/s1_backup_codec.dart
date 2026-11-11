@@ -202,6 +202,7 @@ class S1BackupSettingsMapper {
     'recordReadingHistory': 'record_reading_history',
     'showRecentHistoryOnHome': 'show_recent_history_on_home',
     'hapticsEnabled': 'haptics_enabled',
+    'closeToTray': 'close_to_tray',
     'threadListDensity': 'thread_list_density',
     'postListDensity': 'post_list_density',
     'compactListFullBleed': 'compact_list_full_bleed',

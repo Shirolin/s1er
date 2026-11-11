@@ -115,6 +115,10 @@ abstract final class AppIconCatalog {
 
   static String normalize(String? id) => find(id)?.id ?? defaultId;
 
+  /// Preview/asset image for [id], falling back to the default variant.
+  static String previewAssetFor(String? id) =>
+      (find(id) ?? defaultVariant).previewAsset;
+
   static bool contains(String? id) => find(id) != null;
 
   static Iterable<AppIconVariant> get alternateVariants =>

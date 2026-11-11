@@ -1,15 +1,18 @@
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:s1er/config/app_icon_catalog.dart';
 import 'package:s1er/config/constants.dart';
 import 'package:s1er/models/image_load_policy.dart';
 import 'package:s1er/models/list_density.dart';
 import 'package:s1er/models/share_image_format.dart';
 import 'package:s1er/providers/settings_provider.dart';
 import 'package:s1er/services/app_icon_service.dart';
+import 'package:s1er/services/desktop_icon_service.dart';
 import 'package:s1er/services/settings_store.dart';
 import 'package:s1er/theme/app_theme.dart';
 import 'package:s1er/theme/s1_haptics.dart';
+import 'package:s1er/utils/desktop_tray.dart';
 import '../helpers/test_local_data.dart';
 
 void main() {
@@ -100,6 +103,67 @@ void main() {
     expect(container.read(settingsProvider).recordReadingHistory, isFalse);
     await Future<void>.delayed(const Duration(milliseconds: 50));
     expect(store.get<bool>('recordReadingHistory'), isFalse);
+  });
+
+  test('setCloseToTray persists and updates the tray controller', () async {
+    final tray = _FakeDesktopTrayController();
+    DesktopTrayController.testInstance = tray;
+    addTearDown(() => DesktopTrayController.testInstance = null);
+
+    final container = ProviderContainer(
+      overrides: [
+        settingsProvider.overrideWith(
+          () => SettingsNotifier(store: store, initial: const AppSettings()),
+        ),
+      ],
+    );
+    addTearDown(container.dispose);
+
+    expect(container.read(settingsProvider).closeToTray, isFalse);
+
+    container.read(settingsProvider.notifier).setCloseToTray(true);
+
+    expect(container.read(settingsProvider).closeToTray, isTrue);
+    expect(tray.closeToTrayValues, [true]);
+    await Future<void>.delayed(const Duration(milliseconds: 50));
+    expect(store.get<bool>('closeToTray'), isTrue);
+  });
+
+  test('setDesktopIcon persists selection and rolls back on failure', () async {
+    DesktopIconService.supportedOverride = true;
+    final service = _FakeDesktopIconService();
+    DesktopIconService.testInstance = service;
+    final tray = _FakeDesktopTrayController();
+    DesktopTrayController.testInstance = tray;
+    addTearDown(() {
+      DesktopIconService.supportedOverride = null;
+      DesktopIconService.testInstance = null;
+      DesktopTrayController.testInstance = null;
+    });
+
+    final container = ProviderContainer(
+      overrides: [
+        settingsProvider.overrideWith(
+          () => SettingsNotifier(store: store, initial: const AppSettings()),
+        ),
+      ],
+    );
+    addTearDown(container.dispose);
+    final notifier = container.read(settingsProvider.notifier);
+
+    expect(await notifier.setDesktopIcon('white'), isTrue);
+    expect(container.read(settingsProvider).appIcon, 'white');
+    expect(service.appliedIds, ['white']);
+    expect(tray.iconAssets, [AppIconCatalog.previewAssetFor('white')]);
+    await Future<void>.delayed(const Duration(milliseconds: 50));
+    expect(store.get<String>('appIcon'), 'white');
+
+    service.applyResult = false;
+    expect(await notifier.setDesktopIcon('xb2'), isFalse);
+    expect(container.read(settingsProvider).appIcon, 'white');
+    expect(service.appliedIds, ['white', 'xb2']);
+    await Future<void>.delayed(const Duration(milliseconds: 50));
+    expect(store.get<String>('appIcon'), 'white');
   });
 
   test('setShowRecentHistoryOnHome persists to settings store', () async {
@@ -663,4 +727,35 @@ void main() {
     expect(container.read(settingsProvider).appIcon, 'white');
     expect(store.get<String>('appIcon'), 'white');
   });
+}
+
+class _FakeDesktopTrayController extends DesktopTrayController {
+  final List<bool> closeToTrayValues = <bool>[];
+  final List<String> iconAssets = <String>[];
+
+  @override
+  Future<void> setCloseToTray(bool value) async {
+    closeToTrayValues.add(value);
+    await super.setCloseToTray(value);
+  }
+
+  @override
+  Future<void> setIconAsset(String asset) async {
+    iconAssets.add(asset);
+  }
+}
+
+class _FakeDesktopIconService extends DesktopIconService {
+  final List<String> appliedIds = <String>[];
+  bool applyResult = true;
+
+  @override
+  Future<bool> apply(String iconId) async {
+    appliedIds.add(iconId);
+    return applyResult;
+  }
+
+  @override
+  Future<DesktopShortcutStatus> shortcutStatus() async =>
+      DesktopShortcutStatus.missing;
 }

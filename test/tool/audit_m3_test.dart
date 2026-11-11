@@ -1,3 +1,8 @@
+// `dart run` compiles the audit script on a cold cache; under the full parallel
+// suite that can exceed the default per-test timeout.
+@Timeout(Duration(minutes: 2))
+library;
+
 import 'dart:io';
 
 import 'package:flutter_test/flutter_test.dart';

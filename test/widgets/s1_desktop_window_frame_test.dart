@@ -1,12 +1,26 @@
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:s1er/config/app_icon_catalog.dart';
+import 'package:s1er/providers/settings_provider.dart';
 import 'package:s1er/utils/desktop_window.dart';
 import 'package:s1er/widgets/s1_desktop_window_frame.dart';
 import 'package:s1er/widgets/s1_window_title_bar.dart';
 import 'package:window_manager/window_manager.dart';
 
 import '../helpers/test_theme.dart';
+
+Widget _wrap(Widget child) {
+  return ProviderScope(
+    overrides: [
+      settingsProvider.overrideWith(
+        () => SettingsNotifier(initial: const AppSettings()),
+      ),
+    ],
+    child: wrapWithAppTheme(child),
+  );
+}
 
 class _FakeDesktopWindowController extends DesktopWindowController {
   bool maximized = false;
@@ -77,7 +91,7 @@ void main() {
     testWidgets('pass-through when unsupported', (tester) async {
       S1DesktopWindow.supportedOverride = false;
       await tester.pumpWidget(
-        wrapWithAppTheme(
+        _wrap(
           const S1DesktopWindowFrame(
             child: Text('body'),
           ),
@@ -94,7 +108,7 @@ void main() {
       DesktopWindowController.testInstance = fake;
 
       await tester.pumpWidget(
-        wrapWithAppTheme(
+        _wrap(
           S1DesktopWindowFrame(
             controller: fake,
             child: const Text('body'),
@@ -122,6 +136,42 @@ void main() {
       await tester.tap(find.bySemanticsLabel('关闭'));
       await tester.pump();
       expect(fake.closeCount, 1);
+    });
+
+    testWidgets('title bar icon follows the selected app icon', (tester) async {
+      S1DesktopWindow.supportedOverride = true;
+      final fake = _FakeDesktopWindowController();
+      DesktopWindowController.testInstance = fake;
+
+      await tester.pumpWidget(
+        ProviderScope(
+          overrides: [
+            settingsProvider.overrideWith(
+              () => SettingsNotifier(
+                initial: const AppSettings(appIcon: 'xb2'),
+              ),
+            ),
+          ],
+          child: wrapWithAppTheme(
+            S1DesktopWindowFrame(
+              controller: fake,
+              child: const Text('body'),
+            ),
+          ),
+        ),
+      );
+      await tester.pump();
+
+      final image = tester.widget<Image>(
+        find.descendant(
+          of: find.byType(S1WindowTitleBar),
+          matching: find.byType(Image),
+        ),
+      );
+      expect(
+        (image.image as AssetImage).assetName,
+        AppIconCatalog.previewAssetFor('xb2'),
+      );
     });
   });
 }

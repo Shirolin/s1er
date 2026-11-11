@@ -9,9 +9,14 @@ import '../../theme/app_theme.dart';
 import '../../theme/s1_haptics.dart';
 import '../../utils/s1_snack_bar.dart';
 
-/// Horizontal launcher-icon picker (Android / iOS).
+/// Horizontal icon picker.
+///
+/// Mobile switches the launcher icon; [desktop] switches the Windows window /
+/// taskbar icon and refreshes the managed desktop shortcut instead.
 class AppIconPicker extends ConsumerWidget {
-  const AppIconPicker({super.key});
+  const AppIconPicker({super.key, this.desktop = false});
+
+  final bool desktop;
 
   static const _previewSize = 56.0;
 
@@ -20,7 +25,8 @@ class AppIconPicker extends ConsumerWidget {
     final selectedId = ref.watch(settingsProvider.select((s) => s.appIcon));
     final scheme = Theme.of(context).colorScheme;
     final textTheme = Theme.of(context).textTheme;
-    final showIosHint = !kIsWeb && defaultTargetPlatform == TargetPlatform.iOS;
+    final showIosHint =
+        !desktop && !kIsWeb && defaultTargetPlatform == TargetPlatform.iOS;
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -39,6 +45,16 @@ class AppIconPicker extends ConsumerWidget {
                     onTap: () async {
                       if (isSelected) return;
                       S1Haptics.selection();
+                      if (desktop) {
+                        final ok = await ref
+                            .read(settingsProvider.notifier)
+                            .setDesktopIcon(variant.id);
+                        if (!context.mounted) return;
+                        if (!ok) {
+                          S1SnackBar.show(context, message: '更换桌面图标失败');
+                        }
+                        return;
+                      }
                       final confirmed = await _confirmIconChange(
                         context,
                         label: variant.label,

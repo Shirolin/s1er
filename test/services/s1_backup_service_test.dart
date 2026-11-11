@@ -208,6 +208,16 @@ void main() {
       expect(app['hapticsEnabled'], isFalse);
     });
 
+    test('close_to_tray maps to camelCase', () {
+      final backup = S1BackupSettingsMapper.toBackup({
+        'closeToTray': true,
+      });
+      expect(backup['close_to_tray'], isTrue);
+
+      final app = S1BackupSettingsMapper.toApp(backup);
+      expect(app['closeToTray'], isTrue);
+    });
+
     test('app_icon maps to camelCase', () {
       final backup = S1BackupSettingsMapper.toBackup({
         'appIcon': 'white',

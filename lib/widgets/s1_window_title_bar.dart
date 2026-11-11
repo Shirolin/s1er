@@ -1,7 +1,10 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:window_manager/window_manager.dart';
 
+import '../config/app_icon_catalog.dart';
 import '../config/constants.dart';
+import '../providers/settings_provider.dart';
 import '../utils/desktop_window.dart';
 import '../theme/app_theme.dart';
 
@@ -9,7 +12,7 @@ import '../theme/app_theme.dart';
 ///
 /// Only used when [S1DesktopWindow.isSupported] is true. Colors follow
 /// [S1Surface.page] so the bar matches the app canvas.
-class S1WindowTitleBar extends StatefulWidget {
+class S1WindowTitleBar extends ConsumerStatefulWidget {
   const S1WindowTitleBar({
     super.key,
     this.controller,
@@ -20,10 +23,10 @@ class S1WindowTitleBar extends StatefulWidget {
   static const double height = 40;
 
   @override
-  State<S1WindowTitleBar> createState() => _S1WindowTitleBarState();
+  ConsumerState<S1WindowTitleBar> createState() => _S1WindowTitleBarState();
 }
 
-class _S1WindowTitleBarState extends State<S1WindowTitleBar>
+class _S1WindowTitleBarState extends ConsumerState<S1WindowTitleBar>
     with WindowListener {
   late final DesktopWindowController _controller;
   bool _maximized = false;
@@ -68,6 +71,9 @@ class _S1WindowTitleBarState extends State<S1WindowTitleBar>
     final scheme = Theme.of(context).colorScheme;
     final textTheme = Theme.of(context).textTheme;
     final background = S1Surface.page(scheme);
+    final iconAsset = AppIconCatalog.previewAssetFor(
+      ref.watch(settingsProvider.select((s) => s.appIcon)),
+    );
 
     return Material(
       color: background,
@@ -76,11 +82,14 @@ class _S1WindowTitleBarState extends State<S1WindowTitleBar>
         child: Row(
           children: [
             const SizedBox(width: 12),
-            Image.asset(
-              'assets/branding/s1er_mark.png',
-              width: 18,
-              height: 18,
-              filterQuality: FilterQuality.medium,
+            ClipRRect(
+              borderRadius: S1Shape.extraSmall,
+              child: Image.asset(
+                iconAsset,
+                width: 18,
+                height: 18,
+                filterQuality: FilterQuality.medium,
+              ),
             ),
             const SizedBox(width: 8),
             Text(

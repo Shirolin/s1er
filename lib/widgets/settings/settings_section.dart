@@ -4,6 +4,8 @@ import 'about_settings_section.dart';
 import 'blacklist_settings_section.dart';
 import 'browsing_settings_section.dart';
 import 'data_management_section.dart';
+import 'desktop_icon_settings_section.dart';
+import 'desktop_settings_section.dart';
 import 'download_cache_settings_section.dart';
 import 'font_settings_section.dart';
 import 'font_size_section.dart';
@@ -28,6 +30,10 @@ class SettingsSection extends StatelessWidget {
         DownloadCacheSettingsSection(),
         SizedBox(height: 16),
         BrowsingSettingsSection(),
+        SizedBox(height: 16),
+        DesktopIconSettingsSection(),
+        SizedBox(height: 16),
+        DesktopSettingsSection(),
         SizedBox(height: 16),
         ShareSettingsSection(),
         SizedBox(height: 16),

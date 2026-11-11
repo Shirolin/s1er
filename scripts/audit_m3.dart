@@ -185,6 +185,9 @@ void _checkBottomInsetCompliance(
   if (!path.startsWith('lib/screens/') || !path.endsWith('.dart')) return;
 
   final content = lines.join('\n');
+  // A part file is a fragment of its parent library, not a route entry; its
+  // bottom chrome is audited on the parent file.
+  if (content.startsWith('part of ')) return;
   if (!content.contains('Scaffold(')) return;
 
   if (!_bottomInsetExemptScreens.contains(path)) {

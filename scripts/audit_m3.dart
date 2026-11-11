@@ -6,7 +6,7 @@
 // 导航栏图标亮度 (missing-bottom-overlay-style).
 // Allowed patterns: see AGENTS.md「M3 允许模式」and「系统底栏允许模式」
 //
-// Usage: dart run scripts/audit_m3.dart [--fail-on-error] [--output=path]
+// Usage: dart scripts/audit_m3.dart [--fail-on-error] [--output=path]
 
 import 'dart:io';
 

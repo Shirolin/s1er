@@ -7,7 +7,7 @@
 // desktop and has changed across Flutter releases; owning it keeps behaviour
 // stable when the SDK is upgraded.
 //
-// Usage: dart run scripts/audit_cursors.dart [--fail-on-error]
+// Usage: dart scripts/audit_cursors.dart [--fail-on-error]
 import 'dart:io';
 
 const _targets = <String>[

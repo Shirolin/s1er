@@ -8,6 +8,7 @@ import 'package:s1er/models/poll.dart';
 import 'package:s1er/models/post.dart';
 import 'package:s1er/models/share_floor_data.dart';
 import 'package:s1er/providers/settings_provider.dart';
+import 'package:s1er/widgets/image_viewer.dart';
 import 'package:s1er/widgets/share_card.dart';
 
 import '../helpers/test_theme.dart';
@@ -37,6 +38,7 @@ Post _post({
   required String message,
   required String author,
   required String number,
+  Map<String, dynamic>? attachments,
 }) {
   return Post.fromJson({
     'pid': pid,
@@ -45,6 +47,7 @@ Post _post({
     'authorid': '42',
     'dbdateline': '1720000000',
     'number': number,
+    if (attachments != null) 'attachments': attachments,
   });
 }
 
@@ -92,6 +95,39 @@ void main() {
     expect(
       find.byKey(ValueKey(ShareCard.threadUrlFor('2254107', pid: '123')!)),
       findsNothing,
+    );
+  });
+
+  testWidgets('renders [attachimg] from post attachments', (tester) async {
+    final post = _post(
+      pid: '1',
+      message: '[attachimg]42[/attachimg]',
+      author: 'A',
+      number: '1',
+      attachments: {
+        '42': {
+          'aid': '42',
+          'filename': 'shot.png',
+          'attachment': '2026/11/shot.png',
+          'url': 'https://img.stage1st.com/forum/',
+          'isimage': '1',
+          'attachimg': '1',
+        },
+      },
+    );
+
+    await tester.pumpWidget(
+      wrap(SingleChildScrollView(child: ShareCard.single(post: post))),
+    );
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 100));
+
+    expect(find.textContaining('[attachimg]'), findsNothing);
+    final viewers = tester.widgetList<ImageViewer>(find.byType(ImageViewer));
+    expect(viewers, isNotEmpty);
+    expect(
+      viewers.first.imageUrl,
+      'https://img.stage1st.com/forum/2026/11/shot.png',
     );
   });
 

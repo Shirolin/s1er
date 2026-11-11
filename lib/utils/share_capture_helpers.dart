@@ -25,7 +25,10 @@ const double scrollCaptureCoverageTolerancePx = 2.0;
 List<String> collectShareImageUrls(List<ShareFloorData> floors) {
   final urls = <String>{};
   for (final floor in floors) {
-    final html = BbcodeParser.parse(floor.post.message);
+    final html = BbcodeParser.parse(
+      floor.post.message,
+      attachments: floor.post.attachments,
+    );
     urls.addAll(BbcodeParser.extractShareImageUrls(html));
     final avatar = floor.post.avatar;
     if (avatar != null && avatar.isNotEmpty) {

@@ -6,7 +6,11 @@ import 'package:s1er/utils/share_capture_helpers.dart';
 
 import '../helpers/test_theme.dart';
 
-Post _post({required String message, String? avatar}) {
+Post _post({
+  required String message,
+  String? avatar,
+  Map<String, dynamic>? attachments,
+}) {
   return Post.fromJson({
     'pid': '1',
     'message': message,
@@ -15,6 +19,7 @@ Post _post({required String message, String? avatar}) {
     'dbdateline': '1720000000',
     'number': '1',
     if (avatar != null) 'avatar': avatar,
+    if (attachments != null) 'attachments': attachments,
   });
 }
 
@@ -39,6 +44,32 @@ void main() {
       expect(urls, contains('https://a/p.jpg'));
       expect(urls, contains('https://b/p2.jpg'));
       expect(urls.any((url) => url.contains('avatar')), isTrue);
+    });
+
+    test('resolves [attachimg] urls from post attachments', () {
+      final floors = [
+        ShareFloorData(
+          post: _post(
+            message: '见图 [attachimg]42[/attachimg]',
+            attachments: {
+              '42': {
+                'aid': '42',
+                'filename': 'shot.png',
+                'attachment': '2026/11/shot.png',
+                'url': 'https://img.stage1st.com/forum/',
+                'isimage': '1',
+                'attachimg': '1',
+              },
+            },
+          ),
+          displayFloor: 1,
+        ),
+      ];
+
+      expect(
+        collectShareImageUrls(floors),
+        contains('https://img.stage1st.com/forum/2026/11/shot.png'),
+      );
     });
   });
 

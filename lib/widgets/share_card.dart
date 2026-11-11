@@ -383,6 +383,7 @@ class ShareFloorBlock extends ConsumerWidget {
             enabled: true,
             child: BbcodeRenderer(
               bbcode: post.message,
+              attachments: post.attachments,
               imageIndexCounter: imageIndexCounter,
               imagesExpanded: true,
               stripSpecialStyles: effectiveStrip,

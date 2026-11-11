@@ -1,7 +1,8 @@
 name: Checks
 
 # Static gates for the Flutter app. The iOS smoke workflow covers the Apple
-# build; this one covers analyzer + the repo-owned design/policy audits.
+# build; this one covers analyzer, the repo-owned design/policy audits, and
+# (on PRs) the test suite.
 on:
   pull_request:
     paths:
@@ -40,6 +41,9 @@ jobs:
       - name: Setup Flutter
         uses: subosito/flutter-action@1a449444c387b1966244ae4d4f8c696479add0b2 # v2.23.0
         with:
+          # Pin the SDK: `channel: stable` silently moves to a newer release and
+          # new lints can turn this gate red without any code change.
+          flutter-version: '3.47.9'
           channel: stable
           cache: true
 
@@ -57,3 +61,26 @@ jobs:
 
       - name: Mouse cursor policy audit
         run: dart run scripts/audit_cursors.dart --fail-on-error
+
+  tests:
+    # PRs get the full suite; a push to main repeats a commit that was already
+    # tested in its PR, so only the fast static gates run there.
+    if: github.event_name != 'push'
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - name: Checkout
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+
+      - name: Setup Flutter
+        uses: subosito/flutter-action@1a449444c387b1966244ae4d4f8c696479add0b2 # v2.23.0
+        with:
+          flutter-version: '3.47.9'
+          channel: stable
+          cache: true
+
+      - name: Install dependencies
+        run: flutter pub get
+
+      - name: Run tests
+        run: flutter test --reporter compact

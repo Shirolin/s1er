@@ -40,6 +40,8 @@ jobs:
       - name: Setup Flutter
         uses: subosito/flutter-action@1a449444c387b1966244ae4d4f8c696479add0b2 # v2.23.0
         with:
+          # Keep this in sync with checks.yml so both gates use one SDK.
+          flutter-version: '3.47.9'
           channel: stable
           cache: true
 

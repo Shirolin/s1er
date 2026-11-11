@@ -120,7 +120,7 @@ class S1ImageCache {
     try {
       final cacheDir = await _cacheDirectory();
       if (cacheDir == null || !await cacheDir.exists()) return 0;
-      return _directorySize(cacheDir);
+      return await _directorySize(cacheDir);
     } catch (_) {
       return 0;
     }

@@ -344,17 +344,11 @@ class SettingsNotifier extends Notifier<AppSettings> {
     if (initial != null) {
       _applyImageCacheLimit(initial!.imageCacheLimitMb);
       _syncHaptics(initial!.hapticsEnabled);
-      if (initial!.customFontFileName != null) {
-        unawaited(FontImportService.tryRestoreFont());
-      }
       return initial!;
     }
     final settings = _loadSettings();
     _applyImageCacheLimit(settings.imageCacheLimitMb);
     _syncHaptics(settings.hapticsEnabled);
-    if (settings.customFontFileName != null) {
-      unawaited(FontImportService.tryRestoreFont());
-    }
     return settings;
   }
 
@@ -484,11 +478,13 @@ class SettingsNotifier extends Notifier<AppSettings> {
             defaultValue: false,
           ) ??
           false,
-      fontSize: settingsStore.get<int>(
-            'fontSize',
-            defaultValue: S1Typography.defaultBodySize,
-          ) ??
-          S1Typography.defaultBodySize,
+      fontSize: S1Typography.normalizeBodySize(
+        settingsStore.get<int>(
+              'fontSize',
+              defaultValue: S1Typography.defaultBodySize,
+            ) ??
+            S1Typography.defaultBodySize,
+      ),
       shareImageFormat: ShareImageFormat.fromStored(
         settingsStore.get<String>('shareImageFormat'),
       ),

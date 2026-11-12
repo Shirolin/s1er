@@ -9,18 +9,17 @@ import 'settings_section_header.dart';
 class FontSizeSection extends ConsumerWidget {
   const FontSizeSection({super.key});
 
-  static final _sizes = <int, String>{
-    12: '小',
-    S1Typography.defaultBodySize: '标准',
-    16: '大',
-    18: '超大',
-    20: '特大',
-  };
+  /// 档位文案，按 [S1Typography.bodySizes] 的升序一一对应（无第二份档位表）。
+  static const _labels = <String>['小', '标准', '大', '超大', '特大'];
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final fontSize = ref.watch(settingsProvider.select((s) => s.fontSize));
     final notifier = ref.read(settingsProvider.notifier);
+    assert(
+      _labels.length == S1Typography.bodySizes.length,
+      '字号档位与文案数量不一致',
+    );
 
     return Card(
       elevation: 0,
@@ -34,14 +33,13 @@ class FontSizeSection extends ConsumerWidget {
             SizedBox(
               width: double.infinity,
               child: SegmentedButton<int>(
-                segments: _sizes.entries
-                    .map(
-                      (e) => ButtonSegment<int>(
-                        value: e.key,
-                        label: Text(e.value),
-                      ),
-                    )
-                    .toList(),
+                segments: [
+                  for (var i = 0; i < _labels.length; i++)
+                    ButtonSegment<int>(
+                      value: S1Typography.bodySizes[i],
+                      label: Text(_labels[i]),
+                    ),
+                ],
                 selected: {fontSize},
                 onSelectionChanged: (v) {
                   S1Haptics.selection();

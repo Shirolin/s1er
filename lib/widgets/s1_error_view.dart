@@ -208,7 +208,10 @@ class _ErrorDiagnosticPanelState extends State<_ErrorDiagnosticPanel> {
                 widget.detail,
                 style: textTheme.bodySmall?.copyWith(
                   color: scheme.onSurfaceVariant,
-                  fontFamily: 'monospace',
+                  fontFamily: S1Fonts.monoFamily,
+                  fontFamilyFallback: S1Fonts.monoFallback(
+                    textTheme.bodySmall?.fontFamily,
+                  ),
                 ),
               ),
             ),

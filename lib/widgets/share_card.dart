@@ -200,7 +200,7 @@ class ShareCard extends StatelessWidget {
       ),
       bodyMedium: base.bodyMedium?.copyWith(
         fontSize: shareBodySize,
-        height: S1Typography.defaultBodyLineHeight,
+        height: S1Typography.readingLineHeight,
       ),
       bodySmall: base.bodySmall?.copyWith(
         fontSize: shareMetaSize,

@@ -42,3 +42,4 @@ docs/adr/
 | [0008](0008-keep-thin-notifiers.md) | forumListProvider 与 postShareProvider 保留（不删） | 已接受 |
 | [0009](0009-compose-session-drafts.md) | 撰写草稿收进 ComposeSession，按 ComposeTarget 寻址 | 已接受 |
 | [0010](0010-desktop-mouse-cursor-policy.md) | 桌面端鼠标指针策略：显式手型 + 审计门禁 | 已接受 |
+| [0011](0011-font-policy.md) | 字体策略：桌面钉系统族、等宽独立成族、阅读排版与 UI 排版分离 | 已接受 |

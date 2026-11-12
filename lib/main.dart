@@ -15,7 +15,9 @@ import 'providers/settings_provider.dart';
 import 'providers/http_event_bridge_provider.dart';
 import 'services/app_database.dart';
 import 'services/app_local_data.dart';
+import 'services/font_import_service.dart';
 import 'services/frame_timing_service.dart';
+import 'utils/app_messenger.dart';
 import 'utils/desktop_tray.dart';
 import 'utils/desktop_window.dart';
 import 'utils/single_instance.dart';
@@ -144,11 +146,34 @@ void main() async {
     await localData.loadEssentials();
     await _loadEmoticonCatalog();
 
+    // 自定义字体必须在首帧构建主题前注册：主题按 activeFamily 选族，
+    // 而 FontLoader.load() 不会触发重建，晚加载会让首帧回退到系统字体。
+    final fontRestore = await FontImportService.tryRestoreFont();
+
     final container = ProviderContainer(
       overrides: [
         localDataProvider.overrideWithValue(localData),
       ],
     );
+
+    // 字体文件失效：清掉持久化设置，避免设置页仍显示「已启用自定义字体」
+    // 而主题其实在用系统字体。读失败（IO）不算失效——文件与设置都保留，
+    // 下次启动重试，只提示本次回退。
+    String? fontRestoreNotice;
+    if (container.read(settingsProvider).customFontFileName != null) {
+      switch (fontRestore) {
+        case FontRestoreResult.invalid:
+          container.read(settingsProvider.notifier).removeCustomFont();
+          fontRestoreNotice = '自定义字体加载失败，已回退系统默认字体';
+        case FontRestoreResult.missing:
+          container.read(settingsProvider.notifier).removeCustomFont();
+          fontRestoreNotice = '自定义字体文件不存在，已回退系统默认字体';
+        case FontRestoreResult.unreadable:
+          fontRestoreNotice = '自定义字体读取失败，本次使用系统默认字体';
+        case FontRestoreResult.restored:
+          break;
+      }
+    }
 
     final httpClient = container.read(httpClientProvider);
     await httpClient.init();
@@ -208,6 +233,16 @@ void main() async {
         child: const S1App(),
       ),
     );
+
+    // 已回退到系统字体：让用户知道原因。
+    if (fontRestoreNotice != null) {
+      final notice = fontRestoreNotice;
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        s1MessengerKey.currentState?.showSnackBar(
+          SnackBar(content: Text(notice)),
+        );
+      });
+    }
   } catch (e, st) {
     talker.handle(e, st, 'App init failed');
     await captureSentryException(e, st, hint: 'App init failed');

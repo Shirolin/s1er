@@ -256,6 +256,16 @@ void main() {
     test('S1Typography defaults match settings', () {
       expect(S1Typography.defaultBodySize, 14);
       expect(S1Typography.defaultCodeSize, 12);
+      // 阅读行高独立于 UI 主题的 bodyMedium.height（M3 的 1.43）。
+      expect(S1Typography.readingLineHeight, 1.6);
+    });
+
+    test('normalizeBodySize snaps stale values to the nearest step', () {
+      expect(S1Typography.normalizeBodySize(3), 12);
+      expect(S1Typography.normalizeBodySize(15), 14);
+      expect(S1Typography.normalizeBodySize(17), 16);
+      expect(S1Typography.normalizeBodySize(18), 18);
+      expect(S1Typography.normalizeBodySize(99), 20);
     });
 
     test('desktop themes pin a system CJK family (no bundled TTF)', () {
@@ -264,13 +274,23 @@ void main() {
 
       debugDefaultTargetPlatformOverride = TargetPlatform.windows;
       final windows = AppTheme.lightTheme('sand');
+      // 拉丁走 Segoe UI Variable，CJK 靠回退链落到雅黑。
       expect(
         windows.textTheme.bodyMedium?.fontFamily,
-        'Microsoft YaHei UI',
+        'Segoe UI Variable Text',
       );
       expect(
         windows.textTheme.bodyMedium?.fontFamilyFallback,
-        containsAll(['Microsoft YaHei', 'Segoe UI']),
+        containsAll(['Segoe UI', 'Microsoft YaHei UI', 'SimHei']),
+      );
+      // 大字号档换 Display 光学尺寸，正文档不动。
+      expect(
+        windows.textTheme.titleLarge?.fontFamily,
+        'Segoe UI Variable Display',
+      );
+      expect(
+        windows.textTheme.bodyMedium?.fontFamily,
+        isNot(windows.textTheme.titleLarge?.fontFamily),
       );
 
       debugDefaultTargetPlatformOverride = TargetPlatform.android;
@@ -278,6 +298,17 @@ void main() {
       expect(
         android.textTheme.bodyMedium?.fontFamily,
         isNot('Microsoft YaHei UI'),
+      );
+
+      // 自定义字体优先，不做任何平台微调。
+      debugDefaultTargetPlatformOverride = TargetPlatform.windows;
+      final custom =
+          AppTheme.lightTheme('sand', customFontFamily: 'S1CustomFont');
+      expect(custom.textTheme.bodyMedium?.fontFamily, 'S1CustomFont');
+      expect(custom.textTheme.titleLarge?.fontFamily, 'S1CustomFont');
+      expect(
+        custom.textTheme.bodyMedium?.fontFamilyFallback,
+        containsAll(['Segoe UI Variable Text', 'Microsoft YaHei UI']),
       );
     });
   });

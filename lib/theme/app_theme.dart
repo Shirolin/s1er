@@ -138,56 +138,131 @@ abstract class S1Typography {
   /// 默认正文字号，与字号设置「标准」档一致。
   static const int defaultBodySize = 14;
 
+  /// 设置页的字号档位（升序）。存储值可能来自旧版本或手改，恢复时用
+  /// [normalizeBodySize] 夹到最近档。
+  static const List<int> bodySizes = [12, 14, 16, 18, 20];
+
+  /// 把任意值夹到最近的字号档位。
+  static int normalizeBodySize(int value) => bodySizes.reduce(
+        (a, b) => (a - value).abs() <= (b - value).abs() ? a : b,
+      );
+
   /// 代码块默认字号（bodySmall 档）。
   static const int defaultCodeSize = 12;
 
-  static const double defaultBodyLineHeight = 1.6;
+  /// 阅读排版的行高（正文、长文、分享卡共用）。
+  ///
+  /// 不取 `bodyMedium.height`：那是 M3 给 UI 标签的 1.43，长文阅读偏紧。
+  static const double readingLineHeight = 1.6;
 
-  static double bodySize(TextTheme textTheme) =>
-      textTheme.bodyMedium?.fontSize ?? defaultBodySize.toDouble();
-
+  /// 代码块字号桥接（bodySmall 档）。
   static double codeSize(TextTheme textTheme) =>
       textTheme.bodySmall?.fontSize ?? defaultCodeSize.toDouble();
-
-  static double bodyLineHeight(TextTheme textTheme) =>
-      textTheme.bodyMedium?.height ?? defaultBodyLineHeight;
 }
 
 /// 桌面端系统字体（零体积）：避免 Material 默认 Roboto 缺失后按码点乱回退，
 /// 导致同句「有的字粗、有的字细」或图标私用区被错误字体画出乱符。
 ///
-/// 不打包 TTF；依赖本机已装中文字体（中文 Windows 通常有微软雅黑）。
+/// 不打包 TTF；依赖本机已装字体。拉丁优先系统 UI 字体，中文由回退链兜住
+/// （中文 Windows 上即微软雅黑）。
+/// 单平台的字体配置。新增平台只需在这里加一项，四个 getter 自动跟随。
+typedef _FontProfile = ({
+  String? family,
+  List<String> fallback,
+  String? display,
+  String mono,
+});
+
 abstract final class S1Fonts {
-  /// 主族；移动端 / Web 保持框架默认（null）。
-  static String? get fontFamily {
-    if (kIsWeb) return null;
+  static const _webProfile = (
+    family: null,
+    fallback: <String>[],
+    display: null,
+    mono: 'monospace',
+  );
+
+  static const _windowsProfile = (
+    family: 'Segoe UI Variable Text',
+    // Win11 自带 Variable Text 光学尺寸；Win10 无此族，降到 Segoe UI。
+    fallback: <String>[
+      'Segoe UI',
+      'Microsoft YaHei UI',
+      'Microsoft YaHei',
+      'SimHei',
+    ],
+    display: 'Segoe UI Variable Display',
+    mono: 'Consolas',
+  );
+
+  static const _macProfile = (
+    family: 'PingFang SC',
+    fallback: <String>['Hiragino Sans GB', 'Heiti SC'],
+    display: null,
+    mono: 'Menlo',
+  );
+
+  static const _linuxProfile = (
+    family: 'Noto Sans CJK SC',
+    fallback: <String>[
+      'Noto Sans CJK JP',
+      'WenQuanYi Micro Hei',
+      'Droid Sans Fallback',
+    ],
+    display: null,
+    mono: 'DejaVu Sans Mono',
+  );
+
+  /// 移动端保持框架默认族（null）；Android 走 fonts.xml 的 monospace 别名。
+  static const _mobileProfile = (
+    family: null,
+    fallback: <String>[],
+    display: null,
+    mono: 'monospace',
+  );
+
+  static const _iosProfile = (
+    family: null,
+    fallback: <String>[],
+    display: null,
+    mono: 'Menlo',
+  );
+
+  static _FontProfile get _profile {
+    if (kIsWeb) return _webProfile;
     return switch (defaultTargetPlatform) {
-      TargetPlatform.windows => 'Microsoft YaHei UI',
-      TargetPlatform.macOS => 'PingFang SC',
-      TargetPlatform.linux => 'Noto Sans CJK SC',
-      _ => null,
+      TargetPlatform.windows => _windowsProfile,
+      TargetPlatform.macOS => _macProfile,
+      TargetPlatform.linux => _linuxProfile,
+      TargetPlatform.iOS => _iosProfile,
+      _ => _mobileProfile,
     };
   }
 
-  static List<String> get fontFamilyFallback {
-    if (kIsWeb) return const [];
-    return switch (defaultTargetPlatform) {
-      TargetPlatform.windows => const [
-          'Microsoft YaHei',
-          'Segoe UI',
-          'SimHei',
-        ],
-      TargetPlatform.macOS => const [
-          'Hiragino Sans GB',
-          'Heiti SC',
-        ],
-      TargetPlatform.linux => const [
-          'Noto Sans CJK JP',
-          'WenQuanYi Micro Hei',
-          'Droid Sans Fallback',
-        ],
-      _ => const [],
-    };
+  /// 主族；移动端 / Web 保持框架默认（null）。
+  ///
+  /// Windows 用 Segoe UI Variable：引擎按字形逐级回退，拉丁 / 数字取 Segoe，
+  /// CJK 落到回退链里的雅黑。
+  static String? get fontFamily => _profile.family;
+
+  static List<String> get fontFamilyFallback => _profile.fallback;
+
+  /// 大字号档（headline / title）的族：可变字体的 Display 光学尺寸。
+  /// 雅黑的拉丁在 22px 上偏宽偏钝，换光学尺寸收益最明显。
+  static String? get displayFamily => _profile.display;
+
+  /// 等宽族：桌面引擎按已安装字体名精确查找，不认 CSS 泛型 'monospace'。
+  static String get monoFamily => _profile.mono;
+
+  /// 等宽回退链：代码块里的中文注释靠正文字族兜住。
+  static List<String> monoFallback(String? bodyFamily) {
+    final profile = _profile;
+    return <String>[
+      if (bodyFamily != null &&
+          bodyFamily.isNotEmpty &&
+          bodyFamily != profile.mono)
+        bodyFamily,
+      ...profile.fallback.where((family) => family != profile.mono),
+    ];
   }
 
   /// 把主族 / 回退链写进 [TextTheme]（[Icon] 仍走 MaterialIcons，不受影响）。
@@ -198,6 +273,24 @@ abstract final class S1Fonts {
     return base.apply(
       fontFamily: family,
       fontFamilyFallback: fallback,
+    );
+  }
+
+  /// 把大字号档（22px 以上）切到 [displayFamily]；族不可用时原样返回。
+  ///
+  /// 只动 headline 与 titleLarge：Display 光学尺寸是为大字号设计的，
+  /// 16px 的 titleMedium 仍属 Text 区间，换过去反而偏细。
+  static TextTheme applyDisplayFamily(TextTheme base) {
+    final family = displayFamily;
+    if (family == null) return base;
+    final fallback = fontFamilyFallback;
+    TextStyle? display(TextStyle? style) =>
+        style?.copyWith(fontFamily: family, fontFamilyFallback: fallback);
+    return base.copyWith(
+      headlineLarge: display(base.headlineLarge),
+      headlineMedium: display(base.headlineMedium),
+      headlineSmall: display(base.headlineSmall),
+      titleLarge: display(base.titleLarge),
     );
   }
 
@@ -298,10 +391,13 @@ class AppTheme {
     ColorScheme colorScheme, {
     String? customFontFamily,
   }) {
-    final textTheme = S1Fonts.applyCustomOrDefault(
+    final themed = S1Fonts.applyCustomOrDefault(
       ThemeData(useMaterial3: true, colorScheme: colorScheme).textTheme,
       customFontFamily,
     );
+    // 大字号档换 Display 光学尺寸；用户导入自定义字体时保持其选择。
+    final textTheme =
+        customFontFamily == null ? S1Fonts.applyDisplayFamily(themed) : themed;
 
     final effectiveFontFamily = customFontFamily ?? S1Fonts.fontFamily;
     final effectiveFallback = customFontFamily != null

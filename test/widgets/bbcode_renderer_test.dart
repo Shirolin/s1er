@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -169,6 +170,86 @@ void main() {
         ),
       );
       expect(find.byType(BbcodeRenderer), findsOneWidget);
+    });
+
+    testWidgets('body line height uses the reading token, not the M3 UI value',
+        (tester) async {
+      await tester.pumpWidget(
+        _wrapBbcode(
+          BbcodeRenderer(
+            bbcode: 'Hello world',
+            imageIndexCounter: PostImageIndexCounter(),
+          ),
+        ),
+      );
+      await tester.pump();
+
+      final body =
+          tester.widgetList<RichText>(find.byType(RichText)).firstWhere(
+                (rich) => rich.text.toPlainText().contains('Hello world'),
+              );
+
+      // 正文样式挂在 span 上（外层 RichText 仍是主题默认样式）。
+      final heights = <double?>[];
+      body.text.visitChildren((span) {
+        if ((span.toPlainText()).contains('Hello world')) {
+          heights.add(span.style?.height);
+        }
+        return true;
+      });
+      expect(heights, isNotEmpty);
+      // M3 的 bodyMedium.height 是 1.43；阅读排版应为 1.6。
+      expect(heights.last, closeTo(S1Typography.readingLineHeight, 0.001));
+    });
+
+    testWidgets('code block uses the platform mono family, not the body family',
+        (tester) async {
+      final previous = debugDefaultTargetPlatformOverride;
+      // tearDown 晚于 foundation 不变量检查，必须在测试体内还原。
+      try {
+        debugDefaultTargetPlatformOverride = TargetPlatform.windows;
+        final expectedMono = S1Fonts.monoFamily;
+        final expectedFallback = S1Fonts.monoFallback('Segoe UI Variable Text');
+
+        await tester.pumpWidget(
+          _wrapBbcode(
+            BbcodeRenderer(
+              bbcode: '<pre>if (a) { b(); }</pre>',
+              imageIndexCounter: PostImageIndexCounter(),
+            ),
+          ),
+        );
+        await tester.pump();
+
+        final code = tester
+            .widgetList<RichText>(find.byType(RichText))
+            .where((rich) => rich.text.toPlainText().contains('if (a)'))
+            .toList();
+        expect(code, isNotEmpty, reason: 'pre block should render as RichText');
+
+        // 等宽族落在代码文本的 span 上；外层 RichText 仍是正文档样式。
+        final spans = <TextSpan>[];
+        for (final rich in code) {
+          rich.text.visitChildren((span) {
+            if (span is TextSpan && (span.text ?? '').contains('if (a)')) {
+              spans.add(span);
+            }
+            return true;
+          });
+        }
+        expect(spans, isNotEmpty);
+        for (final span in spans) {
+          expect(span.style?.fontFamily, expectedMono);
+        }
+        expect(
+          spans
+              .map((s) => s.style?.fontFamilyFallback ?? const <String>[])
+              .any((fallback) => expectedFallback.every(fallback.contains)),
+          isTrue,
+        );
+      } finally {
+        debugDefaultTargetPlatformOverride = previous;
+      }
     });
 
     testWidgets('handles content with quote block', (tester) async {

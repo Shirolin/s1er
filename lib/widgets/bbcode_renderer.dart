@@ -388,12 +388,17 @@ class _MemoizedHtmlBlockState extends State<_MemoizedHtmlBlock> {
     if (highlight != null && highlight.trim().isNotEmpty) {
       html = PageSearch.highlightHtml(html, highlight);
     }
+    // flutter_html 的根节点不匹配 style map 里的 'body'（根样式直接取自
+    // theme.textTheme.bodyMedium），因此正文样式挂在一个显式包裹的类上。
+    html = '<div class="s1-body">$html</div>';
     final profileDetail = 'links=${_countAnchors(html)} len=${html.length}';
     final textTheme = Theme.of(context).textTheme;
-    final bodySize = S1Typography.bodySize(textTheme);
+    // 阅读正文取固定排版 token，不读 bodyMedium.fontSize（ADR 0011 决策 4）。
+    final bodySize = S1Typography.defaultBodySize.toDouble();
     final codeSize = S1Typography.codeSize(textTheme);
-    final bodyLineHeight = S1Typography.bodyLineHeight(textTheme);
-    final codeFontFamily = textTheme.bodySmall?.fontFamily ?? 'monospace';
+    // 等宽族不能从 textTheme 取：桌面主题族已被钉成 CJK 无衬线，
+    // `bodySmall.fontFamily ?? 'monospace'` 的 `??` 永不命中。
+    final codeFallback = S1Fonts.monoFallback(textTheme.bodyMedium?.fontFamily);
 
     bool shouldShowPostImage(int index) {
       if (!showImages) return false;
@@ -402,9 +407,9 @@ class _MemoizedHtmlBlockState extends State<_MemoizedHtmlBlock> {
     }
 
     final style = {
-      'body': Style(
+      '.s1-body': Style(
         fontSize: FontSize(bodySize),
-        lineHeight: LineHeight.number(bodyLineHeight),
+        lineHeight: const LineHeight(S1Typography.readingLineHeight),
         margin: Margins.zero,
         padding: HtmlPaddings.zero,
         color: scheme.onSurface,
@@ -423,7 +428,8 @@ class _MemoizedHtmlBlockState extends State<_MemoizedHtmlBlock> {
         backgroundColor: scheme.surfaceContainerHighest,
         padding: HtmlPaddings.all(12),
         margin: Margins.symmetric(vertical: 8),
-        fontFamily: codeFontFamily,
+        fontFamily: S1Fonts.monoFamily,
+        fontFamilyFallback: codeFallback.isEmpty ? null : codeFallback,
         fontSize: FontSize(codeSize),
         display: Display.block,
       ),

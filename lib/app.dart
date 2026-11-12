@@ -33,6 +33,7 @@ import 'services/font_import_service.dart';
 import 'services/frame_timing_service.dart';
 import 'services/talker.dart';
 import 'theme/app_theme.dart';
+import 'theme/s1_text_scaler.dart';
 import 'utils/app_messenger.dart';
 import 'utils/thread_navigation.dart';
 import 'widgets/s1_bottom_overlay_style.dart';
@@ -282,7 +283,7 @@ class _S1AppState extends ConsumerState<S1App> with WidgetsBindingObserver {
     );
 
     final customFontFamily =
-        customFontFileName != null ? FontImportService.kFontFamily : null;
+        customFontFileName != null ? FontImportService.activeFamily : null;
 
     final themeMode = switch (themeModeStr) {
       'light' => ThemeMode.light,
@@ -307,10 +308,15 @@ class _S1AppState extends ConsumerState<S1App> with WidgetsBindingObserver {
         themeMode: themeMode,
         routerConfig: _router,
         builder: (context, child) {
+          final media = MediaQuery.of(context);
           return MediaQuery(
-            data: MediaQuery.of(
-              context,
-            ).copyWith(textScaler: TextScaler.linear(textScaleFactor)),
+            // 档位叠在系统无障碍字号之上，而不是替换它。
+            data: media.copyWith(
+              textScaler: S1ComposedTextScaler.compose(
+                media.textScaler,
+                textScaleFactor,
+              ),
+            ),
             child: S1BottomOverlayStyle(
               child: S1DesktopWindowFrame(
                 child: UpdatePromptHost(

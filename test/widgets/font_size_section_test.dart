@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:s1er/providers/settings_provider.dart';
+import 'package:s1er/theme/app_theme.dart';
 import 'package:s1er/widgets/settings/font_size_section.dart';
 
 import '../helpers/test_theme.dart';
@@ -37,15 +38,21 @@ void main() {
     );
     await tester.pumpAndSettle();
 
+    // 档位取自 S1Typography 的权威列表（归一化依赖后者），文案与之一一对应。
+    final segmentedButton = tester.widget<SegmentedButton<int>>(
+      find.byType(SegmentedButton<int>),
+    );
+    expect(
+      segmentedButton.segments.map((s) => s.value).toList(),
+      S1Typography.bodySizes,
+    );
+
     expect(find.text('小'), findsOneWidget);
     expect(find.text('标准'), findsOneWidget);
     expect(find.text('大'), findsOneWidget);
     expect(find.text('超大'), findsOneWidget);
     expect(find.text('特大'), findsOneWidget);
 
-    final segmentedButton = tester.widget<SegmentedButton<int>>(
-      find.byType(SegmentedButton<int>),
-    );
     expect(segmentedButton.segments.length, 5);
     expect(segmentedButton.selected, {14});
 

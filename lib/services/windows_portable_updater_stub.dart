@@ -19,4 +19,6 @@ class WindowsPortableUpdater {
   Future<void> applyDownloadedZip(String zipPath) async {
     throw const UpdateCheckException('当前平台不支持覆盖更新');
   }
+
+  Future<void> cleanupAfterUpdate() async {}
 }

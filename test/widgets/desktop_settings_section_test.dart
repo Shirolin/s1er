@@ -31,7 +31,7 @@ void main() {
     expect(find.byType(SwitchListTile), findsNothing);
   });
 
-  testWidgets('desktop shows the close-to-tray switch and persists toggles',
+  testWidgets('desktop shows the tray switches and persists toggles',
       (tester) async {
     S1DesktopWindow.supportedOverride = true;
     final container = ProviderContainer(
@@ -52,14 +52,26 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(find.text('桌面窗口'), findsOneWidget);
+    expect(find.text('在系统托盘显示图标'), findsOneWidget);
     expect(find.text('关闭窗口时最小化到托盘'), findsOneWidget);
+    expect(find.byType(SwitchListTile), findsNWidgets(2));
     expect(container.read(settingsProvider).closeToTray, isFalse);
 
-    await tester.tap(find.byType(SwitchListTile));
+    await tester.tap(find.text('关闭窗口时最小化到托盘'));
     await tester.pumpAndSettle();
 
     expect(container.read(settingsProvider).closeToTray, isTrue);
-    final tile = tester.widget<SwitchListTile>(find.byType(SwitchListTile));
-    expect(tile.value, isTrue);
+
+    // Hiding the tray icon disables close-to-tray but keeps its preference.
+    await tester.tap(find.text('在系统托盘显示图标'));
+    await tester.pumpAndSettle();
+
+    final settings = container.read(settingsProvider);
+    expect(settings.showTrayIcon, isFalse);
+    expect(settings.closeToTray, isTrue);
+    final closeTile = tester.widget<SwitchListTile>(
+      find.widgetWithText(SwitchListTile, '关闭窗口时最小化到托盘'),
+    );
+    expect(closeTile.onChanged, isNull);
   });
 }

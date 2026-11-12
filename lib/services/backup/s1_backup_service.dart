@@ -67,6 +67,7 @@ class S1BackupService {
     appSettings.putIfAbsent('showRecentHistoryOnHome', () => true);
     appSettings.putIfAbsent('hapticsEnabled', () => true);
     appSettings.putIfAbsent('closeToTray', () => false);
+    appSettings.putIfAbsent('showTrayIcon', () => true);
     appSettings.putIfAbsent('threadListDensity', () => 'standard');
     appSettings.putIfAbsent('postListDensity', () => 'standard');
     appSettings.putIfAbsent('compactListFullBleed', () => false);

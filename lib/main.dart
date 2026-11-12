@@ -18,11 +18,13 @@ import 'services/app_local_data.dart';
 import 'services/frame_timing_service.dart';
 import 'utils/desktop_tray.dart';
 import 'utils/desktop_window.dart';
+import 'utils/single_instance.dart';
 import 'utils/update_startup_marker.dart';
 import 'services/http_client.dart';
 import 'services/sentry_bootstrap.dart';
 import 'services/sentry_event_filter.dart';
 import 'services/talker.dart';
+import 'services/windows_portable_updater.dart';
 import 'utils/web_reload.dart'
     if (dart.library.js_interop) 'utils/web_reload_web.dart';
 import 'utils/web_crash_reporter.dart'
@@ -111,6 +113,12 @@ void main() async {
   // 覆盖更新交接：新进程启动早期先向旧进程报「已启动」，越早越好。
   reportUpdateStartedIfRequested();
 
+  // One copy per user: a second instance would add a second tray icon and open
+  // the same database. Update-launched processes skip the duplicate check — the
+  // copy they replace is still alive until it sees the start marker — but keep
+  // the mutex so they stay the only instance afterwards.
+  S1SingleInstance.ensurePrimary(updateHandoff: isUpdateLaunched());
+
   WidgetsFlutterBinding.ensureInitialized();
 
   // Desktop: hide native title bar before first frame (Windows / macOS / Linux).
@@ -167,14 +175,18 @@ void main() async {
       container.read(settingsProvider.notifier).syncAppIconWithNative(),
     );
 
+    // A successful overlay update leaves the previous build's files renamed to
+    // `*.s1erold`; the process that held them has exited by now.
+    unawaited(WindowsPortableUpdater().cleanupAfterUpdate());
+
     // Desktop tray: keep the app reachable while its window is hidden.
     if (S1DesktopTray.isSupported) {
+      final settings = container.read(settingsProvider);
       unawaited(
         DesktopTrayController.instance.initialize(
-          closeToTray: container.read(settingsProvider).closeToTray,
-          iconAsset: AppIconCatalog.previewAssetFor(
-            container.read(settingsProvider).appIcon,
-          ),
+          closeToTray: settings.closeToTray,
+          showIcon: settings.showTrayIcon,
+          iconAsset: AppIconCatalog.previewAssetFor(settings.appIcon),
         ),
       );
     }

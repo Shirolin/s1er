@@ -33,6 +33,7 @@ import 'services/font_import_service.dart';
 import 'services/frame_timing_service.dart';
 import 'services/talker.dart';
 import 'theme/app_theme.dart';
+import 'utils/app_messenger.dart';
 import 'utils/thread_navigation.dart';
 import 'widgets/s1_bottom_overlay_style.dart';
 import 'widgets/s1_desktop_window_frame.dart';
@@ -293,6 +294,7 @@ class _S1AppState extends ConsumerState<S1App> with WidgetsBindingObserver {
       talker: talker,
       options: const TalkerWrapperOptions(enableErrorAlerts: true),
       child: MaterialApp.router(
+        scaffoldMessengerKey: s1MessengerKey,
         title: S1Constants.appName,
         theme: AppTheme.lightTheme(
           themeColor,

@@ -129,6 +129,40 @@ void main() {
     expect(store.get<bool>('closeToTray'), isTrue);
   });
 
+  test('setShowTrayIcon(false) keeps the close-to-tray preference', () async {
+    final tray = _FakeDesktopTrayController();
+    DesktopTrayController.testInstance = tray;
+    addTearDown(() => DesktopTrayController.testInstance = null);
+
+    final container = ProviderContainer(
+      overrides: [
+        settingsProvider.overrideWith(
+          () => SettingsNotifier(store: store, initial: const AppSettings()),
+        ),
+      ],
+    );
+    addTearDown(container.dispose);
+
+    final notifier = container.read(settingsProvider.notifier);
+    expect(container.read(settingsProvider).showTrayIcon, isTrue);
+    notifier.setCloseToTray(true);
+
+    notifier.setShowTrayIcon(false);
+
+    final settings = container.read(settingsProvider);
+    expect(settings.showTrayIcon, isFalse);
+    // The preference survives so it comes back with the icon; the controller
+    // gets the effective value (no icon → no close-to-tray).
+    expect(settings.closeToTray, isTrue);
+    expect(tray.showIconCalls, [(false, false)]);
+    await Future<void>.delayed(const Duration(milliseconds: 50));
+    expect(store.get<bool>('showTrayIcon'), isFalse);
+    expect(store.get<bool>('closeToTray'), isTrue);
+
+    notifier.setShowTrayIcon(true);
+    expect(tray.showIconCalls.last, (true, true));
+  });
+
   test('setDesktopIcon persists selection and rolls back on failure', () async {
     DesktopIconService.supportedOverride = true;
     final service = _FakeDesktopIconService();
@@ -732,11 +766,21 @@ void main() {
 class _FakeDesktopTrayController extends DesktopTrayController {
   final List<bool> closeToTrayValues = <bool>[];
   final List<String> iconAssets = <String>[];
+  final List<(bool, bool)> showIconCalls = <(bool, bool)>[];
 
   @override
   Future<void> setCloseToTray(bool value) async {
     closeToTrayValues.add(value);
     await super.setCloseToTray(value);
+  }
+
+  @override
+  Future<void> setShowIcon(
+    bool show, {
+    required bool closeToTray,
+    required String iconAsset,
+  }) async {
+    showIconCalls.add((show, closeToTray));
   }
 
   @override

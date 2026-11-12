@@ -11,3 +11,8 @@ const updateStartedMarkerEnv = 'S1ER_STARTED_MARKER';
 /// 越早调用越好，应置于 `main()` 首行。
 void reportUpdateStartedIfRequested() =>
     impl.reportUpdateStarted(updateStartedMarkerEnv);
+
+/// Whether this process was started by the overlay updater. Such a process
+/// must skip the single-instance check: the copy it replaces is still alive
+/// until it receives the start marker.
+bool isUpdateLaunched() => impl.isUpdateRequested(updateStartedMarkerEnv);

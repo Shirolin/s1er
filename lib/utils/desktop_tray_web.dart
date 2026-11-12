@@ -30,6 +30,13 @@ class DesktopTrayController {
 
   Future<void> initialize({
     required bool closeToTray,
+    required bool showIcon,
+    required String iconAsset,
+  }) async {}
+
+  Future<void> setShowIcon(
+    bool show, {
+    required bool closeToTray,
     required String iconAsset,
   }) async {}
 

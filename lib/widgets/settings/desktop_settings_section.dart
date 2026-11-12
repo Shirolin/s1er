@@ -18,6 +18,9 @@ class DesktopSettingsSection extends ConsumerWidget {
     final closeToTray = ref.watch(
       settingsProvider.select((settings) => settings.closeToTray),
     );
+    final showTrayIcon = ref.watch(
+      settingsProvider.select((settings) => settings.showTrayIcon),
+    );
     final scheme = Theme.of(context).colorScheme;
     final subtitleStyle = Theme.of(context).textTheme.bodySmall?.copyWith(
           color: scheme.onSurfaceVariant,
@@ -34,19 +37,43 @@ class DesktopSettingsSection extends ConsumerWidget {
             const SizedBox(height: 8),
             SwitchListTile(
               secondary: Icon(
+                Icons.notifications_active_outlined,
+                color: scheme.onSurfaceVariant,
+              ),
+              title: const Text('在系统托盘显示图标'),
+              subtitle: Text(
+                '关闭后不创建托盘图标，关闭窗口即退出应用。',
+                style: subtitleStyle,
+              ),
+              value: showTrayIcon,
+              onChanged: (value) {
+                S1Haptics.selection();
+                ref.read(settingsProvider.notifier).setShowTrayIcon(value);
+              },
+              contentPadding: const EdgeInsets.symmetric(horizontal: 8),
+              shape: const RoundedRectangleBorder(
+                borderRadius: S1Shape.small,
+              ),
+            ),
+            SwitchListTile(
+              secondary: Icon(
                 Icons.minimize_outlined,
                 color: scheme.onSurfaceVariant,
               ),
               title: const Text('关闭窗口时最小化到托盘'),
               subtitle: Text(
-                '关闭窗口后应用继续在系统托盘运行。单击托盘图标可切换窗口显示；右键菜单可重新打开或彻底退出。',
+                showTrayIcon
+                    ? '关闭窗口后应用继续在系统托盘运行。单击托盘图标可切换窗口显示；右键菜单可重新打开或彻底退出。'
+                    : '需要先在系统托盘中显示图标。',
                 style: subtitleStyle,
               ),
               value: closeToTray,
-              onChanged: (value) {
-                S1Haptics.selection();
-                ref.read(settingsProvider.notifier).setCloseToTray(value);
-              },
+              onChanged: showTrayIcon
+                  ? (value) {
+                      S1Haptics.selection();
+                      ref.read(settingsProvider.notifier).setCloseToTray(value);
+                    }
+                  : null,
               contentPadding: const EdgeInsets.symmetric(horizontal: 8),
               shape: const RoundedRectangleBorder(
                 borderRadius: S1Shape.small,

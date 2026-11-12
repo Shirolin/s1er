@@ -100,6 +100,7 @@ v1 **不使用** JSONL；列表一律为 JSON 数组。
 | `show_recent_history_on_home` | bool | 首页是否显示最近浏览（默认 `true`） |
 | `haptics_enabled` | bool | 交互震动总开关（默认 `true`；无触感硬件的平台可忽略） |
 | `close_to_tray` | bool | 桌面端关闭窗口时最小化到托盘（默认 `false`；非桌面平台可忽略） |
+| `show_tray_icon` | bool | 桌面端是否显示系统托盘图标（默认 `true`；关闭时 `close_to_tray` 不生效；非桌面平台可忽略） |
 | `thread_list_density` | string | `standard` / `compact`；版块主题列表密度（默认 `standard`） |
 | `post_list_density` | string | `standard` / `compact`；帖子详情楼层卡片外壳密度（默认 `standard`） |
 | `compact_list_full_bleed` | bool | 窄屏（≤599dp）主题列表与楼层去掉左右边距和圆角（默认 `false`） |

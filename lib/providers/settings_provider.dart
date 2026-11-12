@@ -36,6 +36,7 @@ class AppSettings {
     this.showRecentHistoryOnHome = true,
     this.hapticsEnabled = true,
     this.closeToTray = false,
+    this.showTrayIcon = true,
     this.threadListDensity = ListDensity.standard,
     this.postListDensity = ListDensity.standard,
     this.compactListFullBleed = false,
@@ -77,6 +78,9 @@ class AppSettings {
 
   /// Desktop: closing the window hides it to the tray instead of quitting.
   final bool closeToTray;
+
+  /// Desktop: keep a system-tray icon while the app runs.
+  final bool showTrayIcon;
   final ListDensity threadListDensity;
   final ListDensity postListDensity;
 
@@ -128,6 +132,7 @@ class AppSettings {
     bool? showRecentHistoryOnHome,
     bool? hapticsEnabled,
     bool? closeToTray,
+    bool? showTrayIcon,
     ListDensity? threadListDensity,
     ListDensity? postListDensity,
     bool? compactListFullBleed,
@@ -166,6 +171,7 @@ class AppSettings {
           showRecentHistoryOnHome ?? this.showRecentHistoryOnHome,
       hapticsEnabled: hapticsEnabled ?? this.hapticsEnabled,
       closeToTray: closeToTray ?? this.closeToTray,
+      showTrayIcon: showTrayIcon ?? this.showTrayIcon,
       threadListDensity: threadListDensity ?? this.threadListDensity,
       postListDensity: postListDensity ?? this.postListDensity,
       compactListFullBleed: compactListFullBleed ?? this.compactListFullBleed,
@@ -216,6 +222,7 @@ class AppSettings {
         other.showRecentHistoryOnHome == showRecentHistoryOnHome &&
         other.hapticsEnabled == hapticsEnabled &&
         other.closeToTray == closeToTray &&
+        other.showTrayIcon == showTrayIcon &&
         other.threadListDensity == threadListDensity &&
         other.postListDensity == postListDensity &&
         other.compactListFullBleed == compactListFullBleed &&
@@ -286,6 +293,7 @@ class AppSettings {
           hideStickyThreads,
           showRecentHistoryOnHome,
           closeToTray,
+          showTrayIcon,
           Object.hashAllUnordered(hideStickyForumOverrides),
         ),
       );
@@ -455,6 +463,11 @@ class SettingsNotifier extends Notifier<AppSettings> {
             defaultValue: false,
           ) ??
           false,
+      showTrayIcon: settingsStore.get<bool>(
+            'showTrayIcon',
+            defaultValue: true,
+          ) ??
+          true,
       threadListDensity: ListDensity.fromStored(
         settingsStore.get<String>('threadListDensity'),
       ),
@@ -719,6 +732,23 @@ class SettingsNotifier extends Notifier<AppSettings> {
     _commit(state.copyWith(closeToTray: value));
     _persist('closeToTray', value);
     unawaited(DesktopTrayController.instance.setCloseToTray(value));
+  }
+
+  /// Shows or hides the tray icon.
+  ///
+  /// The close-to-tray preference is kept: with no icon the close button simply
+  /// quits, and turning the icon back on restores the saved preference instead
+  /// of silently dropping it.
+  void setShowTrayIcon(bool value) {
+    _commit(state.copyWith(showTrayIcon: value));
+    _persist('showTrayIcon', value);
+    unawaited(
+      DesktopTrayController.instance.setShowIcon(
+        value,
+        closeToTray: value && state.closeToTray,
+        iconAsset: AppIconCatalog.previewAssetFor(state.appIcon),
+      ),
+    );
   }
 
   void setThreadListDensity(ListDensity value) {

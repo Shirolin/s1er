@@ -79,6 +79,22 @@ class WindowsPortableUpdater {
     Directory.current = directory;
   }
 
+  /// Cleans up what a successful overlay update leaves behind: the `*.s1erold`
+  /// copies of the previous build and any staging directory. They are still
+  /// held by the outgoing process during the swap, so this runs in the *new*
+  /// process, where they are ordinary leftover files.
+  Future<void> cleanupAfterUpdate() async {
+    if (kIsWeb || defaultTargetPlatform != TargetPlatform.windows) return;
+    try {
+      final exePath = p.normalize(_resolvedExecutable());
+      final installDir = Directory(p.dirname(exePath));
+      WindowsPortableUpdateLayout.assertSafeInstallDir(installDir, exePath);
+      await WindowsPortableUpdateLayout.purgeStaleArtifacts(installDir);
+    } on Object {
+      // Development builds and unusual install locations: nothing to clean.
+    }
+  }
+
   /// 解压 [zipPath]，逐文件覆盖安装目录、确认新版本启动后退出（成功路径不返回）。
   Future<void> applyDownloadedZip(String zipPath) async {
     if (kIsWeb || defaultTargetPlatform != TargetPlatform.windows) {
@@ -211,6 +227,9 @@ class WindowsPortableUpdater {
       await _deleteQuietlyFile(marker);
     }
 
+    // The file a failed swap tripped over, relative to the install dir; the
+    // error message names it so the user knows what to close.
+    String? blockedFile;
     try {
       for (final move in moves) {
         final dirPath = p.dirname(move.target);
@@ -219,14 +238,19 @@ class WindowsPortableUpdater {
           createdDirs.add(dirPath);
         }
         final targetFile = File(move.target);
-        if (await targetFile.exists()) {
-          final aside = '${move.target}$suffix';
-          final asideFile = File(aside);
-          if (await asideFile.exists()) await asideFile.delete();
-          await _renameFile(move.target, aside);
-          takenAside.add(move.target);
+        try {
+          if (await targetFile.exists()) {
+            final aside = '${move.target}$suffix';
+            final asideFile = File(aside);
+            if (await asideFile.exists()) await asideFile.delete();
+            await _renameFile(move.target, aside);
+            takenAside.add(move.target);
+          }
+          await _renameFile(move.source, move.target);
+        } on Object {
+          blockedFile = p.relative(move.target, from: installDir.path);
+          rethrow;
         }
-        await _renameFile(move.source, move.target);
         placed.add(move.target);
       }
       await _relaunch(newExe, installDir.path, marker.path);
@@ -236,8 +260,9 @@ class WindowsPortableUpdater {
     } on Object catch (e, st) {
       await rollback();
       talker.handle(e, st, 'Windows portable overlay failed');
-      throw const UpdateCheckException(
-        '覆盖安装失败：程序文件可能被占用，或新版本无法启动。'
+      final detail = blockedFile == null ? '' : '（$blockedFile 正被占用）';
+      throw UpdateCheckException(
+        '覆盖安装失败$detail：程序文件可能被占用，或新版本无法启动。'
         '请关闭其它 s1er 窗口后重试，或改用浏览器打开 ZIP 手动覆盖',
       );
     }

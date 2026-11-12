@@ -13,3 +13,9 @@ void reportUpdateStarted(String envName) {
     // best-effort：写不进去则由旧进程超时回滚。
   }
 }
+
+/// Whether the updater handed this process a start-marker path.
+bool isUpdateRequested(String envName) {
+  final path = Platform.environment[envName];
+  return path != null && path.isNotEmpty;
+}

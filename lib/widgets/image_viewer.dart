@@ -30,6 +30,7 @@ class ImageViewer extends ConsumerStatefulWidget {
     this.showBorder = false,
     this.margin,
     this.deferUntilVisible = false,
+    this.blockAlignment = Alignment.center,
   });
 
   /// Inline preview URL.
@@ -43,6 +44,9 @@ class ImageViewer extends ConsumerStatefulWidget {
 
   /// 为 true 时等到进入视口后再加载（帖子内联图片用）。
   final bool deferUntilVisible;
+
+  /// 块级图片在内容栏内的对齐方式（默认居中；分享卡左对齐正文边缘）。
+  final AlignmentGeometry blockAlignment;
 
   /// Flush process-local byte LRU (called when clearing disk cache in settings).
   static void clearMemoryCache() {
@@ -494,18 +498,15 @@ class _ImageViewerState extends ConsumerState<ImageViewer> {
   Widget _wrapBlockImage(Widget child) {
     if (widget.isEmoticon) return child;
 
-    if (widget.margin != null) {
-      child = Padding(padding: widget.margin!, child: child);
-    }
-
-    return LayoutBuilder(
+    Widget wrapped = LayoutBuilder(
       builder: (context, constraints) {
         final maxWidth = constraints.hasBoundedWidth &&
                 constraints.maxWidth.isFinite &&
                 constraints.maxWidth > 0
             ? constraints.maxWidth
             : 300.0;
-        return Center(
+        return Align(
+          alignment: widget.blockAlignment,
           child: ConstrainedBox(
             constraints: BoxConstraints(maxWidth: maxWidth),
             child: child,
@@ -513,6 +514,11 @@ class _ImageViewerState extends ConsumerState<ImageViewer> {
         );
       },
     );
+
+    if (widget.margin != null) {
+      wrapped = Padding(padding: widget.margin!, child: wrapped);
+    }
+    return wrapped;
   }
 
   Widget _blockPlaceholder({required double height, Widget? child}) {
@@ -597,6 +603,11 @@ class _ImageViewerState extends ConsumerState<ImageViewer> {
           ),
           child: child,
         ),
+      );
+    } else if (!widget.isEmoticon) {
+      child = ClipRRect(
+        borderRadius: S1Shape.small,
+        child: child,
       );
     }
 

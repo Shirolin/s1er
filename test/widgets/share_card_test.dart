@@ -8,6 +8,9 @@ import 'package:s1er/models/poll.dart';
 import 'package:s1er/models/post.dart';
 import 'package:s1er/models/share_floor_data.dart';
 import 'package:s1er/providers/settings_provider.dart';
+import 'package:s1er/theme/app_theme.dart';
+import 'package:s1er/utils/post_signature.dart';
+import 'package:s1er/widgets/bbcode_renderer.dart';
 import 'package:s1er/widgets/image_viewer.dart';
 import 'package:s1er/widgets/share_card.dart';
 
@@ -407,5 +410,100 @@ void main() {
       find.byKey(ValueKey(ShareCard.threadUrlFor('2254107', pid: '1')!)),
       findsNothing,
     );
+  });
+
+  testWidgets('establishes typography hierarchy and mutes footer watermark',
+      (tester) async {
+    final post = _post(
+      pid: '10',
+      message: '正文段落内容',
+      author: 'HierarchyUser',
+      number: '1',
+    );
+
+    await tester.pumpWidget(
+      wrap(
+        SingleChildScrollView(
+          child: ShareCard.single(
+            post: post,
+            threadSubject: '层级测试标题',
+          ),
+        ),
+      ),
+    );
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 100));
+
+    final titleStyle = tester.widget<Text>(find.text('层级测试标题')).style!;
+    final authorStyle = tester.widget<Text>(find.text('HierarchyUser')).style!;
+    final footerText =
+        tester.widget<Text>(find.text('来自 ${S1Constants.appName} 客户端'));
+    final renderer = tester.widget<BbcodeRenderer>(find.byType(BbcodeRenderer));
+
+    expect(titleStyle.fontSize!, greaterThan(renderer.bodyFontSize!));
+    expect(renderer.bodyFontSize, ShareCard.shareBodySize);
+    expect(renderer.bodyFontSize!, greaterThan(authorStyle.fontSize!));
+    expect(authorStyle.fontSize, ShareCard.shareAuthorSize);
+    expect(authorStyle.fontSize!, greaterThan(footerText.style!.fontSize!));
+    expect(renderer.imageMargin, ShareCard.shareImageMargin);
+    expect(renderer.blockImageAlignment, Alignment.centerLeft);
+    expect(renderer.zeroBodyMargin, isTrue);
+    expect(renderer.showImageBorder, isFalse);
+    expect(footerText.style!.fontSize, ShareCard.shareFootnoteSize);
+    expect(footerText.style!.color!.a, closeTo(S1Alpha.strong, 0.02));
+  });
+
+  testWidgets('separates and mutes trailing client signature', (tester) async {
+    final msg = PostSignature.appendIfEnabled(
+      '这里是正文内容',
+      enabled: true,
+      showDevice: true,
+      custom: '',
+      deviceLabel: 'Pixel 8',
+    );
+    final post = _post(
+      pid: '11',
+      message: msg,
+      author: 'SigUser',
+      number: '2',
+    );
+
+    await tester.pumpWidget(
+      wrap(SingleChildScrollView(child: ShareCard.single(post: post))),
+    );
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 100));
+
+    final sigFinder = find.text('——来自 Pixel 8');
+    expect(sigFinder, findsOneWidget);
+    final sigStyle = tester.widget<Text>(sigFinder).style!;
+    expect(sigStyle.fontSize, ShareCard.shareFootnoteSize);
+    expect(sigStyle.color!.a, closeTo(S1Alpha.strong, 0.02));
+    expect(find.textContaining('[url='), findsNothing);
+  });
+
+  testWidgets('hides redundant default S1er colophon without device or custom',
+      (tester) async {
+    final msg = PostSignature.appendIfEnabled(
+      '正文无设备尾巴',
+      enabled: true,
+      showDevice: false,
+      custom: '',
+    );
+    final post = _post(
+      pid: '12',
+      message: msg,
+      author: 'DupUser',
+      number: '3',
+    );
+
+    await tester.pumpWidget(
+      wrap(SingleChildScrollView(child: ShareCard.single(post: post))),
+    );
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 100));
+
+    expect(find.text('——来自 ${S1Constants.appName} 客户端'), findsNothing);
+    expect(find.text('来自 ${S1Constants.appName} 客户端'), findsOneWidget);
   });
 }

@@ -22,13 +22,17 @@ class AvatarFallbackLetter extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final textTheme = Theme.of(context).textTheme;
+    final theme = Theme.of(context);
+    final scheme = theme.colorScheme;
+    final textTheme = theme.textTheme;
     final style = _fallbackStyle(textTheme, radius);
     final nudgeY =
         _isIdeographic(letter) ? -radius * _ideographicNudgeFactor : 0.0;
 
     return CircleAvatar(
       radius: radius,
+      backgroundColor: scheme.primaryContainer,
+      foregroundColor: scheme.onPrimaryContainer,
       child: Transform.translate(
         offset: Offset(0, nudgeY),
         child: FittedBox(
@@ -40,6 +44,7 @@ class AvatarFallbackLetter extends StatelessWidget {
               textAlign: TextAlign.center,
               textHeightBehavior: _textHeightBehavior,
               style: style?.copyWith(
+                color: scheme.onPrimaryContainer,
                 fontWeight: FontWeight.w600,
                 height: 1.0,
               ),

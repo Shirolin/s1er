@@ -73,9 +73,19 @@ void main() {
       await tester.tap(find.text('open'));
       await tester.pumpAndSettle();
 
-      expect(find.text('下载'), findsOneWidget);
-      expect(find.text('分享'), findsOneWidget);
-      expect(find.text('复制图片'), findsOneWidget);
+      // Linux 无相册/文件分享/写图片通道，三项按设计隐藏。
+      expect(
+        find.text('下载'),
+        canDownloadImageOnPlatform ? findsOneWidget : findsNothing,
+      );
+      expect(
+        find.text('分享'),
+        canShareImageOnPlatform ? findsOneWidget : findsNothing,
+      );
+      expect(
+        find.text('复制图片'),
+        canCopyImageOnPlatform ? findsOneWidget : findsNothing,
+      );
       expect(find.text('复制链接'), findsOneWidget);
       expect(find.text('图片信息'), findsOneWidget);
     });

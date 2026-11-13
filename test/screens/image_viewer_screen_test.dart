@@ -14,6 +14,7 @@ import 'package:s1er/providers/settings_provider.dart';
 import 'package:s1er/screens/image_viewer_screen.dart';
 import 'package:s1er/services/s1_image_cache.dart';
 import 'package:s1er/theme/app_theme.dart';
+import 'package:s1er/utils/image_actions.dart';
 import 'package:s1er/widgets/image_viewer.dart';
 
 Uint8List _pngBytes({required int width, required int height}) {
@@ -615,9 +616,19 @@ void main() {
       await tester.longPress(find.byType(InteractiveViewer));
       await tester.pumpAndSettle();
 
-      expect(find.text('下载'), findsOneWidget);
-      expect(find.text('分享'), findsOneWidget);
-      expect(find.text('复制图片'), findsOneWidget);
+      // Linux 无相册/文件分享/写图片通道，三项按设计隐藏。
+      expect(
+        find.text('下载'),
+        canDownloadImageOnPlatform ? findsOneWidget : findsNothing,
+      );
+      expect(
+        find.text('分享'),
+        canShareImageOnPlatform ? findsOneWidget : findsNothing,
+      );
+      expect(
+        find.text('复制图片'),
+        canCopyImageOnPlatform ? findsOneWidget : findsNothing,
+      );
       expect(find.text('复制链接'), findsOneWidget);
       expect(find.text('图片信息'), findsOneWidget);
     });

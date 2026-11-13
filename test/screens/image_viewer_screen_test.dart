@@ -400,6 +400,159 @@ void main() {
       },
     );
 
+    testWidgets(
+      'long image opens with short-edge fit anchored at top',
+      (tester) async {
+        tester.view.physicalSize = const Size(400, 800);
+        tester.view.devicePixelRatio = 1.0;
+        addTearDown(tester.view.resetPhysicalSize);
+        addTearDown(tester.view.resetDevicePixelRatio);
+
+        const imageW = 500;
+        const imageH = 5000;
+        final bytes = _pngBytes(width: imageW, height: imageH);
+
+        await tester.pumpWidget(
+          ProviderScope(
+            child: MaterialApp(
+              theme: AppTheme.lightTheme('purple'),
+              home: ImageViewerScreen(
+                imageUrl: 'https://img.stage1st.com/forum/long.png',
+                imageBytes: bytes,
+              ),
+            ),
+          ),
+        );
+        await tester.runAsync(() async {
+          await Future<void>.delayed(const Duration(milliseconds: 100));
+        });
+        await tester.pumpAndSettle();
+
+        final viewerFinder = find.byType(InteractiveViewer);
+        final viewer = tester.widget<InteractiveViewer>(viewerFinder);
+        final controller = viewer.transformationController!;
+        final viewport = tester.getSize(viewerFinder);
+
+        final cover = math.max(
+          viewport.width / imageW,
+          viewport.height / imageH,
+        );
+        final fit = math.min(
+          viewport.width / imageW,
+          viewport.height / imageH,
+        );
+
+        Offset translation() {
+          final t = controller.value.getTranslation();
+          return Offset(t.x, t.y);
+        }
+
+        // 长短边比 10:1：默认短边适配，纵向从图片顶部开始阅读。
+        expect(controller.value.getMaxScaleOnAxis(), closeTo(cover, 0.01));
+        expect(translation().dy, closeTo(0, 0.5));
+        expect(
+          translation().dx,
+          closeTo((viewport.width - imageW * cover) / 2, 0.5),
+        );
+
+        // 「合适」恢复整图可见并居中。
+        await tester.tap(find.byTooltip('合适'));
+        await tester.pump();
+        expect(controller.value.getMaxScaleOnAxis(), closeTo(fit, 0.01));
+        expect(
+          translation().dy,
+          closeTo((viewport.height - imageH * fit) / 2, 0.5),
+        );
+
+        // 「填满」回到短边适配，且重新锚定顶部（不回落到图片中部）。
+        await tester.tap(find.byTooltip('填满'));
+        await tester.pump();
+        expect(controller.value.getMaxScaleOnAxis(), closeTo(cover, 0.01));
+        expect(translation().dy, closeTo(0, 0.5));
+      },
+    );
+
+    testWidgets(
+      'wide image opens with short-edge fit anchored at left',
+      (tester) async {
+        tester.view.physicalSize = const Size(400, 800);
+        tester.view.devicePixelRatio = 1.0;
+        addTearDown(tester.view.resetPhysicalSize);
+        addTearDown(tester.view.resetDevicePixelRatio);
+
+        const imageW = 5000;
+        const imageH = 500;
+        final bytes = _pngBytes(width: imageW, height: imageH);
+
+        await tester.pumpWidget(
+          ProviderScope(
+            child: MaterialApp(
+              theme: AppTheme.lightTheme('purple'),
+              home: ImageViewerScreen(
+                imageUrl: 'https://img.stage1st.com/forum/wide.png',
+                imageBytes: bytes,
+              ),
+            ),
+          ),
+        );
+        await tester.runAsync(() async {
+          await Future<void>.delayed(const Duration(milliseconds: 100));
+        });
+        await tester.pumpAndSettle();
+
+        final viewerFinder = find.byType(InteractiveViewer);
+        final viewer = tester.widget<InteractiveViewer>(viewerFinder);
+        final controller = viewer.transformationController!;
+        final viewport = tester.getSize(viewerFinder);
+
+        final cover = math.max(
+          viewport.width / imageW,
+          viewport.height / imageH,
+        );
+
+        expect(controller.value.getMaxScaleOnAxis(), closeTo(cover, 0.01));
+        expect(controller.value.getTranslation().x, closeTo(0, 0.5));
+        expect(
+          controller.value.getTranslation().y,
+          closeTo((viewport.height - imageH * cover) / 2, 0.5),
+        );
+      },
+    );
+
+    testWidgets(
+      'control bar keeps every control on 320dp screens',
+      (tester) async {
+        tester.view.physicalSize = const Size(320, 640);
+        tester.view.devicePixelRatio = 1.0;
+        addTearDown(tester.view.resetPhysicalSize);
+        addTearDown(tester.view.resetDevicePixelRatio);
+
+        final bytes = _pngBytes(width: 400, height: 200);
+
+        await tester.pumpWidget(
+          ProviderScope(
+            child: MaterialApp(
+              theme: AppTheme.lightTheme('purple'),
+              home: ImageViewerScreen(
+                imageUrl: 'https://img.stage1st.com/forum/photo.png',
+                imageBytes: bytes,
+              ),
+            ),
+          ),
+        );
+        await tester.runAsync(() async {
+          await Future<void>.delayed(const Duration(milliseconds: 100));
+        });
+        await tester.pumpAndSettle();
+
+        // 单行放不下 6 个控件时拆成两行，不得出现 RenderFlex 溢出。
+        expect(tester.takeException(), isNull);
+        for (final tooltip in ['合适', '填满', '缩小', '放大', '原始大小']) {
+          expect(find.byTooltip(tooltip), findsOneWidget);
+        }
+      },
+    );
+
     testWidgets('fetches imageUrl when opened without bytes', (tester) async {
       final requested = <String>[];
       final bytes = _pngBytes(width: 80, height: 60);

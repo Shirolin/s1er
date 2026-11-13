@@ -191,7 +191,8 @@ void main() {
       expect(extractedUrl.signature, '——来自论坛助手,iPhone');
     });
 
-    test('does not strip literary attribution without client/device keyword', () {
+    test('does not strip literary attribution without client/device keyword',
+        () {
       const raw = '地上本没有路，走的人多了，也便成了路。\n\n——来自鲁迅';
       final extracted = PostSignature.extractForShare(raw);
       expect(extracted.body, raw);
@@ -207,6 +208,33 @@ void main() {
       final extracted = PostSignature.extractForShare(sigOnly);
       expect(extracted.body, sigOnly);
       expect(extracted.signature, isNull);
+    });
+
+    test('extracts Discuz HTML signatures such as S1Fun and S1er', () {
+      const s1FunHtml =
+          '<blockquote>引用</blockquote>11.18? 我记得这是第一波非抽选的抢票吧?'
+          '<br />\r\n<br />\r\n—— 来自 '
+          '<a href="https://stage1st.com/2b/thread-2219310-1-1.html" '
+          'target="_blank">S1Fun</a>';
+      final fun = PostSignature.extractForShare(s1FunHtml);
+      expect(
+        fun.body,
+        '<blockquote>引用</blockquote>11.18? 我记得这是第一波非抽选的抢票吧?',
+      );
+      expect(fun.signature, '—— 来自 S1Fun');
+
+      const s1erHtml =
+          '正文内容<br />\n<font size="1"><font color="gray">——来自 Pixel 8 上的 '
+          '<a href="https://github.com/Shirolin/s1er" target="_blank">'
+          'S1er 客户端</a></font></font>';
+      final s1er = PostSignature.extractForShare(s1erHtml);
+      expect(s1er.body, '正文内容');
+      expect(s1er.signature, '——来自 Pixel 8');
+
+      const literaryHtml = '地上本没有路。<br />\n<br />\n——来自鲁迅';
+      final lit = PostSignature.extractForShare(literaryHtml);
+      expect(lit.body, literaryHtml);
+      expect(lit.signature, isNull);
     });
   });
 }

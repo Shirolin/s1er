@@ -107,13 +107,22 @@ class PostSignature {
     for (final pattern in _shareTrailingPatterns) {
       final match = pattern.firstMatch(trimmed);
       if (match == null) continue;
-      final body = trimmed.substring(0, match.start).trimRight();
+      final rawSig = match.group(0)!;
+      if (_nonSignatureBlockTag.hasMatch(rawSig)) continue;
+      final body = _trimTrailingLineBreaks(trimmed.substring(0, match.start));
       if (body.isEmpty) return (body: message, signature: null);
-      final plainSig = _stripBbcodeForSignature(match.group(0)!);
+      final plainSig = _stripMarkupForSignature(rawSig);
       if (plainSig.isEmpty || plainSig.length > 120) continue;
       return (body: body, signature: _dedupeSelfClientForShare(plainSig));
     }
     return (body: message, signature: null);
+  }
+
+  static String _trimTrailingLineBreaks(String raw) {
+    var out = raw.trimRight();
+    final trailingBr = RegExp(r'(?:<br\s*/?>|\s)+$', caseSensitive: false);
+    out = out.replaceFirst(trailingBr, '');
+    return out.trimRight();
   }
 
   static String? _dedupeSelfClientForShare(String plainSig) {
@@ -136,11 +145,14 @@ class PostSignature {
     );
     if (withoutCustomClient != plainSig) return withoutCustomClient;
 
-    if (plainSig == '——来自 $clientLabel') return null;
+    if (RegExp('^——\\s*来自\\s+${RegExp.escape(clientLabel)}\$')
+        .hasMatch(plainSig)) {
+      return null;
+    }
     return plainSig;
   }
 
-  static String _stripBbcodeForSignature(String raw) {
+  static String _stripMarkupForSignature(String raw) {
     var text = raw.trim();
     text = text.replaceAllMapped(
       RegExp(
@@ -150,12 +162,36 @@ class PostSignature {
       ),
       (m) => m.group(1) ?? '',
     );
+    text = text.replaceAllMapped(
+      RegExp(
+        r'<a\b[^>]*>(.*?)</a>',
+        caseSensitive: false,
+        dotAll: true,
+      ),
+      (m) => m.group(1) ?? '',
+    );
     text = text.replaceAll(
       RegExp(r'\[/?[a-z]+(?:=[^\]]*)?\]', caseSensitive: false),
       '',
     );
+    text = text.replaceAll(RegExp(r'<[^>]+>'), '');
+    text = text
+        .replaceAll('&nbsp;', ' ')
+        .replaceAll('&amp;', '&')
+        .replaceAll('&lt;', '<')
+        .replaceAll('&gt;', '>')
+        .replaceAll('&quot;', '"');
     return text.replaceAll(RegExp(r'\s+'), ' ').trim();
   }
+
+  static final RegExp _nonSignatureBlockTag = RegExp(
+    r'<(?:img|blockquote|div|table|pre)\b|\[(?:img|quote|code)\b',
+    caseSensitive: false,
+  );
+
+  static const String _sep = r'(?:<br\s*/?>|\r?\n|\s){0,3}';
+  static const String _clientKeywords =
+      r'(?:客户端|论坛助手|S1Fun|S1er|S1Next|Stage1|Android|iPhone|iPad|Windows|macOS|Linux|HarmonyOS|Web|via\s+\S)';
 
   static final RegExp _trailingSignaturePattern = RegExp(
     r'(?:\r?\n){0,2}\[size=1\]\[color=gray\]——[\s\S]*?\[/color\]\[/size\]\s*$',
@@ -164,6 +200,18 @@ class PostSignature {
 
   static final List<RegExp> _shareTrailingPatterns = [
     _trailingSignaturePattern,
+    // Discuz API 返回的 HTML <font size="1"><font color="gray">——...</font></font>
+    RegExp(
+      _sep +
+          r'''<font\b[^>]*size=["']?1["']?[^>]*>(?:<font\b[^>]*color=["']?gray["']?[^>]*>)?——[\s\S]{2,350}?(?:</font>)?\s*</font>\s*$''',
+      caseSensitive: false,
+    ),
+    // Discuz API 返回的外层 <a ...><font color="Gray">——...</font></a>
+    RegExp(
+      _sep +
+          r'''<a\b[^>]*>(?:<font\b[^>]*>)?(?:——|发自|来自)[^\n<]{2,140}(?:</font>)?</a>\s*$''',
+      caseSensitive: false,
+    ),
     // 论坛助手 / S1Next 等常见 `[size=1][color=...]` 或 `[color=gray]` 包裹的末尾落款
     RegExp(
       r'(?:\r?\n){0,2}\[size=1\](?:\[color=[^\]]+\])?(?:——|发自|来自)[^\n]{2,140}(?:\[/color\])?\[/size\]\s*$',
@@ -178,11 +226,13 @@ class PostSignature {
       r'(?:\r?\n){0,2}\[url=[^\]]*\](?:\[size=1\])?(?:\[color=[^\]]+\])?(?:——|发自|来自)[^\n]{2,140}(?:\[/color\])?(?:\[/size\])?\[/url\]\s*$',
       caseSensitive: false,
     ),
-    // 文末独立一行纯文本落款（需至少前置换行且含客户端/机型关键词，避免误伤「——来自鲁迅」等引用）
+    // 文末独立一行（BBCode 链接或纯文本 / HTML <a ...> 链接，如 S1Fun）
+    // 须前置换行且含客户端/机型关键词，避免误伤「——来自鲁迅」等引用
     RegExp(
-      r'(?:\r?\n){1,2}(?:——\s*(?:来自|发自)|发自我的[^\n]{0,40}via\s+)[^\n]{0,100}'
-      r'(?:客户端|论坛助手|S1Next|Stage1|Android|iPhone|iPad|Windows|macOS|Linux|HarmonyOS|Web|via\s+\S)'
-      r'[^\n]{0,60}\s*$',
+      r'(?:(?:\s*<br\s*/?>\s*)+|(?:\r?\n)+)\s*'
+      r'(?:——\s*(?:来自|发自)|发自我的[^\n<]{0,40}via\s+)[^\r\n]{0,180}?'
+      '$_clientKeywords'
+      r'[^\r\n]{0,120}\s*$',
       caseSensitive: false,
     ),
   ];

@@ -362,37 +362,52 @@ class _SharePreviewSheetState extends ConsumerState<_SharePreviewSheet> {
     await _precacheShareLogo();
     if (!mounted) return false;
 
-    final urls = collectShareImageUrls(widget.floors);
-    if (urls.isEmpty) {
+    final targets = collectShareImageTargets(widget.floors);
+    final allUrls = [...targets.contentUrls, ...targets.avatarUrls];
+    if (allUrls.isEmpty) {
       await WidgetsBinding.instance.endOfFrame;
       await WidgetsBinding.instance.endOfFrame;
       return true;
     }
 
-    var failedUrls = 0;
+    final contentSet = targets.contentUrls.toSet();
+    var failedContentUrls = 0;
+    var failedAvatarUrls = 0;
     final bytesByUrl = <String, Uint8List>{};
-    await forEachConcurrent(urls, (url) async {
+    await forEachConcurrent(allUrls, (url) async {
       final bytes = await _fetchImageBytes(url);
       if (bytes == null) {
-        failedUrls++;
+        if (contentSet.contains(url)) {
+          failedContentUrls++;
+        } else {
+          failedAvatarUrls++;
+        }
       } else {
         bytesByUrl[url] = bytes;
       }
     });
 
     if (shouldAbortSharePreload(
-      totalUrls: urls.length,
-      failedUrls: failedUrls,
+      totalUrls: targets.contentUrls.length,
+      failedUrls: failedContentUrls,
     )) {
       talker.warning(
-        'Share preload failed for $failedUrls/${urls.length} images',
+        'Share preload failed for '
+        '$failedContentUrls/${targets.contentUrls.length} content images',
       );
       _showCaptureFailure('图片加载失败过多，请检查网络后重试');
       return false;
     }
-    if (failedUrls > 0) {
+    if (failedContentUrls > 0) {
       talker.warning(
-        'Share preload missing $failedUrls/${urls.length} images',
+        'Share preload missing '
+        '$failedContentUrls/${targets.contentUrls.length} content images',
+      );
+    }
+    if (failedAvatarUrls > 0) {
+      talker.warning(
+        'Share preload missing '
+        '$failedAvatarUrls/${targets.avatarUrls.length} avatars',
       );
     }
 

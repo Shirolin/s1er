@@ -21,21 +21,37 @@ const int shareLayoutMaxAttempts = 80;
 /// Logical px tolerance when validating scroll-slice coverage.
 const double scrollCaptureCoverageTolerancePx = 2.0;
 
-/// Collect preview, full, and avatar URLs for share-card preload.
-List<String> collectShareImageUrls(List<ShareFloorData> floors) {
-  final urls = <String>{};
+/// Target image URLs split between post body images and optional floor avatars.
+typedef ShareImageTargets = ({
+  List<String> contentUrls,
+  List<String> avatarUrls,
+});
+
+/// Collect preview, full, and avatar URLs separated by criticality.
+ShareImageTargets collectShareImageTargets(List<ShareFloorData> floors) {
+  final contentUrls = <String>{};
+  final avatarUrls = <String>{};
   for (final floor in floors) {
     final html = BbcodeParser.parse(
       floor.post.message,
       attachments: floor.post.attachments,
     );
-    urls.addAll(BbcodeParser.extractShareImageUrls(html));
+    contentUrls.addAll(BbcodeParser.extractShareImageUrls(html));
     final avatar = floor.post.avatar;
-    if (avatar != null && avatar.isNotEmpty) {
-      urls.add(avatar);
+    if (avatar != null && avatar.isNotEmpty && !contentUrls.contains(avatar)) {
+      avatarUrls.add(avatar);
     }
   }
-  return urls.toList();
+  return (
+    contentUrls: contentUrls.toList(),
+    avatarUrls: avatarUrls.toList(),
+  );
+}
+
+/// Collect preview, full, and avatar URLs for share-card preload.
+List<String> collectShareImageUrls(List<ShareFloorData> floors) {
+  final targets = collectShareImageTargets(floors);
+  return [...targets.contentUrls, ...targets.avatarUrls];
 }
 
 /// True when preload failures meet the hard-abort threshold.

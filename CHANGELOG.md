@@ -5,6 +5,20 @@ All notable changes to S1er will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.15.0] - 2026-11-13
+
+### Changed
+
+- **分享卡排版与信息层级优化**（#59）：
+  - 拉开标题（~28px Bold，最多 3 行）、正文（18px）、发帖人（16px SemiBold）与元信息/水印（13–14px）的字阶，Logo 收敛为无边框小眉标，二维码与分割线减重。
+  - 消除分享卡 `flutter_html` 默认 8px 左缩进，使头像、正文、引用块、投票、签名与页脚贴齐同一条左边线；块级图片去掉 1px 描边并以左对齐圆角展示，宽图铺满整栏、窄图保持原宽、竖长图限高缩放。
+  - 抽离并淡化文末客户端小尾巴，自动去重与页脚重复的 `来自 S1er 客户端` 后缀（无设备名与自定义句时整体隐藏），并避免误伤文学引文。
+- **看图器超长图适配**（#58）：超长竖图按短边适配屏幕宽度并默认锚定顶部，方便从头向下滑动阅读。
+
+### Fixed
+
+- **暗色模式默认头像占位对比度**：`AvatarFallbackLetter` 改用 M3 配对容器色 `primaryContainer` / `onPrimaryContainer`，修复深色主题下首字母与圆底对比度过低的问题。
+
 ## [0.14.0] - 2026-11-13
 
 ### Added

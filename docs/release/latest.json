@@ -1,7 +1,7 @@
 {
   "latest": "0.15.0",
   "minSupported": "0.3.2",
-  "notes": "Beta",
+  "notes": "Beta — 0.15.0：分享卡层级与左对齐排版优化、客户端尾巴去重弱化，看图器超长图适配顶部，修复暗色头像占位对比度",
   "publishedAt": "2026-11-13",
   "channels": {
     "github": "https://github.com/Shirolin/s1er/releases/latest",

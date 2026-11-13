@@ -15,6 +15,7 @@ import '../theme/app_theme.dart';
 import '../utils/format_utils.dart';
 import '../utils/poll_bar_color.dart';
 import '../utils/post_image_index_counter.dart';
+import '../utils/post_signature.dart';
 import 'avatar_fallback.dart';
 import 'bbcode_renderer.dart';
 import 'force_show_images.dart';
@@ -84,20 +85,29 @@ class ShareCard extends StatelessWidget {
   static const double cardWidth = 600;
 
   /// Header launcher-icon size (logical px).
-  static const double logoSize = 32;
+  static const double logoSize = 20;
 
   /// Footer QR outer size including quiet zone (logical px).
-  static const double qrSize = 96;
+  static const double qrSize = 76;
 
   /// Quiet-zone inset inside [qrSize].
-  static const double qrQuietZone = 8;
+  static const double qrQuietZone = 6;
 
   /// Share-card body size (logical px).
   static const double shareBodySize = 18;
 
+  /// Share-card author size (logical px), intentionally lighter than body.
+  static const double shareAuthorSize = 16;
+
   /// Share-card metadata size (logical px). The card is often downscaled in
-  /// chat apps, so time / floor / footer text must not fall below this.
+  /// chat apps, so time / floor text must not fall below this.
   static const double shareMetaSize = 14;
+
+  /// Share-card footnote size (logical px) for trailing colophon & watermark.
+  static const double shareFootnoteSize = 13;
+
+  /// Unified vertical spacing around inline block images on share cards.
+  static const EdgeInsets shareImageMargin = EdgeInsets.symmetric(vertical: 12);
 
   /// Forum URL encoded into the footer QR, or null when [tid] is empty.
   ///
@@ -190,10 +200,10 @@ class ShareCard extends StatelessWidget {
         fontSize: scaled(base.titleLarge?.fontSize, 22),
       ),
       titleMedium: base.titleMedium?.copyWith(
-        fontSize: scaled(base.titleMedium?.fontSize, 16),
+        fontSize: shareAuthorSize,
       ),
       titleSmall: base.titleSmall?.copyWith(
-        fontSize: scaled(base.titleSmall?.fontSize, 14),
+        fontSize: shareBodySize,
       ),
       bodyLarge: base.bodyLarge?.copyWith(
         fontSize: scaled(base.bodyLarge?.fontSize, 16),
@@ -203,7 +213,7 @@ class ShareCard extends StatelessWidget {
         height: S1Typography.readingLineHeight,
       ),
       bodySmall: base.bodySmall?.copyWith(
-        fontSize: shareMetaSize,
+        fontSize: shareFootnoteSize,
       ),
       labelMedium: base.labelMedium?.copyWith(
         fontSize: shareMetaSize,
@@ -253,24 +263,26 @@ class ShareCardHeader extends StatelessWidget {
               ),
             ],
           ),
-          const SizedBox(height: 6),
-          if (threadSubject != null && threadSubject!.isNotEmpty)
+          if (threadSubject != null && threadSubject!.isNotEmpty) ...[
+            const SizedBox(height: 8),
             Padding(
-              padding: const EdgeInsets.only(bottom: 8),
+              padding: const EdgeInsets.only(bottom: 16),
               child: Text(
                 threadSubject!,
-                maxLines: 2,
+                maxLines: 3,
                 overflow: TextOverflow.ellipsis,
                 style: textTheme.titleLarge?.copyWith(
-                  fontWeight: FontWeight.w600,
+                  fontWeight: FontWeight.w700,
                   height: 1.3,
                 ),
               ),
             ),
+          ] else
+            const SizedBox(height: 12),
           Divider(
             height: 1,
             thickness: 1,
-            color: scheme.outlineVariant,
+            color: scheme.outlineVariant.withValues(alpha: S1Alpha.half),
           ),
         ],
       ),
@@ -300,22 +312,16 @@ class _ShareCardHeaderLogo extends ConsumerWidget {
     return SizedBox(
       width: ShareCard.logoSize,
       height: ShareCard.logoSize,
-      child: DecoratedBox(
-        decoration: BoxDecoration(
-          borderRadius: S1Shape.extraSmall,
-          border: Border.all(color: scheme.outlineVariant),
-        ),
-        child: ClipRRect(
-          borderRadius: S1Shape.extraSmall,
-          child: Image.asset(
-            logoAsset,
-            width: ShareCard.logoSize,
-            height: ShareCard.logoSize,
-            fit: BoxFit.cover,
-            filterQuality: FilterQuality.medium,
-            errorBuilder: (context, error, stackTrace) => ColoredBox(
-              color: scheme.surfaceContainerHighest,
-            ),
+      child: ClipRRect(
+        borderRadius: S1Shape.extraSmall,
+        child: Image.asset(
+          logoAsset,
+          width: ShareCard.logoSize,
+          height: ShareCard.logoSize,
+          fit: BoxFit.cover,
+          filterQuality: FilterQuality.medium,
+          errorBuilder: (context, error, stackTrace) => ColoredBox(
+            color: scheme.surfaceContainerHighest,
           ),
         ),
       ),
@@ -359,9 +365,12 @@ class ShareFloorBlock extends ConsumerWidget {
       ),
     );
     final effectiveStrip = globalStrip || inSessionStrip;
+    final extracted = PostSignature.extractForShare(post.message);
+    final signature = extracted.signature;
+    final textTheme = Theme.of(context).textTheme;
 
     Widget content = Padding(
-      padding: const EdgeInsets.fromLTRB(24, 16, 24, 8),
+      padding: EdgeInsets.fromLTRB(24, showLeadingDivider ? 18 : 16, 24, 14),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
@@ -369,28 +378,42 @@ class ShareFloorBlock extends ConsumerWidget {
             Divider(
               height: 1,
               thickness: 1,
-              color: scheme.outlineVariant,
+              color: scheme.outlineVariant.withValues(alpha: S1Alpha.half),
             ),
-            const SizedBox(height: 16),
+            const SizedBox(height: 18),
           ],
           _ShareAuthorRow(
             post: post,
             floor: floor.displayFloor,
             timeStr: timeStr,
           ),
-          const SizedBox(height: 16),
+          const SizedBox(height: 14),
           ForceShowImages(
             enabled: true,
             child: BbcodeRenderer(
-              bbcode: post.message,
+              bbcode: extracted.body,
               attachments: post.attachments,
               imageIndexCounter: imageIndexCounter,
               imagesExpanded: true,
               stripSpecialStyles: effectiveStrip,
               // 导出图里没有可点击的引用跳转，别留一个假链接图标。
               quoteJumpEnabled: false,
+              bodyFontSize: ShareCard.shareBodySize,
+              imageMargin: ShareCard.shareImageMargin,
+              blockImageAlignment: Alignment.centerLeft,
+              showImageBorder: false,
+              zeroBodyMargin: true,
             ),
           ),
+          if (signature != null) ...[
+            const SizedBox(height: 12),
+            Text(
+              signature,
+              style: textTheme.bodySmall?.copyWith(
+                color: scheme.onSurfaceVariant.withValues(alpha: S1Alpha.strong),
+              ),
+            ),
+          ],
           if (poll != null) _SharePollView(poll: poll!),
         ],
       ),
@@ -452,26 +475,27 @@ class ShareCardFooter extends StatelessWidget {
     final textTheme = Theme.of(context).textTheme;
     final threadUrl = showQr ? ShareCard.threadUrlFor(tid, pid: pid) : null;
 
+    final mutedColor = scheme.onSurfaceVariant.withValues(alpha: S1Alpha.strong);
     final attributionText = Text(
       '来自 ${S1Constants.appName} 客户端',
-      style: textTheme.labelSmall?.copyWith(
-        color: scheme.onSurfaceVariant,
+      style: textTheme.bodySmall?.copyWith(
+        color: mutedColor,
       ),
     );
     final attributionIcon = Icon(
       Icons.smartphone_outlined,
-      size: 16,
-      color: scheme.onSurfaceVariant,
+      size: 14,
+      color: mutedColor,
     );
 
     Widget content = Padding(
-      padding: const EdgeInsets.fromLTRB(24, 16, 24, 24),
+      padding: const EdgeInsets.fromLTRB(24, 14, 24, 20),
       child: Column(
         children: [
           Divider(
             height: 1,
             thickness: 1,
-            color: scheme.outlineVariant,
+            color: scheme.outlineVariant.withValues(alpha: S1Alpha.half),
           ),
           const SizedBox(height: 12),
           if (threadUrl == null)
@@ -545,7 +569,9 @@ class _ShareThreadQr extends StatelessWidget {
         decoration: BoxDecoration(
           borderRadius: S1Shape.extraSmall,
           color: background,
-          border: Border.all(color: scheme.outlineVariant),
+          border: Border.all(
+            color: scheme.outlineVariant.withValues(alpha: S1Alpha.half),
+          ),
         ),
         child: ClipRRect(
           borderRadius: S1Shape.extraSmall,
@@ -599,7 +625,7 @@ class _ShareAuthorRow extends StatelessWidget {
       children: [
         _ShareCaptureAvatar(
           url: post.avatar,
-          radius: 20,
+          radius: 18,
           fallbackLetter: letter,
         ),
         const SizedBox(width: 10),
@@ -611,8 +637,8 @@ class _ShareAuthorRow extends StatelessWidget {
                 post.author,
                 maxLines: 1,
                 overflow: TextOverflow.ellipsis,
-                style: textTheme.bodyMedium?.copyWith(
-                  fontWeight: FontWeight.bold,
+                style: textTheme.titleMedium?.copyWith(
+                  fontWeight: FontWeight.w600,
                 ),
               ),
               if (timeStr.isNotEmpty)
@@ -620,7 +646,7 @@ class _ShareAuthorRow extends StatelessWidget {
                   timeStr,
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
-                  style: textTheme.labelSmall?.copyWith(
+                  style: textTheme.labelMedium?.copyWith(
                     color: scheme.onSurfaceVariant,
                   ),
                 ),

@@ -94,10 +94,98 @@ class PostSignature {
   static bool hasTrailing(String message) =>
       _trailingSignaturePattern.hasMatch(message);
 
+  /// 分享卡渲染前分离文末客户端小尾巴，返回正文与纯文本落款。
+  ///
+  /// 兼容本客户端 [build] 产出及论坛助手等常见文末落款；
+  /// 若剥离后正文为空，则保留原文不剥离，避免整楼空白。
+  /// 当落款是本客户端尾巴时，去掉与页脚重复的「来自 S1er 客户端」，
+  /// 仅保留机型或自定义句（若无增量信息则返回 `signature: null`）。
+  static ({String body, String? signature}) extractForShare(String message) {
+    final trimmed = message.trimRight();
+    if (trimmed.isEmpty) return (body: message, signature: null);
+
+    for (final pattern in _shareTrailingPatterns) {
+      final match = pattern.firstMatch(trimmed);
+      if (match == null) continue;
+      final body = trimmed.substring(0, match.start).trimRight();
+      if (body.isEmpty) return (body: message, signature: null);
+      final plainSig = _stripBbcodeForSignature(match.group(0)!);
+      if (plainSig.isEmpty || plainSig.length > 120) continue;
+      return (body: body, signature: _dedupeSelfClientForShare(plainSig));
+    }
+    return (body: message, signature: null);
+  }
+
+  static String? _dedupeSelfClientForShare(String plainSig) {
+    const clientLabel = '${S1Constants.appName} 客户端';
+    if (!plainSig.endsWith(clientLabel)) return plainSig;
+
+    // 「——摸鱼 · 来自 Pixel 8 上的 S1er 客户端」->「——摸鱼 · 来自 Pixel 8」
+    // 「——来自 iPhone 上的 S1er 客户端」->「——来自 iPhone」
+    // 「——摸鱼 · 来自 S1er 客户端」->「——摸鱼」
+    // 「——来自 S1er 客户端」-> null（完全与页脚重复）
+    final withoutOnClient = plainSig.replaceFirst(
+      RegExp('\\s+上的\\s+${RegExp.escape(clientLabel)}\$'),
+      '',
+    );
+    if (withoutOnClient != plainSig) return withoutOnClient;
+
+    final withoutCustomClient = plainSig.replaceFirst(
+      RegExp('\\s*·\\s*来自\\s+${RegExp.escape(clientLabel)}\$'),
+      '',
+    );
+    if (withoutCustomClient != plainSig) return withoutCustomClient;
+
+    if (plainSig == '——来自 $clientLabel') return null;
+    return plainSig;
+  }
+
+  static String _stripBbcodeForSignature(String raw) {
+    var text = raw.trim();
+    text = text.replaceAllMapped(
+      RegExp(
+        r'\[url=[^\]]*\](.*?)\[/url\]',
+        caseSensitive: false,
+        dotAll: true,
+      ),
+      (m) => m.group(1) ?? '',
+    );
+    text = text.replaceAll(
+      RegExp(r'\[/?[a-z]+(?:=[^\]]*)?\]', caseSensitive: false),
+      '',
+    );
+    return text.replaceAll(RegExp(r'\s+'), ' ').trim();
+  }
+
   static final RegExp _trailingSignaturePattern = RegExp(
     r'(?:\r?\n){0,2}\[size=1\]\[color=gray\]——[\s\S]*?\[/color\]\[/size\]\s*$',
     caseSensitive: false,
   );
+
+  static final List<RegExp> _shareTrailingPatterns = [
+    _trailingSignaturePattern,
+    // 论坛助手 / S1Next 等常见 `[size=1][color=...]` 或 `[color=gray]` 包裹的末尾落款
+    RegExp(
+      r'(?:\r?\n){0,2}\[size=1\](?:\[color=[^\]]+\])?(?:——|发自|来自)[^\n]{2,140}(?:\[/color\])?\[/size\]\s*$',
+      caseSensitive: false,
+    ),
+    RegExp(
+      r'(?:\r?\n){0,2}\[color=gray\](?:——|发自|来自)[^\n]{2,140}\[/color\]\s*$',
+      caseSensitive: false,
+    ),
+    // 外层由 [url=...] 包裹的末尾落款（如 [url=...][color=Gray]——来自论坛助手,iPhone[/color][/url]）
+    RegExp(
+      r'(?:\r?\n){0,2}\[url=[^\]]*\](?:\[size=1\])?(?:\[color=[^\]]+\])?(?:——|发自|来自)[^\n]{2,140}(?:\[/color\])?(?:\[/size\])?\[/url\]\s*$',
+      caseSensitive: false,
+    ),
+    // 文末独立一行纯文本落款（需至少前置换行且含客户端/机型关键词，避免误伤「——来自鲁迅」等引用）
+    RegExp(
+      r'(?:\r?\n){1,2}(?:——\s*(?:来自|发自)|发自我的[^\n]{0,40}via\s+)[^\n]{0,100}'
+      r'(?:客户端|论坛助手|S1Next|Stage1|Android|iPhone|iPad|Windows|macOS|Linux|HarmonyOS|Web|via\s+\S)'
+      r'[^\n]{0,60}\s*$',
+      caseSensitive: false,
+    ),
+  ];
 
   /// 可见落款行（[clientLabel] 可为纯文本或已包好的 `[url]…[/url]`）。
   static String _plainLine({

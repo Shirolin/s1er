@@ -73,6 +73,25 @@ void main() {
     expect(translate.transform.getTranslation().y, 0);
   });
 
+  testWidgets('dark theme fallback letter uses container contrast pair',
+      (tester) async {
+    final theme = AppTheme.darkTheme('orange');
+    await tester.pumpWidget(
+      MaterialApp(
+        theme: theme,
+        home: const Scaffold(
+          body: AvatarFallbackLetter(radius: 18, letter: 'W'),
+        ),
+      ),
+    );
+
+    final avatar = tester.widget<CircleAvatar>(find.byType(CircleAvatar));
+    final text = tester.widget<Text>(find.text('W'));
+    expect(avatar.backgroundColor, theme.colorScheme.primaryContainer);
+    expect(avatar.foregroundColor, theme.colorScheme.onPrimaryContainer);
+    expect(text.style?.color, theme.colorScheme.onPrimaryContainer);
+  });
+
   test('isIdeographic distinguishes CJK from latin', () {
     expect(AvatarFallbackLetter.isIdeographic('小'), isTrue);
     expect(AvatarFallbackLetter.isIdeographic('张'), isTrue);

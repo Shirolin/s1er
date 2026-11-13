@@ -84,6 +84,15 @@ jobs:
       - name: Install dependencies
         run: flutter pub get
 
+      - name: Install GTK/X11 dev headers
+        # `flutter test` 会为宿主构建原生资产；cnativeapi（tray_manager 依赖）的
+        # build hook 通过 pkg-config 查找 GTK3/X11/Xi，缓存未命中时必须冷编译。
+        # PR 的 actions/cache 不跨 PR 共享，基本每次都是冷编译。
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends \
+            libgtk-3-dev libx11-dev libxi-dev
+
       # `flutter test` builds the native assets for the host, which compiles
       # cnativeapi (tray_manager) from C++ on a cold cache. Hook outputs are
       # content-addressed, so restoring them only skips work — a stale entry

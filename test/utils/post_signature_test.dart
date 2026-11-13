@@ -211,8 +211,7 @@ void main() {
     });
 
     test('extracts Discuz HTML signatures such as S1Fun and S1er', () {
-      const s1FunHtml =
-          '<blockquote>引用</blockquote>11.18? 我记得这是第一波非抽选的抢票吧?'
+      const s1FunHtml = '<blockquote>引用</blockquote>11.18? 我记得这是第一波非抽选的抢票吧?'
           '<br />\r\n<br />\r\n—— 来自 '
           '<a href="https://stage1st.com/2b/thread-2219310-1-1.html" '
           'target="_blank">S1Fun</a>';

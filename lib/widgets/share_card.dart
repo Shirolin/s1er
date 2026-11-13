@@ -410,7 +410,8 @@ class ShareFloorBlock extends ConsumerWidget {
             Text(
               signature,
               style: textTheme.bodySmall?.copyWith(
-                color: scheme.onSurfaceVariant.withValues(alpha: S1Alpha.strong),
+                color:
+                    scheme.onSurfaceVariant.withValues(alpha: S1Alpha.strong),
               ),
             ),
           ],
@@ -475,7 +476,8 @@ class ShareCardFooter extends StatelessWidget {
     final textTheme = Theme.of(context).textTheme;
     final threadUrl = showQr ? ShareCard.threadUrlFor(tid, pid: pid) : null;
 
-    final mutedColor = scheme.onSurfaceVariant.withValues(alpha: S1Alpha.strong);
+    final mutedColor =
+        scheme.onSurfaceVariant.withValues(alpha: S1Alpha.strong);
     final attributionText = Text(
       '来自 ${S1Constants.appName} 客户端',
       style: textTheme.bodySmall?.copyWith(

@@ -5,6 +5,28 @@ All notable changes to S1er will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.14.0] - 2026-11-13
+
+### Added
+
+- **自定义字体**：桌面与移动端可导入本地 TTF / OTF，选定后全局生效；Web 不支持导入。
+- **跟随系统字号**：应用内字号档位叠加在系统无障碍缩放之上（含 Android 14+ 非线性缩放），不再覆盖系统设置。
+- **桌面拉丁字体**：Windows 使用 Segoe UI Variable，22px 以上标题换 Display 光学尺寸；macOS / Linux 钉系统中文字族。不打包字体，安装包体积不变。
+- 代码块使用平台真实等宽族，并带正文字族回退链（中文注释不出豆腐）。
+
+### Changed
+
+- 阅读正文改用独立阅读排版 token（固定字号 + 1.6 行高），分享卡与阅读页行高一致。
+- 导入字体验证 sfnt 容器头与体积上限；族名按文件内容派生，换字体立即生效。
+
+### Fixed
+
+- **Windows 覆盖更新失败**：托盘图标改为内存字节加载，避免 GDI+ 持有资产文件句柄导致改名失败并整体回滚。
+- **第二个实例误启动**：单实例检测改用命名互斥量所有权校验（Flutter release 下 `GetLastError` 恒为 0，旧判断从未生效）。
+- 托盘：单击在窗口最小化时还原、菜单文案随窗口状态更新；新增「在系统托盘显示图标」开关；关闭图标不再抹掉「关闭到托盘」偏好。
+- 首次关闭到托盘给出提示；覆盖更新失败文案带出被占用的文件名；启动时回收上次更新遗留的 `*.s1erold` 与 `.s1er-staging*`。
+- 自定义字体：加载失败的字体不再残留导致每次冷启动失败；读取失败（IO）不再误清掉字体设置。
+
 ## [0.13.0] - 2026-11-12
 
 ### Added

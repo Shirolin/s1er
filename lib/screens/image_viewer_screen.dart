@@ -40,6 +40,10 @@ class _ImageViewerScreenState extends ConsumerState<ImageViewerScreen> {
   static const double _maxScale = 5.0;
   static const double _zoomStep = 1.5;
 
+  /// 长短边比达到该阈值的图（长截图、拼接长图）默认用短边适配打开，
+  /// 避免「合适」把整图压成不可读的细条。
+  static const double _fillOnOpenAspect = 3.0;
+
   final TransformationController _transformController =
       TransformationController();
   final ValueNotifier<String> _scaleLabel = ValueNotifier('100%');
@@ -81,6 +85,25 @@ class _ImageViewerScreenState extends ConsumerState<ImageViewerScreen> {
     if (vw == null || vh == null || iw == null || ih == null) return 1.0;
     if (iw <= 0 || ih <= 0 || vw <= 0 || vh <= 0) return 1.0;
     return math.min(vw / iw, vh / ih);
+  }
+
+  /// 短边适配（填充）：让短边充满视口对应轴，长边方向可滚动。
+  /// 超长图 → 宽度充满、纵向滚动；超宽图 → 高度充满、横向滚动。
+  double get _coverScale {
+    final vw = _viewportWidth;
+    final vh = _viewportHeight;
+    final iw = _width;
+    final ih = _height;
+    if (vw == null || vh == null || iw == null || ih == null) return 1.0;
+    if (iw <= 0 || ih <= 0 || vw <= 0 || vh <= 0) return 1.0;
+    return math.max(vw / iw, vh / ih);
+  }
+
+  bool get _prefersFillOnOpen {
+    final iw = _width;
+    final ih = _height;
+    if (iw == null || ih == null || iw <= 0 || ih <= 0) return false;
+    return math.max(iw, ih) / math.min(iw, ih) >= _fillOnOpenAspect;
   }
 
   /// Allow zooming slightly below fit so large images can still reach「合适」.
@@ -231,11 +254,18 @@ class _ImageViewerScreenState extends ConsumerState<ImageViewerScreen> {
     if (_viewportWidth == null || _viewportHeight == null) return;
     if (_width == null || _height == null) return;
     _appliedInitialFit = true;
-    _fitToScreen();
+    if (_prefersFillOnOpen) {
+      _fillToScreen();
+    } else {
+      _fitToScreen();
+    }
   }
 
   /// Scale relative to 1:1 (image pixel = logical pixel), centered in content area.
-  void _applyScale(double newScale) {
+  ///
+  /// [anchorOverflowAtStart] 为 true 时，超出视口的轴从图片顶部/左端开始
+  /// （短边适配后直接进入阅读位置），未超出的轴仍居中。
+  void _applyScale(double newScale, {bool anchorOverflowAtStart = false}) {
     final viewportWidth = _viewportWidth;
     final viewportHeight = _viewportHeight;
     final imageWidth = _width;
@@ -248,8 +278,14 @@ class _ImageViewerScreenState extends ConsumerState<ImageViewerScreen> {
     }
 
     final clampedScale = newScale.clamp(_minScale, _maxScale);
-    final dx = (viewportWidth - imageWidth * clampedScale) / 2;
-    final dy = (viewportHeight - imageHeight * clampedScale) / 2;
+    final contentWidth = imageWidth * clampedScale;
+    final contentHeight = imageHeight * clampedScale;
+    final dx = anchorOverflowAtStart && contentWidth > viewportWidth
+        ? 0.0
+        : (viewportWidth - contentWidth) / 2;
+    final dy = anchorOverflowAtStart && contentHeight > viewportHeight
+        ? 0.0
+        : (viewportHeight - contentHeight) / 2;
 
     final matrix = Matrix4.identity()
       ..translateByDouble(dx, dy, 0, 1)
@@ -274,6 +310,16 @@ class _ImageViewerScreenState extends ConsumerState<ImageViewerScreen> {
       return;
     }
     _applyScale(_fitScale);
+  }
+
+  void _fillToScreen() {
+    if (_viewportWidth == null ||
+        _viewportHeight == null ||
+        _width == null ||
+        _height == null) {
+      return;
+    }
+    _applyScale(_coverScale, anchorOverflowAtStart: true);
   }
 
   void _zoomToActualSize() {
@@ -450,61 +496,95 @@ class _ImageViewerScreenState extends ConsumerState<ImageViewerScreen> {
     final bottomPadding = MediaQuery.paddingOf(context).bottom;
     final controlsEnabled = _loadState == _ViewerLoadState.ready;
 
+    final fitButton = IconButton(
+      icon: const Icon(Icons.fit_screen_outlined),
+      tooltip: '合适',
+      color: colorScheme.onSurface,
+      onPressed: controlsEnabled ? _fitToScreen : null,
+    );
+    final fillButton = IconButton(
+      icon: const Icon(Icons.open_in_full),
+      tooltip: '填满',
+      color: colorScheme.onSurface,
+      onPressed: controlsEnabled ? _fillToScreen : null,
+    );
+    final actualSizeButton = IconButton(
+      // Text label — icon metaphors for 1:1 are obscure.
+      icon: Text(
+        '1:1',
+        style: textTheme.labelLarge?.copyWith(
+          color: colorScheme.onSurface,
+          fontWeight: FontWeight.w600,
+        ),
+      ),
+      tooltip: '原始大小',
+      onPressed: controlsEnabled ? _zoomToActualSize : null,
+    );
+    final zoomOutButton = IconButton(
+      icon: const Icon(Icons.zoom_out_outlined),
+      tooltip: '缩小',
+      color: colorScheme.onSurface,
+      onPressed: controlsEnabled ? _zoomOut : null,
+    );
+    final zoomInButton = IconButton(
+      icon: const Icon(Icons.zoom_in_outlined),
+      tooltip: '放大',
+      color: colorScheme.onSurface,
+      onPressed: controlsEnabled ? _zoomIn : null,
+    );
+    final scaleLabel = SizedBox(
+      width: 52,
+      child: ValueListenableBuilder<String>(
+        valueListenable: _scaleLabel,
+        builder: (_, label, __) {
+          return Text(
+            label,
+            style: textTheme.labelLarge?.copyWith(
+              color: colorScheme.onSurface,
+            ),
+            textAlign: TextAlign.center,
+          );
+        },
+      ),
+    );
+
     return Material(
       color: colorScheme.surfaceContainerHigh
           .withValues(alpha: S1Alpha.controlBar),
       borderRadius: BorderRadius.vertical(top: S1Shape.large.topLeft),
       child: Padding(
         padding: EdgeInsets.fromLTRB(4, 4, 4, 4 + bottomPadding),
-        child: Row(
-          mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-          children: [
-            IconButton(
-              icon: const Icon(Icons.fit_screen_outlined),
-              tooltip: '合适',
-              color: colorScheme.onSurface,
-              onPressed: controlsEnabled ? _fitToScreen : null,
-            ),
-            IconButton(
-              icon: const Icon(Icons.zoom_out_outlined),
-              tooltip: '缩小',
-              color: colorScheme.onSurface,
-              onPressed: controlsEnabled ? _zoomOut : null,
-            ),
-            SizedBox(
-              width: 52,
-              child: ValueListenableBuilder<String>(
-                valueListenable: _scaleLabel,
-                builder: (_, label, __) {
-                  return Text(
-                    label,
-                    style: textTheme.labelLarge?.copyWith(
-                      color: colorScheme.onSurface,
-                    ),
-                    textAlign: TextAlign.center,
-                  );
-                },
-              ),
-            ),
-            IconButton(
-              icon: const Icon(Icons.zoom_in_outlined),
-              tooltip: '放大',
-              color: colorScheme.onSurface,
-              onPressed: controlsEnabled ? _zoomIn : null,
-            ),
-            IconButton(
-              // Text label — icon metaphors for 1:1 are obscure.
-              icon: Text(
-                '1:1',
-                style: textTheme.labelLarge?.copyWith(
-                  color: colorScheme.onSurface,
-                  fontWeight: FontWeight.w600,
+        child: LayoutBuilder(
+          builder: (context, constraints) {
+            // 5 个 48dp 控件 + 52dp 比例标签 = 292dp；加上「填满」后为 340dp。
+            // 窄于该宽度（如 320dp 小屏）时拆成两行，保持 48dp 触控目标。
+            if (constraints.maxWidth >= 340) {
+              return Row(
+                mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                children: [
+                  fitButton,
+                  fillButton,
+                  zoomOutButton,
+                  scaleLabel,
+                  zoomInButton,
+                  actualSizeButton,
+                ],
+              );
+            }
+            return Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                  children: [fitButton, fillButton, actualSizeButton],
                 ),
-              ),
-              tooltip: '原始大小',
-              onPressed: controlsEnabled ? _zoomToActualSize : null,
-            ),
-          ],
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                  children: [zoomOutButton, scaleLabel, zoomInButton],
+                ),
+              ],
+            );
+          },
         ),
       ),
     );

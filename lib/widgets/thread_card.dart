@@ -15,7 +15,6 @@ import '../utils/compact_label.dart';
 import '../utils/format_utils.dart';
 import '../utils/thread_navigation.dart';
 import 'page_picker_sheet.dart';
-import '../theme/s1_mouse_cursors.dart';
 
 typedef ThreadOpenCallback = void Function(
   ThreadDestination destination, {
@@ -41,6 +40,7 @@ class ThreadCardDensityTokens {
     required this.categoryChipVisualDensity,
     required this.categoryChipLabelPadding,
     required this.categoryFilterBarPadding,
+    required this.tagPadding,
   });
 
   final double cardMarginVertical;
@@ -64,6 +64,9 @@ class ThreadCardDensityTokens {
   final EdgeInsetsGeometry categoryChipLabelPadding;
   final EdgeInsets categoryFilterBarPadding;
 
+  /// 卡片行内分类标签内边距（上下小于左右，贴合标题行高）。
+  final EdgeInsetsGeometry tagPadding;
+
   static const standard = ThreadCardDensityTokens(
     cardMarginVertical: 5,
     cardPaddingVertical: 10,
@@ -78,6 +81,7 @@ class ThreadCardDensityTokens {
     categoryChipVisualDensity: VisualDensity(horizontal: -1, vertical: -2),
     categoryChipLabelPadding: EdgeInsets.symmetric(horizontal: 5),
     categoryFilterBarPadding: EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+    tagPadding: EdgeInsets.symmetric(horizontal: 7, vertical: 2),
   );
 
   static const _compactCategoryChipVisualDensity =
@@ -85,7 +89,7 @@ class ThreadCardDensityTokens {
 
   static const compact = ThreadCardDensityTokens(
     cardMarginVertical: 2,
-    cardPaddingVertical: 5,
+    cardPaddingVertical: 8,
     titleMetaGap: 4,
     titleMaxLines: 1,
     titleHeight: 1.3,
@@ -97,6 +101,7 @@ class ThreadCardDensityTokens {
     categoryChipVisualDensity: _compactCategoryChipVisualDensity,
     categoryChipLabelPadding: EdgeInsets.symmetric(horizontal: 4),
     categoryFilterBarPadding: EdgeInsets.symmetric(horizontal: 12, vertical: 4),
+    tagPadding: EdgeInsets.symmetric(horizontal: 6, vertical: 1),
   );
 
   static ThreadCardDensityTokens forDensity(ListDensity density) {
@@ -429,13 +434,14 @@ class _TitleLine extends StatelessWidget {
             onTypeFilter: onTypeFilter,
             isOnTintedCard: isOnTintedCard,
             lowEmphasis: tokens.titleMaxLines > 1,
-            chipVisualDensity: tokens.categoryChipVisualDensity,
-            chipLabelPadding: tokens.categoryChipLabelPadding,
+            padding: tokens.tagPadding,
             scheme: scheme,
           )
         : null;
 
     if (tokens.inlineTag) {
+      final firstLineHeight =
+          (textTheme.titleSmall?.fontSize ?? 14) * tokens.titleHeight;
       return Row(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
@@ -451,9 +457,9 @@ class _TitleLine extends StatelessWidget {
           Expanded(child: title),
           if (tag != null) ...[
             const SizedBox(width: 6),
-            Padding(
-              padding: const EdgeInsets.only(top: 1),
-              child: tag,
+            SizedBox(
+              height: firstLineHeight,
+              child: Center(child: tag),
             ),
           ],
         ],
@@ -809,7 +815,7 @@ class _MetaStat extends StatelessWidget {
 }
 
 // ═══════════════════════════════════════════════════════════
-//  分类标签（可筛选 FilterChip / 只读 Chip）
+//  分类标签（胶囊轻量标签，贴合单行标题高度）
 // ═══════════════════════════════════════════════════════════
 
 String _truncateTagLabel(String label, int? maxChars) {
@@ -826,8 +832,7 @@ class _CategoryTag extends StatelessWidget {
     required this.onTypeFilter,
     required this.isOnTintedCard,
     required this.lowEmphasis,
-    required this.chipVisualDensity,
-    required this.chipLabelPadding,
+    required this.padding,
     required this.scheme,
   });
   final String label;
@@ -837,16 +842,20 @@ class _CategoryTag extends StatelessWidget {
   final ThreadTypeFilterCallback? onTypeFilter;
   final bool isOnTintedCard;
   final bool lowEmphasis;
-  final VisualDensity chipVisualDensity;
-  final EdgeInsetsGeometry chipLabelPadding;
+  final EdgeInsetsGeometry padding;
   final ColorScheme scheme;
 
   @override
   Widget build(BuildContext context) {
+    final textColor = selected
+        ? scheme.onSecondaryContainer
+        : lowEmphasis
+            ? scheme.onSurfaceVariant
+            : scheme.onSurface;
     final labelStyle = CompactLabel.style(
       context,
       fontWeight: lowEmphasis ? FontWeight.w500 : FontWeight.w600,
-      color: lowEmphasis ? scheme.onSurfaceVariant : null,
+      color: textColor,
     );
 
     if (onTypeFilter != null && typeId != null) {
@@ -858,33 +867,30 @@ class _CategoryTag extends StatelessWidget {
                   ? S1Surface.card(scheme)
                   : scheme.surfaceContainerHighest;
 
-      final chip = FilterChip(
-        mouseCursor: S1MouseCursors.clickable,
-        label: CompactLabel.text(label, style: labelStyle),
-        selected: selected,
-        showCheckmark: false,
-        backgroundColor: chipBg,
-        selectedColor: scheme.secondaryContainer,
-        side: BorderSide(
-          color: selected
-              ? Colors.transparent
-              : scheme.outline.withValues(alpha: S1Alpha.subtle),
-        ),
-        visualDensity: chipVisualDensity,
-        materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
-        labelPadding: chipLabelPadding,
-        padding: EdgeInsets.zero,
-        onSelected: (nextSelected) {
-          S1Haptics.selection();
-          if (nextSelected) {
-            onTypeFilter!(typeId);
-          } else {
-            onTypeFilter!(null);
-          }
-        },
+      final shape = StadiumBorder(
+        side: selected
+            ? BorderSide.none
+            : BorderSide(
+                color: scheme.outline.withValues(alpha: S1Alpha.subtle),
+              ),
       );
-      // FilterChip 默认把截断后的短标签当作 checkbox 朗读；这里换成完整分类名，
-      // 并说明点按行为（筛选 / 取消筛选）。
+      final chip = Material(
+        color: chipBg,
+        shape: shape,
+        clipBehavior: Clip.antiAlias,
+        child: S1InkWell(
+          customBorder: shape,
+          onTap: () {
+            S1Haptics.selection();
+            onTypeFilter!(selected ? null : typeId);
+          },
+          child: Padding(
+            padding: padding,
+            child: CompactLabel.text(label, style: labelStyle),
+          ),
+        ),
+      );
+      // 显式保留完整分类名语义，并说明点按行为（筛选 / 取消筛选）。
       final labeledChip = Semantics(
         button: true,
         selected: selected,
@@ -905,21 +911,22 @@ class _CategoryTag extends StatelessWidget {
     return Semantics(
       label: '分类 $fullLabel',
       excludeSemantics: true,
-      child: Chip(
-        label: CompactLabel.text(
-          label,
-          style: CompactLabel.style(
-            context,
-            color: scheme.onSurfaceVariant,
-            fontWeight: FontWeight.w600,
+      child: DecoratedBox(
+        decoration: ShapeDecoration(
+          color: scheme.surfaceContainerHighest,
+          shape: const StadiumBorder(),
+        ),
+        child: Padding(
+          padding: padding,
+          child: CompactLabel.text(
+            label,
+            style: CompactLabel.style(
+              context,
+              color: scheme.onSurfaceVariant,
+              fontWeight: FontWeight.w600,
+            ),
           ),
         ),
-        backgroundColor: scheme.surfaceContainerHighest,
-        side: BorderSide.none,
-        labelPadding: chipLabelPadding,
-        visualDensity: chipVisualDensity,
-        materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
-        padding: EdgeInsets.zero,
       ),
     );
   }

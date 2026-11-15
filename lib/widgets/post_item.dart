@@ -36,7 +36,7 @@ class PostItemDensityTokens {
     required this.cardPadding,
     required this.cardPaddingTop,
     required this.avatarRadius,
-    required this.dividerHeight,
+    required this.headerBodyGap,
     required this.inlineAuthorMeta,
     required this.narrowColumnGap,
     required this.headerActionExtent,
@@ -52,7 +52,9 @@ class PostItemDensityTokens {
   /// 顶边内边距（可与 [cardPadding] 不同，用于光学对称）。
   final double cardPaddingTop;
   final double avatarRadius;
-  final double dividerHeight;
+
+  /// 作者栏与正文之间的留白高度。
+  final double headerBodyGap;
   final bool inlineAuthorMeta;
   final double narrowColumnGap;
 
@@ -66,7 +68,7 @@ class PostItemDensityTokens {
     cardPadding: 12,
     cardPaddingTop: 12,
     avatarRadius: 16,
-    dividerHeight: 16,
+    headerBodyGap: 10,
     inlineAuthorMeta: false,
     narrowColumnGap: 8,
     headerActionExtent: 32,
@@ -77,10 +79,10 @@ class PostItemDensityTokens {
   static const compact = PostItemDensityTokens(
     cardMarginVertical: 2,
     cardPadding: 6,
-    // 顶边收紧、分割区略放宽：纠正「上松下紧」的光学偏差。
+    // 顶边收紧、头部与正文间距紧凑：纠正「上松下紧」的光学偏差。
     cardPaddingTop: 4,
     avatarRadius: 16,
-    dividerHeight: 8,
+    headerBodyGap: 6,
     inlineAuthorMeta: true,
     narrowColumnGap: 4,
     headerActionExtent: 32,
@@ -278,11 +280,7 @@ class _PostItemState extends ConsumerState<PostItem>
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             _buildAuthorHeader(context, timeStr, floor, tokens, effectiveStrip),
-            Divider(
-              height: tokens.dividerHeight,
-              thickness: 1,
-              color: scheme.outlineVariant,
-            ),
+            SizedBox(height: tokens.headerBodyGap),
             if (isBanned)
               _buildBannedPostSection(context, scheme)
             else

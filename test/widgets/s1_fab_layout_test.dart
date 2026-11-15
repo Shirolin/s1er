@@ -68,7 +68,7 @@ void main() {
     );
     expect(material.color, S1Surface.floatingControl(scheme));
     expect(material.color, isNot(S1Surface.card(scheme)));
-    expect(material.elevation, 0);
+    expect(material.elevation, 3);
   });
 
   testWidgets('S1ScrollNavGroup shows forward icon in nextPage mode',
@@ -244,6 +244,70 @@ void main() {
     expect(
       S1FabLayout.threadDetailScrollBottomPadding,
       const EdgeInsets.only(bottom: 161),
+    );
+    expect(S1FabLayout.threadDetailMaxFabStackHeightFor(compact: true), 145);
+    expect(
+      S1FabLayout.threadDetailScrollBottomPaddingFor(compact: true),
+      const EdgeInsets.only(bottom: 145),
+    );
+  });
+
+  testWidgets('compact S1FabStack renders 40dp FABs matching bottom padding',
+      (tester) async {
+    await tester.pumpWidget(
+      MaterialApp(
+        theme: AppTheme.lightTheme('purple'),
+        home: const Scaffold(
+          body: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              S1FabStack(
+                compact: true,
+                scrollNav: S1ScrollNavConfig(
+                  showScrollToTop: true,
+                  showScrollAdvance: true,
+                  onScrollToTop: _noop,
+                  onScrollToNextFloor: _noop,
+                  onScrollToBottom: _noop,
+                ),
+                primary: S1FabItem(
+                  heroTag: 'compactReply',
+                  icon: Icons.edit_outlined,
+                  tooltip: '回复',
+                  onPressed: _noop,
+                ),
+              ),
+              S1FabStack(
+                compact: true,
+                primary: S1FabItem(
+                  heroTag: 'compactNewThread',
+                  icon: Icons.add,
+                  tooltip: '发新主题',
+                  label: '发新主题',
+                  extended: true,
+                  onPressed: _noop,
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+
+    final fabSizes = tester
+        .widgetList<FloatingActionButton>(find.byType(FloatingActionButton))
+        .map((w) => tester.getSize(find.byWidget(w)))
+        .toList();
+    expect(fabSizes[0], const Size(40, 40));
+    expect(fabSizes[1].height, 40);
+
+    final fullStackSize = tester.getSize(find.byType(S1FabStack).first);
+    expect(fullStackSize.height, 144);
+    expect(
+      fullStackSize.height,
+      lessThanOrEqualTo(
+        S1FabLayout.threadDetailMaxFabStackHeightFor(compact: true),
+      ),
     );
   });
 

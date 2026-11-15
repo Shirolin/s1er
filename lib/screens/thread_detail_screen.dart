@@ -7,6 +7,7 @@ import 'package:go_router/go_router.dart';
 import '../config/api_config.dart';
 import '../config/constants.dart';
 import '../models/blacklist_record.dart';
+import '../models/list_density.dart';
 import '../models/post.dart';
 import '../models/reply_submit_result.dart';
 import '../models/edit_post_route_extra.dart';
@@ -1192,11 +1193,16 @@ class _ThreadDetailScreenState extends ConsumerState<ThreadDetailScreen> {
         ],
       );
     }
+    final isCompactDensity = ref.watch(
+      settingsProvider.select((s) => s.postListDensity == ListDensity.compact),
+    );
     return ListView.builder(
       controller: scrollController,
       physics: physics,
       scrollCacheExtent: S1FabLayout.threadDetailScrollCacheExtent,
-      padding: S1FabLayout.threadDetailScrollBottomPadding,
+      padding: S1FabLayout.threadDetailScrollBottomPaddingFor(
+        compact: isCompactDensity,
+      ),
       itemCount: _detailItemCount(state, visible),
       itemBuilder: (context, index) => _buildDetailItem(
         context,
@@ -1454,6 +1460,10 @@ class _ThreadDetailScreenState extends ConsumerState<ThreadDetailScreen> {
           _scheduleEnsurePostKeys(state.posts.length);
           final showPrimary = isLoggedIn && state.allowReply;
           final hasNextPage = state.currentPage < state.totalPages;
+          final isCompactDensity = ref.watch(
+            settingsProvider
+                .select((s) => s.postListDensity == ListDensity.compact),
+          );
           final scheme = Theme.of(context).colorScheme;
           final visible = _visiblePosts(state);
           final hasPageQuery =
@@ -1483,6 +1493,7 @@ class _ThreadDetailScreenState extends ConsumerState<ThreadDetailScreen> {
                           ? ScrollNavAdvanceMode.nextPage
                           : ScrollNavAdvanceMode.nextFloor;
                       return S1FabStack(
+                        compact: isCompactDensity,
                         scrollNav: S1ScrollNavConfig(
                           showScrollToTop: fab.showScrollToTop,
                           showScrollAdvance: showScrollAdvance,

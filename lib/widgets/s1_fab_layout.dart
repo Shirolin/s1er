@@ -44,6 +44,10 @@ abstract class S1FabLayout {
   static const double edgeMargin = 16;
   static const double stackGap = 12;
   static const double regularFabSize = 56;
+  static const double smallFabSize = 40;
+
+  static double fabSize({bool compact = false}) =>
+      compact ? smallFabSize : regularFabSize;
 
   /// 滚动导航组：单颗图标按钮边长。
   static const double navButtonSize = 40;
@@ -85,22 +89,32 @@ abstract class S1FabLayout {
     return height;
   }
 
-  /// 帖子详情 FAB 纵列最大高度（↑+↓ 同组 + 主 FAB，稳定常量）。
-  static double get threadDetailMaxFabStackHeight {
+  /// 帖子详情 FAB 纵列最大高度（↑+↓ 同组 + 主 FAB，随密度档位固定）。
+  static double threadDetailMaxFabStackHeightFor({bool compact = false}) {
     final nav = scrollNavGroupHeight(
       showScrollToTop: true,
       showScrollDown: true,
     );
-    return nav + stackGap + regularFabSize;
+    return nav + stackGap + fabSize(compact: compact);
   }
+
+  static double get threadDetailMaxFabStackHeight =>
+      threadDetailMaxFabStackHeightFor();
 
   /// 轻量场景底部留白（如版块列表，仅 ↑）。
   static const EdgeInsets scrollBottomPadding =
       EdgeInsets.only(bottom: edgeMargin);
 
+  static EdgeInsets threadDetailScrollBottomPaddingFor({
+    bool compact = false,
+  }) =>
+      EdgeInsets.only(
+        bottom: threadDetailMaxFabStackHeightFor(compact: compact),
+      );
+
   /// 帖子详情底部留白（固定最大 FAB 栈高，与登录/显隐无关）。
   static final EdgeInsets threadDetailScrollBottomPadding =
-      EdgeInsets.only(bottom: threadDetailMaxFabStackHeight);
+      threadDetailScrollBottomPaddingFor();
 
   /// 帖子详情列表预缓存范围。略大于默认 250，避免一次预建过多楼层
   ///（链接墙楼层仍在视野时，过大数据会加重同帧卡顿）。
@@ -192,7 +206,7 @@ class S1ScrollNavConfig {
   bool get isVisible => showScrollToTop || showScrollAdvance;
 }
 
-/// ↑↓ 滚动导航组：弱样式竖条，与主 FAB 视觉分离。
+/// ↑↓ 滚动导航组：与主 FAB 同属内容浮层，采用低于 FAB（6）的轻阴影（3）。
 class S1ScrollNavGroup extends StatelessWidget {
   const S1ScrollNavGroup({super.key, required this.config});
 
@@ -254,7 +268,9 @@ class S1ScrollNavGroup extends StatelessWidget {
 
     return Material(
       color: S1Surface.floatingControl(scheme),
-      elevation: 0,
+      elevation: 3,
+      shadowColor: scheme.shadow,
+      surfaceTintColor: Colors.transparent,
       shape: const RoundedRectangleBorder(
         borderRadius: S1Shape.large,
         side: BorderSide.none,
@@ -404,13 +420,63 @@ class S1FabStack extends StatelessWidget {
     super.key,
     this.scrollNav,
     this.primary,
+    this.compact = false,
   });
 
-  /// 滚动导航（↑↓），弱样式竖条。
+  /// 滚动导航（↑↓），轻浮层竖条。
   final S1ScrollNavConfig? scrollNav;
 
   /// 主操作（如回复 / 发帖）。
   final S1FabItem? primary;
+
+  /// 紧凑密度下切换为 40dp small FAB（与导航组按钮同宽/同高）。
+  final bool compact;
+
+  Widget _buildPrimaryFab(BuildContext context, S1FabItem item) {
+    if (item.extended && item.label != null) {
+      final fab = FloatingActionButton.extended(
+        heroTag: item.heroTag,
+        onPressed: item.onPressed,
+        tooltip: item.tooltip,
+        materialTapTargetSize:
+            compact ? MaterialTapTargetSize.shrinkWrap : null,
+        icon: Icon(item.icon),
+        label: Text(item.label!),
+      );
+      if (!compact) return fab;
+      final theme = Theme.of(context);
+      return Theme(
+        data: theme.copyWith(
+          floatingActionButtonTheme: theme.floatingActionButtonTheme.copyWith(
+            extendedSizeConstraints: const BoxConstraints.tightFor(
+              height: S1FabLayout.smallFabSize,
+            ),
+            extendedPadding: const EdgeInsetsDirectional.only(
+              start: 12,
+              end: 16,
+            ),
+            extendedIconLabelSpacing: 6,
+          ),
+        ),
+        child: fab,
+      );
+    }
+    if (compact) {
+      return FloatingActionButton.small(
+        heroTag: item.heroTag,
+        onPressed: item.onPressed,
+        tooltip: item.tooltip,
+        materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
+        child: Icon(item.icon),
+      );
+    }
+    return FloatingActionButton(
+      heroTag: item.heroTag,
+      onPressed: item.onPressed,
+      tooltip: item.tooltip,
+      child: Icon(item.icon),
+    );
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -423,22 +489,7 @@ class S1FabStack extends StatelessWidget {
       if (children.isNotEmpty) {
         children.add(const SizedBox(height: S1FabLayout.stackGap));
       }
-      children.add(
-        primary!.extended && primary!.label != null
-            ? FloatingActionButton.extended(
-                heroTag: primary!.heroTag,
-                onPressed: primary!.onPressed,
-                tooltip: primary!.tooltip,
-                icon: Icon(primary!.icon),
-                label: Text(primary!.label!),
-              )
-            : FloatingActionButton(
-                heroTag: primary!.heroTag,
-                onPressed: primary!.onPressed,
-                tooltip: primary!.tooltip,
-                child: Icon(primary!.icon),
-              ),
-      );
+      children.add(_buildPrimaryFab(context, primary!));
     }
 
     if (children.isEmpty) return const SizedBox.shrink();

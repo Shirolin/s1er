@@ -45,7 +45,7 @@ abstract class S1Shape {
 /// nestedPanel=High，nestedPanelItem=Highest。
 /// 弱浮层 [floatingControl]：浅色 High（对 Low 卡 / Highest 画布），
 /// 深色 Highest（对 Container 卡 / Lowest 画布）。
-/// FAB 用 `tertiaryContainer`（Reply 薄荷绿）。导航铬件与画布同色。
+/// FAB 用 `primary`（实心主色，单装饰色）。导航铬件与画布同色。
 abstract class S1Surface {
   static Color page(ColorScheme scheme) => scheme.brightness == Brightness.light
       ? scheme.surfaceContainerHighest
@@ -539,10 +539,11 @@ class AppTheme {
         style: S1SegmentedButtonStyle.forScheme(colorScheme),
       ),
       floatingActionButtonTheme: FloatingActionButtonThemeData(
-        // Reply：compose FAB = tertiaryContainer（暖沙下为薄荷绿）。
+        // 单装饰色：使用实心 primary，避免与置顶卡（primaryContainer）/
+        // 选中卡（secondaryContainer）撞色，也避免 tertiaryContainer 跨主题偏粉。
         // elevation 不覆写，沿用 Flutter M3 浮层默认阴影。
-        backgroundColor: colorScheme.tertiaryContainer,
-        foregroundColor: colorScheme.onTertiaryContainer,
+        backgroundColor: colorScheme.primary,
+        foregroundColor: colorScheme.onPrimary,
         mouseCursor: S1MouseCursors.clickable,
       ),
       filledButtonTheme: FilledButtonThemeData(

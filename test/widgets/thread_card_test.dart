@@ -159,6 +159,11 @@ void main() {
       isFalse,
     );
     expect(
+      ThreadCardDensityTokens.forDensity(ListDensity.compact)
+          .cardPaddingVertical,
+      8,
+    );
+    expect(
       ThreadCardDensityTokens.forDensity(ListDensity.standard).showPageChip,
       isTrue,
     );
@@ -289,7 +294,8 @@ void main() {
     expect(find.textContaining('1.7k'), findsNothing);
   });
 
-  testWidgets('category FilterChip toggles type filter', (tester) async {
+  testWidgets('category pill tag toggles type filter with stadium shape',
+      (tester) async {
     String? filtered;
     await pumpCard(
       tester,
@@ -298,7 +304,17 @@ void main() {
       onTypeFilter: (id) => filtered = id,
     );
 
-    await tester.tap(find.widgetWithText(FilterChip, 'NS'));
+    final tagMaterial = tester.widget<Material>(
+      find
+          .ancestor(
+            of: find.text('NS'),
+            matching: find.byType(Material),
+          )
+          .first,
+    );
+    expect(tagMaterial.shape, isA<StadiumBorder>());
+
+    await tester.tap(find.text('NS'));
     await tester.pumpAndSettle();
     expect(filtered, '1');
 
@@ -309,9 +325,48 @@ void main() {
       onTypeFilter: (id) => filtered = id,
     );
 
-    await tester.tap(find.widgetWithText(FilterChip, 'NS'));
+    await tester.tap(find.text('NS'));
     await tester.pumpAndSettle();
     expect(filtered, isNull);
+  });
+
+  testWidgets('category tag does not inflate single-line title card height',
+      (tester) async {
+    for (final density in ListDensity.values) {
+      final withTag = sampleThread.copyWith(
+        tid: 'height-check',
+        subject: '单行标题测试',
+        typeId: '1',
+        typeName: '多平台',
+      );
+      final withoutTag = Thread(
+        tid: 'height-check',
+        subject: '单行标题测试',
+        author: sampleThread.author,
+        authorId: sampleThread.authorId,
+        dateline: sampleThread.dateline,
+        views: sampleThread.views,
+        replies: sampleThread.replies,
+        fid: sampleThread.fid,
+      );
+
+      await pumpCard(
+        tester,
+        density: density,
+        thread: withoutTag,
+      );
+      final plainHeight = tester.getSize(find.byType(ThreadCard)).height;
+
+      await pumpCard(
+        tester,
+        density: density,
+        thread: withTag,
+        onTypeFilter: (_) {},
+      );
+      final taggedHeight = tester.getSize(find.byType(ThreadCard)).height;
+
+      expect(taggedHeight, plainHeight);
+    }
   });
 
   testWidgets('compact density truncates long category tags to 4 chars',

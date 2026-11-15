@@ -53,6 +53,7 @@ void main() {
     final avatar = tester.widget<WebAvatar>(find.byType(WebAvatar));
     final card = tester.widget<Card>(find.byType(Card).first);
     expect(avatar.radius, 16);
+    expect(find.byType(Divider), findsNothing);
     expect(
       card.margin,
       const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
@@ -100,12 +101,16 @@ void main() {
       6,
     );
     expect(
+      PostItemDensityTokens.forDensity(ListDensity.standard).headerBodyGap,
+      10,
+    );
+    expect(
       PostItemDensityTokens.forDensity(ListDensity.compact).cardPaddingTop,
       4,
     );
     expect(
-      PostItemDensityTokens.forDensity(ListDensity.compact).dividerHeight,
-      8,
+      PostItemDensityTokens.forDensity(ListDensity.compact).headerBodyGap,
+      6,
     );
     expect(
       PostItemDensityTokens.forDensity(ListDensity.compact).headerActionExtent,

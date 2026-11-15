@@ -270,10 +270,11 @@ flutter run -d chrome --dart-define=TALKER_LOG_LEVEL=all --dart-define=TALKER_MA
 | `themeSeeds` 中 `Color(0xFF...)` | `lib/theme/app_theme.dart` | 仅作 `ColorScheme.fromSeed` 输入；色板预览（`theme_color_picker`）可直接渲染种子色 |
 | `Colors.transparent` | SegmentedButton 未选中段、bbcode `.hide-content`、poll 未选中底 | 表示「无底色」，不是语义色替代 |
 | Menu/PopupMenu `elevation: 3` | `lib/theme/app_theme.dart` | M3 浮层菜单规范；静止表面仍为 elevation 0 |
-| FAB 框架默认 elevation | `lib/theme/app_theme.dart` | 只覆写 Reply 色（`tertiaryContainer`）；不强制 elevation 0 |
+| 滚动导航浮层 `elevation: 3` | `lib/widgets/s1_fab_layout.dart` | `S1ScrollNavGroup` 叠在内容上，采用低于 FAB 的浮层阴影 |
+| FAB 框架默认 elevation | `lib/theme/app_theme.dart` | 只覆写主色（`primary` / `onPrimary`），紧凑密度下为 40dp small FAB；不强制 elevation 0 |
 | 装饰性 `BoxShadow` | `theme_color_picker.dart` 选中色块高亮 | 非 Card/AppBar elevation；阴影色用 `S1Alpha.cardOverlay` |
 | API 投票色（对比度校验后） | `lib/utils/poll_bar_color.dart` | 优先 API `#RRGGBB`；对 `surfaceContainerHighest` 不足 3:1 时回退 `scheme.primary` |
-| 交互/只读 `Chip` | 分类标签、分页、`ActionChip` | M3 合法；纯计数/状态角标用 `Badge` |
+| 交互/只读 `Chip` 与行内胶囊标签 | 筛选栏、`thread_card.dart`、`ActionChip` | 版块筛选栏与常规标签用 `Chip`；卡片行内紧凑标签（`_CategoryTag` / `_PageCountButton`）因 `RawChip` 存在 24dp 高度下限会撑高单行标题，允许使用 `Material + S1InkWell + StadiumBorder` 胶囊实现；纯计数/状态角标用 `Badge` |
 
 ### 系统底栏允许模式
 

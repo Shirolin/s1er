@@ -98,7 +98,11 @@ void main() {
       );
       expect(
         light.floatingActionButtonTheme.backgroundColor,
-        lightScheme.tertiaryContainer,
+        lightScheme.primary,
+      );
+      expect(
+        light.floatingActionButtonTheme.foregroundColor,
+        lightScheme.onPrimary,
       );
       expect(
         S1Surface.reading(lightScheme),

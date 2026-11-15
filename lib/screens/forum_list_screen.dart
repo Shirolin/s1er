@@ -20,6 +20,7 @@ import '../widgets/forum_split_pane_divider.dart';
 import '../widgets/hide_forum_confirm_dialog.dart';
 import '../widgets/thread_detail_chrome_bridge.dart';
 import '../models/favorite_item.dart';
+import '../models/list_density.dart';
 import '../models/new_thread_submit_result.dart';
 import '../models/thread.dart';
 import '../models/thread_list_query.dart';
@@ -655,6 +656,7 @@ class _ForumThreadList extends ConsumerWidget {
         Expanded(
           child: S1ContentFabOverlay(
             fab: S1FabStack(
+              compact: listDensity == ListDensity.compact,
               primary: isLoggedIn
                   ? S1FabItem(
                       heroTag: 'newThread-$fid',

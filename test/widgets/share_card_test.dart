@@ -245,6 +245,40 @@ void main() {
     expect(find.text('#2'), findsOneWidget);
     expect(find.textContaining('一楼内容'), findsOneWidget);
     expect(find.textContaining('二楼内容'), findsOneWidget);
+    expect(
+      find.descendant(
+        of: find.byType(ShareCard),
+        matching: find.byType(Divider),
+      ),
+      findsNothing,
+    );
+
+    final ctx = tester.element(find.byType(ShareCard));
+    final scheme = Theme.of(ctx).colorScheme;
+    final pageSeparators = tester
+        .widgetList<SizedBox>(
+      find.descendant(
+        of: find.byType(ShareCard),
+        matching: find.byType(SizedBox),
+      ),
+    )
+        .where((box) {
+      final child = box.child;
+      return box.height == ShareCard.floorSeparatorHeight &&
+          child is ColoredBox &&
+          child.color == S1Surface.page(scheme);
+    });
+    expect(pageSeparators, hasLength(1));
+
+    final footerBoxes = tester
+        .widgetList<ColoredBox>(
+          find.descendant(
+            of: find.byType(ShareCardFooter),
+            matching: find.byType(ColoredBox),
+          ),
+        )
+        .where((box) => box.color == S1Surface.floatingControl(scheme));
+    expect(footerBoxes, isNotEmpty);
   });
 
   testWidgets('poll only attaches to floor #1 in multi-floor card',

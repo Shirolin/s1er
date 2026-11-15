@@ -109,6 +109,10 @@ class ShareCard extends StatelessWidget {
   /// Unified vertical spacing around inline block images on share cards.
   static const EdgeInsets shareImageMargin = EdgeInsets.symmetric(vertical: 12);
 
+  /// Vertical tonal gap height separating consecutive floors in multi-floor
+  /// share cards (matches the M3 page-canvas gap between feed/post cards).
+  static const double floorSeparatorHeight = 8;
+
   /// Forum URL encoded into the footer QR, or null when [tid] is empty.
   ///
   /// Prefers Discuz `findpost` when [pid] is set so a scan opens that floor.
@@ -143,6 +147,7 @@ class ShareCard extends StatelessWidget {
                 width: cardWidth,
                 child: Card(
                   elevation: 0,
+                  clipBehavior: Clip.antiAlias,
                   color: S1Surface.card(scheme),
                   shape: const RoundedRectangleBorder(
                     borderRadius: S1Shape.medium,
@@ -243,8 +248,15 @@ class ShareCardHeader extends StatelessWidget {
     final scheme = Theme.of(context).colorScheme;
     final textTheme = Theme.of(context).textTheme;
 
+    final hasSubject = threadSubject != null && threadSubject!.isNotEmpty;
+
     Widget content = Padding(
-      padding: const EdgeInsets.fromLTRB(24, 24, 24, 0),
+      padding: EdgeInsets.fromLTRB(
+        24,
+        hasSubject ? 22 : 20,
+        24,
+        hasSubject ? 6 : 0,
+      ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
@@ -263,27 +275,18 @@ class ShareCardHeader extends StatelessWidget {
               ),
             ],
           ),
-          if (threadSubject != null && threadSubject!.isNotEmpty) ...[
+          if (hasSubject) ...[
             const SizedBox(height: 8),
-            Padding(
-              padding: const EdgeInsets.only(bottom: 16),
-              child: Text(
-                threadSubject!,
-                maxLines: 3,
-                overflow: TextOverflow.ellipsis,
-                style: textTheme.titleLarge?.copyWith(
-                  fontWeight: FontWeight.w700,
-                  height: 1.3,
-                ),
+            Text(
+              threadSubject!,
+              maxLines: 3,
+              overflow: TextOverflow.ellipsis,
+              style: textTheme.titleLarge?.copyWith(
+                fontWeight: FontWeight.w700,
+                height: 1.3,
               ),
             ),
-          ] else
-            const SizedBox(height: 12),
-          Divider(
-            height: 1,
-            thickness: 1,
-            color: scheme.outlineVariant.withValues(alpha: S1Alpha.half),
-          ),
+          ],
         ],
       ),
     );
@@ -369,19 +372,11 @@ class ShareFloorBlock extends ConsumerWidget {
     final signature = extracted.signature;
     final textTheme = Theme.of(context).textTheme;
 
-    Widget content = Padding(
-      padding: EdgeInsets.fromLTRB(24, showLeadingDivider ? 18 : 16, 24, 14),
+    final floorBody = Padding(
+      padding: const EdgeInsets.fromLTRB(24, 18, 24, 18),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          if (showLeadingDivider) ...[
-            Divider(
-              height: 1,
-              thickness: 1,
-              color: scheme.outlineVariant.withValues(alpha: S1Alpha.half),
-            ),
-            const SizedBox(height: 18),
-          ],
           _ShareAuthorRow(
             post: post,
             floor: floor.displayFloor,
@@ -419,6 +414,21 @@ class ShareFloorBlock extends ConsumerWidget {
         ],
       ),
     );
+
+    final Widget content = showLeadingDivider
+        ? Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              SizedBox(
+                width: double.infinity,
+                height: ShareCard.floorSeparatorHeight,
+                child: ColoredBox(color: S1Surface.page(scheme)),
+              ),
+              floorBody,
+            ],
+          )
+        : floorBody;
 
     if (captureKey == null) return content;
 
@@ -490,56 +500,47 @@ class ShareCardFooter extends StatelessWidget {
       color: mutedColor,
     );
 
-    Widget content = Padding(
-      padding: const EdgeInsets.fromLTRB(24, 14, 24, 20),
-      child: Column(
-        children: [
-          Divider(
-            height: 1,
-            thickness: 1,
-            color: scheme.outlineVariant.withValues(alpha: S1Alpha.half),
-          ),
-          const SizedBox(height: 12),
-          if (threadUrl == null)
-            Row(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                attributionIcon,
-                const SizedBox(width: 6),
-                attributionText,
-              ],
-            )
-          else
-            Row(
-              crossAxisAlignment: CrossAxisAlignment.center,
-              children: [
-                Expanded(
-                  child: Row(
-                    children: [
-                      attributionIcon,
-                      const SizedBox(width: 6),
-                      Flexible(child: attributionText),
-                    ],
+    final footerSurface = S1Surface.floatingControl(scheme);
+
+    Widget content = ColoredBox(
+      color: footerSurface,
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 16),
+        child: threadUrl == null
+            ? Row(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  attributionIcon,
+                  const SizedBox(width: 6),
+                  attributionText,
+                ],
+              )
+            : Row(
+                crossAxisAlignment: CrossAxisAlignment.center,
+                children: [
+                  Expanded(
+                    child: Row(
+                      children: [
+                        attributionIcon,
+                        const SizedBox(width: 6),
+                        Flexible(child: attributionText),
+                      ],
+                    ),
                   ),
-                ),
-                const SizedBox(width: 12),
-                _ShareThreadQr(
-                  data: threadUrl,
-                  isFloorLink: pid?.isNotEmpty == true,
-                ),
-              ],
-            ),
-        ],
+                  const SizedBox(width: 12),
+                  _ShareThreadQr(
+                    data: threadUrl,
+                    isFloorLink: pid?.isNotEmpty == true,
+                  ),
+                ],
+              ),
       ),
     );
 
     if (captureKey == null) return content;
     return RepaintBoundary(
       key: captureKey,
-      child: ColoredBox(
-        color: S1Surface.card(scheme),
-        child: SizedBox(width: ShareCard.cardWidth, child: content),
-      ),
+      child: SizedBox(width: ShareCard.cardWidth, child: content),
     );
   }
 }

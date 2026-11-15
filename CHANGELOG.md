@@ -5,6 +5,24 @@ All notable changes to S1er will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.16.0] - 2026-11-15
+
+### Changed
+
+- **主题列表与分类标签细节优化**（#61）：
+  - `ThreadCard` 行内分类标签从 `FilterChip`/`Chip` 改为胶囊形（`StadiumBorder`），收窄上下内边距（紧凑 `6×1`、标准 `7×2`）并按首行行高垂直居中，消除单行标题下方多余间距。
+  - 紧凑密度主题卡片上下内边距由 `5dp` 调整为 `8dp`，在保持同屏数量的同时改善上下呼吸感。
+- **楼层卡片与多楼层分享卡去线分层**（#61）：
+  - 移除读帖页 `PostItem` 作者头像栏下方的内部分割线，改为纯留白间距（`headerBodyGap`：标准 `10dp`、紧凑 `6dp`）。
+  - 优化 `ShareCard` 多楼层导出样式：去掉标题头底、楼层之间与页脚顶部的硬分割线，统一每层对称上下留白（`18dp`），楼层之间改用 `8dp` M3 画布色调分隔带（`S1Surface.page`），页脚改用弱浮层色调底（`S1Surface.floatingControl`），浅色/深色模式下与读帖页保持一致的色调层级。
+- **FAB 主色统一与紧凑密度适配**（#61）：
+  - 全局 `floatingActionButtonTheme` 改为单装饰色 `primary` / `onPrimary`；紧凑密度下普通与扩展 FAB 联动收窄至 40dp 档位（标准密度保持 56dp）。
+  - 滚动导航浮层 `S1ScrollNavGroup` 补齐 `elevation: 3` 柔和投影，与下方回复 FAB 悬浮层级一致。
+
+### Fixed
+
+- **分享卡预加载与 HTML 尾巴兼容**：预加载失败率阈值计算跳过头像失败项，避免个别用户头像加载失败时误中止长图分享；支持识别带 HTML 包裹的文末客户端小尾巴。
+
 ## [0.15.0] - 2026-11-13
 
 ### Changed

@@ -5,6 +5,16 @@ All notable changes to S1er will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.16.1] - 2026-11-25
+
+### Fixed
+
+- **桌面端分享长图底部内容丢失**（#62）：修复长帖分块截屏在最后一块被 `maxScrollExtent` 截住（clamp）时仍从第 0 行裁剪的问题，改为跳过与上一块重叠的顶部行并保留底部内容，同时将覆盖完整性校验改为基于实际逻辑区间。
+
+### Changed
+
+- **M3 提示条与分割线样式统一**：启动字体回退提示与桌面端首次缩至系统托盘提示改用全局 `S1SnackBar.showMessenger`，保持原有显示时长并统一图标、圆角与避让边距；桌面图标设置区 `Divider` 显式对齐 `colorScheme.outlineVariant`。
+
 ## [0.16.0] - 2026-11-15
 
 ### Changed

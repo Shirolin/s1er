@@ -64,6 +64,33 @@ bool shouldAbortSharePreload({
   return failedUrls >= maxFailures;
 }
 
+/// Logical vertical span `[start, end)` captured by one scroll slice.
+typedef ScrollCaptureInterval = ({double start, double end});
+
+/// Returns true when captured [intervals] contiguously cover
+/// `[0, expectedLogicalHeight]` within [toleranceLogicalPx] (no gaps,
+/// no overlapping rewinds, and reaching the bottom).
+bool scrollCaptureIntervalsCover({
+  required double expectedLogicalHeight,
+  required List<ScrollCaptureInterval> intervals,
+  double toleranceLogicalPx = scrollCaptureCoverageTolerancePx,
+}) {
+  if (expectedLogicalHeight <= 0 || intervals.isEmpty) return false;
+  final first = intervals.first;
+  if (first.end <= first.start) return false;
+  if (first.start.abs() > toleranceLogicalPx) return false;
+
+  var coveredEnd = first.end;
+  for (var i = 1; i < intervals.length; i++) {
+    final seg = intervals[i];
+    if (seg.end <= seg.start) return false;
+    if ((seg.start - coveredEnd).abs() > toleranceLogicalPx) return false;
+    coveredEnd = seg.end;
+  }
+
+  return coveredEnd >= expectedLogicalHeight - toleranceLogicalPx;
+}
+
 /// Returns true when captured slice height covers [expectedLogicalHeight].
 bool scrollCaptureCoverageOk({
   required double expectedLogicalHeight,

@@ -40,6 +40,94 @@ void main() {
     });
   });
 
+  group('cropStripPhysicalRows', () {
+    ShareRgbaStrip bandedStrip() {
+      final bytes = Uint8List(2 * 4 * 4);
+      for (var row = 0; row < 4; row++) {
+        final start = row * 2 * 4;
+        bytes.fillRange(start, start + 2 * 4, row + 1);
+      }
+      return ShareRgbaStrip(bytes: bytes, width: 2, height: 4);
+    }
+
+    test('returns strip unchanged for full range', () {
+      final strip = bandedStrip();
+      final cropped = cropStripPhysicalRows(
+        strip,
+        startPhysicalRow: 0,
+        endPhysicalRow: 4,
+      );
+      expect(identical(cropped, strip), isTrue);
+    });
+
+    test('slices bottom physical rows accurately', () {
+      final strip = bandedStrip();
+      final cropped = cropStripPhysicalRows(
+        strip,
+        startPhysicalRow: 2,
+        endPhysicalRow: 4,
+      );
+      expect(cropped.width, 2);
+      expect(cropped.height, 2);
+      expect(cropped.bytes.sublist(0, 8), List.filled(8, 3));
+      expect(cropped.bytes.sublist(8, 16), List.filled(8, 4));
+    });
+
+    test('slices middle physical rows accurately', () {
+      final strip = bandedStrip();
+      final cropped = cropStripPhysicalRows(
+        strip,
+        startPhysicalRow: 1,
+        endPhysicalRow: 3,
+      );
+      expect(cropped.height, 2);
+      expect(cropped.bytes.sublist(0, 8), List.filled(8, 2));
+      expect(cropped.bytes.sublist(8, 16), List.filled(8, 3));
+    });
+
+    test('rejects invalid row ranges and short buffers', () {
+      final strip = bandedStrip();
+      expect(
+        () => cropStripPhysicalRows(
+          strip,
+          startPhysicalRow: -1,
+          endPhysicalRow: 2,
+        ),
+        throwsArgumentError,
+      );
+      expect(
+        () => cropStripPhysicalRows(
+          strip,
+          startPhysicalRow: 2,
+          endPhysicalRow: 2,
+        ),
+        throwsArgumentError,
+      );
+      expect(
+        () => cropStripPhysicalRows(
+          strip,
+          startPhysicalRow: 1,
+          endPhysicalRow: 5,
+        ),
+        throwsArgumentError,
+      );
+
+      final shortStrip = ShareRgbaStrip(
+        bytes: Uint8List(2 * 2 * 4),
+        width: 2,
+        height: 4,
+      );
+      expect(
+        () => cropStripPhysicalRows(
+          shortStrip,
+          startPhysicalRow: 2,
+          endPhysicalRow: 4,
+        ),
+        throwsArgumentError,
+      );
+    });
+  });
+
   group('VerticalRgbaComposer', () {
     test('appendStrip builds combined bitmap', () {
       final composer = VerticalRgbaComposer.fromEstimatedPhysicalSize(

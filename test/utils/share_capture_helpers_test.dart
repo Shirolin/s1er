@@ -128,6 +128,85 @@ void main() {
     });
   });
 
+  group('scrollCaptureIntervalsCover', () {
+    test('accepts contiguous intervals covering [0, expected]', () {
+      expect(
+        scrollCaptureIntervalsCover(
+          expectedLogicalHeight: 4000,
+          intervals: const [
+            (start: 0, end: 2730),
+            (start: 2730, end: 4000),
+          ],
+        ),
+        isTrue,
+      );
+    });
+
+    test('accepts seam and bottom offsets within tolerance', () {
+      expect(
+        scrollCaptureIntervalsCover(
+          expectedLogicalHeight: 4000,
+          intervals: const [
+            (start: 0.5, end: 2730),
+            (start: 2731, end: 3998.5),
+          ],
+        ),
+        isTrue,
+      );
+    });
+
+    test('rejects clamped rewind that drops bottom even when sum equals H', () {
+      expect(
+        scrollCaptureIntervalsCover(
+          expectedLogicalHeight: 4000,
+          intervals: const [
+            (start: 0, end: 2730),
+            (start: 1270, end: 2540),
+          ],
+        ),
+        isFalse,
+      );
+    });
+
+    test('rejects gaps, missing top, and missing bottom', () {
+      expect(
+        scrollCaptureIntervalsCover(
+          expectedLogicalHeight: 4000,
+          intervals: const [
+            (start: 0, end: 2000),
+            (start: 2010, end: 4000),
+          ],
+        ),
+        isFalse,
+      );
+      expect(
+        scrollCaptureIntervalsCover(
+          expectedLogicalHeight: 4000,
+          intervals: const [
+            (start: 10, end: 4000),
+          ],
+        ),
+        isFalse,
+      );
+      expect(
+        scrollCaptureIntervalsCover(
+          expectedLogicalHeight: 4000,
+          intervals: const [
+            (start: 0, end: 3990),
+          ],
+        ),
+        isFalse,
+      );
+      expect(
+        scrollCaptureIntervalsCover(
+          expectedLogicalHeight: 4000,
+          intervals: const [],
+        ),
+        isFalse,
+      );
+    });
+  });
+
   group('layout stability', () {
     test('advanceLayoutStability counts stable frames', () {
       expect(

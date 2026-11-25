@@ -6,7 +6,6 @@ import 'package:flutter/scheduler.dart';
 import 'package:flutter/widgets.dart';
 
 import 'share_capture_limits.dart';
-import 'share_capture_policy.dart';
 import 'share_image_stitch.dart';
 import 'share_capture_helpers.dart';
 
@@ -35,6 +34,52 @@ bool shouldStopScrollCapture({
 }) {
   return lastCapturedOffset != null &&
       (actualOffset - lastCapturedOffset).abs() < 0.5;
+}
+
+/// Planned physical-row slice and covered logical span for one scroll frame.
+typedef ScrollSliceCropPlan = ({
+  int startPhysicalRow,
+  int endPhysicalRow,
+  double coveredStartLogical,
+  double coveredEndLogical,
+});
+
+/// Computes which physical rows of a captured viewport [stripPhysicalHeight]
+/// (rendered at [actualOffset]) continue seamlessly from [capturedEndLogical]
+/// up to [effectiveHeight]. Returns `null` when no uncaptured rows remain.
+@visibleForTesting
+ScrollSliceCropPlan? planScrollSliceCrop({
+  required double capturedEndLogical,
+  required double actualOffset,
+  required double effectiveHeight,
+  required int stripPhysicalHeight,
+  required double pixelRatio,
+}) {
+  if (stripPhysicalHeight <= 0 || pixelRatio <= 0 || effectiveHeight <= 0) {
+    return null;
+  }
+  final visibleEndLogical = actualOffset + stripPhysicalHeight / pixelRatio;
+  final sliceEndLogical =
+      visibleEndLogical < effectiveHeight ? visibleEndLogical : effectiveHeight;
+  if (sliceEndLogical <= capturedEndLogical) {
+    return null;
+  }
+  final skipLogical = capturedEndLogical - actualOffset;
+  final startRow = skipLogical <= 0
+      ? 0
+      : (skipLogical * pixelRatio).round().clamp(0, stripPhysicalHeight);
+  final endRow = ((sliceEndLogical - actualOffset) * pixelRatio)
+      .round()
+      .clamp(0, stripPhysicalHeight);
+  if (endRow <= startRow) {
+    return null;
+  }
+  return (
+    startPhysicalRow: startRow,
+    endPhysicalRow: endRow,
+    coveredStartLogical: actualOffset + startRow / pixelRatio,
+    coveredEndLogical: actualOffset + endRow / pixelRatio,
+  );
 }
 
 /// Captures a [RenderRepaintBoundary] as one or more RGBA strips.
@@ -82,17 +127,12 @@ Future<List<ShareRgbaStrip>> captureBoundaryWithScrollSlices({
   }
   if (effectiveHeight <= 0) return [];
 
-  final sliceLogicalHeight =
-      shareInFloorChunkLogicalSliceHeight(pixelRatio, limits: limits)
-          .toDouble();
   final strips = <ShareRgbaStrip>[];
-  var y = 0.0;
+  final intervals = <ScrollCaptureInterval>[];
+  var capturedEnd = 0.0;
   double? lastCapturedOffset;
-  while (y < effectiveHeight - 0.5) {
-    final remaining = effectiveHeight - y;
-    final sliceHeight =
-        remaining < sliceLogicalHeight ? remaining : sliceLogicalHeight;
-    scrollController.jumpTo(y);
+  while (capturedEnd < effectiveHeight - 0.5) {
+    scrollController.jumpTo(capturedEnd);
     await SchedulerBinding.instance.endOfFrame;
     await SchedulerBinding.instance.endOfFrame;
     if (!scrollController.hasClients) break;
@@ -106,19 +146,34 @@ Future<List<ShareRgbaStrip>> captureBoundaryWithScrollSlices({
     lastCapturedOffset = actualOffset;
     final strip = await rgbaStripFromBoundary(boundary, pixelRatio);
     if (strip == null) return [];
-    final maxPhysicalHeight =
-        (remaining * pixelRatio).round().clamp(1, strip.height);
-    strips.add(cropStripToPhysicalHeight(strip, maxPhysicalHeight));
-    y += sliceHeight;
+    final plan = planScrollSliceCrop(
+      capturedEndLogical: capturedEnd,
+      actualOffset: actualOffset,
+      effectiveHeight: effectiveHeight,
+      stripPhysicalHeight: strip.height,
+      pixelRatio: pixelRatio,
+    );
+    if (plan == null) break;
+    strips.add(
+      cropStripPhysicalRows(
+        strip,
+        startPhysicalRow: plan.startPhysicalRow,
+        endPhysicalRow: plan.endPhysicalRow,
+      ),
+    );
+    intervals.add(
+      (
+        start: plan.coveredStartLogical,
+        end: plan.coveredEndLogical,
+      ),
+    );
+    if (plan.coveredEndLogical <= capturedEnd) break;
+    capturedEnd = plan.coveredEndLogical;
   }
 
-  final capturedLogical = scrollCaptureLogicalHeightFromStrips(
-    strips.map((strip) => strip.height),
-    pixelRatio: pixelRatio,
-  );
-  if (!scrollCaptureCoverageOk(
+  if (!scrollCaptureIntervalsCover(
     expectedLogicalHeight: effectiveHeight,
-    capturedLogicalHeight: capturedLogical,
+    intervals: intervals,
   )) {
     return [];
   }

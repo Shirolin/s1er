@@ -13,6 +13,37 @@ class ShareRgbaStrip {
   final int height;
 }
 
+/// Slices [strip] to physical rows `[startPhysicalRow, endPhysicalRow)`.
+ShareRgbaStrip cropStripPhysicalRows(
+  ShareRgbaStrip strip, {
+  required int startPhysicalRow,
+  required int endPhysicalRow,
+}) {
+  if (startPhysicalRow < 0 ||
+      endPhysicalRow <= startPhysicalRow ||
+      endPhysicalRow > strip.height) {
+    throw ArgumentError(
+      'Invalid physical row range [$startPhysicalRow, $endPhysicalRow) '
+      'for strip height ${strip.height}',
+    );
+  }
+  if (startPhysicalRow == 0 && endPhysicalRow == strip.height) {
+    return strip;
+  }
+  final startByte = strip.width * startPhysicalRow * 4;
+  final endByte = strip.width * endPhysicalRow * 4;
+  if (strip.bytes.length < endByte) {
+    throw ArgumentError(
+      'RGBA buffer too short: ${strip.bytes.length} < $endByte',
+    );
+  }
+  return ShareRgbaStrip(
+    bytes: Uint8List.sublistView(strip.bytes, startByte, endByte),
+    width: strip.width,
+    height: endPhysicalRow - startPhysicalRow,
+  );
+}
+
 /// Truncates [strip] to at most [maxPhysicalHeight] physical rows.
 ShareRgbaStrip cropStripToPhysicalHeight(
   ShareRgbaStrip strip,
@@ -24,16 +55,10 @@ ShareRgbaStrip cropStripToPhysicalHeight(
   if (strip.height <= maxPhysicalHeight) {
     return strip;
   }
-  final byteCount = strip.width * maxPhysicalHeight * 4;
-  if (strip.bytes.length < byteCount) {
-    throw ArgumentError(
-      'RGBA buffer too short: ${strip.bytes.length} < $byteCount',
-    );
-  }
-  return ShareRgbaStrip(
-    bytes: Uint8List.sublistView(strip.bytes, 0, byteCount),
-    width: strip.width,
-    height: maxPhysicalHeight,
+  return cropStripPhysicalRows(
+    strip,
+    startPhysicalRow: 0,
+    endPhysicalRow: maxPhysicalHeight,
   );
 }
 

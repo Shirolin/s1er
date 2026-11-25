@@ -20,6 +20,7 @@ import 'services/frame_timing_service.dart';
 import 'utils/app_messenger.dart';
 import 'utils/desktop_tray.dart';
 import 'utils/desktop_window.dart';
+import 'utils/s1_snack_bar.dart';
 import 'utils/single_instance.dart';
 import 'utils/update_startup_marker.dart';
 import 'services/http_client.dart';
@@ -238,8 +239,10 @@ void main() async {
     if (fontRestoreNotice != null) {
       final notice = fontRestoreNotice;
       WidgetsBinding.instance.addPostFrameCallback((_) {
-        s1MessengerKey.currentState?.showSnackBar(
-          SnackBar(content: Text(notice)),
+        S1SnackBar.showMessenger(
+          s1MessengerKey.currentState,
+          message: notice,
+          duration: const Duration(seconds: 4),
         );
       });
     }

@@ -25,6 +25,52 @@ abstract class S1SnackBar {
     double? bottomClearance,
     S1SnackBarFeedback feedback = S1SnackBarFeedback.none,
   }) {
+    _showWithMessenger(
+      ScaffoldMessenger.of(context),
+      context,
+      message: message,
+      actionLabel: actionLabel,
+      onAction: onAction,
+      duration: duration,
+      bottomClearance: bottomClearance,
+      feedback: feedback,
+    );
+  }
+
+  /// Shows a SnackBar via an existing [ScaffoldMessengerState] (such as
+  /// `s1MessengerKey.currentState`) when no widget [BuildContext] is in scope.
+  static void showMessenger(
+    ScaffoldMessengerState? messenger, {
+    required String message,
+    String? actionLabel,
+    VoidCallback? onAction,
+    Duration? duration,
+    double? bottomClearance,
+    S1SnackBarFeedback feedback = S1SnackBarFeedback.none,
+  }) {
+    if (messenger == null || !messenger.mounted) return;
+    _showWithMessenger(
+      messenger,
+      messenger.context,
+      message: message,
+      actionLabel: actionLabel,
+      onAction: onAction,
+      duration: duration,
+      bottomClearance: bottomClearance,
+      feedback: feedback,
+    );
+  }
+
+  static void _showWithMessenger(
+    ScaffoldMessengerState messenger,
+    BuildContext context, {
+    required String message,
+    String? actionLabel,
+    VoidCallback? onAction,
+    Duration? duration,
+    double? bottomClearance,
+    S1SnackBarFeedback feedback = S1SnackBarFeedback.none,
+  }) {
     switch (feedback) {
       case S1SnackBarFeedback.success:
         S1Haptics.light();
@@ -79,7 +125,6 @@ abstract class S1SnackBar {
             ? const Duration(seconds: 4)
             : const Duration(milliseconds: 2500));
 
-    final messenger = ScaffoldMessenger.of(context);
     messenger.hideCurrentSnackBar();
 
     messenger.showSnackBar(

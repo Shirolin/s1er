@@ -111,7 +111,7 @@ class _DesktopIconSettingsSectionState
               '选择「黑底」即可还原默认图标。',
               style: subtitleStyle,
             ),
-            const Divider(height: 32),
+            Divider(height: 32, color: scheme.outlineVariant),
             _ShortcutTile(
               status: status,
               busy: _busy,

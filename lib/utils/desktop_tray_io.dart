@@ -2,7 +2,6 @@ import 'dart:async';
 import 'dart:convert';
 
 import 'package:flutter/foundation.dart';
-import 'package:flutter/material.dart' hide Image;
 import 'package:flutter/services.dart';
 import 'package:tray_manager/tray_manager.dart';
 import 'package:window_manager/window_manager.dart';
@@ -10,6 +9,7 @@ import 'package:window_manager/window_manager.dart';
 import '../config/constants.dart';
 import '../services/talker.dart';
 import 'app_messenger.dart';
+import 's1_snack_bar.dart';
 
 /// Desktop-only system tray support (Windows / macOS / Linux).
 ///
@@ -308,18 +308,12 @@ class DesktopTrayController with WindowListener {
     if (!_trayHintShown) {
       _trayHintShown = true;
       final messenger = s1MessengerKey.currentState;
-      if (messenger != null) {
-        messenger
-          ..hideCurrentSnackBar()
-          ..showSnackBar(
-            const SnackBar(
-              content: Text(
-                '${S1Constants.appName} 仍在系统托盘运行，单击托盘图标可重新打开。',
-              ),
-              behavior: SnackBarBehavior.floating,
-              duration: Duration(milliseconds: 1600),
-            ),
-          );
+      if (messenger != null && messenger.mounted) {
+        S1SnackBar.showMessenger(
+          messenger,
+          message: '${S1Constants.appName} 仍在系统托盘运行，单击托盘图标可重新打开。',
+          duration: const Duration(milliseconds: 1600),
+        );
         // Let the hint be read before the window goes away.
         await Future<void>.delayed(const Duration(milliseconds: 1400));
       }

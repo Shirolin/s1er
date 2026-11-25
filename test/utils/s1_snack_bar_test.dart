@@ -164,4 +164,33 @@ void main() {
     await tester.pumpAndSettle();
     expect(find.text('带动作提示'), findsNothing);
   });
+
+  testWidgets('S1SnackBar.showMessenger displays via root messenger key',
+      (tester) async {
+    final messengerKey = GlobalKey<ScaffoldMessengerState>();
+    await tester.pumpWidget(
+      MediaQuery(
+        data: const MediaQueryData(size: Size(1000, 800)),
+        child: MaterialApp(
+          scaffoldMessengerKey: messengerKey,
+          theme: ThemeData(useMaterial3: true),
+          home: const Scaffold(body: SizedBox.shrink()),
+        ),
+      ),
+    );
+    await tester.pump();
+
+    S1SnackBar.showMessenger(
+      messengerKey.currentState,
+      message: '全局消息',
+      duration: const Duration(milliseconds: 1600),
+    );
+    await tester.pump();
+
+    expect(find.text('全局消息'), findsOneWidget);
+    expect(find.byIcon(Icons.info_outline), findsOneWidget);
+    final snackBar = tester.widget<SnackBar>(find.byType(SnackBar));
+    expect(snackBar.width, 400.0);
+    expect(snackBar.duration, const Duration(milliseconds: 1600));
+  });
 }
